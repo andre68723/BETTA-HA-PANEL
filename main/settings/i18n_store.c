@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.0
+ * Copyright (c) 2026 Cpt_Kirk
+ */
 #include "settings/i18n_store.h"
 
 #include <ctype.h>

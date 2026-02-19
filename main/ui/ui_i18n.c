@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.0
+ * Copyright (c) 2026 Cpt_Kirk
+ */
 #include "ui/ui_i18n.h"
 
 #include <stdlib.h>

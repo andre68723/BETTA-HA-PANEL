@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.0
+ * Copyright (c) 2026 Cpt_Kirk
+ */
 #include "api/http_guard.h"
 
 #include <limits.h>

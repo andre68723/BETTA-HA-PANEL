@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.0
+ * Copyright (c) 2026 Cpt_Kirk
+ */
 #include "ui/fonts/mdi_font_registry.h"
 
 #ifndef APP_HAVE_MDI_ICON_FONT

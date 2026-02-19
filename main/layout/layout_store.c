@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.0
+ * Copyright (c) 2026 Cpt_Kirk
+ */
 #include "layout/layout_store.h"
 
 #include <stdio.h>
