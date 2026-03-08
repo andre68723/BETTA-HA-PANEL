@@ -1175,6 +1175,24 @@ static bool weather_datetime_is_today(const char *datetime)
     return (year == (local_now.tm_year + 1900)) && (month == (local_now.tm_mon + 1)) && (day == local_now.tm_mday);
 }
 
+static bool weather_datetime_is_before_today(const char *datetime)
+{
+    int year = 0;
+    int month = 0;
+    int day = 0;
+    if (!weather_parse_ymd(datetime, &year, &month, &day)) {
+        return false;
+    }
+
+    time_t now = time(NULL);
+    struct tm local_now = {0};
+    localtime_r(&now, &local_now);
+
+    int date_key = year * 10000 + month * 100 + day;
+    int today_key = (local_now.tm_year + 1900) * 10000 + (local_now.tm_mon + 1) * 100 + local_now.tm_mday;
+    return date_key < today_key;
+}
+
 static void weather_values_default(weather_values_t *values)
 {
     if (values == NULL) {
@@ -1271,12 +1289,21 @@ static void weather_extract_values(const ha_state_t *state, bool want_forecast, 
                     continue;
                 }
 
+                cJSON *date = cJSON_GetObjectItemCaseSensitive(item, "date");
                 cJSON *datetime = cJSON_GetObjectItemCaseSensitive(item, "datetime");
-                if (!cJSON_IsString(datetime) || datetime->valuestring == NULL) {
-                    datetime = cJSON_GetObjectItemCaseSensitive(item, "date");
+
+                const char *forecast_day = NULL;
+                if (cJSON_IsString(date) && date->valuestring != NULL) {
+                    forecast_day = date->valuestring;
+                } else if (cJSON_IsString(datetime) && datetime->valuestring != NULL) {
+                    forecast_day = datetime->valuestring;
                 }
-                bool is_today = cJSON_IsString(datetime) && datetime->valuestring != NULL &&
-                                weather_datetime_is_today(datetime->valuestring);
+
+                bool is_today = (forecast_day != NULL) && weather_datetime_is_today(forecast_day);
+                bool is_before_today = (forecast_day != NULL) && weather_datetime_is_before_today(forecast_day);
+                if (is_before_today) {
+                    continue;
+                }
 
                 bool has_high = false;
                 float high_temp = 0.0f;
@@ -1323,8 +1350,8 @@ static void weather_extract_values(const ha_state_t *state, bool want_forecast, 
 
                 weather_forecast_t *slot = &out->forecast[out_idx];
                 slot->valid = true;
-                if (cJSON_IsString(datetime) && datetime->valuestring != NULL) {
-                    weather_day_from_datetime(datetime->valuestring, slot->day, sizeof(slot->day));
+                if (forecast_day != NULL) {
+                    weather_day_from_datetime(forecast_day, slot->day, sizeof(slot->day));
                 }
                 if (has_high) {
                     slot->has_high = true;

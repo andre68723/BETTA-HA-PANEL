@@ -1187,26 +1187,70 @@ static void ha_client_compact_weather_forecast(cJSON *dst_attrs, cJSON *src_attr
     }
 }
 
-static cJSON *ha_client_find_forecast_array_recursive(cJSON *node, int depth)
+static cJSON *ha_client_find_compact_forecast_in_entity_obj(cJSON *entity_obj)
+{
+    if (!cJSON_IsObject(entity_obj)) {
+        return NULL;
+    }
+
+    cJSON *forecast = cJSON_GetObjectItemCaseSensitive(entity_obj, "forecast");
+    cJSON *compact = ha_client_build_compact_forecast_array(forecast);
+    if (compact != NULL) {
+        return compact;
+    }
+
+    cJSON *forecast_daily = cJSON_GetObjectItemCaseSensitive(entity_obj, "forecast_daily");
+    return ha_client_build_compact_forecast_array(forecast_daily);
+}
+
+static cJSON *ha_client_find_compact_forecast_in_container(cJSON *container, const char *entity_id)
+{
+    if (!cJSON_IsObject(container) || entity_id == NULL || entity_id[0] == '\0') {
+        return NULL;
+    }
+
+    cJSON *compact =
+        ha_client_find_compact_forecast_in_entity_obj(cJSON_GetObjectItemCaseSensitive(container, entity_id));
+    if (compact != NULL) {
+        return compact;
+    }
+
+    cJSON *service_response = cJSON_GetObjectItemCaseSensitive(container, "service_response");
+    if (cJSON_IsObject(service_response)) {
+        compact = ha_client_find_compact_forecast_in_entity_obj(
+            cJSON_GetObjectItemCaseSensitive(service_response, entity_id));
+        if (compact != NULL) {
+            return compact;
+        }
+    }
+
+    cJSON *response = cJSON_GetObjectItemCaseSensitive(container, "response");
+    if (cJSON_IsObject(response)) {
+        compact = ha_client_find_compact_forecast_in_container(response, entity_id);
+        if (compact != NULL) {
+            return compact;
+        }
+    }
+
+    return NULL;
+}
+
+static cJSON *ha_client_find_compact_forecast_recursive(cJSON *node, int depth)
 {
     if (node == NULL || depth > 10) {
         return NULL;
     }
 
     if (cJSON_IsObject(node)) {
-        cJSON *forecast = cJSON_GetObjectItemCaseSensitive(node, "forecast");
-        if (cJSON_IsArray(forecast)) {
-            return forecast;
-        }
-        cJSON *forecast_daily = cJSON_GetObjectItemCaseSensitive(node, "forecast_daily");
-        if (cJSON_IsArray(forecast_daily)) {
-            return forecast_daily;
+        cJSON *compact = ha_client_find_compact_forecast_in_entity_obj(node);
+        if (compact != NULL) {
+            return compact;
         }
 
         for (cJSON *child = node->child; child != NULL; child = child->next) {
-            cJSON *found = ha_client_find_forecast_array_recursive(child, depth + 1);
-            if (found != NULL) {
-                return found;
+            compact = ha_client_find_compact_forecast_recursive(child, depth + 1);
+            if (compact != NULL) {
+                return compact;
             }
         }
         return NULL;
@@ -1215,14 +1259,24 @@ static cJSON *ha_client_find_forecast_array_recursive(cJSON *node, int depth)
     if (cJSON_IsArray(node)) {
         int n = cJSON_GetArraySize(node);
         for (int i = 0; i < n; i++) {
-            cJSON *found = ha_client_find_forecast_array_recursive(cJSON_GetArrayItem(node, i), depth + 1);
-            if (found != NULL) {
-                return found;
+            cJSON *compact = ha_client_find_compact_forecast_recursive(cJSON_GetArrayItem(node, i), depth + 1);
+            if (compact != NULL) {
+                return compact;
             }
         }
     }
 
     return NULL;
+}
+
+static cJSON *ha_client_find_compact_weather_forecast(cJSON *node, const char *entity_id)
+{
+    cJSON *compact = ha_client_find_compact_forecast_in_container(node, entity_id);
+    if (compact != NULL) {
+        return compact;
+    }
+
+    return ha_client_find_compact_forecast_recursive(node, 0);
 }
 
 static esp_err_t ha_client_fetch_weather_daily_forecast_http(
@@ -1312,8 +1366,7 @@ static esp_err_t ha_client_fetch_weather_daily_forecast_http(
         return ESP_ERR_INVALID_RESPONSE;
     }
 
-    cJSON *raw_forecast = ha_client_find_forecast_array_recursive(root, 0);
-    cJSON *compact_forecast = ha_client_build_compact_forecast_array(raw_forecast);
+    cJSON *compact_forecast = ha_client_find_compact_weather_forecast(root, entity_id);
     cJSON_Delete(root);
     if (compact_forecast == NULL) {
         return ESP_ERR_NOT_FOUND;
@@ -2661,6 +2714,7 @@ static esp_err_t ha_client_send_weather_daily_forecast_ws(const char *entity_id,
     cJSON_AddItemToObject(root, "service_data", service_data);
     cJSON_AddItemToObject(root, "target", target);
 
+    ESP_LOGI(TAG_HA_CLIENT, "Requesting WS weather forecast for %s", entity_id);
     esp_err_t err = ha_client_send_json(root);
     if (err != ESP_OK) {
         ESP_LOGW(TAG_HA_CLIENT, "Failed to request weather forecast via WS for '%s': %s",
@@ -2971,17 +3025,32 @@ static bool ha_client_import_state_object(cJSON *state_obj)
     if (weather_missing_forecast && s_client.mutex != NULL) {
         bool scheduled_retry = false;
         int64_t now_ms = ha_client_now_ms();
+        int64_t ready_ms = now_ms;
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-        bool allow_priority_sync =
-            s_client.layout_needs_weather_forecast && (s_client.initial_layout_sync_done || !APP_HA_FETCH_INITIAL_STATES);
+        bool allow_priority_sync = s_client.layout_needs_weather_forecast && !s_client.rest_enabled;
         if (allow_priority_sync && now_ms >= s_client.next_weather_forecast_retry_unix_ms) {
+            if (s_client.ws_last_connected_unix_ms > 0) {
+                int64_t grace_until = s_client.ws_last_connected_unix_ms + HA_WS_WEATHER_PRIORITY_GRACE_MS;
+                if (ready_ms < grace_until) {
+                    ready_ms = grace_until;
+                }
+            }
             ha_client_priority_sync_queue_push_locked(model_state.entity_id);
-            s_client.next_priority_sync_unix_ms = now_ms;
+            if (s_client.next_priority_sync_unix_ms == 0 || s_client.next_priority_sync_unix_ms > ready_ms) {
+                s_client.next_priority_sync_unix_ms = ready_ms;
+            }
             s_client.next_weather_forecast_retry_unix_ms = now_ms + HA_WEATHER_FORECAST_RETRY_MIN_MS;
             scheduled_retry = true;
         }
         xSemaphoreGive(s_client.mutex);
-        if (!scheduled_retry) {
+        if (scheduled_retry) {
+            int64_t delay_ms = ready_ms - now_ms;
+            if (delay_ms < 0) {
+                delay_ms = 0;
+            }
+            ESP_LOGI(TAG_HA_CLIENT, "Queued missing weather forecast retry for %s in %" PRId64 " ms",
+                model_state.entity_id, delay_ms);
+        } else {
             ESP_LOGD(TAG_HA_CLIENT, "Weather forecast retry deferred for %s", model_state.entity_id);
         }
     }
@@ -3334,11 +3403,14 @@ static void ha_client_handle_result_message(cJSON *root)
 
     if (is_weather_ws_req) {
         bool updated = false;
+        bool forecast_found = false;
+        bool merge_failed = false;
+        bool state_missing = false;
         if (cJSON_IsBool(success_item) && cJSON_IsTrue(success_item)) {
             cJSON *result_obj = cJSON_GetObjectItemCaseSensitive(root, "result");
-            cJSON *raw_forecast = ha_client_find_forecast_array_recursive(result_obj, 0);
-            cJSON *compact_forecast = ha_client_build_compact_forecast_array(raw_forecast);
+            cJSON *compact_forecast = ha_client_find_compact_weather_forecast(result_obj, weather_entity_id);
             if (compact_forecast != NULL) {
+                forecast_found = true;
                 ha_state_t state = {0};
                 if (ha_model_get_state(weather_entity_id, &state)) {
                     if (state.attributes_json[0] == '\0') {
@@ -3350,8 +3422,11 @@ static void ha_client_handle_result_message(cJSON *root)
                         ha_model_upsert_state(&state);
                         ha_client_publish_event(EV_HA_STATE_CHANGED, weather_entity_id);
                         updated = true;
+                    } else {
+                        merge_failed = true;
                     }
                 } else {
+                    state_missing = true;
                     cJSON_Delete(compact_forecast);
                 }
             }
@@ -3361,8 +3436,15 @@ static void ha_client_handle_result_message(cJSON *root)
             ESP_LOGI(TAG_HA_CLIENT, "WS weather forecast updated for %s", weather_entity_id);
         } else if (cJSON_IsBool(success_item) && !cJSON_IsTrue(success_item)) {
             ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast request failed for %s", weather_entity_id);
+        } else if (merge_failed) {
+            ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast merge failed for %s (attrs buffer too small or invalid)",
+                weather_entity_id);
+        } else if (!forecast_found) {
+            ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast response had no usable forecast for %s", weather_entity_id);
+        } else if (state_missing) {
+            ESP_LOGD(TAG_HA_CLIENT, "WS weather forecast arrived before state model existed for %s", weather_entity_id);
         } else {
-            ESP_LOGD(TAG_HA_CLIENT, "WS weather forecast response had no usable forecast for %s", weather_entity_id);
+            ESP_LOGD(TAG_HA_CLIENT, "WS weather forecast response was ignored for %s", weather_entity_id);
         }
     }
 
