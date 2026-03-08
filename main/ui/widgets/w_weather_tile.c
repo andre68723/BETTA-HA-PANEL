@@ -145,6 +145,7 @@ typedef struct {
     lv_coord_t configured_min_dim;
     uint32_t last_icon_cp;
     const lv_font_t *last_icon_font;
+    char last_condition_key[32];
     char last_condition_text[32];
 } w_weather_tile_ctx_t;
 
@@ -505,6 +506,17 @@ static bool weather_has_alpha(const char *text)
     return false;
 }
 
+static const char *weather_effective_condition_key(const w_weather_tile_ctx_t *ctx, const weather_values_t *values)
+{
+    if (ctx != NULL && ctx->last_condition_key[0] != '\0') {
+        return ctx->last_condition_key;
+    }
+    if (values != NULL && values->condition_key[0] != '\0') {
+        return values->condition_key;
+    }
+    return "";
+}
+
 #if APP_UI_WEATHER_LOTTIE_ENABLED
 static weather_lottie_src_t weather_pick_lottie_src(const char *key)
 {
@@ -594,12 +606,9 @@ static weather_lottie_src_t weather_pick_lottie_src(const char *key)
     return none;
 }
 
-static bool weather_has_lottie_for_values(const weather_values_t *values)
+static bool weather_has_lottie_for_key(const char *key)
 {
-    if (values == NULL) {
-        return false;
-    }
-    weather_lottie_src_t src = weather_pick_lottie_src(values->condition_key);
+    weather_lottie_src_t src = weather_pick_lottie_src(key);
     return (src.start != NULL && src.end != NULL && src.end > src.start);
 }
 
@@ -677,15 +686,15 @@ static void weather_hide_lottie(w_weather_tile_ctx_t *ctx)
     lv_obj_add_flag(ctx->lottie_icon, LV_OBJ_FLAG_HIDDEN);
 }
 
-static bool weather_show_lottie(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values, lv_coord_t icon_x,
+static bool weather_show_lottie(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const char *condition_key, lv_coord_t icon_x,
     lv_coord_t icon_y, lv_coord_t requested_size)
 {
-    if (card == NULL || ctx == NULL || values == NULL || ctx->lottie_icon == NULL) {
+    if (card == NULL || ctx == NULL || ctx->lottie_icon == NULL) {
         weather_hide_lottie(ctx);
         return false;
     }
 
-    weather_lottie_src_t src = weather_pick_lottie_src(values->condition_key);
+    weather_lottie_src_t src = weather_pick_lottie_src(condition_key);
     if (src.start == NULL || src.end == NULL || src.end <= src.start) {
         weather_hide_lottie(ctx);
         return false;
@@ -724,9 +733,9 @@ static void weather_free_lottie(w_weather_tile_ctx_t *ctx)
     ctx->last_lottie_src_size = 0U;
 }
 #else
-static bool weather_has_lottie_for_values(const weather_values_t *values)
+static bool weather_has_lottie_for_key(const char *key)
 {
-    LV_UNUSED(values);
+    LV_UNUSED(key);
     return false;
 }
 
@@ -735,12 +744,12 @@ static void weather_hide_lottie(w_weather_tile_ctx_t *ctx)
     LV_UNUSED(ctx);
 }
 
-static bool weather_show_lottie(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values, lv_coord_t icon_x,
+static bool weather_show_lottie(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const char *condition_key, lv_coord_t icon_x,
     lv_coord_t icon_y, lv_coord_t requested_size)
 {
     LV_UNUSED(card);
     LV_UNUSED(ctx);
-    LV_UNUSED(values);
+    LV_UNUSED(condition_key);
     LV_UNUSED(icon_x);
     LV_UNUSED(icon_y);
     LV_UNUSED(requested_size);
@@ -1088,6 +1097,7 @@ static void weather_update_icon_cache_from_state(w_weather_tile_ctx_t *ctx, cons
         return;
     }
 
+    weather_copy_text(ctx->last_condition_key, sizeof(ctx->last_condition_key), key);
     weather_humanize_condition(state_text, human, sizeof(human));
     ctx->last_icon_cp = cp;
     weather_copy_text(ctx->last_condition_text, sizeof(ctx->last_condition_text), human);
@@ -1534,8 +1544,9 @@ static void weather_build_3day_rows(const weather_values_t *values, weather_3day
     weather_3day_row_t *current = &rows[0];
     current->valid = true;
     weather_copy_text(current->day, sizeof(current->day), "Now");
+    /* "Now" must reflect the live weather entity state, not today's forecast summary. */
     weather_copy_text(current->condition_key, sizeof(current->condition_key),
-        values->today_condition_key[0] != '\0' ? values->today_condition_key : values->condition_key);
+        values->condition_key[0] != '\0' ? values->condition_key : values->today_condition_key);
 
     if (values->today_has_low) {
         current->has_low = true;
@@ -2154,7 +2165,8 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
         lv_label_set_text(ctx->condition_label, display_condition);
     }
 
-    bool lottie_mode = weather_show_lottie(card, ctx, values, icon_x - 4, icon_y - 8, 0);
+    const char *visual_condition_key = weather_effective_condition_key(ctx, values);
+    bool lottie_mode = weather_show_lottie(card, ctx, visual_condition_key, icon_x - 4, icon_y - 8, 0);
     if (lottie_mode) {
         lv_obj_add_flag(ctx->condition_label, LV_OBJ_FLAG_HIDDEN);
     } else {
@@ -2291,7 +2303,8 @@ static void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weat
         lv_label_set_text(ctx->condition_label, display_condition);
     }
 
-    bool lottie_candidate = weather_has_lottie_for_values(values);
+    const char *visual_condition_key = weather_effective_condition_key(ctx, values);
+    bool lottie_candidate = weather_has_lottie_for_key(visual_condition_key);
     lv_coord_t lottie_size =
         lottie_candidate ? weather_pick_lottie_size_main_adaptive(card, ctx, temp_font, meta_font) : 0;
     bool visual_icon_mode = icon_mode || lottie_candidate;
@@ -2355,7 +2368,7 @@ static void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weat
         if (lottie_y < 0) {
             lottie_y = 0;
         }
-        lottie_mode = weather_show_lottie(card, ctx, values, lottie_x, lottie_y, lottie_size);
+        lottie_mode = weather_show_lottie(card, ctx, visual_condition_key, lottie_x, lottie_y, lottie_size);
     } else {
         weather_hide_lottie(ctx);
     }
@@ -2468,6 +2481,7 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->configured_min_dim = (def->w < def->h) ? def->w : def->h;
     ctx->last_icon_cp = 0U;
     ctx->last_icon_font = NULL;
+    ctx->last_condition_key[0] = '\0';
     ctx->last_condition_text[0] = '\0';
 
     if (ctx->show_forecast) {
