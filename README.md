@@ -28,7 +28,12 @@ The dashboard is configured directly on the device via the integrated BETTA Edit
 - choose the downloaded .bin file (make sure its fully downloaded 4.19 MB)
 - Program
   <img width="662" height="469" alt="image" src="https://github.com/user-attachments/assets/732007c8-9e7d-4411-8360-665553782b6c" />
-- follow the instruction on the screen
+- reboot the device (cut power to restart or press reset button)
+- the device will create an Access Point (AP) with ssid BETTA-Setup
+- connect to the AP and open http://192.168.4.1
+- provide your wifi region code, scan for wifi, enter your password and connect.
+- once connected the device getting an IP in your local network
+- open the IP to continue the setup process
 
 
 ## A few examples:
