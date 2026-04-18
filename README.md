@@ -34,6 +34,8 @@ The dashboard is configured directly on the device via the integrated BETTA Edit
 - provide your wifi region code, scan for wifi, enter your password and connect.
 - once connected the device getting an IP in your local network
 - open the IP to continue the setup process
+  <img width="613" height="416" alt="image" src="https://github.com/user-attachments/assets/a81fab35-d599-490a-9e1f-2675924b099d" />
+
 
 
 ## A few examples:
