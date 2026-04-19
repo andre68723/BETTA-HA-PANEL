@@ -17,6 +17,7 @@ static const char *I18N_BUILTIN_DE =
     "\"topbar\":{\"ha\":\"HA\",\"ap\":\"AP\"},"
     "\"sensor\":{\"age\":{\"just_now\":\"gerade eben\",\"min_one\":\"vor 1 Min\",\"min_many\":\"vor %d Min\",\"hour_one\":\"vor 1 Std\",\"hour_many\":\"vor %d Std\",\"day_one\":\"vor 1 Tag\",\"day_many\":\"vor %d Tagen\"}},"
     "\"heating\":{\"target_format\":\"Soll %.1f C\",\"active\":\"Heizen aktiv\"},"
+    "\"light\":{\"color_title\":\"Lichtfarbe\",\"white\":\"Weiss\",\"color_temperature\":\"Farbtemperatur\",\"warm\":\"Warm\",\"cool\":\"Kalt\",\"rgb_color\":\"RGB Farbe\",\"presets\":\"Presets\",\"hue\":\"Farbton\",\"saturation\":\"Saettigung\"},"
     "\"weather\":{\"unavailable\":\"Nicht verfuegbar\",\"humidity_format\":\"Luftfeuchte %d%%\"},"
     "\"graph\":{\"no_history\":\"keine Historie\",\"no_data\":\"keine Daten\",\"min\":\"min\",\"max\":\"max\"},"
     "\"boot\":{\"initializing_system\":\"System wird initialisiert\",\"initializing_wifi\":\"WLAN wird initialisiert\",\"initializing_touch\":\"Touch wird initialisiert\",\"wifi_setup_title\":\"WLAN Setup\",\"wifi_connect_failed\":\"WLAN Verbindung fehlgeschlagen\",\"wifi_credentials_missing\":\"WLAN Zugangsdaten fehlen\",\"open_editor\":\"BETTA Editor oeffnen:\",\"ha_setup_title\":\"Home Assistant Setup\",\"wifi_connected\":\"WLAN verbunden\",\"ha_credentials_missing\":\"HA Zugangsdaten fehlen\",\"set_ha_url_token\":\"HA URL und Token setzen\",\"loading_dashboard\":\"Dashboard wird geladen\",\"setup_ap_prefix\":\"Setup AP\",\"offline_mode\":\"Offline Modus\"}"
@@ -28,6 +29,7 @@ static const char *I18N_BUILTIN_EN =
     "\"topbar\":{\"ha\":\"HA\",\"ap\":\"AP\"},"
     "\"sensor\":{\"age\":{\"just_now\":\"just now\",\"min_one\":\"1 min ago\",\"min_many\":\"%d min ago\",\"hour_one\":\"1 hour ago\",\"hour_many\":\"%d hours ago\",\"day_one\":\"1 day ago\",\"day_many\":\"%d days ago\"}},"
     "\"heating\":{\"target_format\":\"Target %.1f C\",\"active\":\"heating active\"},"
+    "\"light\":{\"color_title\":\"Light color\",\"white\":\"White\",\"color_temperature\":\"Color temperature\",\"warm\":\"Warm\",\"cool\":\"Cool\",\"rgb_color\":\"RGB color\",\"presets\":\"Presets\",\"hue\":\"Hue\",\"saturation\":\"Saturation\"},"
     "\"weather\":{\"unavailable\":\"Unavailable\",\"humidity_format\":\"Humidity %d%%\"},"
     "\"graph\":{\"no_history\":\"no history\",\"no_data\":\"no data\",\"min\":\"min\",\"max\":\"max\"},"
     "\"boot\":{\"initializing_system\":\"Initializing system\",\"initializing_wifi\":\"Initializing Wi-Fi\",\"initializing_touch\":\"Initializing touch\",\"wifi_setup_title\":\"Wi-Fi Setup\",\"wifi_connect_failed\":\"Wi-Fi connect failed\",\"wifi_credentials_missing\":\"Wi-Fi credentials missing\",\"open_editor\":\"Open BETTA Editor:\",\"ha_setup_title\":\"Home Assistant Setup\",\"wifi_connected\":\"Wi-Fi connected\",\"ha_credentials_missing\":\"HA credentials missing\",\"set_ha_url_token\":\"Set HA URL and token\",\"loading_dashboard\":\"Loading dashboard\",\"setup_ap_prefix\":\"Setup AP\",\"offline_mode\":\"Offline mode\"}"
@@ -39,9 +41,22 @@ static const char *I18N_BUILTIN_ES =
     "\"topbar\":{\"ha\":\"HA\",\"ap\":\"AP\"},"
     "\"sensor\":{\"age\":{\"just_now\":\"ahora mismo\",\"min_one\":\"hace 1 min\",\"min_many\":\"hace %d min\",\"hour_one\":\"hace 1 hora\",\"hour_many\":\"hace %d horas\",\"day_one\":\"hace 1 dia\",\"day_many\":\"hace %d dias\"}},"
     "\"heating\":{\"target_format\":\"Objetivo %.1f C\",\"active\":\"calefaccion activa\"},"
+    "\"light\":{\"color_title\":\"Color de luz\",\"white\":\"Blanco\",\"color_temperature\":\"Temperatura de color\",\"warm\":\"Calido\",\"cool\":\"Frio\",\"rgb_color\":\"Color RGB\",\"presets\":\"Preajustes\",\"hue\":\"Tono\",\"saturation\":\"Saturacion\"},"
     "\"weather\":{\"unavailable\":\"No disponible\",\"humidity_format\":\"Humedad %d%%\"},"
     "\"graph\":{\"no_history\":\"sin historial\",\"no_data\":\"sin datos\",\"min\":\"min\",\"max\":\"max\"},"
     "\"boot\":{\"initializing_system\":\"Inicializando sistema\",\"initializing_wifi\":\"Inicializando Wi-Fi\",\"initializing_touch\":\"Inicializando tactil\",\"wifi_setup_title\":\"Configuracion Wi-Fi\",\"wifi_connect_failed\":\"Error de conexion Wi-Fi\",\"wifi_credentials_missing\":\"Faltan credenciales Wi-Fi\",\"open_editor\":\"Abrir BETTA Editor:\",\"ha_setup_title\":\"Configuracion Home Assistant\",\"wifi_connected\":\"Wi-Fi conectado\",\"ha_credentials_missing\":\"Faltan credenciales HA\",\"set_ha_url_token\":\"Configurar URL y token de HA\",\"loading_dashboard\":\"Cargando panel\",\"setup_ap_prefix\":\"AP de configuracion\",\"offline_mode\":\"Modo sin conexion\"}"
+    "}}";
+
+static const char *I18N_BUILTIN_FR =
+    "{\"lvgl\":{"
+    "\"common\":{\"on\":\"ON\",\"off\":\"OFF\",\"unavailable\":\"indisponible\",\"paused\":\"en pause\",\"playing\":\"lecture\"},"
+    "\"topbar\":{\"ha\":\"HA\",\"ap\":\"AP\"},"
+    "\"sensor\":{\"age\":{\"just_now\":\"a l'instant\",\"min_one\":\"il y a 1 min\",\"min_many\":\"il y a %d min\",\"hour_one\":\"il y a 1 h\",\"hour_many\":\"il y a %d h\",\"day_one\":\"il y a 1 jour\",\"day_many\":\"il y a %d jours\"}},"
+    "\"heating\":{\"target_format\":\"Cible %.1f C\",\"active\":\"chauffage actif\"},"
+    "\"light\":{\"color_title\":\"Couleur lumiere\",\"white\":\"Blanc\",\"color_temperature\":\"Temperature couleur\",\"warm\":\"Chaud\",\"cool\":\"Froid\",\"rgb_color\":\"Couleur RGB\",\"presets\":\"Prereglages\",\"hue\":\"Teinte\",\"saturation\":\"Saturation\"},"
+    "\"weather\":{\"unavailable\":\"Indisponible\",\"humidity_format\":\"Humidite %d%%\"},"
+    "\"graph\":{\"no_history\":\"aucun historique\",\"no_data\":\"aucune donnee\",\"min\":\"min\",\"max\":\"max\"},"
+    "\"boot\":{\"initializing_system\":\"Initialisation du systeme\",\"initializing_wifi\":\"Initialisation Wi-Fi\",\"initializing_touch\":\"Initialisation tactile\",\"wifi_setup_title\":\"Configuration Wi-Fi\",\"wifi_connect_failed\":\"Echec connexion Wi-Fi\",\"wifi_credentials_missing\":\"Identifiants Wi-Fi manquants\",\"open_editor\":\"Ouvrir BETTA Editor:\",\"ha_setup_title\":\"Configuration Home Assistant\",\"wifi_connected\":\"Wi-Fi connecte\",\"ha_credentials_missing\":\"Identifiants HA manquants\",\"set_ha_url_token\":\"Definir URL HA et token\",\"loading_dashboard\":\"Chargement du tableau de bord\",\"setup_ap_prefix\":\"AP de configuration\",\"offline_mode\":\"Mode hors ligne\"}"
     "}}";
 
 static bool i18n_store_is_valid_language_code(const char *code)
@@ -98,7 +113,8 @@ bool i18n_store_is_builtin_language(const char *language_code)
     if (language_code == NULL) {
         return false;
     }
-    return strcmp(language_code, "de") == 0 || strcmp(language_code, "en") == 0 || strcmp(language_code, "es") == 0;
+    return strcmp(language_code, "de") == 0 || strcmp(language_code, "en") == 0 || strcmp(language_code, "es") == 0 ||
+           strcmp(language_code, "fr") == 0;
 }
 
 const char *i18n_store_builtin_translation_json(const char *language_code)
@@ -106,14 +122,17 @@ const char *i18n_store_builtin_translation_json(const char *language_code)
     if (language_code == NULL) {
         return NULL;
     }
+    if (strcmp(language_code, "en") == 0) {
+        return I18N_BUILTIN_EN;
+    }
     if (strcmp(language_code, "de") == 0) {
         return I18N_BUILTIN_DE;
     }
     if (strcmp(language_code, "es") == 0) {
         return I18N_BUILTIN_ES;
     }
-    if (strcmp(language_code, "en") == 0) {
-        return I18N_BUILTIN_EN;
+    if (strcmp(language_code, "fr") == 0) {
+        return I18N_BUILTIN_FR;
     }
     return NULL;
 }
@@ -270,9 +289,10 @@ esp_err_t i18n_store_list_languages(
     }
 
     size_t count = 0;
-    (void)i18n_store_add_language(out_codes, max_codes, &count, "de");
     (void)i18n_store_add_language(out_codes, max_codes, &count, "en");
+    (void)i18n_store_add_language(out_codes, max_codes, &count, "de");
     (void)i18n_store_add_language(out_codes, max_codes, &count, "es");
+    (void)i18n_store_add_language(out_codes, max_codes, &count, "fr");
 
     if (!i18n_store_ensure_dir()) {
         *out_count = count;

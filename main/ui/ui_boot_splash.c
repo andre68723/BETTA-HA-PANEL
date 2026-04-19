@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "esp_app_desc.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -65,6 +66,15 @@ static const int64_t BOOT_SPLASH_MIN_SHOW_MS = 1200;
 static int16_t s_status_x_offset = SPLASH_STATUS_X_OFFSET_DEFAULT;
 static lv_coord_t s_status_width = SPLASH_STATUS_WIDTH_DEFAULT;
 static lv_text_align_t s_status_text_align = LV_TEXT_ALIGN_LEFT;
+
+static const char *splash_app_version(void)
+{
+    const esp_app_desc_t *desc = esp_app_get_description();
+    if (desc == NULL || desc->version[0] == '\0') {
+        return "unknown";
+    }
+    return desc->version;
+}
 
 static int64_t splash_now_ms(void)
 {
@@ -244,7 +254,9 @@ esp_err_t ui_boot_splash_show(void)
     lv_obj_set_style_bg_opa(s_splash.progress, LV_OPA_COVER, LV_PART_INDICATOR);
 
     s_splash.title = lv_label_create(s_splash.root);
-    lv_label_set_text(s_splash.title, "BETTA86 OS");
+    char title[64] = {0};
+    snprintf(title, sizeof(title), "BETTA OS %s", splash_app_version());
+    lv_label_set_text(s_splash.title, title);
     lv_obj_set_style_text_color(s_splash.title, lv_color_hex(SPLASH_TITLE_HEX), LV_PART_MAIN);
 #if LV_FONT_MONTSERRAT_48
     lv_obj_set_style_text_font(s_splash.title, &lv_font_montserrat_48, LV_PART_MAIN);

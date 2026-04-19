@@ -16,6 +16,7 @@
 #include "app_config.h"
 #include "app_events.h"
 #include "ha/ha_client.h"
+#include "ha/ha_light_capabilities.h"
 #include "ha/ha_model.h"
 #include "ha/ha_services.h"
 
@@ -293,6 +294,11 @@ esp_err_t ui_bindings_set_slider_value(const char *entity_id, int value)
     const char *service = HA_SERVICE_SET_VALUE;
 
     if (strcmp(domain, HA_DOMAIN_LIGHT) == 0) {
+        ha_state_t current = {0};
+        if (ha_model_get_state(entity_id, &current) && !ha_light_state_supports_dimming(&current)) {
+            ESP_LOGW(TAG, "light does not support brightness: %s", entity_id);
+            return ESP_ERR_NOT_SUPPORTED;
+        }
         int brightness = (value * 255) / 100;
         service = HA_SERVICE_TURN_ON;
 #if APP_HA_LIGHT_USE_TRANSITION_ZERO
@@ -312,6 +318,84 @@ esp_err_t ui_bindings_set_slider_value(const char *entity_id, int value)
     }
 
     return ha_client_call_service(domain, service, payload);
+}
+
+esp_err_t ui_bindings_set_light_color_temp_kelvin(const char *entity_id, int kelvin)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (kelvin < 1000) {
+        kelvin = 1000;
+    }
+    if (kelvin > 12000) {
+        kelvin = 12000;
+    }
+
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain)) || strcmp(domain, HA_DOMAIN_LIGHT) != 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ha_state_t current = {0};
+    if (ha_model_get_state(entity_id, &current) && !ha_light_state_supports_color_temp(&current)) {
+        ESP_LOGW(TAG, "light does not support color temperature: %s", entity_id);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    char payload[256] = {0};
+#if APP_HA_LIGHT_USE_TRANSITION_ZERO
+    snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\",\"color_temp_kelvin\":%d,\"transition\":0}", entity_id,
+        kelvin);
+#else
+    snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\",\"color_temp_kelvin\":%d}", entity_id, kelvin);
+#endif
+
+    esp_err_t err = ha_client_call_service(HA_DOMAIN_LIGHT, HA_SERVICE_TURN_ON, payload);
+    if (err == ESP_OK) {
+        ui_bindings_apply_optimistic_power_state(entity_id, true);
+    } else {
+        ESP_LOGW(TAG, "set light color temperature failed entity=%s kelvin=%d err=%s", entity_id, kelvin,
+            esp_err_to_name(err));
+    }
+    return err;
+}
+
+esp_err_t ui_bindings_set_light_rgb_color(const char *entity_id, uint8_t r, uint8_t g, uint8_t b)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain)) || strcmp(domain, HA_DOMAIN_LIGHT) != 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ha_state_t current = {0};
+    if (ha_model_get_state(entity_id, &current) && !ha_light_state_supports_color(&current)) {
+        ESP_LOGW(TAG, "light does not support RGB color: %s", entity_id);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    char payload[288] = {0};
+#if APP_HA_LIGHT_USE_TRANSITION_ZERO
+    snprintf(payload, sizeof(payload),
+        "{\"entity_id\":\"%s\",\"rgb_color\":[%u,%u,%u],\"transition\":0}", entity_id, (unsigned)r, (unsigned)g,
+        (unsigned)b);
+#else
+    snprintf(payload, sizeof(payload),
+        "{\"entity_id\":\"%s\",\"rgb_color\":[%u,%u,%u]}", entity_id, (unsigned)r, (unsigned)g, (unsigned)b);
+#endif
+
+    esp_err_t err = ha_client_call_service(HA_DOMAIN_LIGHT, HA_SERVICE_TURN_ON, payload);
+    if (err == ESP_OK) {
+        ui_bindings_apply_optimistic_power_state(entity_id, true);
+    } else {
+        ESP_LOGW(TAG, "set light RGB color failed entity=%s rgb=%u,%u,%u err=%s", entity_id, (unsigned)r,
+            (unsigned)g, (unsigned)b, esp_err_to_name(err));
+    }
+    return err;
 }
 
 esp_err_t ui_bindings_media_player_action(const char *entity_id, ui_bindings_media_action_t action)

@@ -13,12 +13,14 @@ idf_component_register(
         "api/api_settings.c"
         "api/api_i18n.c"
         "api/api_wifi.c"
+        "api/api_version.c"
         "api/api_screenshot.c"
         "drivers/display_init.c"
         "drivers/touch_init.c"
         "ha/ha_client.c"
         "ha/ha_ws.c"
         "ha/ha_model.c"
+        "ha/ha_light_capabilities.c"
         "layout/layout_store.c"
         "layout/layout_validate.c"
         "settings/runtime_settings.c"
@@ -143,6 +145,25 @@ if(EXISTS "${SPLASH_SMART86_BETTA_SOURCE}")
     set(SPLASH_SMART86_BETTA_AVAILABLE 1)
 endif()
 target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_HAVE_SMART86OS_BETTA_IMAGE=${SPLASH_SMART86_BETTA_AVAILABLE})
+
+set(LIGHT_TEMP_BUTTON_IMAGE_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/assets/Temp.c")
+set(LIGHT_RGB_BUTTON_IMAGE_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/assets/RGB.c")
+set(LIGHT_RGB_SLIDER_IMAGE_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/assets/visiblecolor.c")
+set(LIGHT_COLOR_BUTTON_IMAGES_AVAILABLE 0)
+set(LIGHT_RGB_SLIDER_IMAGE_AVAILABLE 0)
+if(EXISTS "${LIGHT_TEMP_BUTTON_IMAGE_SOURCE}" AND EXISTS "${LIGHT_RGB_BUTTON_IMAGE_SOURCE}")
+    target_sources(${COMPONENT_LIB} PRIVATE "${LIGHT_TEMP_BUTTON_IMAGE_SOURCE}" "${LIGHT_RGB_BUTTON_IMAGE_SOURCE}")
+    set(LIGHT_COLOR_BUTTON_IMAGES_AVAILABLE 1)
+endif()
+if(EXISTS "${LIGHT_RGB_SLIDER_IMAGE_SOURCE}")
+    target_sources(${COMPONENT_LIB} PRIVATE "${LIGHT_RGB_SLIDER_IMAGE_SOURCE}")
+    set(LIGHT_RGB_SLIDER_IMAGE_AVAILABLE 1)
+endif()
+target_compile_definitions(
+    ${COMPONENT_LIB}
+    PRIVATE
+        APP_HAVE_LIGHT_COLOR_BUTTON_IMAGES=${LIGHT_COLOR_BUTTON_IMAGES_AVAILABLE}
+        APP_HAVE_LIGHT_RGB_SLIDER_IMAGE=${LIGHT_RGB_SLIDER_IMAGE_AVAILABLE})
 
 set(MDI_TOP50_FONT72_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/fonts/mditop50icons72.c")
 set(MDI_TOP50_FONT56_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/fonts/mditop50icons56.c")

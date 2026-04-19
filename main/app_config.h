@@ -36,7 +36,7 @@
 #define APP_TIME_TZ_MAX_LEN 128
 #define APP_UI_LANGUAGE_MAX_LEN 16
 
-#define APP_UI_DEFAULT_LANGUAGE "de"
+#define APP_UI_DEFAULT_LANGUAGE "en"
 
 #define APP_I18N_DIR "/littlefs/i18n"
 #define APP_I18N_MAX_JSON_LEN 32768

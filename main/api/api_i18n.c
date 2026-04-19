@@ -193,7 +193,7 @@ esp_err_t api_i18n_effective_get_handler(httpd_req_t *req)
 
     const char *builtin_json = i18n_store_builtin_translation_json(lang);
     if (builtin_json == NULL) {
-        builtin_json = i18n_store_builtin_translation_json("en");
+        builtin_json = i18n_store_builtin_translation_json(APP_UI_DEFAULT_LANGUAGE);
     }
 
     cJSON *root = parse_object_or_empty(builtin_json);

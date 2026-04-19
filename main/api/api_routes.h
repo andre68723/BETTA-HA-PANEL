@@ -18,4 +18,5 @@ esp_err_t api_i18n_languages_get_handler(httpd_req_t *req);
 esp_err_t api_i18n_effective_get_handler(httpd_req_t *req);
 esp_err_t api_i18n_custom_put_handler(httpd_req_t *req);
 esp_err_t api_wifi_scan_get_handler(httpd_req_t *req);
+esp_err_t api_version_get_handler(httpd_req_t *req);
 esp_err_t api_screenshot_bmp_get_handler(httpd_req_t *req);

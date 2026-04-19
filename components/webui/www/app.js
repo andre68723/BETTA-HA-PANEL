@@ -39,7 +39,7 @@ const BUTTON_MODES = new Set([
   "previous",
 ]);
 const LANGUAGE_CODE_RE = /^[a-z0-9][a-z0-9_-]{1,14}$/;
-const DEFAULT_UI_LANGUAGE = "de";
+const DEFAULT_UI_LANGUAGE = "en";
 
 const WEB_I18N_BUILTIN = {
   en: {
@@ -47,11 +47,80 @@ const WEB_I18N_BUILTIN = {
     "tabs.settings": "Settings",
     "sidebar.title": "BETTA Editor",
     "sidebar.subtitle": "Layout source of truth: JSON",
+    "layout.pages.heading": "Pages",
+    "layout.pages.add": "+ Page",
+    "layout.pages.delete": "Delete",
+    "layout.pages.title_label": "Page title",
+    "layout.pages.title_placeholder": "Page name on the display",
+    "layout.pages.apply_title": "Apply page title",
+    "layout.pages.new_title": "Page {number}",
+    "layout.widgets.heading": "Widgets",
+    "layout.widgets.add_sensor": "+ Sensor",
+    "layout.widgets.add_button": "+ Button",
+    "layout.widgets.add_slider": "+ Slider",
+    "layout.widgets.add_graph": "+ Graph",
+    "layout.widgets.add_empty_tile": "+ Empty Tile",
+    "layout.widgets.add_light_tile": "+ Light Tile",
+    "layout.widgets.add_heating_tile": "+ Heating Tile",
+    "layout.widgets.add_weather_tile": "+ Weather",
+    "layout.widgets.add_weather_3day": "+ Weather 3-day",
+    "layout.widgets.delete": "Delete Widget",
+    "layout.inspector.heading": "Inspector",
+    "layout.inspector.title": "Title",
+    "layout.inspector.entity": "Entity",
+    "layout.inspector.secondary_entity": "Actual entity (sensor)",
+    "layout.inspector.button_mode": "Button mode",
+    "layout.inspector.button_accent_color": "Button accent color",
+    "layout.inspector.slider_entity_domain": "Slider entity type",
+    "layout.inspector.slider_direction": "Slider direction",
+    "layout.inspector.slider_accent_color": "Slider accent color",
+    "layout.inspector.graph_line_color": "Graph line color",
+    "layout.inspector.graph_time_window_min": "Time window (minutes)",
+    "layout.inspector.graph_point_count": "Render points (empty = auto)",
+    "layout.inspector.apply": "Apply",
+    "layout.option.button_mode.auto": "auto (default switch)",
+    "layout.option.button_mode.play_pause": "play/pause (media_player)",
+    "layout.option.button_mode.stop": "stop (media_player)",
+    "layout.option.button_mode.next": "next (media_player)",
+    "layout.option.button_mode.previous": "previous (media_player)",
+    "layout.option.slider_entity_domain.auto": "auto (light, media_player, cover)",
+    "layout.option.slider_entity_domain.light": "light",
+    "layout.option.slider_entity_domain.media_player": "media_player",
+    "layout.option.slider_entity_domain.cover": "cover",
+    "layout.option.slider_direction.auto": "auto (width/height based)",
+    "layout.option.slider_direction.left_to_right": "left_to_right (0% -> 100%)",
+    "layout.option.slider_direction.right_to_left": "right_to_left (100% -> 0%)",
+    "layout.option.slider_direction.bottom_to_top": "bottom_to_top (0% -> 100%)",
+    "layout.option.slider_direction.top_to_bottom": "top_to_bottom (100% -> 0%)",
+    "layout.actions.heading": "Actions",
+    "layout.actions.reload": "Reload",
+    "layout.actions.save": "Save",
+    "layout.actions.export": "Export",
+    "layout.actions.import": "Import JSON",
+    "layout.actions.paste_placeholder": "Paste layout JSON here",
+    "layout.canvas.title": "Canvas",
+    "layout.default_page.title": "Living Room",
+    "layout.status.loading": "Loading layout...",
+    "layout.status.load_failed": "Layout load failed, using default: {error}",
+    "layout.status.loaded": "Layout loaded",
+    "layout.status.entity_fetch_failed": "Entity fetch failed: {error}",
+    "layout.status.saving": "Saving layout...",
+    "layout.status.saved": "Layout saved",
+    "layout.status.imported": "Layout imported (not saved yet)",
+    "layout.status.at_least_one_page": "At least one page is required",
+    "layout.status.entity_domain_required": "Entity must use domain: {domains}",
+    "layout.status.expected_domain": "the expected domain",
+    "layout.status.secondary_sensor_required": "Actual entity must start with sensor.",
+    "layout.status.invalid_json": "Invalid layout JSON",
+    "layout.status.save_failed": "Save failed: {error}",
+    "layout.status.import_failed": "Import failed: {error}",
+    "layout.status.file_import_failed": "File import failed: {error}",
     "provision.wifi.title": "Wi-Fi Provisioning",
     "provision.wifi.subtitle": "Connect the panel to your Wi-Fi.",
     "provision.wifi.ssid": "SSID",
     "provision.wifi.country_code": "Country Code",
     "provision.wifi.password": "Password",
+    "provision.wifi.password_placeholder": "Wi-Fi password",
     "provision.wifi.show_password": "Show password",
     "provision.ha.title": "HA Provisioning",
     "provision.ha.subtitle": "Connect the panel to Home Assistant.",
@@ -63,9 +132,11 @@ const WEB_I18N_BUILTIN = {
     "settings.wifi.country_code": "Country Code",
     "settings.wifi.bssid": "BSSID lock (optional)",
     "settings.wifi.password": "Password",
+    "settings.wifi.password_placeholder": "Leave empty to keep the stored password",
     "settings.ha.heading": "Home Assistant",
     "settings.ha.ws_url": "WebSocket URL (ws:// or wss://)",
     "settings.ha.token": "Long-lived Access Token",
+    "settings.ha.token_placeholder": "Leave empty to keep the stored token",
     "settings.ha.rest_fallback": "Enable HA REST fallback (Default: Off, WS-only preferred)",
     "settings.time.heading": "Time",
     "settings.time.ntp_server": "NTP Server",
@@ -101,11 +172,14 @@ const WEB_I18N_BUILTIN = {
     "status.loading_settings": "Loading settings...",
     "status.settings_loaded": "Settings loaded",
     "status.settings_load_failed": "Settings load failed: {error}",
+    "status.settings_save_failed": "Settings save failed: {error}",
     "status.saving_settings": "Saving settings...",
     "status.settings_saved_reboot": "Settings saved. Device reboots in ~2s. Reconnect and reopen the panel URL.",
     "status.wifi_scan_running": "Scanning Wi-Fi...",
     "status.wifi_scan_complete": "Wi-Fi scan complete ({count} networks)",
     "status.wifi_scan_failed": "Wi-Fi scan failed: {error}",
+    "status.wifi_scan_timeout": "Wi-Fi scan request timed out",
+    "common.unknown_error": "Unknown error",
     "wifi.scan_unavailable": "Wi-Fi scan is unavailable in setup AP mode on this hardware. Enter SSID manually.",
     "wifi.scan_click": "Click \"Scan Wi-Fi\" to list nearby networks.",
     "wifi.scan_click_short": "Click \"Scan\" to list nearby networks.",
@@ -118,13 +192,15 @@ const WEB_I18N_BUILTIN = {
     "wifi.scan.option_no_networks": "No networks found",
     "wifi.scan.option_select": "Select network ({count} found)",
     "settings.time.info": "Applied after reboot. Time sync starts when Wi-Fi is connected.",
-    "settings.ui.info": "Applied after reboot.",
+    "settings.ui.info": "Preview switches immediately. Saved language applies after reboot.",
     "settings.ap.active": "Setup AP active: {ssid}\\nOpen http://192.168.4.1 while connected to this AP.",
     "settings.ap.inactive": "Setup AP inactive.\\nUse the panel IP in your home Wi-Fi network.",
     "settings.translation.info": "Upload a JSON file to add or update a language.",
     "settings.translation.upload_ok": "Language \"{lang}\" uploaded.",
     "settings.translation.upload_fail": "Upload failed: {error}",
     "settings.translation.no_file": "Choose a JSON file first.",
+    "settings.translation.invalid_json": "Invalid JSON",
+    "settings.translation.object_required": "JSON must be an object",
     "settings.translation.invalid_code": "Language code must use [a-z0-9_-] and be 2-15 chars.",
     "settings.language.invalid_country": "Wi-Fi country code must be a 2-letter ISO code (e.g. US, DE)",
     "settings.language.invalid_bssid": "BSSID must be empty or in format AA:BB:CC:DD:EE:FF",
@@ -136,22 +212,93 @@ const WEB_I18N_BUILTIN = {
     "provision.ha.required_token": "Long-lived Access Token is required.",
     "provision.saving_reboot": "Saving settings and rebooting...",
     "provision.saved_reboot": "Settings saved. Device reboots in ~2s.",
+    "provision.save_failed": "Save failed: {error}",
     "provision.wifi.hint": "Save reboots the panel. After reboot, HA provisioning is shown.",
     "provision.ha.hint": "Save reboots the panel. After reboot, the editor is unlocked.",
     "settings.language.option_de": "Deutsch",
     "settings.language.option_en": "English",
     "settings.language.option_es": "Espanol",
+    "settings.language.option_fr": "Francais",
   },
   de: {
     "tabs.layout": "Layout",
     "tabs.settings": "Einstellungen",
     "sidebar.title": "BETTA Editor",
     "sidebar.subtitle": "Layout Quelle: JSON",
+    "layout.pages.heading": "Seiten",
+    "layout.pages.add": "+ Seite",
+    "layout.pages.delete": "Loeschen",
+    "layout.pages.title_label": "Seitentitel",
+    "layout.pages.title_placeholder": "Seitenname auf dem Display",
+    "layout.pages.apply_title": "Seitentitel uebernehmen",
+    "layout.pages.new_title": "Seite {number}",
+    "layout.widgets.heading": "Widgets",
+    "layout.widgets.add_sensor": "+ Sensor",
+    "layout.widgets.add_button": "+ Button",
+    "layout.widgets.add_slider": "+ Slider",
+    "layout.widgets.add_graph": "+ Graph",
+    "layout.widgets.add_empty_tile": "+ Empty Tile",
+    "layout.widgets.add_light_tile": "+ Light Tile",
+    "layout.widgets.add_heating_tile": "+ Heating Tile",
+    "layout.widgets.add_weather_tile": "+ Weather",
+    "layout.widgets.add_weather_3day": "+ Weather 3 Tage",
+    "layout.widgets.delete": "Widget loeschen",
+    "layout.inspector.heading": "Inspektor",
+    "layout.inspector.title": "Titel",
+    "layout.inspector.entity": "Entitaet",
+    "layout.inspector.secondary_entity": "Ist-Entitaet (Sensor)",
+    "layout.inspector.button_mode": "Button Modus",
+    "layout.inspector.button_accent_color": "Button Akzentfarbe",
+    "layout.inspector.slider_entity_domain": "Slider Entitaetstyp",
+    "layout.inspector.slider_direction": "Slider Richtung",
+    "layout.inspector.slider_accent_color": "Slider Akzentfarbe",
+    "layout.inspector.graph_line_color": "Graph Linienfarbe",
+    "layout.inspector.graph_time_window_min": "Zeitfenster (Minuten)",
+    "layout.inspector.graph_point_count": "Render Punkte (leer = auto)",
+    "layout.inspector.apply": "Uebernehmen",
+    "layout.option.button_mode.auto": "auto (Default switch)",
+    "layout.option.button_mode.play_pause": "play/pause (media_player)",
+    "layout.option.button_mode.stop": "stop (media_player)",
+    "layout.option.button_mode.next": "next (media_player)",
+    "layout.option.button_mode.previous": "previous (media_player)",
+    "layout.option.slider_entity_domain.auto": "auto (light, media_player, cover)",
+    "layout.option.slider_entity_domain.light": "light",
+    "layout.option.slider_entity_domain.media_player": "media_player",
+    "layout.option.slider_entity_domain.cover": "cover",
+    "layout.option.slider_direction.auto": "auto (nach Breite/Hoehe)",
+    "layout.option.slider_direction.left_to_right": "left_to_right (0% -> 100%)",
+    "layout.option.slider_direction.right_to_left": "right_to_left (100% -> 0%)",
+    "layout.option.slider_direction.bottom_to_top": "bottom_to_top (0% -> 100%)",
+    "layout.option.slider_direction.top_to_bottom": "top_to_bottom (100% -> 0%)",
+    "layout.actions.heading": "Aktionen",
+    "layout.actions.reload": "Neu laden",
+    "layout.actions.save": "Speichern",
+    "layout.actions.export": "Export",
+    "layout.actions.import": "JSON importieren",
+    "layout.actions.paste_placeholder": "Layout JSON hier einfuegen",
+    "layout.canvas.title": "Canvas",
+    "layout.default_page.title": "Wohnzimmer",
+    "layout.status.loading": "Layout wird geladen...",
+    "layout.status.load_failed": "Layout laden fehlgeschlagen, nutze Default: {error}",
+    "layout.status.loaded": "Layout geladen",
+    "layout.status.entity_fetch_failed": "Entitaeten laden fehlgeschlagen: {error}",
+    "layout.status.saving": "Layout wird gespeichert...",
+    "layout.status.saved": "Layout gespeichert",
+    "layout.status.imported": "Layout importiert (noch nicht gespeichert)",
+    "layout.status.at_least_one_page": "Mindestens eine Seite ist erforderlich",
+    "layout.status.entity_domain_required": "Entitaet muss diese Domain nutzen: {domains}",
+    "layout.status.expected_domain": "die erwartete Domain",
+    "layout.status.secondary_sensor_required": "Ist-Entitaet muss mit sensor. beginnen.",
+    "layout.status.invalid_json": "Ungueltiges Layout JSON",
+    "layout.status.save_failed": "Speichern fehlgeschlagen: {error}",
+    "layout.status.import_failed": "Import fehlgeschlagen: {error}",
+    "layout.status.file_import_failed": "Dateiimport fehlgeschlagen: {error}",
     "provision.wifi.title": "WLAN Provisioning",
     "provision.wifi.subtitle": "Verbinde das Panel mit deinem WLAN.",
     "provision.wifi.ssid": "SSID",
     "provision.wifi.country_code": "Laendercode",
     "provision.wifi.password": "Passwort",
+    "provision.wifi.password_placeholder": "WLAN Passwort",
     "provision.wifi.show_password": "Passwort anzeigen",
     "provision.ha.title": "HA Provisioning",
     "provision.ha.subtitle": "Verbinde das Panel mit Home Assistant.",
@@ -163,9 +310,11 @@ const WEB_I18N_BUILTIN = {
     "settings.wifi.country_code": "Laendercode",
     "settings.wifi.bssid": "BSSID Lock (optional)",
     "settings.wifi.password": "Passwort",
+    "settings.wifi.password_placeholder": "Leer lassen, um vorhandenes Passwort zu behalten",
     "settings.ha.heading": "Home Assistant",
     "settings.ha.ws_url": "WebSocket URL (ws:// oder wss://)",
     "settings.ha.token": "Long-lived Access Token",
+    "settings.ha.token_placeholder": "Leer lassen, um vorhandenen Token zu behalten",
     "settings.ha.rest_fallback": "HA REST Fallback aktivieren (Standard: Aus, WS bevorzugt)",
     "settings.time.heading": "Zeit",
     "settings.time.ntp_server": "NTP Server",
@@ -201,11 +350,14 @@ const WEB_I18N_BUILTIN = {
     "status.loading_settings": "Einstellungen werden geladen...",
     "status.settings_loaded": "Einstellungen geladen",
     "status.settings_load_failed": "Einstellungen laden fehlgeschlagen: {error}",
+    "status.settings_save_failed": "Einstellungen speichern fehlgeschlagen: {error}",
     "status.saving_settings": "Einstellungen werden gespeichert...",
     "status.settings_saved_reboot": "Einstellungen gespeichert. Das Geraet startet in ~2s neu.",
     "status.wifi_scan_running": "WLAN Suche laeuft...",
     "status.wifi_scan_complete": "WLAN Scan fertig ({count} Netze)",
     "status.wifi_scan_failed": "WLAN Scan fehlgeschlagen: {error}",
+    "status.wifi_scan_timeout": "WLAN Scan Anfrage abgelaufen",
+    "common.unknown_error": "Unbekannter Fehler",
     "wifi.scan_unavailable": "WLAN Scan ist im Setup AP Modus auf dieser Hardware nicht verfuegbar. SSID manuell eingeben.",
     "wifi.scan_click": "Auf \"WLAN scannen\" klicken, um Netze zu finden.",
     "wifi.scan_click_short": "Auf \"Scan\" klicken, um Netze zu finden.",
@@ -218,13 +370,15 @@ const WEB_I18N_BUILTIN = {
     "wifi.scan.option_no_networks": "Keine Netze gefunden",
     "wifi.scan.option_select": "Netz waehlen ({count} gefunden)",
     "settings.time.info": "Wird nach Neustart angewendet. Zeitsync startet bei WLAN Verbindung.",
-    "settings.ui.info": "Wird nach Neustart angewendet.",
+    "settings.ui.info": "Vorschau wechselt sofort. Gespeicherte Sprache gilt nach Neustart.",
     "settings.ap.active": "Setup AP aktiv: {ssid}\\nhttp://192.168.4.1 im AP oeffnen.",
     "settings.ap.inactive": "Setup AP inaktiv.\\nNutze die Panel-IP im Heimnetz.",
     "settings.translation.info": "JSON hochladen, um eine Sprache hinzuzufuegen oder zu aktualisieren.",
     "settings.translation.upload_ok": "Sprache \"{lang}\" hochgeladen.",
     "settings.translation.upload_fail": "Upload fehlgeschlagen: {error}",
     "settings.translation.no_file": "Bitte zuerst eine JSON Datei auswaehlen.",
+    "settings.translation.invalid_json": "Ungueltiges JSON",
+    "settings.translation.object_required": "JSON muss ein Objekt sein",
     "settings.translation.invalid_code": "Sprachcode muss [a-z0-9_-] nutzen und 2-15 Zeichen haben.",
     "settings.language.invalid_country": "WLAN Laendercode muss ein 2-stelliger ISO Code sein (z.B. US, DE)",
     "settings.language.invalid_bssid": "BSSID muss leer sein oder Format AA:BB:CC:DD:EE:FF haben",
@@ -236,22 +390,93 @@ const WEB_I18N_BUILTIN = {
     "provision.ha.required_token": "Long-lived Access Token ist erforderlich.",
     "provision.saving_reboot": "Speichere Einstellungen und starte neu...",
     "provision.saved_reboot": "Einstellungen gespeichert. Geraet startet in ~2s neu.",
+    "provision.save_failed": "Speichern fehlgeschlagen: {error}",
     "provision.wifi.hint": "Speichern startet das Panel neu. Danach folgt die HA Einrichtung.",
     "provision.ha.hint": "Speichern startet das Panel neu. Danach ist der Editor freigeschaltet.",
     "settings.language.option_de": "Deutsch",
     "settings.language.option_en": "Englisch",
     "settings.language.option_es": "Spanisch",
+    "settings.language.option_fr": "Franzoesisch",
   },
   es: {
     "tabs.layout": "Diseno",
     "tabs.settings": "Configuracion",
     "sidebar.title": "BETTA Editor",
     "sidebar.subtitle": "Fuente de verdad del layout: JSON",
+    "layout.pages.heading": "Paginas",
+    "layout.pages.add": "+ Pagina",
+    "layout.pages.delete": "Eliminar",
+    "layout.pages.title_label": "Titulo de pagina",
+    "layout.pages.title_placeholder": "Nombre de pagina en la pantalla",
+    "layout.pages.apply_title": "Aplicar titulo de pagina",
+    "layout.pages.new_title": "Pagina {number}",
+    "layout.widgets.heading": "Widgets",
+    "layout.widgets.add_sensor": "+ Sensor",
+    "layout.widgets.add_button": "+ Boton",
+    "layout.widgets.add_slider": "+ Slider",
+    "layout.widgets.add_graph": "+ Grafico",
+    "layout.widgets.add_empty_tile": "+ Tile vacio",
+    "layout.widgets.add_light_tile": "+ Tile de luz",
+    "layout.widgets.add_heating_tile": "+ Tile de calefaccion",
+    "layout.widgets.add_weather_tile": "+ Clima",
+    "layout.widgets.add_weather_3day": "+ Clima 3 dias",
+    "layout.widgets.delete": "Eliminar Widget",
+    "layout.inspector.heading": "Inspector",
+    "layout.inspector.title": "Titulo",
+    "layout.inspector.entity": "Entidad",
+    "layout.inspector.secondary_entity": "Entidad real (sensor)",
+    "layout.inspector.button_mode": "Modo de boton",
+    "layout.inspector.button_accent_color": "Color de acento del boton",
+    "layout.inspector.slider_entity_domain": "Tipo de entidad del slider",
+    "layout.inspector.slider_direction": "Direccion del slider",
+    "layout.inspector.slider_accent_color": "Color de acento del slider",
+    "layout.inspector.graph_line_color": "Color de linea del grafico",
+    "layout.inspector.graph_time_window_min": "Ventana de tiempo (minutos)",
+    "layout.inspector.graph_point_count": "Puntos de render (vacio = auto)",
+    "layout.inspector.apply": "Aplicar",
+    "layout.option.button_mode.auto": "auto (switch por defecto)",
+    "layout.option.button_mode.play_pause": "play/pause (media_player)",
+    "layout.option.button_mode.stop": "stop (media_player)",
+    "layout.option.button_mode.next": "next (media_player)",
+    "layout.option.button_mode.previous": "previous (media_player)",
+    "layout.option.slider_entity_domain.auto": "auto (light, media_player, cover)",
+    "layout.option.slider_entity_domain.light": "light",
+    "layout.option.slider_entity_domain.media_player": "media_player",
+    "layout.option.slider_entity_domain.cover": "cover",
+    "layout.option.slider_direction.auto": "auto (segun ancho/alto)",
+    "layout.option.slider_direction.left_to_right": "left_to_right (0% -> 100%)",
+    "layout.option.slider_direction.right_to_left": "right_to_left (100% -> 0%)",
+    "layout.option.slider_direction.bottom_to_top": "bottom_to_top (0% -> 100%)",
+    "layout.option.slider_direction.top_to_bottom": "top_to_bottom (100% -> 0%)",
+    "layout.actions.heading": "Acciones",
+    "layout.actions.reload": "Recargar",
+    "layout.actions.save": "Guardar",
+    "layout.actions.export": "Exportar",
+    "layout.actions.import": "Importar JSON",
+    "layout.actions.paste_placeholder": "Pega aqui el JSON del layout",
+    "layout.canvas.title": "Canvas",
+    "layout.default_page.title": "Sala",
+    "layout.status.loading": "Cargando layout...",
+    "layout.status.load_failed": "Error al cargar layout, usando default: {error}",
+    "layout.status.loaded": "Layout cargado",
+    "layout.status.entity_fetch_failed": "Error al cargar entidades: {error}",
+    "layout.status.saving": "Guardando layout...",
+    "layout.status.saved": "Layout guardado",
+    "layout.status.imported": "Layout importado (aun no guardado)",
+    "layout.status.at_least_one_page": "Se requiere al menos una pagina",
+    "layout.status.entity_domain_required": "La entidad debe usar el dominio: {domains}",
+    "layout.status.expected_domain": "el dominio esperado",
+    "layout.status.secondary_sensor_required": "La entidad real debe empezar con sensor.",
+    "layout.status.invalid_json": "JSON de layout invalido",
+    "layout.status.save_failed": "Error al guardar: {error}",
+    "layout.status.import_failed": "Error al importar: {error}",
+    "layout.status.file_import_failed": "Error al importar archivo: {error}",
     "provision.wifi.title": "Provision Wi-Fi",
     "provision.wifi.subtitle": "Conecta el panel a tu red Wi-Fi.",
     "provision.wifi.ssid": "SSID",
     "provision.wifi.country_code": "Codigo de pais",
     "provision.wifi.password": "Contrasena",
+    "provision.wifi.password_placeholder": "Contrasena Wi-Fi",
     "provision.wifi.show_password": "Mostrar contrasena",
     "provision.ha.title": "Provision HA",
     "provision.ha.subtitle": "Conecta el panel a Home Assistant.",
@@ -263,9 +488,11 @@ const WEB_I18N_BUILTIN = {
     "settings.wifi.country_code": "Codigo de pais",
     "settings.wifi.bssid": "Bloqueo BSSID (opcional)",
     "settings.wifi.password": "Contrasena",
+    "settings.wifi.password_placeholder": "Dejar vacio para conservar la contrasena guardada",
     "settings.ha.heading": "Home Assistant",
     "settings.ha.ws_url": "URL WebSocket (ws:// o wss://)",
     "settings.ha.token": "Token de acceso de larga duracion",
+    "settings.ha.token_placeholder": "Dejar vacio para conservar el token guardado",
     "settings.ha.rest_fallback": "Activar fallback REST de HA (por defecto: off, se prefiere WS)",
     "settings.time.heading": "Hora",
     "settings.time.ntp_server": "Servidor NTP",
@@ -301,11 +528,14 @@ const WEB_I18N_BUILTIN = {
     "status.loading_settings": "Cargando configuracion...",
     "status.settings_loaded": "Configuracion cargada",
     "status.settings_load_failed": "Error al cargar configuracion: {error}",
+    "status.settings_save_failed": "Error al guardar configuracion: {error}",
     "status.saving_settings": "Guardando configuracion...",
     "status.settings_saved_reboot": "Configuracion guardada. El dispositivo reinicia en ~2s.",
     "status.wifi_scan_running": "Escaneo Wi-Fi en curso...",
     "status.wifi_scan_complete": "Escaneo Wi-Fi completo ({count} redes)",
     "status.wifi_scan_failed": "Error en escaneo Wi-Fi: {error}",
+    "status.wifi_scan_timeout": "Tiempo de espera agotado para escaneo Wi-Fi",
+    "common.unknown_error": "Error desconocido",
     "wifi.scan_unavailable": "El escaneo Wi-Fi no esta disponible en modo setup AP en este hardware. Ingresa SSID manualmente.",
     "wifi.scan_click": "Pulsa \"Escanear Wi-Fi\" para listar redes cercanas.",
     "wifi.scan_click_short": "Pulsa \"Escanear\" para listar redes cercanas.",
@@ -318,13 +548,15 @@ const WEB_I18N_BUILTIN = {
     "wifi.scan.option_no_networks": "No se encontraron redes",
     "wifi.scan.option_select": "Selecciona red ({count} encontradas)",
     "settings.time.info": "Se aplica despues de reiniciar. La sincronizacion inicia cuando Wi-Fi esta conectado.",
-    "settings.ui.info": "Se aplica despues de reiniciar.",
+    "settings.ui.info": "La vista previa cambia al instante. El idioma guardado se aplica tras reiniciar.",
     "settings.ap.active": "AP de setup activo: {ssid}\\nAbre http://192.168.4.1 conectado a este AP.",
     "settings.ap.inactive": "AP de setup inactivo.\\nUsa la IP del panel en tu Wi-Fi.",
     "settings.translation.info": "Sube un JSON para agregar o actualizar un idioma.",
     "settings.translation.upload_ok": "Idioma \"{lang}\" subido.",
     "settings.translation.upload_fail": "Error de subida: {error}",
     "settings.translation.no_file": "Selecciona primero un archivo JSON.",
+    "settings.translation.invalid_json": "JSON invalido",
+    "settings.translation.object_required": "El JSON debe ser un objeto",
     "settings.translation.invalid_code": "El codigo de idioma debe usar [a-z0-9_-] y tener 2-15 caracteres.",
     "settings.language.invalid_country": "El codigo de pais Wi-Fi debe ser ISO de 2 letras (p.ej. US, DE)",
     "settings.language.invalid_bssid": "El BSSID debe estar vacio o en formato AA:BB:CC:DD:EE:FF",
@@ -336,11 +568,191 @@ const WEB_I18N_BUILTIN = {
     "provision.ha.required_token": "El token de acceso es obligatorio.",
     "provision.saving_reboot": "Guardando configuracion y reiniciando...",
     "provision.saved_reboot": "Configuracion guardada. El dispositivo reinicia en ~2s.",
+    "provision.save_failed": "Error al guardar: {error}",
     "provision.wifi.hint": "Guardar reinicia el panel. Despues se muestra la provision de HA.",
     "provision.ha.hint": "Guardar reinicia el panel. Despues se desbloquea el editor.",
     "settings.language.option_de": "Aleman",
     "settings.language.option_en": "Ingles",
     "settings.language.option_es": "Espanol",
+    "settings.language.option_fr": "Frances",
+  },
+  fr: {
+    "tabs.layout": "Layout",
+    "tabs.settings": "Parametres",
+    "sidebar.title": "BETTA Editor",
+    "sidebar.subtitle": "Source du layout: JSON",
+    "layout.pages.heading": "Pages",
+    "layout.pages.add": "+ Page",
+    "layout.pages.delete": "Supprimer",
+    "layout.pages.title_label": "Titre de page",
+    "layout.pages.title_placeholder": "Nom de page sur l'ecran",
+    "layout.pages.apply_title": "Appliquer le titre",
+    "layout.pages.new_title": "Page {number}",
+    "layout.widgets.heading": "Widgets",
+    "layout.widgets.add_sensor": "+ Capteur",
+    "layout.widgets.add_button": "+ Bouton",
+    "layout.widgets.add_slider": "+ Curseur",
+    "layout.widgets.add_graph": "+ Graphe",
+    "layout.widgets.add_empty_tile": "+ Tuile vide",
+    "layout.widgets.add_light_tile": "+ Tuile lumiere",
+    "layout.widgets.add_heating_tile": "+ Tuile chauffage",
+    "layout.widgets.add_weather_tile": "+ Meteo",
+    "layout.widgets.add_weather_3day": "+ Meteo 3 jours",
+    "layout.widgets.delete": "Supprimer le widget",
+    "layout.inspector.heading": "Inspecteur",
+    "layout.inspector.title": "Titre",
+    "layout.inspector.entity": "Entite",
+    "layout.inspector.secondary_entity": "Entite reelle (capteur)",
+    "layout.inspector.button_mode": "Mode du bouton",
+    "layout.inspector.button_accent_color": "Couleur d'accent du bouton",
+    "layout.inspector.slider_entity_domain": "Type d'entite du curseur",
+    "layout.inspector.slider_direction": "Direction du curseur",
+    "layout.inspector.slider_accent_color": "Couleur d'accent du curseur",
+    "layout.inspector.graph_line_color": "Couleur de ligne du graphe",
+    "layout.inspector.graph_time_window_min": "Fenetre de temps (minutes)",
+    "layout.inspector.graph_point_count": "Points de rendu (vide = auto)",
+    "layout.inspector.apply": "Appliquer",
+    "layout.option.button_mode.auto": "auto (interrupteur par defaut)",
+    "layout.option.button_mode.play_pause": "play/pause (media_player)",
+    "layout.option.button_mode.stop": "stop (media_player)",
+    "layout.option.button_mode.next": "next (media_player)",
+    "layout.option.button_mode.previous": "previous (media_player)",
+    "layout.option.slider_entity_domain.auto": "auto (light, media_player, cover)",
+    "layout.option.slider_entity_domain.light": "light",
+    "layout.option.slider_entity_domain.media_player": "media_player",
+    "layout.option.slider_entity_domain.cover": "cover",
+    "layout.option.slider_direction.auto": "auto (selon largeur/hauteur)",
+    "layout.option.slider_direction.left_to_right": "left_to_right (0% -> 100%)",
+    "layout.option.slider_direction.right_to_left": "right_to_left (100% -> 0%)",
+    "layout.option.slider_direction.bottom_to_top": "bottom_to_top (0% -> 100%)",
+    "layout.option.slider_direction.top_to_bottom": "top_to_bottom (100% -> 0%)",
+    "layout.actions.heading": "Actions",
+    "layout.actions.reload": "Recharger",
+    "layout.actions.save": "Enregistrer",
+    "layout.actions.export": "Exporter",
+    "layout.actions.import": "Importer JSON",
+    "layout.actions.paste_placeholder": "Coller le JSON du layout ici",
+    "layout.canvas.title": "Canvas",
+    "layout.default_page.title": "Salon",
+    "layout.status.loading": "Chargement du layout...",
+    "layout.status.load_failed": "Echec du chargement du layout, defaut utilise: {error}",
+    "layout.status.loaded": "Layout charge",
+    "layout.status.entity_fetch_failed": "Echec du chargement des entites: {error}",
+    "layout.status.saving": "Enregistrement du layout...",
+    "layout.status.saved": "Layout enregistre",
+    "layout.status.imported": "Layout importe (pas encore enregistre)",
+    "layout.status.at_least_one_page": "Au moins une page est requise",
+    "layout.status.entity_domain_required": "L'entite doit utiliser le domaine: {domains}",
+    "layout.status.expected_domain": "le domaine attendu",
+    "layout.status.secondary_sensor_required": "L'entite reelle doit commencer par sensor.",
+    "layout.status.invalid_json": "JSON de layout invalide",
+    "layout.status.save_failed": "Echec de l'enregistrement: {error}",
+    "layout.status.import_failed": "Echec de l'import: {error}",
+    "layout.status.file_import_failed": "Echec de l'import du fichier: {error}",
+    "provision.wifi.title": "Provision Wi-Fi",
+    "provision.wifi.subtitle": "Connectez le panneau a votre Wi-Fi.",
+    "provision.wifi.ssid": "SSID",
+    "provision.wifi.country_code": "Code pays",
+    "provision.wifi.password": "Mot de passe",
+    "provision.wifi.password_placeholder": "Mot de passe Wi-Fi",
+    "provision.wifi.show_password": "Afficher le mot de passe",
+    "provision.ha.title": "Provision HA",
+    "provision.ha.subtitle": "Connectez le panneau a Home Assistant.",
+    "provision.ha.ws_url": "URL WebSocket (ws:// ou wss://)",
+    "provision.ha.token": "Jeton d'acces longue duree",
+    "provision.ha.show_token": "Afficher le token",
+    "settings.wifi.heading": "Wi-Fi",
+    "settings.wifi.ssid": "SSID",
+    "settings.wifi.country_code": "Code pays",
+    "settings.wifi.bssid": "Verrou BSSID (optionnel)",
+    "settings.wifi.password": "Mot de passe",
+    "settings.wifi.password_placeholder": "Laisser vide pour garder le mot de passe stocke",
+    "settings.ha.heading": "Home Assistant",
+    "settings.ha.ws_url": "URL WebSocket (ws:// ou wss://)",
+    "settings.ha.token": "Jeton d'acces longue duree",
+    "settings.ha.token_placeholder": "Laisser vide pour garder le token stocke",
+    "settings.ha.rest_fallback": "Activer le fallback REST HA (defaut: off, WS prefere)",
+    "settings.time.heading": "Temps",
+    "settings.time.ntp_server": "Serveur NTP",
+    "settings.time.timezone": "Fuseau horaire (POSIX TZ)",
+    "settings.ui.heading": "UI",
+    "settings.ui.language": "Langue",
+    "settings.ui.reload_languages": "Recharger les langues",
+    "settings.ui.download_json": "Telecharger JSON",
+    "settings.ui.upload_code": "Code langue",
+    "settings.ui.upload_file": "Fichier JSON de traduction",
+    "settings.ui.upload_button": "Uploader / Ajouter une langue",
+    "settings.ap.heading": "Setup AP",
+    "settings.ap.hint": "Si le setup AP est actif, connectez-vous et ouvrez <code>http://192.168.4.1</code>.",
+    "settings.actions.heading": "Actions des parametres",
+    "settings.actions.reload": "Recharger les parametres",
+    "settings.actions.save": "Enregistrer + Redemarrer",
+    "settings.actions.hint": "Apres enregistrement, l'appareil redemarre et peut passer du setup AP au Wi-Fi domestique.",
+    "settings.info.configured": "Configure",
+    "settings.info.connected": "Connecte",
+    "settings.info.password_stored": "Mot de passe stocke",
+    "settings.info.country": "Pays",
+    "settings.info.rssi": "RSSI (AP connecte)",
+    "settings.info.connected_bssid": "BSSID connecte",
+    "settings.info.channel": "Canal",
+    "settings.info.token_stored": "Token stocke",
+    "settings.info.rest_fallback": "Fallback REST",
+    "common.yes": "oui",
+    "common.no": "non",
+    "common.scan": "Scanner",
+    "common.scan_wifi": "Scanner Wi-Fi",
+    "common.save_reboot": "Enregistrer + Redemarrer",
+    "status.idle": "Pret",
+    "status.loading_settings": "Chargement des parametres...",
+    "status.settings_loaded": "Parametres charges",
+    "status.settings_load_failed": "Echec du chargement des parametres: {error}",
+    "status.settings_save_failed": "Echec de l'enregistrement des parametres: {error}",
+    "status.saving_settings": "Enregistrement des parametres...",
+    "status.settings_saved_reboot": "Parametres enregistres. L'appareil redemarre dans ~2s.",
+    "status.wifi_scan_running": "Scan Wi-Fi en cours...",
+    "status.wifi_scan_complete": "Scan Wi-Fi termine ({count} reseaux)",
+    "status.wifi_scan_failed": "Echec du scan Wi-Fi: {error}",
+    "status.wifi_scan_timeout": "Delai du scan Wi-Fi depasse",
+    "common.unknown_error": "Erreur inconnue",
+    "wifi.scan_unavailable": "Le scan Wi-Fi est indisponible en mode setup AP sur ce materiel. Entrez le SSID manuellement.",
+    "wifi.scan_click": "Cliquez sur \"Scanner Wi-Fi\" pour lister les reseaux proches.",
+    "wifi.scan_click_short": "Cliquez sur \"Scanner\" pour lister les reseaux proches.",
+    "wifi.scan_no_networks": "Aucun reseau trouve. Rapprochez-vous du routeur et reessayez.",
+    "wifi.scan_found": "{count} reseau(x) trouve(s). Selectionnez-en un pour remplir le SSID.",
+    "wifi.scan.connected_tag": "connecte",
+    "wifi.scan.option_unavailable": "Scan indisponible",
+    "wifi.scan.option_scanning": "Scan en cours...",
+    "wifi.scan.option_not_run": "Aucun scan",
+    "wifi.scan.option_no_networks": "Aucun reseau trouve",
+    "wifi.scan.option_select": "Selectionner reseau ({count} trouves)",
+    "settings.time.info": "Applique apres redemarrage. La synchronisation demarre quand le Wi-Fi est connecte.",
+    "settings.ui.info": "L'apercu change immediatement. La langue enregistree s'applique apres redemarrage.",
+    "settings.ap.active": "Setup AP actif: {ssid}\\nOuvrez http://192.168.4.1 en etant connecte a cet AP.",
+    "settings.ap.inactive": "Setup AP inactif.\\nUtilisez l'IP du panneau sur votre Wi-Fi.",
+    "settings.translation.info": "Uploadez un JSON pour ajouter ou mettre a jour une langue.",
+    "settings.translation.upload_ok": "Langue \"{lang}\" uploadee.",
+    "settings.translation.upload_fail": "Echec de l'upload: {error}",
+    "settings.translation.no_file": "Choisissez d'abord un fichier JSON.",
+    "settings.translation.invalid_json": "JSON invalide",
+    "settings.translation.object_required": "Le JSON doit etre un objet",
+    "settings.translation.invalid_code": "Le code langue doit utiliser [a-z0-9_-] et avoir 2-15 caracteres.",
+    "settings.language.invalid_country": "Le code pays Wi-Fi doit etre un code ISO a 2 lettres (ex: US, DE)",
+    "settings.language.invalid_bssid": "Le BSSID doit etre vide ou au format AA:BB:CC:DD:EE:FF",
+    "settings.language.invalid_ha_url": "L'URL HA doit commencer par ws:// ou wss://",
+    "provision.wifi.required_ssid": "SSID requis.",
+    "provision.wifi.required_country": "Le code pays doit avoir 2 lettres (ex: US, DE).",
+    "provision.ha.required_url": "URL WebSocket requise.",
+    "provision.ha.invalid_url": "L'URL HA doit commencer par ws:// ou wss://.",
+    "provision.ha.required_token": "Jeton d'acces longue duree requis.",
+    "provision.saving_reboot": "Enregistrement des parametres et redemarrage...",
+    "provision.saved_reboot": "Parametres enregistres. L'appareil redemarre dans ~2s.",
+    "provision.save_failed": "Echec de l'enregistrement: {error}",
+    "provision.wifi.hint": "Enregistrer redemarre le panneau. Apres redemarrage, la provision HA s'affiche.",
+    "provision.ha.hint": "Enregistrer redemarre le panneau. Apres redemarrage, l'editeur est debloque.",
+    "settings.language.option_de": "Allemand",
+    "settings.language.option_en": "Anglais",
+    "settings.language.option_es": "Espagnol",
+    "settings.language.option_fr": "Francais",
   },
 };
 
@@ -401,6 +813,7 @@ const editor = {
   provisioningStage: null,
   editorStarted: false,
   settings: null,
+  appVersion: "",
   wifiScanItems: [],
   wifiScanHasRun: false,
   wifiScanInProgress: false,
@@ -421,6 +834,8 @@ const el = {
   provisioningWifiPage: document.getElementById("provisioningWifiPage"),
   provisioningHaPage: document.getElementById("provisioningHaPage"),
   editorShell: document.getElementById("editorShell"),
+  sidebarTitleText: document.getElementById("sidebarTitleText"),
+  appVersionLabel: document.getElementById("appVersionLabel"),
   layoutTabBtn: document.getElementById("layoutTabBtn"),
   settingsTabBtn: document.getElementById("settingsTabBtn"),
   layoutPane: document.getElementById("layoutPane"),
@@ -721,20 +1136,53 @@ function setPlaceholderById(id, key, vars) {
   node.placeholder = t(key, vars);
 }
 
+function renderAppVersion() {
+  const version = typeof editor.appVersion === "string" ? editor.appVersion.trim() : "";
+  if (el.appVersionLabel) {
+    el.appVersionLabel.textContent = version;
+    el.appVersionLabel.hidden = version.length === 0;
+  }
+  document.title = version
+    ? `BETTA HA Panel - BETTA Editor ${version}`
+    : "BETTA HA Panel - BETTA Editor";
+}
+
+async function loadAppVersion() {
+  try {
+    const payload = await apiGet("/api/version");
+    editor.appVersion = typeof payload?.version === "string" ? payload.version : "";
+  } catch (_) {
+    editor.appVersion = "";
+  }
+  renderAppVersion();
+}
+
+function setSelectOptionText(select, value, key, vars) {
+  if (!select || !select.options) return;
+  for (const option of select.options) {
+    if (option.value === value) {
+      option.textContent = t(key, vars);
+      return;
+    }
+  }
+}
+
 function renderLanguageOptions() {
   if (!el.settingsLanguage) return;
 
   const optionCodes = new Set();
   optionCodes.add(DEFAULT_UI_LANGUAGE);
   optionCodes.add("en");
+  optionCodes.add("de");
   optionCodes.add("es");
+  optionCodes.add("fr");
   optionCodes.add(editor.i18nLanguage || DEFAULT_UI_LANGUAGE);
   for (const language of editor.languageCatalog || []) {
     const code = normalizeLanguageCode(language?.code, "");
     if (code) optionCodes.add(code);
   }
 
-  const current = normalizeUiLanguage(el.settingsLanguage.value || editor.i18nLanguage);
+  const current = normalizeUiLanguage(editor.i18nLanguage || el.settingsLanguage.value);
   const sorted = Array.from(optionCodes).sort((a, b) => a.localeCompare(b));
   el.settingsLanguage.innerHTML = "";
   for (const code of sorted) {
@@ -798,19 +1246,78 @@ async function loadI18nLanguage(language, refreshCatalog = false) {
 
   applyWebTranslations();
   renderLanguageOptions();
+  if (editor.layout) {
+    renderCanvas();
+  }
 }
 
 function applyWebTranslations() {
   setTextById("layoutTabBtn", "tabs.layout");
   setTextById("settingsTabBtn", "tabs.settings");
-  setTextById("sidebarTitle", "sidebar.title");
+  setTextById("sidebarTitleText", "sidebar.title");
   setTextById("sidebarSubtitle", "sidebar.subtitle");
+  renderAppVersion();
+
+  setTextById("pagesHeading", "layout.pages.heading");
+  setTextById("addPageBtn", "layout.pages.add");
+  setTextById("deletePageBtn", "layout.pages.delete");
+  setTextById("pageTitleLabel", "layout.pages.title_label");
+  setPlaceholderById("pageTitleInput", "layout.pages.title_placeholder");
+  setTextById("applyPageBtn", "layout.pages.apply_title");
+
+  setTextById("widgetsHeading", "layout.widgets.heading");
+  setTextById("addSensorBtn", "layout.widgets.add_sensor");
+  setTextById("addButtonBtn", "layout.widgets.add_button");
+  setTextById("addSliderBtn", "layout.widgets.add_slider");
+  setTextById("addGraphBtn", "layout.widgets.add_graph");
+  setTextById("addEmptyTileBtn", "layout.widgets.add_empty_tile");
+  setTextById("addLightTileBtn", "layout.widgets.add_light_tile");
+  setTextById("addHeatingTileBtn", "layout.widgets.add_heating_tile");
+  setTextById("addWeatherTileBtn", "layout.widgets.add_weather_tile");
+  setTextById("addWeather3DayBtn", "layout.widgets.add_weather_3day");
+  setTextById("deleteWidgetBtn", "layout.widgets.delete");
+
+  setTextById("inspectorHeading", "layout.inspector.heading");
+  setTextById("fTitleLabel", "layout.inspector.title");
+  setTextById("fEntityLabel", "layout.inspector.entity");
+  setTextById("fSecondaryEntityLabel", "layout.inspector.secondary_entity");
+  setTextById("fButtonModeLabel", "layout.inspector.button_mode");
+  setTextById("fButtonAccentColorLabel", "layout.inspector.button_accent_color");
+  setTextById("fSliderEntityDomainLabel", "layout.inspector.slider_entity_domain");
+  setTextById("fSliderDirectionLabel", "layout.inspector.slider_direction");
+  setTextById("fSliderAccentColorLabel", "layout.inspector.slider_accent_color");
+  setTextById("fGraphLineColorLabel", "layout.inspector.graph_line_color");
+  setTextById("fGraphTimeWindowMinLabel", "layout.inspector.graph_time_window_min");
+  setTextById("fGraphPointCountLabel", "layout.inspector.graph_point_count");
+  setTextById("applyInspectorBtn", "layout.inspector.apply");
+  setSelectOptionText(el.fButtonMode, "auto", "layout.option.button_mode.auto");
+  setSelectOptionText(el.fButtonMode, "play_pause", "layout.option.button_mode.play_pause");
+  setSelectOptionText(el.fButtonMode, "stop", "layout.option.button_mode.stop");
+  setSelectOptionText(el.fButtonMode, "next", "layout.option.button_mode.next");
+  setSelectOptionText(el.fButtonMode, "previous", "layout.option.button_mode.previous");
+  setSelectOptionText(el.fSliderEntityDomain, "auto", "layout.option.slider_entity_domain.auto");
+  setSelectOptionText(el.fSliderEntityDomain, "light", "layout.option.slider_entity_domain.light");
+  setSelectOptionText(el.fSliderEntityDomain, "media_player", "layout.option.slider_entity_domain.media_player");
+  setSelectOptionText(el.fSliderEntityDomain, "cover", "layout.option.slider_entity_domain.cover");
+  setSelectOptionText(el.fSliderDirection, "auto", "layout.option.slider_direction.auto");
+  setSelectOptionText(el.fSliderDirection, "left_to_right", "layout.option.slider_direction.left_to_right");
+  setSelectOptionText(el.fSliderDirection, "right_to_left", "layout.option.slider_direction.right_to_left");
+  setSelectOptionText(el.fSliderDirection, "bottom_to_top", "layout.option.slider_direction.bottom_to_top");
+  setSelectOptionText(el.fSliderDirection, "top_to_bottom", "layout.option.slider_direction.top_to_bottom");
+
+  setTextById("layoutActionsHeading", "layout.actions.heading");
+  setTextById("reloadBtn", "layout.actions.reload");
+  setTextById("saveBtn", "layout.actions.save");
+  setTextById("exportBtn", "layout.actions.export");
+  setTextById("importBtn", "layout.actions.import");
+  setPlaceholderById("jsonPaste", "layout.actions.paste_placeholder");
 
   setTextById("provWifiTitle", "provision.wifi.title");
   setTextById("provWifiSubtitle", "provision.wifi.subtitle");
   setTextById("provWifiSsidLabel", "provision.wifi.ssid");
   setTextById("provWifiCountryCodeLabel", "provision.wifi.country_code");
   setTextById("provWifiPasswordLabel", "provision.wifi.password");
+  setPlaceholderById("provWifiPassword", "provision.wifi.password_placeholder");
   setTextById("provWifiShowPasswordLabel", "provision.wifi.show_password");
   setTextById("provScanWifiBtn", "common.scan");
   setTextById("provHaTitle", "provision.ha.title");
@@ -826,11 +1333,13 @@ function applyWebTranslations() {
   setTextById("settingsWifiCountryCodeLabel", "settings.wifi.country_code");
   setTextById("settingsWifiBssidLabel", "settings.wifi.bssid");
   setTextById("settingsWifiPasswordLabel", "settings.wifi.password");
+  setPlaceholderById("settingsWifiPassword", "settings.wifi.password_placeholder");
   setTextById("scanWifiBtn", "common.scan_wifi");
 
   setTextById("settingsHaHeading", "settings.ha.heading");
   setTextById("settingsHaUrlLabel", "settings.ha.ws_url");
   setTextById("settingsHaTokenLabel", "settings.ha.token");
+  setPlaceholderById("settingsHaToken", "settings.ha.token_placeholder");
   setTextById("settingsHaRestEnabledLabel", "settings.ha.rest_fallback");
 
   setTextById("settingsTimeHeading", "settings.time.heading");
@@ -854,7 +1363,7 @@ function applyWebTranslations() {
   setTextById("saveSettingsBtn", "settings.actions.save");
   setTextById("settingsActionsHint", "settings.actions.hint");
 
-  if (el.settingsTranslationInfo && !el.settingsTranslationInfo.textContent) {
+  if (el.settingsTranslationInfo && !el.settingsTranslationInfo.classList.contains("error")) {
     el.settingsTranslationInfo.textContent = t("settings.translation.info");
   }
 
@@ -903,10 +1412,10 @@ async function uploadLanguageJson() {
   try {
     parsed = JSON.parse(text);
   } catch (_) {
-    throw new Error("Invalid JSON");
+    throw new Error(t("settings.translation.invalid_json"));
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("JSON must be an object");
+    throw new Error(t("settings.translation.object_required"));
   }
 
   const response = await fetch(`/api/i18n/custom?lang=${encodeURIComponent(lang)}`, {
@@ -1100,7 +1609,7 @@ function renderSettings() {
   if (el.settingsUiInfo) {
     el.settingsUiInfo.textContent = t("settings.ui.info");
   }
-  if (el.settingsTranslationInfo && !el.settingsTranslationInfo.textContent) {
+  if (el.settingsTranslationInfo && !el.settingsTranslationInfo.classList.contains("error")) {
     el.settingsTranslationInfo.textContent = t("settings.translation.info");
   }
 
@@ -1259,7 +1768,9 @@ async function scanWifiNetworks(scope = "settings") {
   } catch (err) {
     editor.wifiScanHasRun = true;
     renderWifiScanResults(editor.wifiScanItems, scope);
-    const detail = err?.name === "AbortError" ? "Wi-Fi scan request timed out" : (err?.message || "Unknown error");
+    const detail = err?.name === "AbortError"
+      ? t("status.wifi_scan_timeout")
+      : (err?.message || t("common.unknown_error"));
     setWifiScanInfo(detail, true, scope);
     setStatus(t("status.wifi_scan_failed", { error: detail }), true);
   } finally {
@@ -1429,8 +1940,8 @@ function defaultLayout() {
     version: 1,
     pages: [
       {
-        id: "wohnen",
-        title: "Wohnen",
+        id: "living",
+        title: t("layout.default_page.title"),
         widgets: [],
       },
     ],
@@ -1461,19 +1972,17 @@ function inspectorWidgetType() {
 }
 
 function inspectorSliderEntityDomain() {
-  const widget = selectedWidget();
-  if (widget?.type === "slider") {
-    return normalizeSliderEntityDomain(widget.slider_entity_domain);
+  if (el.fSliderEntityDomain) {
+    return normalizeSliderEntityDomain(el.fSliderEntityDomain.value);
   }
-  return normalizeSliderEntityDomain(el.fSliderEntityDomain?.value);
+  return normalizeSliderEntityDomain(selectedWidget()?.slider_entity_domain);
 }
 
 function inspectorButtonMode() {
-  const widget = selectedWidget();
-  if (widget?.type === "button") {
-    return normalizeButtonMode(widget.button_mode);
+  if (el.fButtonMode) {
+    return normalizeButtonMode(el.fButtonMode.value);
   }
-  return normalizeButtonMode(el.fButtonMode?.value);
+  return normalizeButtonMode(selectedWidget()?.button_mode);
 }
 
 function allowedEntityDomainsForWidgetType(
@@ -1527,7 +2036,15 @@ function entityMatchesWidgetType(
 
   const allowedDomains = allowedEntityDomainsForWidgetType(type, sliderDomain, buttonMode);
   if (!allowedDomains.length) return true;
-  return allowedDomains.some((domain) => id.startsWith(`${domain}.`));
+  const matchesDomain = allowedDomains.some((domain) => id.startsWith(`${domain}.`));
+  if (!matchesDomain) return false;
+  const modelEntity = entity?.capabilities
+    ? entity
+    : editor.entities.find((candidate) => candidate?.id === id);
+  if (type === "slider" && id.startsWith("light.") && modelEntity?.capabilities?.dimming === false) {
+    return false;
+  }
+  return true;
 }
 
 function listEntitiesForWidgetType(
@@ -1547,7 +2064,7 @@ function pickDefaultEntityForWidgetType(
   if (type === "empty_tile") return "";
   const matching = listEntitiesForWidgetType(type, sliderDomain, buttonMode);
   if (matching.length > 0) return matching[0].id;
-  return editor.entities[0]?.id || "sensor.example";
+  return "";
 }
 
 function uniqueId(prefix, list, accessor = (x) => x.id) {
@@ -1726,7 +2243,7 @@ function scheduleEntityAutocomplete(kind, immediate = false) {
 }
 
 async function loadLayout() {
-  setStatus("Loading layout...");
+  setStatus(t("layout.status.loading"));
   try {
     editor.layout = await apiGet("/api/layout");
     if (!editor.layout || !Array.isArray(editor.layout.pages)) {
@@ -1734,17 +2251,17 @@ async function loadLayout() {
     }
   } catch (err) {
     editor.layout = defaultLayout();
-    setStatus(`Layout load failed, using default: ${err.message}`, true);
+    setStatus(t("layout.status.load_failed", { error: err.message }), true);
   }
 
   if (!editor.layout.pages.length) {
-    editor.layout.pages.push({ id: "wohnen", title: "Wohnen", widgets: [] });
+    editor.layout.pages.push(defaultLayout().pages[0]);
   }
   normalizeLayoutWidgets(editor.layout);
   editor.selectedPageId = editor.layout.pages[0].id;
   editor.selectedWidgetId = null;
   renderAll();
-  setStatus("Layout loaded");
+  setStatus(t("layout.status.loaded"));
 }
 
 async function loadEntities() {
@@ -1753,7 +2270,7 @@ async function loadEntities() {
     editor.entities = Array.isArray(data.items) ? data.items : [];
     renderEntityOptions();
   } catch (err) {
-    setStatus(`Entity fetch failed: ${err.message}`, true);
+    setStatus(t("layout.status.entity_fetch_failed", { error: err.message }), true);
   }
 }
 
@@ -1964,11 +2481,11 @@ function renderCanvas() {
   const page = selectedPage();
   el.canvas.innerHTML = "";
   if (!page) {
-    el.canvasTitle.textContent = "Canvas";
+    el.canvasTitle.textContent = t("layout.canvas.title");
     return;
   }
 
-  el.canvasTitle.textContent = `Canvas: ${page.title || page.id}`;
+  el.canvasTitle.textContent = `${t("layout.canvas.title")}: ${page.title || page.id}`;
 
   for (const widget of page.widgets) {
     const box = document.createElement("div");
@@ -2151,9 +2668,10 @@ function renderAll() {
 
 function addPage() {
   const pageId = uniqueId("page", editor.layout.pages);
+  const pageNumber = editor.layout.pages.length + 1;
   editor.layout.pages.push({
     id: pageId,
-    title: `Page ${editor.layout.pages.length + 1}`,
+    title: t("layout.pages.new_title", { number: pageNumber }),
     widgets: [],
   });
   editor.selectedPageId = pageId;
@@ -2164,7 +2682,7 @@ function addPage() {
 function deletePage() {
   if (!editor.layout.pages.length || !editor.selectedPageId) return;
   if (editor.layout.pages.length === 1) {
-    setStatus("At least one page is required", true);
+    setStatus(t("layout.status.at_least_one_page"), true);
     return;
   }
   editor.layout.pages = editor.layout.pages.filter((p) => p.id !== editor.selectedPageId);
@@ -2233,9 +2751,21 @@ function deleteWidget() {
   renderAll();
 }
 
-function applyInspector() {
+function renderInspectorChange(refreshInspector) {
+  if (refreshInspector) {
+    renderAll();
+    return;
+  }
+  renderWidgets();
+  renderCanvas();
+}
+
+function applyInspector(options = {}) {
   const widget = selectedWidget();
-  if (!widget) return;
+  if (!widget) return false;
+
+  const refreshInspector = options.refreshInspector !== false;
+  const softEntityValidation = options.softEntityValidation === true;
 
   const widgetType = widget.type;
   const sliderDomain = widgetType === "slider"
@@ -2246,22 +2776,28 @@ function applyInspector() {
     : DEFAULT_BUTTON_MODE;
   const nextEntityId = el.fEntity.value.trim() || pickDefaultEntityForWidgetType(widgetType, sliderDomain, buttonMode);
 
-  if (!entityMatchesWidgetType({ id: nextEntityId }, widgetType, sliderDomain, buttonMode)) {
+  const primaryEntityValid = entityMatchesWidgetType({ id: nextEntityId }, widgetType, sliderDomain, buttonMode);
+  if (!primaryEntityValid && !softEntityValidation) {
     const allowedDomains = allowedEntityDomainsForWidgetType(widgetType, sliderDomain, buttonMode);
-    const allowedHint = allowedDomains.length ? allowedDomains.join(", ") : "the expected domain";
-    setStatus(`Entity must use domain: ${allowedHint}`, true);
-    return;
+    const allowedHint = allowedDomains.length ? allowedDomains.join(", ") : t("layout.status.expected_domain");
+    setStatus(t("layout.status.entity_domain_required", { domains: allowedHint }), true);
+    return false;
   }
 
   widget.title = el.fTitle.value.trim();
-  widget.entity_id = nextEntityId;
+  if (primaryEntityValid) {
+    widget.entity_id = nextEntityId;
+  }
   if (widgetType === "heating_tile") {
     const secondaryEntityId = el.fSecondaryEntity.value.trim() || pickDefaultEntityForWidgetType("sensor");
     if (!secondaryEntityId.startsWith("sensor.")) {
-      setStatus("Ist Entity must start with sensor.", true);
-      return;
+      if (!softEntityValidation) {
+        setStatus(t("layout.status.secondary_sensor_required"), true);
+        return false;
+      }
+    } else {
+      widget.secondary_entity_id = secondaryEntityId;
     }
-    widget.secondary_entity_id = secondaryEntityId;
   } else {
     widget.secondary_entity_id = "";
   }
@@ -2305,11 +2841,27 @@ function applyInspector() {
     widgetType
   );
   editor.selectedWidgetId = widget.id;
-  renderAll();
+  renderInspectorChange(refreshInspector);
+  return true;
+}
+
+function autoApplyInspector(options = {}) {
+  return applyInspector({
+    refreshInspector: false,
+    ...options,
+  });
+}
+
+function bindInspectorAutoApply(input, events = ["change"], options = {}) {
+  if (!input) return;
+  const handler = () => autoApplyInspector(options);
+  for (const eventName of events) {
+    input.addEventListener(eventName, handler);
+  }
 }
 
 async function saveLayout() {
-  setStatus("Saving layout...");
+  setStatus(t("layout.status.saving"));
   const response = await fetch("/api/layout", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -2323,7 +2875,7 @@ async function saveLayout() {
     } catch (_) {}
     throw new Error(detail);
   }
-  setStatus("Layout saved");
+  setStatus(t("layout.status.saved"));
 }
 
 function exportLayout() {
@@ -2339,14 +2891,14 @@ function exportLayout() {
 function importLayoutFromText(text) {
   const parsed = JSON.parse(text);
   if (!parsed || !Array.isArray(parsed.pages)) {
-    throw new Error("Invalid layout JSON");
+    throw new Error(t("layout.status.invalid_json"));
   }
   normalizeLayoutWidgets(parsed);
   editor.layout = parsed;
   editor.selectedPageId = parsed.pages[0]?.id || null;
   editor.selectedWidgetId = null;
   renderAll();
-  setStatus("Layout imported (not saved yet)");
+  setStatus(t("layout.status.imported"));
 }
 
 function bindUi() {
@@ -2379,7 +2931,9 @@ function bindUi() {
   el.addWeatherTileBtn.onclick = () => addWidget("weather_tile");
   el.addWeather3DayBtn.onclick = () => addWidget("weather_3day");
   el.deleteWidgetBtn.onclick = deleteWidget;
-  el.applyInspectorBtn.onclick = applyInspector;
+  if (el.applyInspectorBtn) {
+    el.applyInspectorBtn.onclick = () => applyInspector();
+  }
   el.reloadBtn.onclick = () => loadLayout();
   el.fType.onchange = () => {
     const sliderDomain = normalizeSliderEntityDomain(el.fSliderEntityDomain?.value);
@@ -2461,6 +3015,8 @@ function bindUi() {
   if (el.fEntity) {
     el.fEntity.oninput = () => scheduleEntityAutocomplete("primary");
     el.fEntity.onfocus = () => scheduleEntityAutocomplete("primary", true);
+    el.fEntity.onchange = () => autoApplyInspector();
+    el.fEntity.onblur = () => autoApplyInspector();
   }
   if (el.fButtonMode) {
     el.fButtonMode.onchange = () => {
@@ -2473,6 +3029,7 @@ function bindUi() {
       if (!entityMatchesWidgetType({ id: currentEntity }, "button", DEFAULT_SLIDER_ENTITY_DOMAIN, buttonMode)) {
         el.fEntity.value = pickDefaultEntityForWidgetType("button", DEFAULT_SLIDER_ENTITY_DOMAIN, buttonMode);
       }
+      autoApplyInspector();
     };
   }
   if (el.fSliderEntityDomain) {
@@ -2485,12 +3042,26 @@ function bindUi() {
       if (!entityMatchesWidgetType({ id: currentEntity }, "slider", sliderDomain)) {
         el.fEntity.value = pickDefaultEntityForWidgetType("slider", sliderDomain);
       }
+      autoApplyInspector();
     };
   }
   if (el.fSecondaryEntity) {
     el.fSecondaryEntity.oninput = () => scheduleEntityAutocomplete("secondary");
     el.fSecondaryEntity.onfocus = () => scheduleEntityAutocomplete("secondary", true);
+    el.fSecondaryEntity.onchange = () => autoApplyInspector();
+    el.fSecondaryEntity.onblur = () => autoApplyInspector();
   }
+  bindInspectorAutoApply(el.fTitle, ["input"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fButtonAccentColor, ["input", "change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSliderDirection, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSliderAccentColor, ["input", "change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fGraphLineColor, ["input", "change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fGraphTimeWindowMin, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fGraphPointCount, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fX, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fY, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fW, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fH, ["change"], { refreshInspector: true, softEntityValidation: true });
   el.reloadSettingsBtn.onclick = () => loadSettings();
   el.scanWifiBtn.onclick = () => scanWifiNetworks("settings");
   el.settingsWifiScanResults.onchange = () => {
@@ -2534,6 +3105,9 @@ function bindUi() {
   if (el.settingsLanguage) {
     el.settingsLanguage.onchange = async () => {
       const lang = normalizeUiLanguage(el.settingsLanguage.value);
+      if (!editor.settings) editor.settings = {};
+      if (!editor.settings.ui) editor.settings.ui = {};
+      editor.settings.ui.language = lang;
       await loadI18nLanguage(lang);
       if (el.uploadLanguageCode) {
         el.uploadLanguageCode.value = lang;
@@ -2625,7 +3199,7 @@ function bindUi() {
       try {
         await saveWifiProvisioning();
       } catch (err) {
-        setProvisioningInfo("wifi", `Save failed: ${err.message}`, true);
+        setProvisioningInfo("wifi", t("provision.save_failed", { error: err.message }), true);
       }
     };
   }
@@ -2634,7 +3208,7 @@ function bindUi() {
       try {
         await saveHaProvisioning();
       } catch (err) {
-        setProvisioningInfo("ha", `Save failed: ${err.message}`, true);
+        setProvisioningInfo("ha", t("provision.save_failed", { error: err.message }), true);
       }
     };
   }
@@ -2642,14 +3216,14 @@ function bindUi() {
     try {
       await saveSettings();
     } catch (err) {
-      setStatus(`Settings save failed: ${err.message}`, true);
+      setStatus(t("status.settings_save_failed", { error: err.message }), true);
     }
   };
   el.saveBtn.onclick = async () => {
     try {
       await saveLayout();
     } catch (err) {
-      setStatus(`Save failed: ${err.message}`, true);
+      setStatus(t("layout.status.save_failed", { error: err.message }), true);
     }
   };
   el.exportBtn.onclick = exportLayout;
@@ -2659,7 +3233,7 @@ function bindUi() {
     try {
       importLayoutFromText(text);
     } catch (err) {
-      setStatus(`Import failed: ${err.message}`, true);
+      setStatus(t("layout.status.import_failed", { error: err.message }), true);
     }
   };
   el.importFile.onchange = async (event) => {
@@ -2669,7 +3243,7 @@ function bindUi() {
     try {
       importLayoutFromText(text);
     } catch (err) {
-      setStatus(`File import failed: ${err.message}`, true);
+      setStatus(t("layout.status.file_import_failed", { error: err.message }), true);
     }
   };
 }
@@ -2686,6 +3260,7 @@ async function startEditor() {
 async function bootstrap() {
   bindUi();
   setStatus(t("status.idle"));
+  await loadAppVersion();
   const settings = await loadSettings(true);
   const stage = provisioningStageForSettings(settings);
   if (stage) {

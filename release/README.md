@@ -11,7 +11,8 @@ SHA256:
 
 Important:
 
-- The C6 `network_adapter` firmware is already embedded into the generated factory image `betta86-ha-panel.factory.bin`.
+- The C6 `network_adapter` firmware is already embedded into the generated factory image `betta86-ha-panel-<version>.factory.bin`.
+- Running `tools/make_factory_bin.ps1` archives superseded factory images in `release/archive/`.
 - For flashing/distribution, the factory image is sufficient.
 - Keeping `network_adapter_esp32c6*.bin` in the repo is optional and not required for release delivery.
 

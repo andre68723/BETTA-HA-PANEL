@@ -87,6 +87,13 @@ esp_err_t api_entities_get_handler(httpd_req_t *req)
         cJSON_AddStringToObject(it, "unit", items[i].unit);
         cJSON_AddStringToObject(it, "device_class", items[i].device_class);
         cJSON_AddNumberToObject(it, "supported_features", (double)items[i].supported_features);
+        cJSON *capabilities = cJSON_CreateObject();
+        if (capabilities != NULL) {
+            cJSON_AddBoolToObject(capabilities, "dimming", items[i].supports_dimming);
+            cJSON_AddBoolToObject(capabilities, "color", items[i].supports_color);
+            cJSON_AddBoolToObject(capabilities, "color_temp", items[i].supports_color_temp);
+            cJSON_AddItemToObject(it, "capabilities", capabilities);
+        }
         cJSON_AddStringToObject(it, "icon", items[i].icon);
         cJSON_AddItemToArray(arr, it);
     }

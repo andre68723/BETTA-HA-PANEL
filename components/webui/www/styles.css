@@ -71,7 +71,14 @@ body {
 .sidebar-header h1 {
   margin: 0;
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
-  letter-spacing: 0.3px;
+  letter-spacing: 0;
+}
+
+.app-version {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .sidebar-header p {

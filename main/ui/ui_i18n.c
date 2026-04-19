@@ -61,7 +61,7 @@ esp_err_t ui_i18n_init(const char *language_code)
 
     const char *builtin_json = i18n_store_builtin_translation_json(normalized);
     if (builtin_json == NULL) {
-        builtin_json = i18n_store_builtin_translation_json("en");
+        builtin_json = i18n_store_builtin_translation_json(APP_UI_DEFAULT_LANGUAGE);
     }
 
     cJSON *next_root = ui_i18n_parse_object_or_empty(builtin_json);

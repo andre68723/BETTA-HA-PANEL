@@ -24,6 +24,7 @@
 
 #include "app_config.h"
 #include "app_events.h"
+#include "ha/ha_light_capabilities.h"
 #include "ha/ha_model.h"
 #include "ha/ha_ws.h"
 #include "layout/layout_store.h"
@@ -1005,6 +1006,14 @@ static bool ha_client_entity_is_weather(const char *entity_id)
     return strncmp(entity_id, "weather.", 8) == 0;
 }
 
+static bool ha_client_entity_is_light(const char *entity_id)
+{
+    if (entity_id == NULL) {
+        return false;
+    }
+    return strncmp(entity_id, "light.", 6) == 0;
+}
+
 static bool ha_client_entity_is_climate(const char *entity_id)
 {
     if (entity_id == NULL) {
@@ -1508,6 +1517,62 @@ static bool ha_client_serialize_media_player_attrs_compact(cJSON *src_attrs, cha
     if (cJSON_IsBool(is_volume_muted)) {
         cJSON_AddBoolToObject(compact, "is_volume_muted", cJSON_IsTrue(is_volume_muted));
         any = true;
+    }
+
+    if (!any) {
+        cJSON_Delete(compact);
+        return false;
+    }
+
+    char *compact_json = cJSON_PrintUnformatted(compact);
+    cJSON_Delete(compact);
+    if (compact_json == NULL) {
+        return false;
+    }
+
+    size_t len = strlen(compact_json);
+    bool fits = (len < out_json_size);
+    if (fits) {
+        memcpy(out_json, compact_json, len + 1U);
+    }
+    cJSON_free(compact_json);
+    return fits;
+}
+
+static bool ha_client_serialize_light_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size)
+{
+    if (!cJSON_IsObject(src_attrs) || out_json == NULL || out_json_size == 0) {
+        return false;
+    }
+
+    cJSON *compact = cJSON_CreateObject();
+    if (compact == NULL) {
+        return false;
+    }
+
+    bool any = false;
+    any |= ha_client_copy_attr_dup(compact, "supported_color_modes", src_attrs, "supported_color_modes");
+    any |= ha_client_copy_attr_dup(compact, "color_mode", src_attrs, "color_mode");
+    any |= ha_client_copy_attr_dup(compact, "brightness", src_attrs, "brightness");
+    any |= ha_client_copy_attr_dup(compact, "brightness_pct", src_attrs, "brightness_pct");
+    any |= ha_client_copy_attr_dup(compact, "rgb_color", src_attrs, "rgb_color");
+    any |= ha_client_copy_attr_dup(compact, "hs_color", src_attrs, "hs_color");
+    any |= ha_client_copy_attr_dup(compact, "xy_color", src_attrs, "xy_color");
+    any |= ha_client_copy_attr_dup(compact, "color_temp", src_attrs, "color_temp");
+    any |= ha_client_copy_attr_dup(compact, "color_temp_kelvin", src_attrs, "color_temp_kelvin");
+    any |= ha_client_copy_attr_dup(compact, "min_color_temp_kelvin", src_attrs, "min_color_temp_kelvin");
+    any |= ha_client_copy_attr_dup(compact, "max_color_temp_kelvin", src_attrs, "max_color_temp_kelvin");
+    any |= ha_client_copy_attr_dup(compact, "min_mireds", src_attrs, "min_mireds");
+    any |= ha_client_copy_attr_dup(compact, "max_mireds", src_attrs, "max_mireds");
+    any |= ha_client_copy_attr_dup(compact, "supported_features", src_attrs, "supported_features");
+
+    cJSON *effect_list = cJSON_GetObjectItemCaseSensitive(src_attrs, "effect_list");
+    if (cJSON_IsArray(effect_list)) {
+        cJSON *effect_marker = cJSON_CreateArray();
+        if (effect_marker != NULL) {
+            cJSON_AddItemToObject(compact, "effect_list", effect_marker);
+            any = true;
+        }
     }
 
     if (!any) {
@@ -2979,6 +3044,13 @@ static bool ha_client_import_state_object(cJSON *state_obj)
             if (serialized && !weather_has_forecast) {
                 weather_missing_forecast = true;
             }
+        } else if (ha_client_entity_is_light(model_state.entity_id)) {
+            serialized = ha_client_serialize_light_attrs_compact(
+                attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
+            if (!serialized) {
+                snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");
+                serialized = true;
+            }
         } else if (ha_client_entity_is_climate(model_state.entity_id)) {
             serialized = ha_client_serialize_climate_attrs_compact(
                 attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
@@ -3092,6 +3164,11 @@ static bool ha_client_import_state_object(cJSON *state_obj)
             entity.supported_features = (uint32_t)supported_features->valuedouble;
         }
     }
+    ha_light_capabilities_t light_caps = {0};
+    ha_light_capabilities_from_state(&model_state, &light_caps);
+    entity.supports_dimming = light_caps.can_dim;
+    entity.supports_color = light_caps.can_color;
+    entity.supports_color_temp = light_caps.can_color_temp;
     ha_model_upsert_entity(&entity);
     return (!is_media_player) || media_player_compact_changed || !has_previous_compact_state;
 }

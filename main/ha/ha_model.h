@@ -18,6 +18,9 @@ typedef struct {
     char unit[APP_MAX_UNIT_LEN];
     char device_class[APP_MAX_NAME_LEN];
     uint32_t supported_features;
+    bool supports_dimming;
+    bool supports_color;
+    bool supports_color_temp;
     char icon[APP_MAX_ICON_LEN];
 } ha_entity_info_t;
 

@@ -6,6 +6,7 @@
 
 #include "esp_err.h"
 #include "esp_event.h"
+#include "esp_app_desc.h"
 #include "esp_log.h"
 #include "esp_littlefs.h"
 #include "esp_netif.h"
@@ -127,7 +128,11 @@ static esp_err_t init_net_stack(void)
 
 void app_main(void)
 {
+    const esp_app_desc_t *app_desc = esp_app_get_description();
+    const char *app_version = (app_desc != NULL && app_desc->version[0] != '\0') ? app_desc->version : "unknown";
+
     ESP_LOGI(TAG_APP, "Booting %s", APP_NAME);
+    ESP_LOGI("app_init", "App version: %s", app_version);
 
     ESP_ERROR_CHECK(init_nvs());
     ESP_ERROR_CHECK(init_littlefs());

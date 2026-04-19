@@ -1,9 +1,103 @@
 param(
     [string]$BuildDir = "build",
-    [string]$OutFile = "release/betta86-ha-panel.factory.bin"
+    [string]$OutFile = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+function Resolve-RepoRoot {
+    if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+        return (Split-Path -Parent $PSScriptRoot)
+    }
+
+    return (Get-Location).Path
+}
+
+function Resolve-ReleaseVersion {
+    param(
+        [string]$RepoRoot
+    )
+
+    $cmakePath = Join-Path $RepoRoot "CMakeLists.txt"
+    if (-not (Test-Path $cmakePath)) {
+        throw "Missing root CMakeLists.txt at $cmakePath."
+    }
+
+    $content = Get-Content -Raw -Path $cmakePath
+    $match = [regex]::Match($content, 'set\s*\(\s*BETTAOS_RELEASE_VERSION\s+"([^"]+)"\s*\)')
+    if ($match.Success) {
+        return $match.Groups[1].Value
+    }
+
+    $match = [regex]::Match($content, 'set\s*\(\s*PROJECT_VER\s+"([^"]+)"\s*\)')
+    if ($match.Success) {
+        return $match.Groups[1].Value
+    }
+
+    throw "Release version not found in $cmakePath."
+}
+
+function ConvertTo-SafeFileNamePart {
+    param(
+        [string]$Value
+    )
+
+    $safe = [regex]::Replace($Value.Trim(), '[^A-Za-z0-9._-]+', "_")
+    if ([string]::IsNullOrWhiteSpace($safe)) {
+        throw "Release version '$Value' cannot be used in a file name."
+    }
+    return $safe
+}
+
+function Resolve-ArchiveDestination {
+    param(
+        [string]$ArchiveDir,
+        [string]$FileName
+    )
+
+    $destination = Join-Path $ArchiveDir $FileName
+    if (-not (Test-Path $destination)) {
+        return $destination
+    }
+
+    $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $baseName = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
+    $extension = [System.IO.Path]::GetExtension($FileName)
+    $candidate = Join-Path $ArchiveDir "$baseName-$timestamp$extension"
+    $index = 2
+    while (Test-Path $candidate) {
+        $candidate = Join-Path $ArchiveDir "$baseName-$timestamp-$index$extension"
+        $index++
+    }
+    return $candidate
+}
+
+function Move-ExistingFactoryImagesToArchive {
+    param(
+        [string]$OutDir,
+        [string]$ArchiveDir,
+        [string]$TempOutPath
+    )
+
+    if (-not (Test-Path $ArchiveDir)) {
+        New-Item -ItemType Directory -Path $ArchiveDir -Force | Out-Null
+    }
+
+    $tempFullPath = [System.IO.Path]::GetFullPath($TempOutPath)
+    $factoryImages = Get-ChildItem -LiteralPath $OutDir -File -Filter "*.bin" |
+        Where-Object {
+            $_.Name -like "betta86-ha-panel*.factory*.bin" -and
+            [System.IO.Path]::GetFullPath($_.FullName) -ne $tempFullPath
+        }
+
+    foreach ($image in $factoryImages) {
+        $destination = Resolve-ArchiveDestination -ArchiveDir $ArchiveDir -FileName $image.Name
+        Move-Item -LiteralPath $image.FullName -Destination $destination
+        Write-Host "Archived old factory image:"
+        Write-Host "  $($image.FullName)"
+        Write-Host "  -> $destination"
+    }
+}
 
 function Resolve-BuildConfig {
     param(
@@ -132,6 +226,14 @@ function Resolve-Chip {
     return "esp32p4"
 }
 
+$repoRoot = Resolve-RepoRoot
+$releaseVersion = Resolve-ReleaseVersion -RepoRoot $repoRoot
+$safeReleaseVersion = ConvertTo-SafeFileNamePart -Value $releaseVersion
+$outFileWasProvided = -not [string]::IsNullOrWhiteSpace($OutFile)
+if (-not $outFileWasProvided) {
+    $OutFile = Join-Path "release" "betta86-ha-panel-$safeReleaseVersion.factory.bin"
+}
+
 $buildPath = (Resolve-Path $BuildDir).Path
 $flashArgsPath = Join-Path $buildPath "flash_args"
 if (-not (Test-Path $flashArgsPath)) {
@@ -147,17 +249,27 @@ $outPath = if ([System.IO.Path]::IsPathRooted($OutFile)) {
     $OutFile
 }
 else {
-    Join-Path (Get-Location) $OutFile
+    $baseDir = if ($outFileWasProvided) { (Get-Location).Path } else { $repoRoot }
+    Join-Path $baseDir $OutFile
 }
 $outPath = [System.IO.Path]::GetFullPath($outPath)
 $outDir = Split-Path -Parent $outPath
 if (-not (Test-Path $outDir)) {
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 }
+$archiveDir = Join-Path $outDir "archive"
+if (-not (Test-Path $archiveDir)) {
+    New-Item -ItemType Directory -Path $archiveDir -Force | Out-Null
+}
 
 $chip = Resolve-Chip -BuildPath $buildPath
 
-$mergeArgs = @("--chip", $chip, "merge_bin", "-o", $outPath)
+$tempOutPath = Join-Path $outDir ".$([System.IO.Path]::GetFileName($outPath)).tmp"
+if (Test-Path $tempOutPath) {
+    Remove-Item -LiteralPath $tempOutPath -Force
+}
+
+$mergeArgs = @("--chip", $chip, "merge_bin", "-o", $tempOutPath)
 $parts = @()
 
 foreach ($line in (Get-Content -Path $flashArgsPath)) {
@@ -197,7 +309,9 @@ foreach ($part in $parts) {
 }
 
 Write-Host "Creating factory image:"
+Write-Host "  Version: $releaseVersion"
 Write-Host "  Out: $outPath"
+Write-Host "  Archive: $archiveDir"
 Write-Host "  Chip: $chip"
 Write-Host "  Source: $flashArgsPath"
 Write-Host "  Parts:"
@@ -207,8 +321,14 @@ foreach ($part in $parts) {
 
 & $pythonExe $esptoolPath @mergeArgs
 if ($LASTEXITCODE -ne 0) {
+    if (Test-Path $tempOutPath) {
+        Remove-Item -LiteralPath $tempOutPath -Force
+    }
     throw "merge_bin failed with exit code $LASTEXITCODE"
 }
+
+Move-ExistingFactoryImagesToArchive -OutDir $outDir -ArchiveDir $archiveDir -TempOutPath $tempOutPath
+Move-Item -LiteralPath $tempOutPath -Destination $outPath -Force
 
 Write-Host ""
 Write-Host "Factory image created:"
