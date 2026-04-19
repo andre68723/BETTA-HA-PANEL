@@ -2,7 +2,7 @@
 <img src="images/BETTAOS.jpg" alt="BETTA OS Logo" width="20%" />
 
 # BETTA HA Panel
-
+ <img src="images/heating%20on%20example.jpg" alt="Heating ON example" width="49%" />
 A runtime configurable Home Assistant dashboard for the ESP32-P4 Smart 86 Box development board.
 
 ## Project Description
