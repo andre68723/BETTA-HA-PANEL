@@ -99,6 +99,7 @@
           </div>
           <div id="widgetsSectionBody" class="section-body">
             <div class="row">
+              <button id="openSetupWizardBtn" class="btn small primary" type="button">Quick Setup</button>
               <button id="addSensorBtn" class="btn small">+ Sensor</button>
               <button id="addButtonBtn" class="btn small">+ Button</button>
               <button id="addSliderBtn" class="btn small">+ Slider</button>
@@ -287,6 +288,27 @@
         </section>
 
         <section>
+          <h2 id="settingsOtaHeading">Firmware Update</h2>
+          <div class="form">
+            <label><span id="settingsOtaUrlLabel">OTA URL</span>
+              <input id="settingsOtaUrl" type="url" placeholder="https://github.com/.../release/betta86-ha-panel-v0.7.ota.bin" maxlength="511" />
+            </label>
+            <div class="row">
+              <button id="startOtaUrlBtn" class="btn small" type="button">Flash URL</button>
+              <button id="refreshOtaStatusBtn" class="btn small" type="button">Refresh Status</button>
+            </div>
+            <label><span id="settingsOtaFileLabel">OTA .bin File</span>
+              <input id="settingsOtaFile" type="file" accept=".bin,application/octet-stream" />
+            </label>
+            <button id="uploadOtaBtn" class="btn" type="button">Upload + Flash</button>
+            <div class="ota-progress" aria-hidden="true">
+              <div id="settingsOtaProgressBar" class="ota-progress-bar"></div>
+            </div>
+            <div id="settingsOtaInfo" class="meta"></div>
+          </div>
+        </section>
+
+        <section>
           <h2 id="settingsActionsHeading">Settings Actions</h2>
           <div class="row">
             <button id="reloadSettingsBtn" class="btn">Reload Settings</button>
@@ -323,6 +345,60 @@
         </aside>
       </div>
     </main>
+  </div>
+  <div id="lightEntityPickerOverlay" class="modal-overlay hidden">
+    <div class="modal-card light-picker-dialog">
+      <div class="section-head">
+        <h2 id="lightEntityPickerTitle">Choose Light</h2>
+        <div class="row">
+          <button id="lightEntityPickerRefreshBtn" class="btn small" type="button">Refresh</button>
+          <button id="lightEntityPickerCloseBtn" class="btn small" type="button">X</button>
+        </div>
+      </div>
+      <input id="lightEntityPickerSearch" class="light-picker-search" type="search" placeholder="Search entities" maxlength="63" />
+      <div id="lightEntityPickerStatus" class="meta"></div>
+      <div id="lightEntityPickerProgress" class="entity-picker-progress hidden" aria-hidden="true">
+        <div class="entity-picker-progress-track">
+          <div id="lightEntityPickerProgressBar" class="entity-picker-progress-bar"></div>
+        </div>
+        <span id="lightEntityPickerProgressText" class="meta"></span>
+      </div>
+      <div id="lightEntityPickerRooms" class="light-picker-rooms"></div>
+      <div class="row">
+        <button id="lightEntityPickerBlankBtn" class="btn small" type="button">Blank Light Tile</button>
+      </div>
+    </div>
+  </div>
+  <div id="setupWizardOverlay" class="modal-overlay setup-wizard-overlay hidden">
+    <div class="modal-card setup-wizard-dialog">
+      <div class="section-head">
+        <h2 id="setupWizardTitle">Quick Setup</h2>
+        <button id="setupWizardCloseBtn" class="btn small" type="button">Close</button>
+      </div>
+      <div class="setup-wizard-steps" aria-hidden="true">
+        <span id="setupWizardStepHa" class="setup-wizard-step done">HA connected</span>
+        <span id="setupWizardStepTiles" class="setup-wizard-step active">Add tiles</span>
+        <span id="setupWizardStepSave" class="setup-wizard-step">Save layout</span>
+      </div>
+      <p id="setupWizardSubtitle" class="meta">Pick a few Home Assistant entities for your first dashboard.</p>
+      <label><span id="setupWizardPageLabel">First page title</span>
+        <input id="setupWizardPageTitle" type="text" placeholder="Living Room" maxlength="31" />
+      </label>
+      <div class="setup-wizard-actions-grid">
+        <button id="setupWizardAddLightBtn" class="btn setup-widget-btn" type="button">+ Light</button>
+        <button id="setupWizardAddHeatingBtn" class="btn setup-widget-btn" type="button">+ Heating</button>
+        <button id="setupWizardAddWeatherBtn" class="btn setup-widget-btn" type="button">+ Weather</button>
+        <button id="setupWizardAddButtonBtn" class="btn setup-widget-btn" type="button">+ Switch</button>
+        <button id="setupWizardAddSensorBtn" class="btn setup-widget-btn" type="button">+ Sensor</button>
+      </div>
+      <div id="setupWizardCount" class="setup-wizard-count">No tiles added yet.</div>
+      <div id="setupWizardStatus" class="meta"></div>
+      <div class="row setup-wizard-footer">
+        <button id="setupWizardSkipBtn" class="btn" type="button">Skip</button>
+        <button id="setupWizardSaveBtn" class="btn primary" type="button">Save Layout</button>
+        <button id="setupWizardDoneBtn" class="btn" type="button">Save + Done</button>
+      </div>
+    </div>
   </div>
   <datalist id="wifiCountryCodeList">
     <option value="US"></option>

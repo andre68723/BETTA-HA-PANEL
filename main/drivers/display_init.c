@@ -11,6 +11,7 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_log.h"
 #include "esp_lvgl_port.h"
+#include "esp_timer.h"
 #include "lvgl.h"
 
 #include "app_config.h"
@@ -20,6 +21,8 @@
 
 static bool s_display_ready = false;
 static lv_display_t *s_lv_display = NULL;
+static esp_timer_handle_t s_dim_timer = NULL;
+static int s_display_brightness = -1;
 
 static lvgl_port_cfg_t display_port_cfg(void)
 {
@@ -29,6 +32,82 @@ static lvgl_port_cfg_t display_port_cfg(void)
     cfg.task_affinity = 1;
     cfg.task_max_sleep_ms = 100;
     return cfg;
+}
+
+static int display_clamp_brightness(int percent)
+{
+    if (percent < 0) {
+        return 0;
+    }
+    if (percent > 100) {
+        return 100;
+    }
+    return percent;
+}
+
+esp_err_t display_set_brightness_percent(int percent)
+{
+    const int next = display_clamp_brightness(percent);
+    if (s_display_brightness == next) {
+        return ESP_OK;
+    }
+
+    esp_err_t err = bsp_display_brightness_set(next);
+    if (err == ESP_OK) {
+        s_display_brightness = next;
+    } else {
+        ESP_LOGW(TAG_DISPLAY, "Could not set backlight to %d%%: %s", next, esp_err_to_name(err));
+    }
+    return err;
+}
+
+static void display_dim_timer_cb(void *arg)
+{
+    (void)arg;
+    if (!s_display_ready) {
+        return;
+    }
+    (void)display_set_brightness_percent(APP_DISPLAY_DIM_BRIGHTNESS_PERCENT);
+}
+
+static esp_err_t display_dim_timer_init(void)
+{
+    if (s_dim_timer != NULL) {
+        return ESP_OK;
+    }
+
+    const esp_timer_create_args_t timer_args = {
+        .callback = display_dim_timer_cb,
+        .arg = NULL,
+        .dispatch_method = ESP_TIMER_TASK,
+        .name = "display_dim",
+        .skip_unhandled_events = true,
+    };
+    return esp_timer_create(&timer_args, &s_dim_timer);
+}
+
+static void display_restart_dim_timer(void)
+{
+    if (s_dim_timer == NULL) {
+        return;
+    }
+    if (esp_timer_is_active(s_dim_timer)) {
+        (void)esp_timer_stop(s_dim_timer);
+    }
+    const uint64_t timeout_us = (uint64_t)APP_DISPLAY_DIM_TIMEOUT_MS * 1000ULL;
+    esp_err_t err = esp_timer_start_once(s_dim_timer, timeout_us);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG_DISPLAY, "Could not start display dim timer: %s", esp_err_to_name(err));
+    }
+}
+
+void display_note_activity(void)
+{
+    if (!s_display_ready) {
+        return;
+    }
+    (void)display_set_brightness_percent(APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT);
+    display_restart_dim_timer();
 }
 
 esp_err_t display_init(void)
@@ -56,9 +135,14 @@ esp_err_t display_init(void)
         ESP_LOGW(TAG_DISPLAY, "Could not enable LCD panel output: %s", esp_err_to_name(err));
     }
 
-    err = bsp_display_backlight_on();
+    err = display_set_brightness_percent(APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT);
     if (err != ESP_OK) {
         ESP_LOGW(TAG_DISPLAY, "Could not enable backlight: %s", esp_err_to_name(err));
+    }
+
+    err = display_dim_timer_init();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG_DISPLAY, "Could not create display dim timer: %s", esp_err_to_name(err));
     }
 
     lvgl_port_display_cfg_t disp_cfg = {
@@ -127,6 +211,7 @@ esp_err_t display_init(void)
     ESP_LOGI(TAG_DISPLAY,
         "Display initialized (esp_lvgl_port + DSI, avoid_tearing=0, direct_mode=0, double_buffer=1, draw_buf=1/%u, %u px)",
         (unsigned)used_divisor, (unsigned)used_buffer_pixels);
+    display_note_activity();
     return ESP_OK;
 }
 

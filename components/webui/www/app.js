@@ -17,6 +17,90 @@ const GRAPH_TIME_WINDOW_MIN = 1;
 const GRAPH_TIME_WINDOW_MAX = 1440;
 const ENTITY_AUTOCOMPLETE_DEBOUNCE_MS = 220;
 const ENTITY_AUTOCOMPLETE_MAX_ITEMS = 24;
+const LIGHT_ENTITY_PICKER_POLL_MS = 700;
+const LIGHT_ENTITY_PICKER_MAX_POLLS = 90;
+const ENTITY_PICKER_SEARCH_DEBOUNCE_MS = 350;
+const SETUP_WIZARD_PENDING_STORAGE_KEY = "betta.setupWizard.pending";
+const SETUP_WIZARD_DISMISSED_STORAGE_KEY = "betta.setupWizard.dismissed";
+const ENTITY_PICKER_CONFIGS = {
+  sensor: {
+    domain: "sensor",
+    titleKey: "entity_picker.title_sensor",
+    blankKey: "entity_picker.blank_sensor",
+    widgetKey: "entity_picker.widget_sensor",
+    itemsKey: "entity_picker.items_sensor",
+    titleFallback: "Choose Sensor",
+    blankFallback: "Blank Sensor Tile",
+    widgetFallback: "Sensor tile",
+    itemsFallback: "sensors",
+    minSearch: 2,
+    liveSearch: false,
+  },
+  light_tile: {
+    domain: "light",
+    titleKey: "entity_picker.title_light",
+    blankKey: "entity_picker.blank_light",
+    widgetKey: "entity_picker.widget_light",
+    itemsKey: "entity_picker.items_light",
+    titleFallback: "Choose Light",
+    blankFallback: "Blank Light Tile",
+    widgetFallback: "Light tile",
+    itemsFallback: "lights",
+  },
+  button: {
+    domain: "switch",
+    titleKey: "entity_picker.title_switch",
+    blankKey: "entity_picker.blank_button",
+    widgetKey: "entity_picker.widget_button",
+    itemsKey: "entity_picker.items_switch",
+    titleFallback: "Choose Switch",
+    blankFallback: "Blank Button Tile",
+    widgetFallback: "Button tile",
+    itemsFallback: "switches",
+  },
+  heating_tile: {
+    domain: "climate",
+    titleKey: "entity_picker.title_climate",
+    blankKey: "entity_picker.blank_heating",
+    widgetKey: "entity_picker.widget_heating",
+    itemsKey: "entity_picker.items_climate",
+    titleFallback: "Choose Heating",
+    blankFallback: "Blank Heating Tile",
+    widgetFallback: "Heating tile",
+    itemsFallback: "climate entities",
+  },
+  weather_tile: {
+    domain: "weather",
+    titleKey: "entity_picker.title_weather",
+    blankKey: "entity_picker.blank_weather",
+    widgetKey: "entity_picker.widget_weather",
+    itemsKey: "entity_picker.items_weather",
+    titleFallback: "Choose Weather",
+    blankFallback: "Blank Weather Tile",
+    widgetFallback: "Weather tile",
+    itemsFallback: "weather entities",
+  },
+  weather_3day: {
+    domain: "weather",
+    titleKey: "entity_picker.title_weather",
+    blankKey: "entity_picker.blank_weather_3day",
+    widgetKey: "entity_picker.widget_weather_3day",
+    itemsKey: "entity_picker.items_weather",
+    titleFallback: "Choose Weather",
+    blankFallback: "Blank Weather 3-day Tile",
+    widgetFallback: "Weather 3-day tile",
+    itemsFallback: "weather entities",
+  },
+};
+const SETTINGS_NAV_ITEMS = [
+  { sectionId: "settingsWifiSection", headingId: "settingsWifiHeading", labelKey: "settings.wifi.heading" },
+  { sectionId: "settingsHaSection", headingId: "settingsHaHeading", labelKey: "settings.ha.heading" },
+  { sectionId: "settingsTimeSection", headingId: "settingsTimeHeading", labelKey: "settings.time.heading" },
+  { sectionId: "settingsUiSection", headingId: "settingsUiHeading", labelKey: "settings.ui.heading" },
+  { sectionId: "settingsApSection", headingId: "settingsApHeading", labelKey: "settings.ap.heading" },
+  { sectionId: "settingsOtaSection", headingId: "settingsOtaHeading", labelKey: "settings.ota.heading" },
+];
+const OTA_STATUS_POLL_MS = 900;
 const DEFAULT_SLIDER_ENTITY_DOMAIN = "auto";
 const SLIDER_DIRECTIONS = new Set([
   "auto",
@@ -64,7 +148,54 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_heating_tile": "+ Heating Tile",
     "layout.widgets.add_weather_tile": "+ Weather",
     "layout.widgets.add_weather_3day": "+ Weather 3-day",
+    "layout.widgets.quick_setup": "Quick Setup",
     "layout.widgets.delete": "Delete Widget",
+    "entity_picker.title": "Choose Light",
+    "entity_picker.title_sensor": "Choose Sensor",
+    "entity_picker.title_light": "Choose Light",
+    "entity_picker.title_switch": "Choose Switch",
+    "entity_picker.title_weather": "Choose Weather",
+    "entity_picker.title_climate": "Choose Heating",
+    "entity_picker.refresh": "Refresh",
+    "entity_picker.search": "Search",
+    "entity_picker.close": "Close",
+    "entity_picker.search_placeholder": "Search by name, entity ID, or room",
+    "entity_picker.search_hint": "Type at least {count} characters to search {items}.",
+    "entity_picker.search_ready": "Press Enter or Search to query {items}.",
+    "entity_picker.blank": "Blank Light Tile",
+    "entity_picker.blank_sensor": "Blank Sensor Tile",
+    "entity_picker.blank_light": "Blank Light Tile",
+    "entity_picker.blank_button": "Blank Button Tile",
+    "entity_picker.blank_weather": "Blank Weather Tile",
+    "entity_picker.blank_weather_3day": "Blank Weather 3-day Tile",
+    "entity_picker.blank_heating": "Blank Heating Tile",
+    "entity_picker.loading": "Loading lights...",
+    "entity_picker.loading_items": "Loading {items}...",
+    "entity_picker.refreshing": "Refreshing lights...",
+    "entity_picker.refreshing_items": "Refreshing {items}...",
+    "entity_picker.pending": "Waiting for Home Assistant...",
+    "entity_picker.disconnected": "Home Assistant is not connected.",
+    "entity_picker.empty": "No light entities found.",
+    "entity_picker.empty_items": "No {items} found.",
+    "entity_picker.truncated": "List truncated by firmware limit.",
+    "entity_picker.unassigned_room": "No room",
+    "entity_picker.added": "Light tile added: {entity}",
+    "entity_picker.added_widget": "{widget} added: {entity}",
+    "entity_picker.fetch_failed": "Light discovery failed: {error}",
+    "entity_picker.fetch_failed_items": "{items} discovery failed: {error}",
+    "entity_picker.progress": "{loaded} / {target}",
+    "entity_picker.progress_total": "{loaded} / {target} of {total}",
+    "entity_picker.items_light": "lights",
+    "entity_picker.items_sensor": "sensors",
+    "entity_picker.items_switch": "switches",
+    "entity_picker.items_weather": "weather entities",
+    "entity_picker.items_climate": "climate entities",
+    "entity_picker.widget_light": "Light tile",
+    "entity_picker.widget_sensor": "Sensor tile",
+    "entity_picker.widget_button": "Button tile",
+    "entity_picker.widget_weather": "Weather tile",
+    "entity_picker.widget_weather_3day": "Weather 3-day tile",
+    "entity_picker.widget_heating": "Heating tile",
     "layout.inspector.heading": "Inspector",
     "layout.inspector.title": "Title",
     "layout.inspector.entity": "Entity",
@@ -115,6 +246,29 @@ const WEB_I18N_BUILTIN = {
     "layout.status.save_failed": "Save failed: {error}",
     "layout.status.import_failed": "Import failed: {error}",
     "layout.status.file_import_failed": "File import failed: {error}",
+    "setup.title": "Quick Setup",
+    "setup.step_ha": "HA connected",
+    "setup.step_tiles": "Add tiles",
+    "setup.step_save": "Save layout",
+    "setup.subtitle": "Pick a few Home Assistant entities for your first dashboard.",
+    "setup.page_label": "First page title",
+    "setup.page_placeholder": "Living Room",
+    "setup.add_light": "+ Light",
+    "setup.add_heating": "+ Heating",
+    "setup.add_weather": "+ Weather",
+    "setup.add_button": "+ Switch",
+    "setup.add_sensor": "+ Sensor",
+    "setup.close": "Close",
+    "setup.skip": "Skip",
+    "setup.done": "Save + Done",
+    "setup.save": "Save Layout",
+    "setup.count_none": "No tiles added yet.",
+    "setup.count_one": "1 tile on this page.",
+    "setup.count_many": "{count} tiles on this page.",
+    "setup.added": "Added: {title}",
+    "setup.saving": "Saving layout...",
+    "setup.saved": "Layout saved. The panel can use this dashboard now.",
+    "setup.save_failed": "Save failed: {error}",
     "provision.wifi.title": "Wi-Fi Provisioning",
     "provision.wifi.subtitle": "Connect the panel to your Wi-Fi.",
     "provision.wifi.ssid": "SSID",
@@ -150,6 +304,26 @@ const WEB_I18N_BUILTIN = {
     "settings.ui.upload_button": "Upload / Add Language",
     "settings.ap.heading": "Setup AP",
     "settings.ap.hint": "If setup AP is active, connect to it and open <code>http://192.168.4.1</code>.",
+    "settings.ota.heading": "Firmware Update",
+    "settings.ota.url": "OTA URL",
+    "settings.ota.url_placeholder": "https://github.com/.../release/betta86-ha-panel-v0.7.ota.bin",
+    "settings.ota.flash_url": "Flash URL",
+    "settings.ota.refresh": "Refresh Status",
+    "settings.ota.file": "OTA .bin File",
+    "settings.ota.upload": "Upload + Flash",
+    "settings.ota.idle": "Ready for an OTA app image. Running: {running}, next slot: {next}, slot size: {size}.",
+    "settings.ota.running": "OTA running: {progress}% ({written} / {total})",
+    "settings.ota.downloading": "Downloading from URL: {progress}% ({written} / {total})",
+    "settings.ota.uploading": "Upload received by panel: {progress}% ({written} / {total})",
+    "settings.ota.success": "OTA image written. Rebooting now.",
+    "settings.ota.error": "OTA failed: {error}",
+    "settings.ota.rebooting": "Device is rebooting. Reopen the panel after it is back online.",
+    "settings.ota.no_file": "Choose an OTA .bin file first.",
+    "settings.ota.no_url": "Paste an OTA URL first.",
+    "settings.ota.starting_url": "Starting OTA from URL...",
+    "settings.ota.upload_progress": "Uploading to panel: {progress}% ({written} / {total})",
+    "settings.ota.request_failed": "OTA request failed: {error}",
+    "settings.ota.target_slot": "Target slot: {partition}",
     "settings.actions.heading": "Settings Actions",
     "settings.actions.reload": "Reload Settings",
     "settings.actions.save": "Save + Reboot",
@@ -242,7 +416,54 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_heating_tile": "+ Heating Tile",
     "layout.widgets.add_weather_tile": "+ Weather",
     "layout.widgets.add_weather_3day": "+ Weather 3 Tage",
+    "layout.widgets.quick_setup": "Quick Setup",
     "layout.widgets.delete": "Widget loeschen",
+    "entity_picker.title": "Licht auswaehlen",
+    "entity_picker.title_sensor": "Sensor auswaehlen",
+    "entity_picker.title_light": "Licht auswaehlen",
+    "entity_picker.title_switch": "Schalter auswaehlen",
+    "entity_picker.title_weather": "Wetter auswaehlen",
+    "entity_picker.title_climate": "Heizung auswaehlen",
+    "entity_picker.refresh": "Aktualisieren",
+    "entity_picker.search": "Suchen",
+    "entity_picker.close": "Schliessen",
+    "entity_picker.search_placeholder": "Nach Name, Entitaet oder Raum suchen",
+    "entity_picker.search_hint": "Mindestens {count} Zeichen eingeben, um {items} zu suchen.",
+    "entity_picker.search_ready": "Enter druecken oder Suchen klicken, um {items} abzufragen.",
+    "entity_picker.blank": "Leere Lichtkachel",
+    "entity_picker.blank_sensor": "Leere Sensorkachel",
+    "entity_picker.blank_light": "Leere Lichtkachel",
+    "entity_picker.blank_button": "Leere Button-Kachel",
+    "entity_picker.blank_weather": "Leere Wetterkachel",
+    "entity_picker.blank_weather_3day": "Leere Wetter-3-Tage-Kachel",
+    "entity_picker.blank_heating": "Leere Heizungskachel",
+    "entity_picker.loading": "Lichter werden geladen...",
+    "entity_picker.loading_items": "{items} werden geladen...",
+    "entity_picker.refreshing": "Lichter werden aktualisiert...",
+    "entity_picker.refreshing_items": "{items} werden aktualisiert...",
+    "entity_picker.pending": "Warte auf Home Assistant...",
+    "entity_picker.disconnected": "Home Assistant ist nicht verbunden.",
+    "entity_picker.empty": "Keine Licht-Entitaeten gefunden.",
+    "entity_picker.empty_items": "Keine {items} gefunden.",
+    "entity_picker.truncated": "Liste durch Firmware-Limit gekuerzt.",
+    "entity_picker.unassigned_room": "Kein Raum",
+    "entity_picker.added": "Lichtkachel hinzugefuegt: {entity}",
+    "entity_picker.added_widget": "{widget} hinzugefuegt: {entity}",
+    "entity_picker.fetch_failed": "Lichtsuche fehlgeschlagen: {error}",
+    "entity_picker.fetch_failed_items": "Entitaetssuche fuer {items} fehlgeschlagen: {error}",
+    "entity_picker.progress": "{loaded} / {target}",
+    "entity_picker.progress_total": "{loaded} / {target} von {total}",
+    "entity_picker.items_light": "Lichter",
+    "entity_picker.items_sensor": "Sensoren",
+    "entity_picker.items_switch": "Schalter",
+    "entity_picker.items_weather": "Wetter-Entitaeten",
+    "entity_picker.items_climate": "Climate-Entitaeten",
+    "entity_picker.widget_light": "Lichtkachel",
+    "entity_picker.widget_sensor": "Sensorkachel",
+    "entity_picker.widget_button": "Button-Kachel",
+    "entity_picker.widget_weather": "Wetterkachel",
+    "entity_picker.widget_weather_3day": "Wetter-3-Tage-Kachel",
+    "entity_picker.widget_heating": "Heizungskachel",
     "layout.inspector.heading": "Inspektor",
     "layout.inspector.title": "Titel",
     "layout.inspector.entity": "Entitaet",
@@ -293,6 +514,29 @@ const WEB_I18N_BUILTIN = {
     "layout.status.save_failed": "Speichern fehlgeschlagen: {error}",
     "layout.status.import_failed": "Import fehlgeschlagen: {error}",
     "layout.status.file_import_failed": "Dateiimport fehlgeschlagen: {error}",
+    "setup.title": "Quick Setup",
+    "setup.step_ha": "HA verbunden",
+    "setup.step_tiles": "Kacheln waehlen",
+    "setup.step_save": "Layout speichern",
+    "setup.subtitle": "Waehle ein paar Home Assistant Entitaeten fuer dein erstes Dashboard.",
+    "setup.page_label": "Titel der ersten Seite",
+    "setup.page_placeholder": "Wohnzimmer",
+    "setup.add_light": "+ Licht",
+    "setup.add_heating": "+ Heizung",
+    "setup.add_weather": "+ Wetter",
+    "setup.add_button": "+ Schalter",
+    "setup.add_sensor": "+ Sensor",
+    "setup.close": "Schliessen",
+    "setup.skip": "Ueberspringen",
+    "setup.done": "Speichern + Fertig",
+    "setup.save": "Layout speichern",
+    "setup.count_none": "Noch keine Kacheln hinzugefuegt.",
+    "setup.count_one": "1 Kachel auf dieser Seite.",
+    "setup.count_many": "{count} Kacheln auf dieser Seite.",
+    "setup.added": "Hinzugefuegt: {title}",
+    "setup.saving": "Layout wird gespeichert...",
+    "setup.saved": "Layout gespeichert. Das Panel kann dieses Dashboard jetzt nutzen.",
+    "setup.save_failed": "Speichern fehlgeschlagen: {error}",
     "provision.wifi.title": "WLAN Provisioning",
     "provision.wifi.subtitle": "Verbinde das Panel mit deinem WLAN.",
     "provision.wifi.ssid": "SSID",
@@ -328,6 +572,26 @@ const WEB_I18N_BUILTIN = {
     "settings.ui.upload_button": "Upload / Sprache hinzufuegen",
     "settings.ap.heading": "Setup AP",
     "settings.ap.hint": "Wenn Setup AP aktiv ist, verbinden und <code>http://192.168.4.1</code> oeffnen.",
+    "settings.ota.heading": "Firmware Update",
+    "settings.ota.url": "OTA URL",
+    "settings.ota.url_placeholder": "https://github.com/.../release/betta86-ha-panel-v0.7.ota.bin",
+    "settings.ota.flash_url": "URL flashen",
+    "settings.ota.refresh": "Status aktualisieren",
+    "settings.ota.file": "OTA .bin Datei",
+    "settings.ota.upload": "Upload + Flash",
+    "settings.ota.idle": "Bereit fuer ein OTA App-Image. Laufend: {running}, naechster Slot: {next}, Slotgroesse: {size}.",
+    "settings.ota.running": "OTA laeuft: {progress}% ({written} / {total})",
+    "settings.ota.downloading": "Download per URL: {progress}% ({written} / {total})",
+    "settings.ota.uploading": "Upload vom Panel empfangen: {progress}% ({written} / {total})",
+    "settings.ota.success": "OTA Image geschrieben. Neustart laeuft.",
+    "settings.ota.error": "OTA fehlgeschlagen: {error}",
+    "settings.ota.rebooting": "Geraet startet neu. Oeffne das Panel erneut, sobald es wieder online ist.",
+    "settings.ota.no_file": "Bitte zuerst eine OTA .bin Datei waehlen.",
+    "settings.ota.no_url": "Bitte zuerst eine OTA URL einfuegen.",
+    "settings.ota.starting_url": "OTA per URL wird gestartet...",
+    "settings.ota.upload_progress": "Upload zum Panel: {progress}% ({written} / {total})",
+    "settings.ota.request_failed": "OTA Anfrage fehlgeschlagen: {error}",
+    "settings.ota.target_slot": "Zielslot: {partition}",
     "settings.actions.heading": "Einstellungsaktionen",
     "settings.actions.reload": "Einstellungen neu laden",
     "settings.actions.save": "Speichern + Neustart",
@@ -421,6 +685,19 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_weather_tile": "+ Clima",
     "layout.widgets.add_weather_3day": "+ Clima 3 dias",
     "layout.widgets.delete": "Eliminar Widget",
+    "entity_picker.title": "Elegir luz",
+    "entity_picker.refresh": "Actualizar",
+    "entity_picker.close": "Cerrar",
+    "entity_picker.blank": "Tile de luz vacio",
+    "entity_picker.loading": "Cargando luces...",
+    "entity_picker.refreshing": "Actualizando luces...",
+    "entity_picker.pending": "Esperando Home Assistant...",
+    "entity_picker.disconnected": "Home Assistant no esta conectado.",
+    "entity_picker.empty": "No se encontraron luces.",
+    "entity_picker.truncated": "Lista recortada por limite de firmware.",
+    "entity_picker.unassigned_room": "Sin sala",
+    "entity_picker.added": "Tile de luz agregado: {entity}",
+    "entity_picker.fetch_failed": "Error al buscar luces: {error}",
     "layout.inspector.heading": "Inspector",
     "layout.inspector.title": "Titulo",
     "layout.inspector.entity": "Entidad",
@@ -506,6 +783,26 @@ const WEB_I18N_BUILTIN = {
     "settings.ui.upload_button": "Subir / Agregar idioma",
     "settings.ap.heading": "AP de setup",
     "settings.ap.hint": "Si el AP de setup esta activo, conectate y abre <code>http://192.168.4.1</code>.",
+    "settings.ota.heading": "Actualizacion de firmware",
+    "settings.ota.url": "URL OTA",
+    "settings.ota.url_placeholder": "https://github.com/.../release/betta86-ha-panel-v0.7.ota.bin",
+    "settings.ota.flash_url": "Flashear URL",
+    "settings.ota.refresh": "Actualizar estado",
+    "settings.ota.file": "Archivo OTA .bin",
+    "settings.ota.upload": "Subir + Flashear",
+    "settings.ota.idle": "Listo para una imagen OTA de app. Ejecutando: {running}, siguiente slot: {next}, tamano de slot: {size}.",
+    "settings.ota.running": "OTA en curso: {progress}% ({written} / {total})",
+    "settings.ota.downloading": "Descargando desde URL: {progress}% ({written} / {total})",
+    "settings.ota.uploading": "Upload recibido por el panel: {progress}% ({written} / {total})",
+    "settings.ota.success": "Imagen OTA escrita. Reiniciando ahora.",
+    "settings.ota.error": "OTA fallo: {error}",
+    "settings.ota.rebooting": "El dispositivo se esta reiniciando. Abre el panel de nuevo cuando vuelva online.",
+    "settings.ota.no_file": "Elige primero un archivo OTA .bin.",
+    "settings.ota.no_url": "Pega primero una URL OTA.",
+    "settings.ota.starting_url": "Iniciando OTA desde URL...",
+    "settings.ota.upload_progress": "Subiendo al panel: {progress}% ({written} / {total})",
+    "settings.ota.request_failed": "Solicitud OTA fallida: {error}",
+    "settings.ota.target_slot": "Slot destino: {partition}",
     "settings.actions.heading": "Acciones de configuracion",
     "settings.actions.reload": "Recargar configuracion",
     "settings.actions.save": "Guardar + Reiniciar",
@@ -599,6 +896,19 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_weather_tile": "+ Meteo",
     "layout.widgets.add_weather_3day": "+ Meteo 3 jours",
     "layout.widgets.delete": "Supprimer le widget",
+    "entity_picker.title": "Choisir une lumiere",
+    "entity_picker.refresh": "Actualiser",
+    "entity_picker.close": "Fermer",
+    "entity_picker.blank": "Tuile lumiere vide",
+    "entity_picker.loading": "Chargement des lumieres...",
+    "entity_picker.refreshing": "Actualisation des lumieres...",
+    "entity_picker.pending": "En attente de Home Assistant...",
+    "entity_picker.disconnected": "Home Assistant n'est pas connecte.",
+    "entity_picker.empty": "Aucune entite lumiere trouvee.",
+    "entity_picker.truncated": "Liste limitee par le firmware.",
+    "entity_picker.unassigned_room": "Sans piece",
+    "entity_picker.added": "Tuile lumiere ajoutee: {entity}",
+    "entity_picker.fetch_failed": "Echec de la recherche de lumieres: {error}",
     "layout.inspector.heading": "Inspecteur",
     "layout.inspector.title": "Titre",
     "layout.inspector.entity": "Entite",
@@ -684,6 +994,26 @@ const WEB_I18N_BUILTIN = {
     "settings.ui.upload_button": "Uploader / Ajouter une langue",
     "settings.ap.heading": "Setup AP",
     "settings.ap.hint": "Si le setup AP est actif, connectez-vous et ouvrez <code>http://192.168.4.1</code>.",
+    "settings.ota.heading": "Mise a jour firmware",
+    "settings.ota.url": "URL OTA",
+    "settings.ota.url_placeholder": "https://github.com/.../release/betta86-ha-panel-v0.7.ota.bin",
+    "settings.ota.flash_url": "Flasher URL",
+    "settings.ota.refresh": "Actualiser statut",
+    "settings.ota.file": "Fichier OTA .bin",
+    "settings.ota.upload": "Upload + Flash",
+    "settings.ota.idle": "Pret pour une image OTA app. En cours: {running}, prochain slot: {next}, taille du slot: {size}.",
+    "settings.ota.running": "OTA en cours: {progress}% ({written} / {total})",
+    "settings.ota.downloading": "Telechargement depuis URL: {progress}% ({written} / {total})",
+    "settings.ota.uploading": "Upload recu par le panneau: {progress}% ({written} / {total})",
+    "settings.ota.success": "Image OTA ecrite. Redemarrage en cours.",
+    "settings.ota.error": "OTA echouee: {error}",
+    "settings.ota.rebooting": "L'appareil redemarre. Rouvrez le panneau lorsqu'il est de retour en ligne.",
+    "settings.ota.no_file": "Choisissez d'abord un fichier OTA .bin.",
+    "settings.ota.no_url": "Collez d'abord une URL OTA.",
+    "settings.ota.starting_url": "Demarrage de l'OTA depuis l'URL...",
+    "settings.ota.upload_progress": "Upload vers le panneau: {progress}% ({written} / {total})",
+    "settings.ota.request_failed": "Requete OTA echouee: {error}",
+    "settings.ota.target_slot": "Slot cible: {partition}",
     "settings.actions.heading": "Actions des parametres",
     "settings.actions.reload": "Recharger les parametres",
     "settings.actions.save": "Enregistrer + Redemarrer",
@@ -810,6 +1140,7 @@ const editor = {
   selectedPageId: null,
   selectedWidgetId: null,
   activePane: "layout",
+  activeSettingsSection: "settingsWifiSection",
   provisioningStage: null,
   editorStarted: false,
   settings: null,
@@ -818,6 +1149,31 @@ const editor = {
   wifiScanHasRun: false,
   wifiScanInProgress: false,
   wifiScanSupported: true,
+  lightPicker: {
+    items: [],
+    itemsByDomain: {},
+    loadedByDomain: {},
+    domain: "light",
+    widgetType: "light_tile",
+    search: "",
+    searchByDomain: {},
+    searchDebounceId: null,
+    loading: false,
+    hasLoaded: false,
+    pollTimerId: null,
+    requestSeq: 0,
+    lastStatus: "",
+  },
+  setupWizard: {
+    active: false,
+    openedManually: false,
+    addedSinceOpen: 0,
+  },
+  ota: {
+    status: null,
+    pollTimerId: null,
+    uploadInProgress: false,
+  },
   languageCatalog: [],
   i18nLanguage: DEFAULT_UI_LANGUAGE,
   i18nMap: { ...(WEB_I18N_BUILTIN.en || {}) },
@@ -840,6 +1196,11 @@ const el = {
   settingsTabBtn: document.getElementById("settingsTabBtn"),
   layoutPane: document.getElementById("layoutPane"),
   settingsPane: document.getElementById("settingsPane"),
+  settingsContentPane: document.getElementById("settingsContentPane"),
+  settingsNavButtons: [],
+  settingsContentSections: [],
+  canvasWrap: document.querySelector(".canvas-wrap"),
+  actionsPanel: document.querySelector("aside.actions-panel"),
   pagesList: document.getElementById("pagesList"),
   pagesMiniList: document.getElementById("pagesMiniList"),
   widgetsList: document.getElementById("widgetsList"),
@@ -862,6 +1223,18 @@ const el = {
   addGraphBtn: document.getElementById("addGraphBtn"),
   addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
   addLightTileBtn: document.getElementById("addLightTileBtn"),
+  openSetupWizardBtn: document.getElementById("openSetupWizardBtn"),
+  lightEntityPickerOverlay: document.getElementById("lightEntityPickerOverlay"),
+  lightEntityPickerTitle: document.getElementById("lightEntityPickerTitle"),
+  lightEntityPickerRefreshBtn: document.getElementById("lightEntityPickerRefreshBtn"),
+  lightEntityPickerCloseBtn: document.getElementById("lightEntityPickerCloseBtn"),
+  lightEntityPickerBlankBtn: document.getElementById("lightEntityPickerBlankBtn"),
+  lightEntityPickerSearch: document.getElementById("lightEntityPickerSearch"),
+  lightEntityPickerStatus: document.getElementById("lightEntityPickerStatus"),
+  lightEntityPickerProgress: document.getElementById("lightEntityPickerProgress"),
+  lightEntityPickerProgressBar: document.getElementById("lightEntityPickerProgressBar"),
+  lightEntityPickerProgressText: document.getElementById("lightEntityPickerProgressText"),
+  lightEntityPickerRooms: document.getElementById("lightEntityPickerRooms"),
   addHeatingTileBtn: document.getElementById("addHeatingTileBtn"),
   addWeatherTileBtn: document.getElementById("addWeatherTileBtn"),
   addWeather3DayBtn: document.getElementById("addWeather3DayBtn"),
@@ -920,6 +1293,13 @@ const el = {
   settingsTimeInfo: document.getElementById("settingsTimeInfo"),
   settingsUiInfo: document.getElementById("settingsUiInfo"),
   settingsApInfo: document.getElementById("settingsApInfo"),
+  settingsOtaUrl: document.getElementById("settingsOtaUrl"),
+  startOtaUrlBtn: document.getElementById("startOtaUrlBtn"),
+  refreshOtaStatusBtn: document.getElementById("refreshOtaStatusBtn"),
+  settingsOtaFile: document.getElementById("settingsOtaFile"),
+  uploadOtaBtn: document.getElementById("uploadOtaBtn"),
+  settingsOtaProgressBar: document.getElementById("settingsOtaProgressBar"),
+  settingsOtaInfo: document.getElementById("settingsOtaInfo"),
   reloadSettingsBtn: document.getElementById("reloadSettingsBtn"),
   saveSettingsBtn: document.getElementById("saveSettingsBtn"),
   provWifiSsid: document.getElementById("provWifiSsid"),
@@ -936,6 +1316,24 @@ const el = {
   provHaShowToken: document.getElementById("provHaShowToken"),
   provHaInfo: document.getElementById("provHaInfo"),
   provHaSaveBtn: document.getElementById("provHaSaveBtn"),
+  setupWizardOverlay: document.getElementById("setupWizardOverlay"),
+  setupWizardTitle: document.getElementById("setupWizardTitle"),
+  setupWizardCloseBtn: document.getElementById("setupWizardCloseBtn"),
+  setupWizardStepHa: document.getElementById("setupWizardStepHa"),
+  setupWizardStepTiles: document.getElementById("setupWizardStepTiles"),
+  setupWizardStepSave: document.getElementById("setupWizardStepSave"),
+  setupWizardSubtitle: document.getElementById("setupWizardSubtitle"),
+  setupWizardPageTitle: document.getElementById("setupWizardPageTitle"),
+  setupWizardCount: document.getElementById("setupWizardCount"),
+  setupWizardStatus: document.getElementById("setupWizardStatus"),
+  setupWizardAddLightBtn: document.getElementById("setupWizardAddLightBtn"),
+  setupWizardAddHeatingBtn: document.getElementById("setupWizardAddHeatingBtn"),
+  setupWizardAddWeatherBtn: document.getElementById("setupWizardAddWeatherBtn"),
+  setupWizardAddButtonBtn: document.getElementById("setupWizardAddButtonBtn"),
+  setupWizardAddSensorBtn: document.getElementById("setupWizardAddSensorBtn"),
+  setupWizardSkipBtn: document.getElementById("setupWizardSkipBtn"),
+  setupWizardSaveBtn: document.getElementById("setupWizardSaveBtn"),
+  setupWizardDoneBtn: document.getElementById("setupWizardDoneBtn"),
 };
 
 const entityAutocomplete = {
@@ -1111,6 +1509,26 @@ function t(key, vars = {}, fallbackText = null) {
   return templateString(raw, vars);
 }
 
+function storageGet(key) {
+  try {
+    return window.localStorage?.getItem(key) || "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function storageSet(key, value) {
+  try {
+    window.localStorage?.setItem(key, value);
+  } catch (_) {}
+}
+
+function storageRemove(key) {
+  try {
+    window.localStorage?.removeItem(key);
+  } catch (_) {}
+}
+
 function flattenTranslationObject(obj, prefix = "", out = {}) {
   if (!obj || typeof obj !== "object") return out;
   for (const [key, value] of Object.entries(obj)) {
@@ -1272,10 +1690,16 @@ function applyWebTranslations() {
   setTextById("addGraphBtn", "layout.widgets.add_graph");
   setTextById("addEmptyTileBtn", "layout.widgets.add_empty_tile");
   setTextById("addLightTileBtn", "layout.widgets.add_light_tile");
+  setTextById("openSetupWizardBtn", "layout.widgets.quick_setup");
   setTextById("addHeatingTileBtn", "layout.widgets.add_heating_tile");
   setTextById("addWeatherTileBtn", "layout.widgets.add_weather_tile");
   setTextById("addWeather3DayBtn", "layout.widgets.add_weather_3day");
   setTextById("deleteWidgetBtn", "layout.widgets.delete");
+  setTextById("lightEntityPickerTitle", "entity_picker.title");
+  setTextById("lightEntityPickerRefreshBtn", "entity_picker.refresh");
+  setTextById("lightEntityPickerCloseBtn", "entity_picker.close");
+  setTextById("lightEntityPickerBlankBtn", "entity_picker.blank");
+  setPlaceholderById("lightEntityPickerSearch", "entity_picker.search_placeholder");
 
   setTextById("inspectorHeading", "layout.inspector.heading");
   setTextById("fTitleLabel", "layout.inspector.title");
@@ -1358,10 +1782,35 @@ function applyWebTranslations() {
   const apHint = document.getElementById("settingsApHint");
   if (apHint) apHint.innerHTML = t("settings.ap.hint");
 
+  setTextById("settingsOtaHeading", "settings.ota.heading");
+  setTextById("settingsOtaUrlLabel", "settings.ota.url");
+  setPlaceholderById("settingsOtaUrl", "settings.ota.url_placeholder");
+  setTextById("startOtaUrlBtn", "settings.ota.flash_url");
+  setTextById("refreshOtaStatusBtn", "settings.ota.refresh");
+  setTextById("settingsOtaFileLabel", "settings.ota.file");
+  setTextById("uploadOtaBtn", "settings.ota.upload");
+
   setTextById("settingsActionsHeading", "settings.actions.heading");
   setTextById("reloadSettingsBtn", "settings.actions.reload");
   setTextById("saveSettingsBtn", "settings.actions.save");
   setTextById("settingsActionsHint", "settings.actions.hint");
+  setTextById("setupWizardTitle", "setup.title");
+  setTextById("setupWizardCloseBtn", "setup.close");
+  setTextById("setupWizardStepHa", "setup.step_ha");
+  setTextById("setupWizardStepTiles", "setup.step_tiles");
+  setTextById("setupWizardStepSave", "setup.step_save");
+  setTextById("setupWizardSubtitle", "setup.subtitle");
+  setTextById("setupWizardPageLabel", "setup.page_label");
+  setPlaceholderById("setupWizardPageTitle", "setup.page_placeholder");
+  setTextById("setupWizardAddLightBtn", "setup.add_light");
+  setTextById("setupWizardAddHeatingBtn", "setup.add_heating");
+  setTextById("setupWizardAddWeatherBtn", "setup.add_weather");
+  setTextById("setupWizardAddButtonBtn", "setup.add_button");
+  setTextById("setupWizardAddSensorBtn", "setup.add_sensor");
+  setTextById("setupWizardSkipBtn", "setup.skip");
+  setTextById("setupWizardDoneBtn", "setup.done");
+  setTextById("setupWizardSaveBtn", "setup.save");
+  applySettingsNavTranslations();
 
   if (el.settingsTranslationInfo && !el.settingsTranslationInfo.classList.contains("error")) {
     el.settingsTranslationInfo.textContent = t("settings.translation.info");
@@ -1369,6 +1818,9 @@ function applyWebTranslations() {
 
   if (el.uploadLanguageCode) {
     el.uploadLanguageCode.placeholder = "fr";
+  }
+  if (editor.setupWizard.active) {
+    renderSetupWizard();
   }
 }
 
@@ -1516,13 +1968,128 @@ function showProvisioningStage(stage, settings) {
   return true;
 }
 
+function setupSettingsWorkspace() {
+  if (el.settingsContentPane || !el.settingsPane) return;
+
+  const workspaceBody = document.querySelector(".workspace-body");
+  el.canvasWrap = el.canvasWrap || document.querySelector(".canvas-wrap");
+  el.actionsPanel = el.actionsPanel || document.querySelector("aside.actions-panel");
+  if (!workspaceBody || !el.canvasWrap) return;
+
+  const contentPane = document.createElement("div");
+  contentPane.id = "settingsContentPane";
+  contentPane.className = "settings-content hidden";
+  workspaceBody.insertBefore(contentPane, el.canvasWrap);
+
+  const navSection = document.createElement("section");
+  navSection.className = "settings-nav-section";
+
+  const navHeading = document.createElement("h2");
+  navHeading.id = "settingsNavHeading";
+  navHeading.textContent = t("tabs.settings");
+  navSection.appendChild(navHeading);
+
+  const nav = document.createElement("div");
+  nav.id = "settingsNav";
+  nav.className = "settings-nav";
+  const actionsHeading = document.getElementById("settingsActionsHeading");
+  const actionsSection = actionsHeading?.closest("section") || null;
+
+  for (const item of SETTINGS_NAV_ITEMS) {
+    const heading = document.getElementById(item.headingId);
+    const section = heading?.closest("section");
+    if (!section) continue;
+
+    section.id = item.sectionId;
+    section.classList.add("settings-content-section", "hidden");
+    contentPane.appendChild(section);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "settings-nav-btn";
+    button.dataset.settingsSection = item.sectionId;
+    button.dataset.i18nKey = item.labelKey;
+    button.textContent = t(item.labelKey);
+    nav.appendChild(button);
+  }
+
+  navSection.appendChild(nav);
+  if (actionsSection) {
+    actionsSection.id = "settingsSidebarActions";
+    actionsSection.classList.add("settings-sidebar-actions");
+    actionsHeading.classList.add("hidden");
+    el.settingsPane.replaceChildren(navSection, actionsSection);
+  } else {
+    el.settingsPane.replaceChildren(navSection);
+  }
+  el.settingsContentPane = contentPane;
+  el.settingsNavButtons = Array.from(nav.querySelectorAll(".settings-nav-btn"));
+  el.settingsContentSections = Array.from(contentPane.querySelectorAll(".settings-content-section"));
+  setActiveSettingsSection(editor.activeSettingsSection);
+}
+
+function applySettingsNavTranslations() {
+  setTextById("settingsNavHeading", "tabs.settings");
+  for (const button of el.settingsNavButtons || []) {
+    const key = button.dataset.i18nKey;
+    if (key) {
+      button.textContent = t(key);
+    }
+  }
+  if (editor.activePane === "settings") {
+    setActiveSettingsSection(editor.activeSettingsSection);
+  }
+}
+
+function activeSettingsNavItem(sectionId = editor.activeSettingsSection) {
+  return SETTINGS_NAV_ITEMS.find((item) => item.sectionId === sectionId) || SETTINGS_NAV_ITEMS[0];
+}
+
+function setActiveSettingsSection(sectionId) {
+  setupSettingsWorkspace();
+  const item = activeSettingsNavItem(sectionId);
+  if (!item) return;
+
+  editor.activeSettingsSection = item.sectionId;
+  for (const section of el.settingsContentSections || []) {
+    section.classList.toggle("hidden", section.id !== item.sectionId);
+  }
+  for (const button of el.settingsNavButtons || []) {
+    const active = button.dataset.settingsSection === item.sectionId;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-current", active ? "page" : "false");
+  }
+  if (editor.activePane === "settings" && el.canvasTitle) {
+    el.canvasTitle.textContent = t(item.labelKey);
+  }
+}
+
 function setActivePane(pane) {
+  setupSettingsWorkspace();
   editor.activePane = pane === "settings" ? "settings" : "layout";
   const showLayout = editor.activePane === "layout";
   el.layoutPane.classList.toggle("hidden", !showLayout);
   el.settingsPane.classList.toggle("hidden", showLayout);
+  if (el.settingsContentPane) {
+    el.settingsContentPane.classList.toggle("hidden", showLayout);
+  }
+  if (el.canvasWrap) {
+    el.canvasWrap.classList.toggle("hidden", !showLayout);
+  }
+  if (el.actionsPanel) {
+    el.actionsPanel.classList.toggle("hidden", !showLayout);
+  }
   el.layoutTabBtn.classList.toggle("active", showLayout);
   el.settingsTabBtn.classList.toggle("active", !showLayout);
+  if (showLayout) {
+    clearOtaStatusPoll();
+    renderCanvas();
+  } else if (editor.ota.status?.running || editor.ota.status?.rebooting) {
+    setActiveSettingsSection(editor.activeSettingsSection);
+    scheduleOtaStatusPoll();
+  } else {
+    setActiveSettingsSection(editor.activeSettingsSection);
+  }
 }
 
 function setSectionCollapsed(sectionKey, collapsed) {
@@ -1628,6 +2195,7 @@ function renderSettings() {
   if (el.scanWifiBtn) {
     el.scanWifiBtn.disabled = !scanSupported || editor.wifiScanInProgress;
   }
+  renderOtaStatus(editor.ota.status);
   renderWifiScanResults(editor.wifiScanItems);
 }
 
@@ -1801,6 +2369,267 @@ async function loadSettings(silent = false) {
   }
 }
 
+function formatBytes(bytes) {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n < 0) return "n/a";
+  if (n === 0) return "0 B";
+  const units = ["B", "KB", "MB"];
+  let value = n;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const decimals = unitIndex === 0 || value >= 100 ? 0 : 1;
+  return `${value.toFixed(decimals)} ${units[unitIndex]}`;
+}
+
+function parseJsonMaybe(text) {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    return null;
+  }
+}
+
+function otaProgressVars(status) {
+  const written = Math.max(0, Number(status?.written) || 0);
+  const total = Math.max(0, Number(status?.total) || 0);
+  const rawProgress = Number(status?.progress);
+  const progress = total > 0
+    ? Math.min(100, Math.max(0, Number.isFinite(rawProgress) ? rawProgress : (written * 100) / total))
+    : 0;
+  return {
+    progress: total > 0 ? String(Math.round(progress)) : "--",
+    written: formatBytes(written),
+    total: total > 0 ? formatBytes(total) : "n/a",
+  };
+}
+
+function clearOtaStatusPoll() {
+  if (editor.ota.pollTimerId) {
+    window.clearTimeout(editor.ota.pollTimerId);
+    editor.ota.pollTimerId = null;
+  }
+}
+
+function scheduleOtaStatusPoll() {
+  clearOtaStatusPoll();
+  if (editor.activePane !== "settings") return;
+  editor.ota.pollTimerId = window.setTimeout(() => {
+    void loadOtaStatus(true);
+  }, OTA_STATUS_POLL_MS);
+}
+
+function setOtaInfo(text, isError = false) {
+  if (!el.settingsOtaInfo) return;
+  el.settingsOtaInfo.textContent = text;
+  el.settingsOtaInfo.classList.toggle("error", isError);
+}
+
+function setOtaProgress(percent) {
+  if (!el.settingsOtaProgressBar) return;
+  const n = Number(percent);
+  const clamped = Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
+  el.settingsOtaProgressBar.style.width = `${clamped}%`;
+}
+
+function setOtaControlsDisabled(disabled) {
+  const busy = Boolean(disabled);
+  if (el.startOtaUrlBtn) {
+    el.startOtaUrlBtn.disabled = busy;
+  }
+  if (el.uploadOtaBtn) {
+    el.uploadOtaBtn.disabled = busy;
+  }
+  if (el.settingsOtaUrl) {
+    el.settingsOtaUrl.disabled = busy;
+  }
+  if (el.settingsOtaFile) {
+    el.settingsOtaFile.disabled = busy;
+  }
+}
+
+function renderOtaStatus(status) {
+  if (!el.settingsOtaInfo) return;
+
+  const hasStatus = status && typeof status === "object";
+  if (!hasStatus) {
+    setOtaProgress(0);
+    setOtaControlsDisabled(editor.ota.uploadInProgress);
+    return;
+  }
+
+  const vars = otaProgressVars(status);
+  const state = typeof status.state === "string" ? status.state : "idle";
+  const running = Boolean(status.running);
+  const rebooting = Boolean(status.rebooting);
+  const progress = Number(vars.progress);
+  setOtaProgress(Number.isFinite(progress) ? progress : 0);
+
+  let text = "";
+  let isError = false;
+  if (state === "error") {
+    text = t("settings.ota.error", { error: status.error || t("common.unknown_error") });
+    isError = true;
+  } else if (rebooting) {
+    text = t("settings.ota.rebooting");
+  } else if (state === "success") {
+    text = t("settings.ota.success");
+  } else if (running && state === "url") {
+    text = t("settings.ota.downloading", vars);
+  } else if (running && state === "upload") {
+    text = t("settings.ota.uploading", vars);
+  } else if (running) {
+    text = t("settings.ota.running", vars);
+  } else {
+    text = t("settings.ota.idle", {
+      running: status.running_partition || "n/a",
+      next: status.next_partition || "n/a",
+      size: status.slot_size ? formatBytes(status.slot_size) : "n/a",
+    });
+  }
+
+  const imageInfo = [
+    status.project_name || "",
+    status.version || "",
+  ].filter(Boolean).join(" ");
+  if (imageInfo) {
+    text += `\n${imageInfo}`;
+  }
+  const targetPartition = status.partition || (running ? status.next_partition : "");
+  if (targetPartition) {
+    text += `\n${t("settings.ota.target_slot", { partition: targetPartition })}`;
+  }
+
+  setOtaInfo(text, isError);
+  setOtaControlsDisabled(editor.ota.uploadInProgress || running || rebooting);
+}
+
+async function loadOtaStatus(silent = false) {
+  if (!silent && el.settingsOtaInfo) {
+    setOtaInfo(t("settings.ota.refresh"));
+  }
+  try {
+    const status = await apiGet("/api/ota/status");
+    editor.ota.status = status;
+    renderOtaStatus(status);
+    if (status?.running || status?.rebooting) {
+      scheduleOtaStatusPoll();
+    } else {
+      clearOtaStatusPoll();
+    }
+    return status;
+  } catch (err) {
+    const wasRebooting = Boolean(editor.ota.status?.rebooting);
+    setOtaInfo(
+      wasRebooting ? t("settings.ota.rebooting") : t("settings.ota.request_failed", { error: err.message }),
+      !wasRebooting
+    );
+    if (!wasRebooting) {
+      clearOtaStatusPoll();
+    }
+    return null;
+  }
+}
+
+async function startOtaFromUrl() {
+  const url = el.settingsOtaUrl?.value.trim() || "";
+  if (!url) {
+    setOtaInfo(t("settings.ota.no_url"), true);
+    return;
+  }
+
+  clearOtaStatusPoll();
+  setOtaProgress(0);
+  setOtaControlsDisabled(true);
+  setOtaInfo(t("settings.ota.starting_url"));
+
+  try {
+    const response = await fetch("/api/ota/url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+    const body = await response.text();
+    const payload = parseJsonMaybe(body) || {};
+    if (!response.ok || payload.ok === false) {
+      throw new Error(payload.error || `${response.status} ${response.statusText}`);
+    }
+    editor.ota.status = payload;
+    renderOtaStatus(payload);
+    if (payload.running || payload.rebooting) {
+      scheduleOtaStatusPoll();
+    }
+  } catch (err) {
+    setOtaInfo(t("settings.ota.request_failed", { error: err.message }), true);
+    setOtaControlsDisabled(false);
+  }
+}
+
+async function uploadOtaFile() {
+  const file = el.settingsOtaFile?.files?.[0];
+  if (!file) {
+    setOtaInfo(t("settings.ota.no_file"), true);
+    return;
+  }
+
+  clearOtaStatusPoll();
+  editor.ota.uploadInProgress = true;
+  setOtaProgress(0);
+  setOtaControlsDisabled(true);
+  setOtaInfo(t("settings.ota.upload_progress", {
+    progress: "0",
+    written: "0 B",
+    total: formatBytes(file.size),
+  }));
+
+  try {
+    const payload = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/ota/upload");
+      xhr.setRequestHeader("Content-Type", "application/octet-stream");
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const progress = Math.min(100, Math.max(0, (event.loaded * 100) / event.total));
+        setOtaProgress(progress);
+        setOtaInfo(t("settings.ota.upload_progress", {
+          progress: String(Math.round(progress)),
+          written: formatBytes(event.loaded),
+          total: formatBytes(event.total),
+        }));
+      };
+      xhr.onload = () => {
+        const data = parseJsonMaybe(xhr.responseText) || {};
+        if (xhr.status < 200 || xhr.status >= 300 || data.ok === false) {
+          reject(new Error(data.error || `${xhr.status} ${xhr.statusText}`));
+          return;
+        }
+        resolve(data);
+      };
+      xhr.onerror = () => reject(new Error(t("common.unknown_error")));
+      xhr.onabort = () => reject(new Error("aborted"));
+      xhr.send(file);
+    });
+
+    editor.ota.status = payload;
+    renderOtaStatus(payload);
+    if (el.settingsOtaFile) {
+      el.settingsOtaFile.value = "";
+    }
+    if (payload?.running || payload?.rebooting) {
+      scheduleOtaStatusPoll();
+    }
+  } catch (err) {
+    setOtaInfo(t("settings.ota.request_failed", { error: err.message }), true);
+    setOtaProgress(0);
+  } finally {
+    editor.ota.uploadInProgress = false;
+    setOtaControlsDisabled(Boolean(editor.ota.status?.running || editor.ota.status?.rebooting));
+  }
+}
+
 async function putSettings(payload) {
   const response = await fetch("/api/settings", {
     method: "PUT",
@@ -1874,7 +2703,13 @@ async function saveHaProvisioning() {
   };
 
   setProvisioningInfo("ha", t("provision.saving_reboot"));
-  await putSettings(payload);
+  markSetupWizardPending();
+  try {
+    await putSettings(payload);
+  } catch (err) {
+    storageRemove(SETUP_WIZARD_PENDING_STORAGE_KEY);
+    throw err;
+  }
   setProvisioningInfo("ha", t("provision.saved_reboot"));
 }
 
@@ -2289,6 +3124,428 @@ async function refreshStates() {
   }
 }
 
+function clearLightEntityPickerPoll() {
+  if (editor.lightPicker.pollTimerId !== null) {
+    window.clearTimeout(editor.lightPicker.pollTimerId);
+    editor.lightPicker.pollTimerId = null;
+  }
+}
+
+function clearLightEntityPickerSearchDebounce() {
+  if (editor.lightPicker.searchDebounceId !== null) {
+    window.clearTimeout(editor.lightPicker.searchDebounceId);
+    editor.lightPicker.searchDebounceId = null;
+  }
+}
+
+function entityPickerConfig(widgetType = editor.lightPicker.widgetType) {
+  const normalizedWidgetType = ENTITY_PICKER_CONFIGS[widgetType] ? widgetType : "light_tile";
+  return {
+    widgetType: normalizedWidgetType,
+    ...ENTITY_PICKER_CONFIGS[normalizedWidgetType],
+  };
+}
+
+function entityPickerItemsLabel(config = entityPickerConfig()) {
+  return t(config.itemsKey, {}, config.itemsFallback);
+}
+
+function entityPickerSearchValue() {
+  return String(editor.lightPicker.search || "").trim();
+}
+
+function entityPickerSearchReady(config = entityPickerConfig()) {
+  const minSearch = Number(config.minSearch || 0);
+  return minSearch <= 0 || entityPickerSearchValue().length >= minSearch;
+}
+
+function entityPickerLiveSearchEnabled(config = entityPickerConfig()) {
+  return config.liveSearch !== false;
+}
+
+function entityPickerCacheKey(domain, search = entityPickerSearchValue()) {
+  return `${domain}|${String(search || "").trim().toLowerCase()}`;
+}
+
+function normalizeEntityPickerItems(items, domain) {
+  if (!Array.isArray(items)) return [];
+  const prefix = `${domain}.`;
+  return items
+    .filter((item) => item && typeof item.id === "string" && item.id.startsWith(prefix))
+    .map((item) => ({
+      id: item.id,
+      name: String(item.name || item.id),
+      room: String(item.room || ""),
+      area_id: String(item.area_id || ""),
+      icon: String(item.icon || ""),
+    }));
+}
+
+function entityPickerRoomLabel(item) {
+  return item.room || t("entity_picker.unassigned_room");
+}
+
+function mergeEntityPickerItemsIntoEntities(items, domain) {
+  if (!Array.isArray(items) || !items.length) return;
+  const byId = new Map(editor.entities.map((entity) => [entity.id, entity]));
+  for (const item of items) {
+    if (!item?.id || byId.has(item.id)) continue;
+    const entity = {
+      id: item.id,
+      name: item.name || item.id,
+      domain,
+      icon: item.icon || "",
+      capabilities: {},
+    };
+    editor.entities.push(entity);
+    byId.set(item.id, entity);
+  }
+  renderEntityOptions();
+}
+
+function groupEntityPickerItemsByRoom(items) {
+  const groups = new Map();
+  for (const item of items) {
+    const label = entityPickerRoomLabel(item);
+    if (!groups.has(label)) {
+      groups.set(label, []);
+    }
+    groups.get(label).push(item);
+  }
+  return [...groups.entries()]
+    .map(([room, entries]) => ({
+      room,
+      entries: entries.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
+    }))
+    .sort((a, b) => {
+      const unassigned = t("entity_picker.unassigned_room");
+      if (a.room === unassigned && b.room !== unassigned) return 1;
+      if (b.room === unassigned && a.room !== unassigned) return -1;
+      return a.room.localeCompare(b.room);
+    });
+}
+
+function renderLightEntityPicker(data = {}) {
+  if (!el.lightEntityPickerRooms || !el.lightEntityPickerStatus) return;
+
+  const config = entityPickerConfig();
+  const domain = config.domain;
+  const search = entityPickerSearchValue();
+  const cacheKey = entityPickerCacheKey(domain, search);
+  const widgetLabel = t(config.widgetKey, {}, config.widgetFallback);
+  const itemsLabel = entityPickerItemsLabel(config);
+  const searchReady = entityPickerSearchReady(config);
+  const liveSearch = entityPickerLiveSearchEnabled(config);
+  const sourceItems = Object.prototype.hasOwnProperty.call(data, "items")
+    ? data.items
+    : editor.lightPicker.items;
+  const items = normalizeEntityPickerItems(sourceItems, domain);
+
+  if (el.lightEntityPickerTitle) {
+    el.lightEntityPickerTitle.textContent = t(config.titleKey, {}, config.titleFallback);
+  }
+  if (el.lightEntityPickerBlankBtn) {
+    el.lightEntityPickerBlankBtn.textContent = t(config.blankKey, {}, config.blankFallback);
+  }
+  if (el.lightEntityPickerRefreshBtn) {
+    el.lightEntityPickerRefreshBtn.textContent = liveSearch ? t("entity_picker.refresh") : t("entity_picker.search");
+  }
+  if (el.lightEntityPickerSearch && el.lightEntityPickerSearch.value !== editor.lightPicker.search) {
+    el.lightEntityPickerSearch.value = editor.lightPicker.search;
+  }
+
+  if (items.length > 0 || data.status === "ready" || data.status === "refreshing") {
+    editor.lightPicker.items = items;
+    editor.lightPicker.itemsByDomain[cacheKey] = items;
+    editor.lightPicker.hasLoaded = true;
+    editor.lightPicker.loadedByDomain[cacheKey] = true;
+    mergeEntityPickerItemsIntoEntities(items, domain);
+  }
+  editor.lightPicker.lastStatus = data.status || editor.lightPicker.lastStatus;
+
+  const pending = data.pending === true || editor.lightPicker.loading;
+  let statusText = "";
+  if (data.status === "disconnected") {
+    statusText = t("entity_picker.disconnected");
+  } else if (!searchReady && !editor.lightPicker.items.length) {
+    statusText = t("entity_picker.search_hint", { count: config.minSearch, items: itemsLabel });
+  } else if (!liveSearch && searchReady && !editor.lightPicker.hasLoaded && !pending && !editor.lightPicker.items.length) {
+    statusText = t("entity_picker.search_ready", { items: itemsLabel });
+  } else if (data.status === "refreshing") {
+    statusText = t("entity_picker.refreshing_items", { items: itemsLabel });
+  } else if (pending && !editor.lightPicker.items.length) {
+    statusText = t("entity_picker.pending");
+  } else if (!editor.lightPicker.items.length) {
+    statusText = t("entity_picker.empty_items", { items: itemsLabel });
+  }
+  if (data.truncated) {
+    statusText = statusText ? `${statusText}\n${t("entity_picker.truncated")}` : t("entity_picker.truncated");
+  }
+  el.lightEntityPickerStatus.textContent = statusText;
+
+  const loaded = Number.isFinite(Number(data.loaded)) ? Number(data.loaded) : editor.lightPicker.items.length;
+  const rawTotal = Number.isFinite(Number(data.total)) ? Number(data.total) : 0;
+  const limit = Number.isFinite(Number(data.limit)) && Number(data.limit) > 0 ? Number(data.limit) : loaded;
+  const target = rawTotal > 0 ? Math.min(rawTotal, limit) : limit;
+  const progressVisible = searchReady && (pending || rawTotal > 0 || data.truncated === true);
+  if (el.lightEntityPickerProgress && el.lightEntityPickerProgressBar && el.lightEntityPickerProgressText) {
+    el.lightEntityPickerProgress.classList.toggle("hidden", !progressVisible);
+    const pct = target > 0 ? Math.min(100, Math.max(0, (loaded * 100) / target)) : (pending ? 8 : 0);
+    el.lightEntityPickerProgressBar.style.width = `${pct}%`;
+    el.lightEntityPickerProgressText.textContent = rawTotal > 0
+      ? t("entity_picker.progress_total", {
+        loaded: Math.min(loaded, target),
+        target,
+        total: rawTotal,
+      })
+      : t("entity_picker.progress", { loaded, target: target || "..." });
+  }
+
+  const groups = groupEntityPickerItemsByRoom(editor.lightPicker.items);
+  el.lightEntityPickerRooms.innerHTML = "";
+  for (const group of groups) {
+    const details = document.createElement("details");
+    details.className = "light-picker-room";
+    details.open = groups.length <= 3 || group.entries.length <= 8;
+
+    const summary = document.createElement("summary");
+    summary.textContent = `${group.room} (${group.entries.length})`;
+    details.appendChild(summary);
+
+    const list = document.createElement("div");
+    list.className = "light-picker-room-list";
+    for (const item of group.entries) {
+      const button = document.createElement("button");
+      button.className = "light-picker-entity";
+      button.type = "button";
+      button.title = item.id;
+      button.innerHTML = `<strong></strong><span></span>`;
+      button.querySelector("strong").textContent = item.name || item.id;
+      button.querySelector("span").textContent = item.id;
+      button.onclick = () => {
+        addWidget(config.widgetType || editor.lightPicker.widgetType, {
+          entityId: item.id,
+          title: item.name || item.id,
+        });
+        closeLightEntityPicker();
+        setStatus(t("entity_picker.added_widget", { widget: widgetLabel, entity: item.id }));
+      };
+      list.appendChild(button);
+    }
+    details.appendChild(list);
+    el.lightEntityPickerRooms.appendChild(details);
+  }
+}
+
+async function fetchLightEntityPicker(options = {}) {
+  const refresh = options.refresh === true;
+  const pollCount = Number(options.pollCount || 0);
+  const config = entityPickerConfig();
+  const domain = config.domain;
+  const search = entityPickerSearchValue();
+  const itemsLabel = entityPickerItemsLabel(config);
+  if (!entityPickerSearchReady(config)) {
+    editor.lightPicker.loading = false;
+    renderLightEntityPicker({
+      status: "idle",
+      pending: false,
+      items: editor.lightPicker.items,
+    });
+    return;
+  }
+  const requestSeq = ++editor.lightPicker.requestSeq;
+  editor.lightPicker.loading = true;
+  if (pollCount === 0 || refresh) {
+    const startStatus = refresh && editor.lightPicker.items.length > 0 ? "refreshing" : "pending";
+    renderLightEntityPicker({
+      status: startStatus,
+      pending: true,
+      items: editor.lightPicker.items,
+    });
+  }
+
+  const params = new URLSearchParams();
+  params.set("domain", domain);
+  if (search) params.set("search", search);
+  if (refresh) params.set("refresh", "1");
+
+  try {
+    const data = await apiGet(`/api/ha/light_entities${params.toString() ? `?${params.toString()}` : ""}`);
+    if (requestSeq !== editor.lightPicker.requestSeq) return;
+    editor.lightPicker.loading = data.pending === true;
+    renderLightEntityPicker(data);
+
+    if (data.pending === true && pollCount < LIGHT_ENTITY_PICKER_MAX_POLLS) {
+      clearLightEntityPickerPoll();
+      editor.lightPicker.pollTimerId = window.setTimeout(() => {
+        editor.lightPicker.pollTimerId = null;
+        void fetchLightEntityPicker({ refresh: false, pollCount: pollCount + 1 });
+      }, LIGHT_ENTITY_PICKER_POLL_MS);
+    }
+  } catch (err) {
+    if (requestSeq !== editor.lightPicker.requestSeq) return;
+    editor.lightPicker.loading = false;
+    const message = t("entity_picker.fetch_failed_items", { items: itemsLabel, error: err.message });
+    el.lightEntityPickerStatus.textContent = message;
+    setStatus(message, true);
+  }
+}
+
+function openLightEntityPicker(widgetType = "light_tile") {
+  const config = entityPickerConfig(widgetType);
+  if (!el.lightEntityPickerOverlay) {
+    addWidget(config.widgetType || widgetType);
+    return;
+  }
+  editor.lightPicker.widgetType = widgetType;
+  editor.lightPicker.domain = config.domain;
+  editor.lightPicker.search = editor.lightPicker.searchByDomain[config.domain] || "";
+  if (el.lightEntityPickerSearch) {
+    el.lightEntityPickerSearch.value = editor.lightPicker.search;
+  }
+  const cacheKey = entityPickerCacheKey(config.domain);
+  editor.lightPicker.items = editor.lightPicker.itemsByDomain[cacheKey] || [];
+  editor.lightPicker.hasLoaded = editor.lightPicker.loadedByDomain[cacheKey] === true;
+  const shouldAutoFetch =
+    !editor.lightPicker.hasLoaded && entityPickerSearchReady(config) && entityPickerLiveSearchEnabled(config);
+  el.lightEntityPickerOverlay.classList.remove("hidden");
+  renderLightEntityPicker({
+    status: editor.lightPicker.hasLoaded ? "ready" : (shouldAutoFetch ? "pending" : "idle"),
+    pending: shouldAutoFetch,
+    items: editor.lightPicker.items,
+  });
+  if (shouldAutoFetch) {
+    void fetchLightEntityPicker();
+  }
+}
+
+function closeLightEntityPicker() {
+  clearLightEntityPickerPoll();
+  clearLightEntityPickerSearchDebounce();
+  editor.lightPicker.loading = false;
+  if (el.lightEntityPickerOverlay) {
+    el.lightEntityPickerOverlay.classList.add("hidden");
+  }
+}
+
+function layoutWidgetCount() {
+  return (editor.layout?.pages || []).reduce((count, page) => (
+    count + (Array.isArray(page.widgets) ? page.widgets.length : 0)
+  ), 0);
+}
+
+function setupWizardPending() {
+  return storageGet(SETUP_WIZARD_PENDING_STORAGE_KEY) === "1";
+}
+
+function markSetupWizardPending() {
+  storageSet(SETUP_WIZARD_PENDING_STORAGE_KEY, "1");
+  storageRemove(SETUP_WIZARD_DISMISSED_STORAGE_KEY);
+}
+
+function markSetupWizardDismissed() {
+  storageRemove(SETUP_WIZARD_PENDING_STORAGE_KEY);
+  storageSet(SETUP_WIZARD_DISMISSED_STORAGE_KEY, "1");
+}
+
+function setupWizardShouldAutoOpen() {
+  if (!el.setupWizardOverlay || !editor.layout) return false;
+  if (setupWizardPending()) return true;
+  if (storageGet(SETUP_WIZARD_DISMISSED_STORAGE_KEY) === "1") return false;
+  return Boolean(editor.settings?.ha?.configured) && layoutWidgetCount() === 0;
+}
+
+function setupWizardCountText() {
+  const count = selectedPage()?.widgets?.length || 0;
+  if (count <= 0) return t("setup.count_none");
+  if (count === 1) return t("setup.count_one");
+  return t("setup.count_many", { count });
+}
+
+function applySetupWizardPageTitle() {
+  const page = selectedPage();
+  if (!page || !el.setupWizardPageTitle) return;
+  const title = el.setupWizardPageTitle.value.trim();
+  if (title) {
+    page.title = title;
+    renderAll();
+  }
+}
+
+function renderSetupWizard() {
+  if (!el.setupWizardOverlay) return;
+  if (el.setupWizardPageTitle && document.activeElement !== el.setupWizardPageTitle) {
+    el.setupWizardPageTitle.value = selectedPage()?.title || t("layout.default_page.title");
+  }
+  if (el.setupWizardCount) {
+    el.setupWizardCount.textContent = setupWizardCountText();
+  }
+}
+
+function openSetupWizard(options = {}) {
+  if (!el.setupWizardOverlay || !editor.layout) return;
+  editor.setupWizard.active = true;
+  editor.setupWizard.openedManually = options.manual === true;
+  editor.setupWizard.addedSinceOpen = 0;
+  if (el.setupWizardStatus) {
+    el.setupWizardStatus.textContent = "";
+    el.setupWizardStatus.classList.remove("error");
+  }
+  renderSetupWizard();
+  el.setupWizardOverlay.classList.remove("hidden");
+}
+
+function closeSetupWizard(dismiss = true) {
+  editor.setupWizard.active = false;
+  if (dismiss) {
+    markSetupWizardDismissed();
+  }
+  if (el.setupWizardOverlay) {
+    el.setupWizardOverlay.classList.add("hidden");
+  }
+}
+
+function openSetupWizardEntityPicker(widgetType) {
+  applySetupWizardPageTitle();
+  openLightEntityPicker(widgetType);
+}
+
+function onSetupWizardWidgetAdded(widget) {
+  if (!editor.setupWizard.active || !widget) return;
+  editor.setupWizard.addedSinceOpen += 1;
+  if (el.setupWizardStatus) {
+    el.setupWizardStatus.textContent = t("setup.added", { title: widget.title || widget.id });
+    el.setupWizardStatus.classList.remove("error");
+  }
+  renderSetupWizard();
+}
+
+async function saveSetupWizardLayout(options = {}) {
+  applySetupWizardPageTitle();
+  if (el.setupWizardStatus) {
+    el.setupWizardStatus.textContent = t("setup.saving");
+    el.setupWizardStatus.classList.remove("error");
+  }
+  try {
+    await saveLayout();
+    if (el.setupWizardStatus) {
+      el.setupWizardStatus.textContent = t("setup.saved");
+      el.setupWizardStatus.classList.remove("error");
+    }
+    markSetupWizardDismissed();
+    if (options.closeOnSuccess === true) {
+      closeSetupWizard(false);
+    }
+    return true;
+  } catch (err) {
+    if (el.setupWizardStatus) {
+      el.setupWizardStatus.textContent = t("setup.save_failed", { error: err.message });
+      el.setupWizardStatus.classList.add("error");
+    }
+    return false;
+  }
+}
+
 function renderEntityOptions() {
   const inspectorType = inspectorWidgetType();
   const sliderDomain = inspectorSliderEntityDomain();
@@ -2478,6 +3735,10 @@ function attachDragAndResize(box, widget) {
 }
 
 function renderCanvas() {
+  if (editor.activePane === "settings") {
+    setActiveSettingsSection(editor.activeSettingsSection);
+    return;
+  }
   const page = selectedPage();
   el.canvas.innerHTML = "";
   if (!page) {
@@ -2699,12 +3960,12 @@ function applyPageName() {
   renderAll();
 }
 
-function addWidget(type) {
+function addWidget(type, options = {}) {
   const page = selectedPage();
   if (!page) return;
   const sliderDomain = DEFAULT_SLIDER_ENTITY_DOMAIN;
   const id = createWidgetIdForPage(page, type);
-  const entityId = pickDefaultEntityForWidgetType(type, sliderDomain);
+  const entityId = typeof options.entityId === "string" ? options.entityId : pickDefaultEntityForWidgetType(type, sliderDomain);
   const secondaryEntityId = type === "heating_tile" ? pickDefaultEntityForWidgetType("sensor") : "";
   const defaultW =
     type === "weather_3day" ? 360
@@ -2719,7 +3980,7 @@ function addWidget(type) {
   const widget = {
     id,
     type,
-    title: id,
+    title: typeof options.title === "string" && options.title.trim() ? options.title.trim() : id,
     entity_id: entityId,
     secondary_entity_id: secondaryEntityId,
     rect,
@@ -2741,6 +4002,8 @@ function addWidget(type) {
   page.widgets.push(widget);
   editor.selectedWidgetId = id;
   renderAll();
+  onSetupWizardWidgetAdded(widget);
+  return widget;
 }
 
 function deleteWidget() {
@@ -2902,6 +4165,10 @@ function importLayoutFromText(text) {
 }
 
 function bindUi() {
+  setupSettingsWorkspace();
+  for (const button of el.settingsNavButtons || []) {
+    button.onclick = () => setActiveSettingsSection(button.dataset.settingsSection);
+  }
   if (el.togglePagesSection) {
     el.togglePagesSection.onclick = () => toggleSection("pages");
   }
@@ -2917,19 +4184,131 @@ function bindUi() {
   el.settingsTabBtn.onclick = async () => {
     setActivePane("settings");
     await loadSettings(true);
+    await loadOtaStatus(true);
   };
   el.addPageBtn.onclick = addPage;
   el.deletePageBtn.onclick = deletePage;
   el.applyPageBtn.onclick = applyPageName;
-  el.addSensorBtn.onclick = () => addWidget("sensor");
-  el.addButtonBtn.onclick = () => addWidget("button");
+  el.addSensorBtn.onclick = () => openLightEntityPicker("sensor");
+  el.addButtonBtn.onclick = () => openLightEntityPicker("button");
   el.addSliderBtn.onclick = () => addWidget("slider");
   el.addGraphBtn.onclick = () => addWidget("graph");
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
-  el.addLightTileBtn.onclick = () => addWidget("light_tile");
-  el.addHeatingTileBtn.onclick = () => addWidget("heating_tile");
-  el.addWeatherTileBtn.onclick = () => addWidget("weather_tile");
-  el.addWeather3DayBtn.onclick = () => addWidget("weather_3day");
+  el.addLightTileBtn.onclick = () => openLightEntityPicker("light_tile");
+  if (el.openSetupWizardBtn) {
+    el.openSetupWizardBtn.onclick = () => openSetupWizard({ manual: true });
+  }
+  el.addHeatingTileBtn.onclick = () => openLightEntityPicker("heating_tile");
+  el.addWeatherTileBtn.onclick = () => openLightEntityPicker("weather_tile");
+  el.addWeather3DayBtn.onclick = () => openLightEntityPicker("weather_3day");
+  if (el.lightEntityPickerRefreshBtn) {
+    el.lightEntityPickerRefreshBtn.onclick = () => {
+      const config = entityPickerConfig();
+      const cacheKey = entityPickerCacheKey(config.domain);
+      editor.lightPicker.hasLoaded = false;
+      editor.lightPicker.loadedByDomain[cacheKey] = false;
+      clearLightEntityPickerPoll();
+      clearLightEntityPickerSearchDebounce();
+      void fetchLightEntityPicker({ refresh: true });
+    };
+  }
+  if (el.lightEntityPickerSearch) {
+    el.lightEntityPickerSearch.oninput = () => {
+      const config = entityPickerConfig();
+      const search = el.lightEntityPickerSearch.value || "";
+      editor.lightPicker.search = search;
+      editor.lightPicker.searchByDomain[config.domain] = search;
+      const cacheKey = entityPickerCacheKey(config.domain, search);
+      editor.lightPicker.items = editor.lightPicker.itemsByDomain[cacheKey] || [];
+      editor.lightPicker.hasLoaded = editor.lightPicker.loadedByDomain[cacheKey] === true;
+      clearLightEntityPickerPoll();
+      clearLightEntityPickerSearchDebounce();
+      const shouldAutoFetch =
+        !editor.lightPicker.hasLoaded && entityPickerSearchReady(config) && entityPickerLiveSearchEnabled(config);
+      editor.lightPicker.requestSeq += 1;
+      editor.lightPicker.loading = shouldAutoFetch;
+      renderLightEntityPicker({
+        status: editor.lightPicker.hasLoaded ? "ready" : (shouldAutoFetch ? "pending" : "idle"),
+        pending: shouldAutoFetch,
+        items: editor.lightPicker.items,
+      });
+      if (shouldAutoFetch) {
+        editor.lightPicker.searchDebounceId = window.setTimeout(() => {
+          editor.lightPicker.searchDebounceId = null;
+          void fetchLightEntityPicker({ refresh: true });
+        }, ENTITY_PICKER_SEARCH_DEBOUNCE_MS);
+      }
+    };
+    el.lightEntityPickerSearch.onkeydown = (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      const config = entityPickerConfig();
+      const cacheKey = entityPickerCacheKey(config.domain);
+      editor.lightPicker.hasLoaded = false;
+      editor.lightPicker.loadedByDomain[cacheKey] = false;
+      clearLightEntityPickerPoll();
+      clearLightEntityPickerSearchDebounce();
+      void fetchLightEntityPicker({ refresh: true });
+    };
+  }
+  if (el.lightEntityPickerCloseBtn) {
+    el.lightEntityPickerCloseBtn.onclick = closeLightEntityPicker;
+  }
+  if (el.lightEntityPickerBlankBtn) {
+    el.lightEntityPickerBlankBtn.onclick = () => {
+      addWidget(editor.lightPicker.widgetType || "light_tile");
+      closeLightEntityPicker();
+    };
+  }
+  if (el.lightEntityPickerOverlay) {
+    el.lightEntityPickerOverlay.addEventListener("click", (event) => {
+      if (event.target === el.lightEntityPickerOverlay) {
+        closeLightEntityPicker();
+      }
+    });
+  }
+  if (el.setupWizardAddLightBtn) {
+    el.setupWizardAddLightBtn.onclick = () => openSetupWizardEntityPicker("light_tile");
+  }
+  if (el.setupWizardAddHeatingBtn) {
+    el.setupWizardAddHeatingBtn.onclick = () => openSetupWizardEntityPicker("heating_tile");
+  }
+  if (el.setupWizardAddWeatherBtn) {
+    el.setupWizardAddWeatherBtn.onclick = () => openSetupWizardEntityPicker("weather_tile");
+  }
+  if (el.setupWizardAddButtonBtn) {
+    el.setupWizardAddButtonBtn.onclick = () => openSetupWizardEntityPicker("button");
+  }
+  if (el.setupWizardAddSensorBtn) {
+    el.setupWizardAddSensorBtn.onclick = () => openSetupWizardEntityPicker("sensor");
+  }
+  if (el.setupWizardPageTitle) {
+    el.setupWizardPageTitle.onchange = applySetupWizardPageTitle;
+    el.setupWizardPageTitle.onblur = applySetupWizardPageTitle;
+  }
+  if (el.setupWizardCloseBtn) {
+    el.setupWizardCloseBtn.onclick = () => closeSetupWizard(true);
+  }
+  if (el.setupWizardSkipBtn) {
+    el.setupWizardSkipBtn.onclick = () => closeSetupWizard(true);
+  }
+  if (el.setupWizardDoneBtn) {
+    el.setupWizardDoneBtn.onclick = () => {
+      void saveSetupWizardLayout({ closeOnSuccess: true });
+    };
+  }
+  if (el.setupWizardSaveBtn) {
+    el.setupWizardSaveBtn.onclick = () => {
+      void saveSetupWizardLayout();
+    };
+  }
+  if (el.setupWizardOverlay) {
+    el.setupWizardOverlay.addEventListener("click", (event) => {
+      if (event.target === el.setupWizardOverlay) {
+        closeSetupWizard(true);
+      }
+    });
+  }
   el.deleteWidgetBtn.onclick = deleteWidget;
   if (el.applyInspectorBtn) {
     el.applyInspectorBtn.onclick = () => applyInspector();
@@ -3062,7 +4441,25 @@ function bindUi() {
   bindInspectorAutoApply(el.fY, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fW, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fH, ["change"], { refreshInspector: true, softEntityValidation: true });
-  el.reloadSettingsBtn.onclick = () => loadSettings();
+  el.reloadSettingsBtn.onclick = async () => {
+    await loadSettings();
+    await loadOtaStatus(true);
+  };
+  if (el.startOtaUrlBtn) {
+    el.startOtaUrlBtn.onclick = () => {
+      void startOtaFromUrl();
+    };
+  }
+  if (el.refreshOtaStatusBtn) {
+    el.refreshOtaStatusBtn.onclick = () => {
+      void loadOtaStatus();
+    };
+  }
+  if (el.uploadOtaBtn) {
+    el.uploadOtaBtn.onclick = () => {
+      void uploadOtaFile();
+    };
+  }
   el.scanWifiBtn.onclick = () => scanWifiNetworks("settings");
   el.settingsWifiScanResults.onchange = () => {
     const option = el.settingsWifiScanResults.selectedOptions?.[0];
@@ -3254,6 +4651,9 @@ async function startEditor() {
   setProvisioningVisible(false);
   setActivePane("layout");
   await Promise.all([loadLayout(), loadEntities(), refreshStates()]);
+  if (setupWizardShouldAutoOpen()) {
+    openSetupWizard();
+  }
   window.setInterval(refreshStates, 5000);
 }
 

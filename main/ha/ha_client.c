@@ -62,6 +62,42 @@ typedef enum {
 #define HA_WS_ENTITIES_SUB_REQ_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * sizeof(uint32_t))
 #define HA_SVC_TRACE_CAPACITY 48U
 
+typedef enum {
+    HA_LIGHT_DISCOVERY_PHASE_NONE = 0,
+    HA_LIGHT_DISCOVERY_PHASE_TEMPLATE,
+    HA_LIGHT_DISCOVERY_PHASE_ENTITY_DISPLAY,
+    HA_LIGHT_DISCOVERY_PHASE_ENTITY_FULL,
+    HA_LIGHT_DISCOVERY_PHASE_AREAS,
+    HA_LIGHT_DISCOVERY_PHASE_DEVICES,
+} ha_light_discovery_phase_t;
+
+typedef struct {
+    char id[APP_MAX_ENTITY_ID_LEN];
+    char name[APP_MAX_NAME_LEN];
+    char room[APP_MAX_NAME_LEN];
+    char area_id[APP_HA_DISCOVERY_ID_MAX_LEN];
+    char device_id[APP_HA_DISCOVERY_ID_MAX_LEN];
+    char icon[APP_MAX_ICON_LEN];
+} ha_light_discovery_pending_item_t;
+
+typedef struct {
+    char id[APP_MAX_ENTITY_ID_LEN];
+    char name[APP_MAX_NAME_LEN];
+    char room[APP_MAX_NAME_LEN];
+    char area_id[APP_HA_DISCOVERY_ID_MAX_LEN];
+    char icon[APP_MAX_ICON_LEN];
+} ha_light_discovery_item_t;
+
+typedef struct {
+    char id[APP_HA_DISCOVERY_ID_MAX_LEN];
+    char name[APP_MAX_NAME_LEN];
+} ha_light_discovery_area_t;
+
+typedef struct {
+    char id[APP_HA_DISCOVERY_ID_MAX_LEN];
+    char area_id[APP_HA_DISCOVERY_ID_MAX_LEN];
+} ha_light_discovery_device_t;
+
 typedef struct {
     bool started;
     bool authenticated;
@@ -138,6 +174,30 @@ typedef struct {
     int64_t last_ws_bad_input_unix_ms;
     int64_t ws_get_states_block_until_unix_ms;
     ha_service_trace_t service_traces[HA_SVC_TRACE_CAPACITY];
+    bool light_discovery_requested;
+    bool light_discovery_inflight;
+    ha_light_discovery_phase_t light_discovery_phase;
+    char light_discovery_domain[APP_HA_DISCOVERY_DOMAIN_MAX_LEN];
+    char light_discovery_search[APP_HA_DISCOVERY_SEARCH_MAX_LEN];
+    uint32_t light_discovery_req_id;
+    int64_t light_discovery_started_unix_ms;
+    int64_t light_discovery_updated_unix_ms;
+    int64_t light_discovery_next_step_unix_ms;
+    int64_t light_discovery_last_wait_log_unix_ms;
+    uint16_t light_discovery_template_offset;
+    uint16_t light_discovery_template_total;
+    ha_light_discovery_item_t *light_discovery_items;
+    uint16_t light_discovery_count;
+    bool light_discovery_truncated;
+    ha_light_discovery_pending_item_t *light_discovery_pending_items;
+    uint16_t light_discovery_pending_count;
+    bool light_discovery_pending_truncated;
+    ha_light_discovery_area_t *light_discovery_areas;
+    uint16_t light_discovery_area_count;
+    bool light_discovery_area_truncated;
+    ha_light_discovery_device_t *light_discovery_devices;
+    uint16_t light_discovery_device_count;
+    bool light_discovery_device_truncated;
     esp_http_client_handle_t http_client;
     QueueHandle_t ws_rx_queue;
     TaskHandle_t task_handle;
@@ -178,6 +238,15 @@ static const int64_t HA_WS_GET_STATES_BAD_INPUT_COOLDOWN_MS = 60000;
    Keep disabled so intentional HA downtime does not trigger transport recovery loops. */
 static const bool HA_WS_ESCALATE_RECOVER_WHEN_WIFI_UP = false;
 static const int64_t HA_WS_ENTITIES_SUBSCRIBE_STEP_DELAY_MS = 300;
+static const int64_t HA_LIGHT_DISCOVERY_WS_STABLE_DELAY_MS = 45000;
+static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_STABLE_DELAY_MS = 12000;
+static const int64_t HA_LIGHT_DISCOVERY_PAGE_STEP_DELAY_MS = 700;
+static const int64_t HA_LIGHT_DISCOVERY_RETRY_DELAY_MS = 6000;
+static const int64_t HA_LIGHT_DISCOVERY_WAIT_LOG_INTERVAL_MS = 5000;
+static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_FREE_BYTES = (180U * 1024U);
+static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_LARGEST_BYTES = (80U * 1024U);
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES = (120U * 1024U);
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES = (48U * 1024U);
 /* Internal heap on ESP32-P4 can be low in normal operation due to DMA/internal reservations.
    Tune thresholds to avoid permanent "protect" on healthy WS-only idle. */
 static const size_t HA_BG_HEAP_PRESSURE_BYTES = (12U * 1024U);
@@ -234,12 +303,18 @@ static bool ha_client_capture_layout_snapshot(
 static bool ha_client_rest_enabled(void);
 static esp_err_t ha_client_send_subscribe_single_entity(const char *entity_id, uint32_t *out_req_id);
 static esp_err_t ha_client_send_weather_daily_forecast_ws(const char *entity_id, uint32_t *out_req_id);
+static esp_err_t ha_client_send_light_discovery_request(ha_light_discovery_phase_t phase);
 static void ha_client_mark_entities_seen(const char *entity_id);
 static esp_err_t ha_client_ensure_entities_sub_buffers(void);
 static void ha_client_clear_entities_sub_buffers(void);
 static void ha_client_free_entities_sub_buffers(void);
 static char *ha_client_entities_sub_target_at(uint16_t idx);
 static char *ha_client_entities_sub_seen_at(uint16_t idx);
+static bool ha_client_light_discovery_has_ready_cache_locked(void);
+static bool ha_client_light_discovery_start_locked(const char *domain, const char *search, int64_t now_ms);
+static bool ha_client_light_discovery_handle_result(uint32_t msg_id, cJSON *root, cJSON *success_item);
+static int ha_client_light_discovery_item_cmp(const void *lhs, const void *rhs);
+static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16_t page_size);
 static uint16_t ha_client_prepare_entities_resubscribe_locked(int64_t now_ms);
 static const size_t HA_WS_RX_ASSEMBLY_BUF_SIZE = 65536U;
 static char *s_ws_rx_buf = NULL;
@@ -1014,6 +1089,56 @@ static bool ha_client_entity_is_light(const char *entity_id)
     return strncmp(entity_id, "light.", 6) == 0;
 }
 
+static bool ha_client_discovery_domain_supported(const char *domain)
+{
+    if (domain == NULL) {
+        return false;
+    }
+    return strcmp(domain, "light") == 0 ||
+           strcmp(domain, "sensor") == 0 ||
+           strcmp(domain, "switch") == 0 ||
+           strcmp(domain, "weather") == 0 ||
+           strcmp(domain, "climate") == 0;
+}
+
+static const char *ha_client_discovery_domain_or_default(const char *domain)
+{
+    return ha_client_discovery_domain_supported(domain) ? domain : "light";
+}
+
+static bool ha_client_entity_matches_domain(const char *entity_id, const char *domain)
+{
+    const char *checked_domain = ha_client_discovery_domain_or_default(domain);
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return false;
+    }
+    size_t domain_len = strlen(checked_domain);
+    return strncmp(entity_id, checked_domain, domain_len) == 0 && entity_id[domain_len] == '.';
+}
+
+static void ha_client_discovery_normalize_search(const char *src, char *dst, size_t dst_size)
+{
+    if (dst == NULL || dst_size == 0) {
+        return;
+    }
+    dst[0] = '\0';
+    if (src == NULL) {
+        return;
+    }
+    while (*src == ' ' || *src == '\t' || *src == '\r' || *src == '\n') {
+        src++;
+    }
+    safe_copy_cstr(dst, dst_size, src);
+    size_t len = strlen(dst);
+    while (len > 0) {
+        char c = dst[len - 1];
+        if (c != ' ' && c != '\t' && c != '\r' && c != '\n') {
+            break;
+        }
+        dst[--len] = '\0';
+    }
+}
+
 static bool ha_client_entity_is_climate(const char *entity_id)
 {
     if (entity_id == NULL) {
@@ -1028,6 +1153,532 @@ static bool ha_client_entity_is_media_player(const char *entity_id)
         return false;
     }
     return strncmp(entity_id, "media_player.", 13) == 0;
+}
+
+static bool ha_client_json_string_value(cJSON *obj, const char *key, char *dst, size_t dst_size)
+{
+    if (!cJSON_IsObject(obj) || key == NULL || dst == NULL || dst_size == 0) {
+        return false;
+    }
+    cJSON *item = cJSON_GetObjectItemCaseSensitive(obj, key);
+    if (!cJSON_IsString(item) || item->valuestring == NULL || item->valuestring[0] == '\0') {
+        return false;
+    }
+    safe_copy_cstr(dst, dst_size, item->valuestring);
+    return true;
+}
+
+static void *ha_client_light_discovery_calloc(size_t count, size_t size)
+{
+    void *ptr = heap_caps_calloc(count, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (ptr == NULL) {
+        ptr = heap_caps_calloc(count, size, MALLOC_CAP_8BIT);
+    }
+    return ptr;
+}
+
+static bool ha_client_light_discovery_ensure_cache_locked(void)
+{
+    if (s_client.light_discovery_items == NULL) {
+        s_client.light_discovery_items = (ha_light_discovery_item_t *)ha_client_light_discovery_calloc(
+            APP_HA_LIGHT_DISCOVERY_MAX_ITEMS, sizeof(ha_light_discovery_item_t));
+    }
+    return s_client.light_discovery_items != NULL;
+}
+
+static bool ha_client_light_discovery_ensure_buffers_locked(void)
+{
+    if (!ha_client_light_discovery_ensure_cache_locked()) {
+        return false;
+    }
+    if (s_client.light_discovery_pending_items == NULL) {
+        s_client.light_discovery_pending_items =
+            (ha_light_discovery_pending_item_t *)ha_client_light_discovery_calloc(
+                APP_HA_LIGHT_DISCOVERY_MAX_ITEMS, sizeof(ha_light_discovery_pending_item_t));
+    }
+    if (s_client.light_discovery_areas == NULL) {
+        s_client.light_discovery_areas = (ha_light_discovery_area_t *)ha_client_light_discovery_calloc(
+            APP_HA_LIGHT_DISCOVERY_MAX_AREAS, sizeof(ha_light_discovery_area_t));
+    }
+    if (s_client.light_discovery_devices == NULL) {
+        s_client.light_discovery_devices = (ha_light_discovery_device_t *)ha_client_light_discovery_calloc(
+            APP_HA_LIGHT_DISCOVERY_MAX_DEVICES, sizeof(ha_light_discovery_device_t));
+    }
+
+    return s_client.light_discovery_items != NULL &&
+           s_client.light_discovery_pending_items != NULL &&
+           s_client.light_discovery_areas != NULL &&
+           s_client.light_discovery_devices != NULL;
+}
+
+static bool ha_client_light_discovery_ensure_template_buffers_locked(void)
+{
+    if (!ha_client_light_discovery_ensure_cache_locked()) {
+        return false;
+    }
+    if (s_client.light_discovery_pending_items == NULL) {
+        s_client.light_discovery_pending_items =
+            (ha_light_discovery_pending_item_t *)ha_client_light_discovery_calloc(
+                APP_HA_LIGHT_DISCOVERY_MAX_ITEMS, sizeof(ha_light_discovery_pending_item_t));
+    }
+    return s_client.light_discovery_pending_items != NULL;
+}
+
+static void ha_client_light_discovery_reset_pending_locked(void)
+{
+    if (s_client.light_discovery_pending_items != NULL) {
+        memset(s_client.light_discovery_pending_items, 0,
+            sizeof(ha_light_discovery_pending_item_t) * APP_HA_LIGHT_DISCOVERY_MAX_ITEMS);
+    }
+    if (s_client.light_discovery_areas != NULL) {
+        memset(s_client.light_discovery_areas, 0,
+            sizeof(ha_light_discovery_area_t) * APP_HA_LIGHT_DISCOVERY_MAX_AREAS);
+    }
+    if (s_client.light_discovery_devices != NULL) {
+        memset(s_client.light_discovery_devices, 0,
+            sizeof(ha_light_discovery_device_t) * APP_HA_LIGHT_DISCOVERY_MAX_DEVICES);
+    }
+    s_client.light_discovery_pending_count = 0;
+    s_client.light_discovery_pending_truncated = false;
+    s_client.light_discovery_area_count = 0;
+    s_client.light_discovery_area_truncated = false;
+    s_client.light_discovery_device_count = 0;
+    s_client.light_discovery_device_truncated = false;
+    s_client.light_discovery_last_wait_log_unix_ms = 0;
+    s_client.light_discovery_template_offset = 0;
+}
+
+static void ha_client_light_discovery_free_work_buffers_locked(void)
+{
+    if (s_client.light_discovery_pending_items != NULL) {
+        heap_caps_free(s_client.light_discovery_pending_items);
+        s_client.light_discovery_pending_items = NULL;
+    }
+    if (s_client.light_discovery_areas != NULL) {
+        heap_caps_free(s_client.light_discovery_areas);
+        s_client.light_discovery_areas = NULL;
+    }
+    if (s_client.light_discovery_devices != NULL) {
+        heap_caps_free(s_client.light_discovery_devices);
+        s_client.light_discovery_devices = NULL;
+    }
+    s_client.light_discovery_pending_count = 0;
+    s_client.light_discovery_pending_truncated = false;
+    s_client.light_discovery_area_count = 0;
+    s_client.light_discovery_area_truncated = false;
+    s_client.light_discovery_device_count = 0;
+    s_client.light_discovery_device_truncated = false;
+    s_client.light_discovery_last_wait_log_unix_ms = 0;
+    s_client.light_discovery_template_offset = 0;
+}
+
+static bool ha_client_light_discovery_has_ready_cache_locked(void)
+{
+    return s_client.light_discovery_items != NULL &&
+           s_client.light_discovery_updated_unix_ms > 0;
+}
+
+static bool ha_client_light_discovery_start_locked(const char *domain, const char *search, int64_t now_ms)
+{
+    const char *checked_domain = ha_client_discovery_domain_or_default(domain);
+    char checked_search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
+    ha_client_discovery_normalize_search(search, checked_search, sizeof(checked_search));
+    bool same_domain =
+        strncmp(s_client.light_discovery_domain, checked_domain, sizeof(s_client.light_discovery_domain)) == 0 &&
+        strncmp(s_client.light_discovery_search, checked_search, sizeof(s_client.light_discovery_search)) == 0;
+    bool have_buffers = APP_HA_LIGHT_DISCOVERY_TEMPLATE_ENABLED
+        ? ha_client_light_discovery_ensure_template_buffers_locked()
+        : ha_client_light_discovery_ensure_buffers_locked();
+    if (!have_buffers) {
+        ESP_LOGW(TAG_HA_CLIENT, "Entity discovery buffer allocation failed");
+        ha_client_light_discovery_free_work_buffers_locked();
+        return false;
+    }
+    if (!same_domain) {
+        if (s_client.light_discovery_items != NULL) {
+            memset(s_client.light_discovery_items, 0,
+                sizeof(ha_light_discovery_item_t) * APP_HA_LIGHT_DISCOVERY_MAX_ITEMS);
+        }
+        s_client.light_discovery_count = 0;
+        s_client.light_discovery_truncated = false;
+        s_client.light_discovery_updated_unix_ms = 0;
+    }
+    safe_copy_cstr(s_client.light_discovery_domain, sizeof(s_client.light_discovery_domain), checked_domain);
+    safe_copy_cstr(s_client.light_discovery_search, sizeof(s_client.light_discovery_search), checked_search);
+    ha_client_light_discovery_reset_pending_locked();
+    s_client.light_discovery_requested = true;
+    s_client.light_discovery_inflight = false;
+    s_client.light_discovery_phase = APP_HA_LIGHT_DISCOVERY_TEMPLATE_ENABLED
+        ? HA_LIGHT_DISCOVERY_PHASE_TEMPLATE
+        : HA_LIGHT_DISCOVERY_PHASE_ENTITY_DISPLAY;
+    s_client.light_discovery_req_id = 0;
+    s_client.light_discovery_started_unix_ms = now_ms;
+    s_client.light_discovery_next_step_unix_ms = now_ms;
+    s_client.light_discovery_template_offset = 0;
+    s_client.light_discovery_template_total = 0;
+    s_client.light_discovery_last_wait_log_unix_ms = 0;
+    ESP_LOGI(TAG_HA_CLIENT, "Entity discovery queued: domain=%s search=\"%s\" mode=%s page_size=%u",
+        s_client.light_discovery_domain,
+        s_client.light_discovery_search,
+        APP_HA_LIGHT_DISCOVERY_TEMPLATE_ENABLED ? "template-pages" : "registry-ws",
+        (unsigned)APP_HA_LIGHT_DISCOVERY_PAGE_SIZE);
+    return true;
+}
+
+static const char *ha_client_light_discovery_phase_name(ha_light_discovery_phase_t phase)
+{
+    switch (phase) {
+    case HA_LIGHT_DISCOVERY_PHASE_TEMPLATE:
+        return "template";
+    case HA_LIGHT_DISCOVERY_PHASE_ENTITY_DISPLAY:
+        return "entity_display";
+    case HA_LIGHT_DISCOVERY_PHASE_ENTITY_FULL:
+        return "entity_full";
+    case HA_LIGHT_DISCOVERY_PHASE_AREAS:
+        return "areas";
+    case HA_LIGHT_DISCOVERY_PHASE_DEVICES:
+        return "devices";
+    default:
+        return "idle";
+    }
+}
+
+static bool ha_client_light_discovery_pending_contains_locked(const char *entity_id)
+{
+    if (entity_id == NULL || entity_id[0] == '\0' || s_client.light_discovery_pending_items == NULL) {
+        return false;
+    }
+    for (uint16_t i = 0; i < s_client.light_discovery_pending_count; i++) {
+        if (strncmp(s_client.light_discovery_pending_items[i].id, entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void ha_client_light_discovery_add_pending_locked(const ha_light_discovery_pending_item_t *item)
+{
+    if (item == NULL || item->id[0] == '\0' ||
+        !ha_client_entity_matches_domain(item->id, s_client.light_discovery_domain)) {
+        return;
+    }
+    if (ha_client_light_discovery_pending_contains_locked(item->id)) {
+        return;
+    }
+    if (s_client.light_discovery_pending_count >= APP_HA_LIGHT_DISCOVERY_MAX_ITEMS) {
+        s_client.light_discovery_pending_truncated = true;
+        return;
+    }
+    s_client.light_discovery_pending_items[s_client.light_discovery_pending_count++] = *item;
+}
+
+static void ha_client_light_discovery_parse_display_entities_locked(cJSON *result)
+{
+    cJSON *entities = cJSON_IsObject(result) ? cJSON_GetObjectItemCaseSensitive(result, "entities") : result;
+    if (!cJSON_IsArray(entities)) {
+        return;
+    }
+
+    cJSON *entry = NULL;
+    cJSON_ArrayForEach(entry, entities)
+    {
+        if (!cJSON_IsObject(entry)) {
+            continue;
+        }
+        cJSON *hidden_by = cJSON_GetObjectItemCaseSensitive(entry, "hb");
+        if (cJSON_IsTrue(hidden_by)) {
+            continue;
+        }
+        ha_light_discovery_pending_item_t item = {0};
+        if (!ha_client_json_string_value(entry, "ei", item.id, sizeof(item.id)) ||
+            !ha_client_entity_matches_domain(item.id, s_client.light_discovery_domain)) {
+            continue;
+        }
+        if (!ha_client_json_string_value(entry, "en", item.name, sizeof(item.name))) {
+            safe_copy_cstr(item.name, sizeof(item.name), item.id);
+        }
+        (void)ha_client_json_string_value(entry, "ai", item.area_id, sizeof(item.area_id));
+        (void)ha_client_json_string_value(entry, "di", item.device_id, sizeof(item.device_id));
+        (void)ha_client_json_string_value(entry, "ic", item.icon, sizeof(item.icon));
+        ha_client_light_discovery_add_pending_locked(&item);
+    }
+}
+
+static void ha_client_light_discovery_parse_full_entities_locked(cJSON *result)
+{
+    if (!cJSON_IsArray(result)) {
+        return;
+    }
+
+    cJSON *entry = NULL;
+    cJSON_ArrayForEach(entry, result)
+    {
+        if (!cJSON_IsObject(entry)) {
+            continue;
+        }
+        cJSON *disabled_by = cJSON_GetObjectItemCaseSensitive(entry, "disabled_by");
+        cJSON *hidden_by = cJSON_GetObjectItemCaseSensitive(entry, "hidden_by");
+        if ((cJSON_IsString(disabled_by) && disabled_by->valuestring != NULL && disabled_by->valuestring[0] != '\0') ||
+            (cJSON_IsString(hidden_by) && hidden_by->valuestring != NULL && hidden_by->valuestring[0] != '\0')) {
+            continue;
+        }
+        ha_light_discovery_pending_item_t item = {0};
+        if (!ha_client_json_string_value(entry, "entity_id", item.id, sizeof(item.id)) ||
+            !ha_client_entity_matches_domain(item.id, s_client.light_discovery_domain)) {
+            continue;
+        }
+        if (!ha_client_json_string_value(entry, "name", item.name, sizeof(item.name)) &&
+            !ha_client_json_string_value(entry, "original_name", item.name, sizeof(item.name))) {
+            safe_copy_cstr(item.name, sizeof(item.name), item.id);
+        }
+        (void)ha_client_json_string_value(entry, "area_id", item.area_id, sizeof(item.area_id));
+        (void)ha_client_json_string_value(entry, "device_id", item.device_id, sizeof(item.device_id));
+        (void)ha_client_json_string_value(entry, "icon", item.icon, sizeof(item.icon));
+        ha_client_light_discovery_add_pending_locked(&item);
+    }
+}
+
+static void ha_client_light_discovery_parse_areas_locked(cJSON *result)
+{
+    if (!cJSON_IsArray(result)) {
+        return;
+    }
+
+    cJSON *entry = NULL;
+    cJSON_ArrayForEach(entry, result)
+    {
+        if (!cJSON_IsObject(entry)) {
+            continue;
+        }
+        if (s_client.light_discovery_area_count >= APP_HA_LIGHT_DISCOVERY_MAX_AREAS) {
+            s_client.light_discovery_area_truncated = true;
+            return;
+        }
+        ha_light_discovery_area_t area = {0};
+        if (!ha_client_json_string_value(entry, "area_id", area.id, sizeof(area.id))) {
+            continue;
+        }
+        if (!ha_client_json_string_value(entry, "name", area.name, sizeof(area.name))) {
+            safe_copy_cstr(area.name, sizeof(area.name), area.id);
+        }
+        s_client.light_discovery_areas[s_client.light_discovery_area_count++] = area;
+    }
+}
+
+static void ha_client_light_discovery_parse_devices_locked(cJSON *result)
+{
+    if (!cJSON_IsArray(result)) {
+        return;
+    }
+
+    cJSON *entry = NULL;
+    cJSON_ArrayForEach(entry, result)
+    {
+        if (!cJSON_IsObject(entry)) {
+            continue;
+        }
+        if (s_client.light_discovery_device_count >= APP_HA_LIGHT_DISCOVERY_MAX_DEVICES) {
+            s_client.light_discovery_device_truncated = true;
+            return;
+        }
+        ha_light_discovery_device_t device = {0};
+        if (!ha_client_json_string_value(entry, "id", device.id, sizeof(device.id))) {
+            continue;
+        }
+        (void)ha_client_json_string_value(entry, "area_id", device.area_id, sizeof(device.area_id));
+        s_client.light_discovery_devices[s_client.light_discovery_device_count++] = device;
+    }
+}
+
+static const char *ha_client_light_discovery_area_name_locked(const char *area_id)
+{
+    if (area_id == NULL || area_id[0] == '\0' || s_client.light_discovery_areas == NULL) {
+        return "";
+    }
+    for (uint16_t i = 0; i < s_client.light_discovery_area_count; i++) {
+        const ha_light_discovery_area_t *area = &s_client.light_discovery_areas[i];
+        if (strncmp(area->id, area_id, sizeof(area->id)) == 0) {
+            return area->name[0] != '\0' ? area->name : area->id;
+        }
+    }
+    return area_id;
+}
+
+static const char *ha_client_light_discovery_device_area_id_locked(const char *device_id)
+{
+    if (device_id == NULL || device_id[0] == '\0' || s_client.light_discovery_devices == NULL) {
+        return "";
+    }
+    for (uint16_t i = 0; i < s_client.light_discovery_device_count; i++) {
+        const ha_light_discovery_device_t *device = &s_client.light_discovery_devices[i];
+        if (strncmp(device->id, device_id, sizeof(device->id)) == 0) {
+            return device->area_id;
+        }
+    }
+    return "";
+}
+
+static int ha_client_light_discovery_item_cmp(const void *lhs, const void *rhs)
+{
+    const ha_light_discovery_item_t *a = (const ha_light_discovery_item_t *)lhs;
+    const ha_light_discovery_item_t *b = (const ha_light_discovery_item_t *)rhs;
+    int room_cmp = strncmp(a->room, b->room, APP_MAX_NAME_LEN);
+    if (room_cmp != 0) {
+        if (a->room[0] == '\0') {
+            return 1;
+        }
+        if (b->room[0] == '\0') {
+            return -1;
+        }
+        return room_cmp;
+    }
+    int name_cmp = strncmp(a->name, b->name, APP_MAX_NAME_LEN);
+    if (name_cmp != 0) {
+        return name_cmp;
+    }
+    return strncmp(a->id, b->id, APP_MAX_ENTITY_ID_LEN);
+}
+
+static void ha_client_light_discovery_finish_locked(int64_t now_ms)
+{
+    if (!ha_client_light_discovery_ensure_cache_locked()) {
+        return;
+    }
+
+    memset(s_client.light_discovery_items, 0,
+        sizeof(ha_light_discovery_item_t) * APP_HA_LIGHT_DISCOVERY_MAX_ITEMS);
+    s_client.light_discovery_count = 0;
+    s_client.light_discovery_truncated =
+        s_client.light_discovery_pending_truncated ||
+        s_client.light_discovery_area_truncated ||
+        s_client.light_discovery_device_truncated;
+
+    for (uint16_t i = 0; i < s_client.light_discovery_pending_count; i++) {
+        if (s_client.light_discovery_count >= APP_HA_LIGHT_DISCOVERY_MAX_ITEMS) {
+            s_client.light_discovery_truncated = true;
+            break;
+        }
+        const ha_light_discovery_pending_item_t *src = &s_client.light_discovery_pending_items[i];
+        ha_light_discovery_item_t *dst = &s_client.light_discovery_items[s_client.light_discovery_count++];
+        safe_copy_cstr(dst->id, sizeof(dst->id), src->id);
+        safe_copy_cstr(dst->name, sizeof(dst->name), src->name[0] != '\0' ? src->name : src->id);
+        safe_copy_cstr(dst->icon, sizeof(dst->icon), src->icon);
+
+        const char *area_id = src->area_id;
+        if (area_id[0] == '\0') {
+            area_id = ha_client_light_discovery_device_area_id_locked(src->device_id);
+        }
+        safe_copy_cstr(dst->area_id, sizeof(dst->area_id), area_id);
+        if (src->room[0] != '\0') {
+            safe_copy_cstr(dst->room, sizeof(dst->room), src->room);
+        } else {
+            safe_copy_cstr(dst->room, sizeof(dst->room), ha_client_light_discovery_area_name_locked(area_id));
+        }
+    }
+
+    if (s_client.light_discovery_count > 1) {
+        qsort(s_client.light_discovery_items, s_client.light_discovery_count,
+            sizeof(ha_light_discovery_item_t), ha_client_light_discovery_item_cmp);
+    }
+
+    s_client.light_discovery_updated_unix_ms = now_ms;
+    s_client.light_discovery_requested = false;
+    s_client.light_discovery_inflight = false;
+    s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_NONE;
+    s_client.light_discovery_req_id = 0;
+    s_client.light_discovery_next_step_unix_ms = 0;
+    s_client.light_discovery_last_wait_log_unix_ms = 0;
+    s_client.light_discovery_template_offset = 0;
+    ha_client_light_discovery_free_work_buffers_locked();
+    ESP_LOGI(TAG_HA_CLIENT, "Entity discovery ready: domain=%s count=%u%s",
+        s_client.light_discovery_domain,
+        (unsigned)s_client.light_discovery_count,
+        s_client.light_discovery_truncated ? " (truncated)" : "");
+}
+
+static void ha_client_light_discovery_abort_locked(void)
+{
+    s_client.light_discovery_requested = false;
+    s_client.light_discovery_inflight = false;
+    s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_NONE;
+    s_client.light_discovery_domain[0] = '\0';
+    s_client.light_discovery_search[0] = '\0';
+    s_client.light_discovery_req_id = 0;
+    s_client.light_discovery_next_step_unix_ms = 0;
+    s_client.light_discovery_last_wait_log_unix_ms = 0;
+    s_client.light_discovery_template_offset = 0;
+    s_client.light_discovery_template_total = 0;
+    ha_client_light_discovery_free_work_buffers_locked();
+}
+
+static esp_err_t ha_client_light_discovery_refresh_from_model(const char *domain, const char *search, int64_t now_ms)
+{
+    const char *checked_domain = ha_client_discovery_domain_or_default(domain);
+    char checked_search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
+    ha_client_discovery_normalize_search(search, checked_search, sizeof(checked_search));
+    ha_entity_info_t *model_items = (ha_entity_info_t *)ha_client_light_discovery_calloc(
+        APP_HA_LIGHT_DISCOVERY_MAX_ITEMS, sizeof(ha_entity_info_t));
+    if (model_items == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    size_t model_count = ha_model_list_entities(
+        checked_domain, checked_search[0] != '\0' ? checked_search : NULL, model_items, APP_HA_LIGHT_DISCOVERY_MAX_ITEMS);
+    if (model_count > APP_HA_LIGHT_DISCOVERY_MAX_ITEMS) {
+        model_count = APP_HA_LIGHT_DISCOVERY_MAX_ITEMS;
+    }
+
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    if (!ha_client_light_discovery_ensure_cache_locked()) {
+        xSemaphoreGive(s_client.mutex);
+        free(model_items);
+        return ESP_ERR_NO_MEM;
+    }
+
+    safe_copy_cstr(s_client.light_discovery_domain, sizeof(s_client.light_discovery_domain), checked_domain);
+    safe_copy_cstr(s_client.light_discovery_search, sizeof(s_client.light_discovery_search), checked_search);
+    memset(s_client.light_discovery_items, 0,
+        sizeof(ha_light_discovery_item_t) * APP_HA_LIGHT_DISCOVERY_MAX_ITEMS);
+    s_client.light_discovery_count = 0;
+    s_client.light_discovery_truncated = (model_count >= APP_HA_LIGHT_DISCOVERY_MAX_ITEMS);
+    for (size_t i = 0; i < model_count; i++) {
+        const ha_entity_info_t *src = &model_items[i];
+        if (src->id[0] == '\0' || !ha_client_entity_matches_domain(src->id, checked_domain)) {
+            continue;
+        }
+        if (s_client.light_discovery_count >= APP_HA_LIGHT_DISCOVERY_MAX_ITEMS) {
+            s_client.light_discovery_truncated = true;
+            break;
+        }
+        ha_light_discovery_item_t *dst = &s_client.light_discovery_items[s_client.light_discovery_count++];
+        safe_copy_cstr(dst->id, sizeof(dst->id), src->id);
+        safe_copy_cstr(dst->name, sizeof(dst->name), src->name[0] != '\0' ? src->name : src->id);
+        safe_copy_cstr(dst->icon, sizeof(dst->icon), src->icon);
+    }
+    if (s_client.light_discovery_count > 1) {
+        qsort(s_client.light_discovery_items, s_client.light_discovery_count,
+            sizeof(ha_light_discovery_item_t), ha_client_light_discovery_item_cmp);
+    }
+
+    s_client.light_discovery_updated_unix_ms = now_ms;
+    s_client.light_discovery_requested = false;
+    s_client.light_discovery_inflight = false;
+    s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_NONE;
+    s_client.light_discovery_req_id = 0;
+    s_client.light_discovery_next_step_unix_ms = 0;
+    s_client.light_discovery_last_wait_log_unix_ms = 0;
+    s_client.light_discovery_template_offset = 0;
+    s_client.light_discovery_template_total = (uint16_t)s_client.light_discovery_count;
+    ha_client_light_discovery_free_work_buffers_locked();
+    xSemaphoreGive(s_client.mutex);
+
+    free(model_items);
+    ESP_LOGI(TAG_HA_CLIENT, "Entity discovery served from HA model cache: domain=%s search=\"%s\" count=%u%s",
+        checked_domain,
+        checked_search,
+        (unsigned)s_client.light_discovery_count,
+        s_client.light_discovery_truncated ? " (truncated)" : "");
+    return ESP_OK;
 }
 
 static bool ha_client_media_player_attr_key_is_tracked(const char *key)
@@ -2256,6 +2907,245 @@ static esp_err_t ha_client_ensure_http_client(const char *base_url, const char *
     return ESP_OK;
 }
 
+static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16_t page_size)
+{
+    if (page_size == 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char domain[APP_HA_DISCOVERY_DOMAIN_MAX_LEN] = {0};
+    char search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    safe_copy_cstr(domain, sizeof(domain), ha_client_discovery_domain_or_default(s_client.light_discovery_domain));
+    safe_copy_cstr(s_client.light_discovery_domain, sizeof(s_client.light_discovery_domain), domain);
+    safe_copy_cstr(search, sizeof(search), s_client.light_discovery_search);
+    s_client.light_discovery_requested = false;
+    s_client.light_discovery_inflight = true;
+    s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_TEMPLATE;
+    xSemaphoreGive(s_client.mutex);
+
+    char base_url[256] = {0};
+    char host_header[192] = {0};
+    char cert_common_name[128] = {0};
+    esp_err_t err = ESP_OK;
+    if (!ha_client_build_http_request_context(s_client.ws_url, base_url, sizeof(base_url), host_header,
+            sizeof(host_header), cert_common_name, sizeof(cert_common_name))) {
+        err = ESP_ERR_HTTP_CONNECT;
+        goto fail;
+    }
+
+    char url[384] = {0};
+    int url_len = snprintf(url, sizeof(url), "%s/api/template", base_url);
+    if (url_len <= 0 || (size_t)url_len >= sizeof(url)) {
+        err = ESP_ERR_INVALID_SIZE;
+        goto fail;
+    }
+
+    ESP_LOGI(TAG_HA_CLIENT,
+        "Requesting HA entity discovery page via template: domain=%s search=\"%s\" offset=%u limit=%u",
+        domain, search, (unsigned)offset, (unsigned)page_size);
+
+    cJSON *search_json = cJSON_CreateString(search);
+    if (search_json == NULL) {
+        err = ESP_ERR_NO_MEM;
+        goto fail;
+    }
+    char *search_literal = cJSON_PrintUnformatted(search_json);
+    cJSON_Delete(search_json);
+    if (search_literal == NULL) {
+        err = ESP_ERR_NO_MEM;
+        goto fail;
+    }
+
+    char template_text[2048] = {0};
+    int template_len = snprintf(template_text, sizeof(template_text),
+        "{%% set offset = %u %%}"
+        "{%% set limit = %u %%}"
+        "{%% set q = (%s|lower) %%}"
+        "{%% set ns = namespace(items=[], total=0) %%}"
+        "{%% for s in states.%s|sort(attribute='entity_id') %%}"
+        "{%% set room = area_name(s.entity_id) or '' %%}"
+        "{%% set hay = (s.entity_id ~ ' ' ~ s.name ~ ' ' ~ room)|lower %%}"
+        "{%% if q == '' or q in hay %%}"
+        "{%% set idx = ns.total %%}"
+        "{%% set ns.total = ns.total + 1 %%}"
+        "{%% if idx >= offset and idx < offset + limit %%}"
+        "{%% set ns.items = ns.items + [dict(id=s.entity_id, name=s.name, room=room, icon=(s.attributes.icon|default('', true)))] %%}"
+        "{%% endif %%}"
+        "{%% endif %%}"
+        "{%% endfor %%}"
+        "{{ {'total': ns.total, 'items': ns.items}|to_json }}",
+        (unsigned)offset, (unsigned)page_size, search_literal, domain);
+    cJSON_free(search_literal);
+    if (template_len <= 0 || (size_t)template_len >= sizeof(template_text)) {
+        err = ESP_ERR_INVALID_SIZE;
+        goto fail;
+    }
+
+    cJSON *body_root = cJSON_CreateObject();
+    if (body_root == NULL) {
+        err = ESP_ERR_NO_MEM;
+        goto fail;
+    }
+    cJSON_AddStringToObject(body_root, "template", template_text);
+    char *body = cJSON_PrintUnformatted(body_root);
+    cJSON_Delete(body_root);
+    if (body == NULL) {
+        err = ESP_ERR_NO_MEM;
+        goto fail;
+    }
+
+    err = ha_client_ensure_http_client(base_url, cert_common_name);
+    if (err != ESP_OK) {
+        cJSON_free(body);
+        goto fail;
+    }
+
+    char auth_header[640] = {0};
+    snprintf(auth_header, sizeof(auth_header), "Bearer %s", s_client.access_token);
+    esp_http_client_set_url(s_client.http_client, url);
+    esp_http_client_set_method(s_client.http_client, HTTP_METHOD_POST);
+    esp_http_client_set_header(s_client.http_client, "Authorization", auth_header);
+    esp_http_client_set_header(s_client.http_client, "Accept", "text/plain");
+    esp_http_client_set_header(s_client.http_client, "Content-Type", "application/json");
+    if (host_header[0] != '\0') {
+        esp_http_client_set_header(s_client.http_client, "Host", host_header);
+    }
+
+    int body_len = (int)strlen(body);
+    err = ha_client_http_open_budgeted(s_client.http_client, body_len, "light-discovery");
+    if (err != ESP_OK) {
+        cJSON_free(body);
+        if (err != ESP_ERR_TIMEOUT) {
+            ha_client_reset_http_client();
+        }
+        goto fail;
+    }
+
+    int written = esp_http_client_write(s_client.http_client, body, body_len);
+    cJSON_free(body);
+    if (written != body_len) {
+        esp_http_client_close(s_client.http_client);
+        err = ESP_FAIL;
+        goto fail;
+    }
+
+    int64_t content_length = esp_http_client_fetch_headers(s_client.http_client);
+    int status = esp_http_client_get_status_code(s_client.http_client);
+    if (status != 200) {
+        esp_http_client_close(s_client.http_client);
+        err = ESP_ERR_INVALID_RESPONSE;
+        goto fail;
+    }
+
+    size_t payload_cap = 8192;
+    if (content_length > 0 && content_length < 16384) {
+        payload_cap = (size_t)content_length + 1U;
+    }
+    char *payload = (char *)heap_caps_calloc(payload_cap, sizeof(char), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (payload == NULL) {
+        payload = (char *)calloc(payload_cap, sizeof(char));
+    }
+    if (payload == NULL) {
+        esp_http_client_close(s_client.http_client);
+        err = ESP_ERR_NO_MEM;
+        goto fail;
+    }
+
+    int total_read = 0;
+    while (total_read < (int)payload_cap - 1) {
+        int read =
+            esp_http_client_read(s_client.http_client, payload + total_read, (int)payload_cap - 1 - total_read);
+        if (read < 0) {
+            err = ESP_FAIL;
+            break;
+        }
+        if (read == 0) {
+            break;
+        }
+        total_read += read;
+    }
+    esp_http_client_close(s_client.http_client);
+    if (err != ESP_OK) {
+        free(payload);
+        goto fail;
+    }
+    payload[total_read] = '\0';
+
+    cJSON *root = cJSON_Parse(payload);
+    free(payload);
+    if (!cJSON_IsObject(root)) {
+        cJSON_Delete(root);
+        err = ESP_ERR_INVALID_RESPONSE;
+        goto fail;
+    }
+
+    cJSON *total_item = cJSON_GetObjectItemCaseSensitive(root, "total");
+    cJSON *items = cJSON_GetObjectItemCaseSensitive(root, "items");
+    uint16_t total = cJSON_IsNumber(total_item) && total_item->valuedouble > 0
+        ? (uint16_t)total_item->valuedouble
+        : 0;
+    uint16_t page_count = cJSON_IsArray(items) ? (uint16_t)cJSON_GetArraySize(items) : 0;
+
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    if (offset == 0) {
+        ha_client_light_discovery_reset_pending_locked();
+    }
+    cJSON *entry = NULL;
+    cJSON_ArrayForEach(entry, items)
+    {
+        if (!cJSON_IsObject(entry)) {
+            continue;
+        }
+        ha_light_discovery_pending_item_t item = {0};
+        if (!ha_client_json_string_value(entry, "id", item.id, sizeof(item.id)) ||
+            !ha_client_entity_matches_domain(item.id, domain)) {
+            continue;
+        }
+        if (!ha_client_json_string_value(entry, "name", item.name, sizeof(item.name))) {
+            safe_copy_cstr(item.name, sizeof(item.name), item.id);
+        }
+        (void)ha_client_json_string_value(entry, "room", item.room, sizeof(item.room));
+        (void)ha_client_json_string_value(entry, "icon", item.icon, sizeof(item.icon));
+        ha_client_light_discovery_add_pending_locked(&item);
+    }
+
+    if (total == 0) {
+        total = (uint16_t)(offset + page_count);
+    }
+    uint16_t next_offset = (uint16_t)(offset + page_count);
+    int64_t complete_ms = ha_client_now_ms();
+    s_client.light_discovery_template_total = total;
+    if (page_count == 0 || page_count < page_size || next_offset >= total ||
+        next_offset >= APP_HA_LIGHT_DISCOVERY_MAX_ITEMS) {
+        if (total > APP_HA_LIGHT_DISCOVERY_MAX_ITEMS || next_offset >= APP_HA_LIGHT_DISCOVERY_MAX_ITEMS) {
+            s_client.light_discovery_pending_truncated = true;
+        }
+        ha_client_light_discovery_finish_locked(complete_ms);
+    } else {
+        s_client.light_discovery_template_offset = next_offset;
+        s_client.light_discovery_next_step_unix_ms = complete_ms + HA_LIGHT_DISCOVERY_PAGE_STEP_DELAY_MS;
+        s_client.light_discovery_requested = true;
+        s_client.light_discovery_inflight = false;
+        s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_TEMPLATE;
+    }
+    xSemaphoreGive(s_client.mutex);
+    cJSON_Delete(root);
+
+    ESP_LOGI(TAG_HA_CLIENT, "Entity discovery page: domain=%s offset=%u count=%u total=%u",
+        domain, (unsigned)offset, (unsigned)page_count, (unsigned)total);
+    return ESP_OK;
+
+fail:
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    s_client.light_discovery_inflight = false;
+    s_client.light_discovery_requested = true;
+    s_client.light_discovery_next_step_unix_ms = ha_client_now_ms() + HA_LIGHT_DISCOVERY_RETRY_DELAY_MS;
+    xSemaphoreGive(s_client.mutex);
+    ESP_LOGW(TAG_HA_CLIENT, "Entity discovery page failed: domain=%s err=%s", domain, esp_err_to_name(err));
+    return err;
+}
+
 static bool ha_client_entity_id_in_list(const char *entity_ids, size_t count, const char *entity_id)
 {
     if (entity_ids == NULL || entity_id == NULL) {
@@ -2745,6 +3635,62 @@ static esp_err_t ha_client_send_get_states(void)
         ESP_LOGW(TAG_HA_CLIENT, "Failed to request states");
     }
     cJSON_Delete(root);
+    return err;
+}
+
+static const char *ha_client_light_discovery_ws_type(ha_light_discovery_phase_t phase)
+{
+    switch (phase) {
+    case HA_LIGHT_DISCOVERY_PHASE_ENTITY_DISPLAY:
+        return "config/entity_registry/list_for_display";
+    case HA_LIGHT_DISCOVERY_PHASE_ENTITY_FULL:
+        return "config/entity_registry/list";
+    case HA_LIGHT_DISCOVERY_PHASE_AREAS:
+        return "config/area_registry/list";
+    case HA_LIGHT_DISCOVERY_PHASE_DEVICES:
+        return "config/device_registry/list";
+    default:
+        return NULL;
+    }
+}
+
+static esp_err_t ha_client_send_light_discovery_request(ha_light_discovery_phase_t phase)
+{
+    const char *type = ha_client_light_discovery_ws_type(phase);
+    if (type == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    uint32_t req_id = ha_client_next_message_id();
+    cJSON_AddNumberToObject(root, "id", (double)req_id);
+    cJSON_AddStringToObject(root, "type", type);
+
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    s_client.light_discovery_req_id = req_id;
+    s_client.light_discovery_phase = phase;
+    s_client.light_discovery_inflight = true;
+    s_client.light_discovery_requested = false;
+    xSemaphoreGive(s_client.mutex);
+
+    ESP_LOGI(TAG_HA_CLIENT, "Requesting HA light discovery phase %s", ha_client_light_discovery_phase_name(phase));
+    esp_err_t err = ha_client_send_json(root);
+    cJSON_Delete(root);
+    if (err != ESP_OK) {
+        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+        if (s_client.light_discovery_req_id == req_id) {
+            s_client.light_discovery_inflight = false;
+            s_client.light_discovery_requested = true;
+            s_client.light_discovery_req_id = 0;
+        }
+        xSemaphoreGive(s_client.mutex);
+        ESP_LOGW(TAG_HA_CLIENT, "Failed to request light discovery phase %s: %s",
+            ha_client_light_discovery_phase_name(phase), esp_err_to_name(err));
+    }
     return err;
 }
 
@@ -3411,6 +4357,75 @@ static uint32_t ha_client_import_ws_entities_removed(cJSON *removed_list)
     return removed;
 }
 
+static bool ha_client_light_discovery_handle_result(uint32_t msg_id, cJSON *root, cJSON *success_item)
+{
+    ha_light_discovery_phase_t phase = HA_LIGHT_DISCOVERY_PHASE_NONE;
+    bool is_light_discovery = false;
+
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    if (s_client.light_discovery_inflight && s_client.light_discovery_req_id == msg_id) {
+        is_light_discovery = true;
+        phase = s_client.light_discovery_phase;
+        s_client.light_discovery_inflight = false;
+        s_client.light_discovery_req_id = 0;
+    }
+    xSemaphoreGive(s_client.mutex);
+
+    if (!is_light_discovery) {
+        return false;
+    }
+
+    const bool success = cJSON_IsBool(success_item) && cJSON_IsTrue(success_item);
+    cJSON *result = cJSON_GetObjectItemCaseSensitive(root, "result");
+    int64_t now_ms = ha_client_now_ms();
+
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    if (success) {
+        switch (phase) {
+        case HA_LIGHT_DISCOVERY_PHASE_ENTITY_DISPLAY:
+            ha_client_light_discovery_parse_display_entities_locked(result);
+            s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_AREAS;
+            s_client.light_discovery_requested = true;
+            break;
+        case HA_LIGHT_DISCOVERY_PHASE_ENTITY_FULL:
+            ha_client_light_discovery_parse_full_entities_locked(result);
+            s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_AREAS;
+            s_client.light_discovery_requested = true;
+            break;
+        case HA_LIGHT_DISCOVERY_PHASE_AREAS:
+            ha_client_light_discovery_parse_areas_locked(result);
+            s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_DEVICES;
+            s_client.light_discovery_requested = true;
+            break;
+        case HA_LIGHT_DISCOVERY_PHASE_DEVICES:
+            ha_client_light_discovery_parse_devices_locked(result);
+            ha_client_light_discovery_finish_locked(now_ms);
+            break;
+        default:
+            ha_client_light_discovery_abort_locked();
+            break;
+        }
+    } else if (phase == HA_LIGHT_DISCOVERY_PHASE_ENTITY_DISPLAY) {
+        ESP_LOGW(TAG_HA_CLIENT,
+            "HA list_for_display light discovery failed; retrying with full entity registry");
+        s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_ENTITY_FULL;
+        s_client.light_discovery_requested = true;
+    } else if (phase == HA_LIGHT_DISCOVERY_PHASE_AREAS) {
+        ESP_LOGW(TAG_HA_CLIENT, "HA area registry discovery failed; continuing without room names");
+        s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_DEVICES;
+        s_client.light_discovery_requested = true;
+    } else if (phase == HA_LIGHT_DISCOVERY_PHASE_DEVICES) {
+        ESP_LOGW(TAG_HA_CLIENT, "HA device registry discovery failed; finishing with entity-assigned rooms only");
+        ha_client_light_discovery_finish_locked(now_ms);
+    } else {
+        ESP_LOGW(TAG_HA_CLIENT, "HA light entity discovery failed");
+        ha_client_light_discovery_abort_locked();
+    }
+    xSemaphoreGive(s_client.mutex);
+
+    return true;
+}
+
 static void ha_client_handle_result_message(cJSON *root)
 {
     cJSON *id = cJSON_GetObjectItemCaseSensitive(root, "id");
@@ -3430,6 +4445,10 @@ static void ha_client_handle_result_message(cJSON *root)
             }
         }
         ha_client_trace_service_result(msg_id, cJSON_IsTrue(success_item), error_text);
+    }
+
+    if (ha_client_light_discovery_handle_result(msg_id, root, success_item)) {
+        return;
     }
 
     bool is_get_states = false;
@@ -4030,6 +5049,25 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         s_client.weather_ws_req_inflight = false;
         s_client.weather_ws_req_id = 0;
         s_client.weather_ws_req_entity_id[0] = '\0';
+        if (s_client.light_discovery_phase != HA_LIGHT_DISCOVERY_PHASE_NONE) {
+            if (APP_HA_LIGHT_DISCOVERY_TEMPLATE_ENABLED &&
+                s_client.light_discovery_phase == HA_LIGHT_DISCOVERY_PHASE_TEMPLATE) {
+                s_client.light_discovery_requested = true;
+                s_client.light_discovery_inflight = false;
+                s_client.light_discovery_req_id = 0;
+                s_client.light_discovery_next_step_unix_ms =
+                    ws_disconnected_now_ms + HA_LIGHT_DISCOVERY_RETRY_DELAY_MS;
+            } else if (APP_HA_LIGHT_DISCOVERY_REGISTRY_ENABLED) {
+                s_client.light_discovery_requested = true;
+                s_client.light_discovery_inflight = false;
+                s_client.light_discovery_req_id = 0;
+            } else {
+                ha_client_light_discovery_abort_locked();
+            }
+        } else {
+            s_client.light_discovery_inflight = false;
+            s_client.light_discovery_req_id = 0;
+        }
         xSemaphoreGive(s_client.mutex);
         if (ws_session_age_ms > 0 && ws_session_age_ms < HA_WS_SHORT_SESSION_MS) {
             ESP_LOGW(TAG_HA_CLIENT,
@@ -4146,6 +5184,13 @@ static void ha_client_task(void *arg)
         int last_ws_tls_stack_err = 0;
         int64_t last_ws_bad_input_unix_ms = 0;
         int64_t ws_get_states_block_until_unix_ms = 0;
+        bool light_discovery_requested = false;
+        bool light_discovery_inflight = false;
+        ha_light_discovery_phase_t light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_NONE;
+        char light_discovery_domain[APP_HA_DISCOVERY_DOMAIN_MAX_LEN] = {0};
+        int64_t light_discovery_next_step_unix_ms = 0;
+        int64_t light_discovery_last_wait_log_unix_ms = 0;
+        uint16_t light_discovery_template_offset = 0;
         size_t free_internal = 0;
         size_t ws_q_used = 0;
         uint8_t ws_q_fill_pct = 0;
@@ -4202,6 +5247,14 @@ static void ha_client_task(void *arg)
         last_ws_tls_stack_err = s_client.last_ws_tls_stack_err;
         last_ws_bad_input_unix_ms = s_client.last_ws_bad_input_unix_ms;
         ws_get_states_block_until_unix_ms = s_client.ws_get_states_block_until_unix_ms;
+        light_discovery_requested = s_client.light_discovery_requested;
+        light_discovery_inflight = s_client.light_discovery_inflight;
+        light_discovery_phase = s_client.light_discovery_phase;
+        safe_copy_cstr(light_discovery_domain, sizeof(light_discovery_domain),
+            ha_client_discovery_domain_or_default(s_client.light_discovery_domain));
+        light_discovery_next_step_unix_ms = s_client.light_discovery_next_step_unix_ms;
+        light_discovery_last_wait_log_unix_ms = s_client.light_discovery_last_wait_log_unix_ms;
+        light_discovery_template_offset = s_client.light_discovery_template_offset;
         if (connected && authenticated && wifi_up) {
             if (ping_inflight && (now_ms - ping_sent_unix_ms) >= ha_client_ping_timeout_ms()) {
                 ping_timed_out = true;
@@ -4500,6 +5553,97 @@ static void ha_client_task(void *arg)
                 xSemaphoreTake(s_client.mutex, portMAX_DELAY);
                 s_client.pending_send_pong = false;
                 xSemaphoreGive(s_client.mutex);
+            }
+        }
+        if (connected && authenticated && light_discovery_requested && !light_discovery_inflight) {
+            if (APP_HA_LIGHT_DISCOVERY_TEMPLATE_ENABLED &&
+                light_discovery_phase == HA_LIGHT_DISCOVERY_PHASE_TEMPLATE) {
+                size_t largest_internal = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+                int64_t ws_age_ms = (ws_last_connected_unix_ms > 0) ? (now_ms - ws_last_connected_unix_ms) : 0;
+                bool discovery_template_stable = !pending_subscribe &&
+                    !pending_get_states &&
+                    !ping_inflight &&
+                    !should_send_ping &&
+                    !should_run_priority_sync_step &&
+                    !should_run_initial_layout_sync_step &&
+                    !should_run_periodic_layout_sync_step &&
+                    ws_q_used == 0 &&
+                    ws_last_connected_unix_ms > 0 &&
+                    ws_age_ms >= HA_LIGHT_DISCOVERY_TEMPLATE_STABLE_DELAY_MS &&
+                    free_internal >= HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES &&
+                    largest_internal >= HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES &&
+                    now_ms >= light_discovery_next_step_unix_ms;
+                if (discovery_template_stable) {
+                    uint16_t page_size = APP_HA_LIGHT_DISCOVERY_PAGE_SIZE;
+                    if (page_size == 0 || page_size > APP_HA_LIGHT_DISCOVERY_MAX_ITEMS) {
+                        page_size = APP_HA_LIGHT_DISCOVERY_MAX_ITEMS;
+                    }
+                    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                    s_client.light_discovery_last_wait_log_unix_ms = 0;
+                    xSemaphoreGive(s_client.mutex);
+                    (void)ha_client_light_discovery_template_step(light_discovery_template_offset, page_size);
+                } else if ((now_ms - light_discovery_last_wait_log_unix_ms) >=
+                           HA_LIGHT_DISCOVERY_WAIT_LOG_INTERVAL_MS) {
+                    const char *reason = "unknown";
+                    if (pending_subscribe) {
+                        reason = "subscriptions";
+                    } else if (pending_get_states) {
+                        reason = "get_states";
+                    } else if (ping_inflight || should_send_ping) {
+                        reason = "ping";
+                    } else if (should_run_priority_sync_step || should_run_initial_layout_sync_step ||
+                               should_run_periodic_layout_sync_step) {
+                        reason = "sync";
+                    } else if (ws_q_used != 0) {
+                        reason = "ws_queue";
+                    } else if (ws_last_connected_unix_ms == 0 ||
+                               ws_age_ms < HA_LIGHT_DISCOVERY_TEMPLATE_STABLE_DELAY_MS) {
+                        reason = "ws_grace";
+                    } else if (free_internal < HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES) {
+                        reason = "internal_heap";
+                    } else if (largest_internal < HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES) {
+                        reason = "internal_block";
+                    } else if (now_ms < light_discovery_next_step_unix_ms) {
+                        reason = "page_delay";
+                    }
+                    ESP_LOGI(TAG_HA_CLIENT,
+                        "Entity discovery waiting: domain=%s reason=%s ws_age=%" PRId64 " ms int_free=%u int_largest=%u ws_q=%u initial_done=%u",
+                        light_discovery_domain,
+                        reason,
+                        ws_age_ms,
+                        (unsigned)free_internal,
+                        (unsigned)largest_internal,
+                        (unsigned)ws_q_used,
+                        initial_layout_sync_done ? 1U : 0U);
+                    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                    s_client.light_discovery_last_wait_log_unix_ms = now_ms;
+                    xSemaphoreGive(s_client.mutex);
+                }
+            } else if (APP_HA_LIGHT_DISCOVERY_REGISTRY_ENABLED) {
+                size_t largest_internal = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+                bool discovery_ws_stable = initial_layout_sync_done &&
+                    !pending_subscribe &&
+                    !pending_get_states &&
+                    !ping_inflight &&
+                    !should_send_ping &&
+                    !should_run_priority_sync_step &&
+                    !should_run_initial_layout_sync_step &&
+                    !should_run_periodic_layout_sync_step &&
+                    ws_q_used == 0 &&
+                    ws_last_connected_unix_ms > 0 &&
+                    (now_ms - ws_last_connected_unix_ms) >= HA_LIGHT_DISCOVERY_WS_STABLE_DELAY_MS &&
+                    free_internal >= HA_LIGHT_DISCOVERY_MIN_INTERNAL_FREE_BYTES &&
+                    largest_internal >= HA_LIGHT_DISCOVERY_MIN_INTERNAL_LARGEST_BYTES;
+                if (discovery_ws_stable) {
+                    if (ha_client_send_light_discovery_request(light_discovery_phase) != ESP_OK) {
+                        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                        s_client.light_discovery_requested = true;
+                        s_client.light_discovery_inflight = false;
+                        xSemaphoreGive(s_client.mutex);
+                    }
+                }
+            } else {
+                (void)ha_client_light_discovery_refresh_from_model(light_discovery_domain, NULL, now_ms);
             }
         }
         if (connected && authenticated && pending_subscribe) {
@@ -4918,6 +6062,31 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
     s_client.ws_priority_boost_until_unix_ms = 0;
     s_client.last_ws_bad_input_unix_ms = 0;
     s_client.ws_get_states_block_until_unix_ms = 0;
+    s_client.light_discovery_requested = false;
+    s_client.light_discovery_inflight = false;
+    s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_NONE;
+    s_client.light_discovery_domain[0] = '\0';
+    s_client.light_discovery_search[0] = '\0';
+    s_client.light_discovery_req_id = 0;
+    s_client.light_discovery_started_unix_ms = 0;
+    s_client.light_discovery_updated_unix_ms = 0;
+    s_client.light_discovery_next_step_unix_ms = 0;
+    s_client.light_discovery_last_wait_log_unix_ms = 0;
+    s_client.light_discovery_template_offset = 0;
+    s_client.light_discovery_template_total = 0;
+    s_client.light_discovery_count = 0;
+    s_client.light_discovery_truncated = false;
+    s_client.light_discovery_pending_count = 0;
+    s_client.light_discovery_pending_truncated = false;
+    s_client.light_discovery_area_count = 0;
+    s_client.light_discovery_area_truncated = false;
+    s_client.light_discovery_device_count = 0;
+    s_client.light_discovery_device_truncated = false;
+    if (s_client.light_discovery_items != NULL) {
+        heap_caps_free(s_client.light_discovery_items);
+        s_client.light_discovery_items = NULL;
+    }
+    ha_client_light_discovery_free_work_buffers_locked();
     memset(s_client.service_traces, 0, sizeof(s_client.service_traces));
     s_client.http_resolved_host[0] = '\0';
     s_client.http_resolved_ip[0] = '\0';
@@ -5051,6 +6220,31 @@ void ha_client_stop(void)
     s_client.ws_priority_boost_until_unix_ms = 0;
     s_client.last_ws_bad_input_unix_ms = 0;
     s_client.ws_get_states_block_until_unix_ms = 0;
+    s_client.light_discovery_requested = false;
+    s_client.light_discovery_inflight = false;
+    s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_NONE;
+    s_client.light_discovery_domain[0] = '\0';
+    s_client.light_discovery_search[0] = '\0';
+    s_client.light_discovery_req_id = 0;
+    s_client.light_discovery_started_unix_ms = 0;
+    s_client.light_discovery_updated_unix_ms = 0;
+    s_client.light_discovery_next_step_unix_ms = 0;
+    s_client.light_discovery_last_wait_log_unix_ms = 0;
+    s_client.light_discovery_template_offset = 0;
+    s_client.light_discovery_template_total = 0;
+    s_client.light_discovery_count = 0;
+    s_client.light_discovery_truncated = false;
+    s_client.light_discovery_pending_count = 0;
+    s_client.light_discovery_pending_truncated = false;
+    s_client.light_discovery_area_count = 0;
+    s_client.light_discovery_area_truncated = false;
+    s_client.light_discovery_device_count = 0;
+    s_client.light_discovery_device_truncated = false;
+    if (s_client.light_discovery_items != NULL) {
+        heap_caps_free(s_client.light_discovery_items);
+        s_client.light_discovery_items = NULL;
+    }
+    ha_client_light_discovery_free_work_buffers_locked();
     memset(s_client.service_traces, 0, sizeof(s_client.service_traces));
     s_client.http_resolved_host[0] = '\0';
     s_client.http_resolved_ip[0] = '\0';
@@ -5221,6 +6415,151 @@ bool ha_client_is_initial_sync_done(void)
         xSemaphoreGive(s_client.mutex);
     }
     return done;
+}
+
+esp_err_t ha_client_get_domain_entities_json(const char *domain, const char *search, bool refresh, char **out_json)
+{
+    if (out_json == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    *out_json = NULL;
+
+    const char *checked_domain = ha_client_discovery_domain_or_default(domain);
+    char checked_search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
+    ha_client_discovery_normalize_search(search, checked_search, sizeof(checked_search));
+    const bool connected = ha_client_is_connected();
+    const int64_t now_ms = ha_client_now_ms();
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *items = cJSON_CreateArray();
+    if (root == NULL || items == NULL) {
+        cJSON_Delete(root);
+        cJSON_Delete(items);
+        return ESP_ERR_NO_MEM;
+    }
+
+    if (s_client.mutex == NULL) {
+        cJSON_AddStringToObject(root, "status", "disconnected");
+        cJSON_AddBoolToObject(root, "connected", false);
+        cJSON_AddBoolToObject(root, "pending", false);
+        cJSON_AddStringToObject(root, "domain", checked_domain);
+        cJSON_AddStringToObject(root, "search", checked_search);
+        cJSON_AddStringToObject(root, "phase", "idle");
+        cJSON_AddBoolToObject(root, "truncated", false);
+        cJSON_AddNumberToObject(root, "count", 0);
+        cJSON_AddNumberToObject(root, "updated_ms", 0);
+        cJSON_AddNumberToObject(root, "age_ms", 0);
+        cJSON_AddItemToObject(root, "items", items);
+        char *payload = cJSON_PrintUnformatted(root);
+        cJSON_Delete(root);
+        if (payload == NULL) {
+            return ESP_ERR_NO_MEM;
+        }
+        *out_json = payload;
+        return ESP_OK;
+    }
+
+    bool has_cache_before = false;
+    bool pending_before = false;
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    bool same_domain_before =
+        strncmp(s_client.light_discovery_domain, checked_domain, sizeof(s_client.light_discovery_domain)) == 0 &&
+        strncmp(s_client.light_discovery_search, checked_search, sizeof(s_client.light_discovery_search)) == 0;
+    has_cache_before = same_domain_before && ha_client_light_discovery_has_ready_cache_locked();
+    pending_before = same_domain_before && (s_client.light_discovery_requested || s_client.light_discovery_inflight);
+    xSemaphoreGive(s_client.mutex);
+
+    bool has_cache = false;
+    bool pending = false;
+    if (APP_HA_LIGHT_DISCOVERY_TEMPLATE_ENABLED || APP_HA_LIGHT_DISCOVERY_REGISTRY_ENABLED) {
+        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+        bool same_domain =
+            strncmp(s_client.light_discovery_domain, checked_domain, sizeof(s_client.light_discovery_domain)) == 0 &&
+            strncmp(s_client.light_discovery_search, checked_search, sizeof(s_client.light_discovery_search)) == 0;
+        bool pending_any = s_client.light_discovery_requested || s_client.light_discovery_inflight;
+        if (connected && pending_any && !same_domain) {
+            ha_client_light_discovery_abort_locked();
+            pending_any = false;
+            same_domain = false;
+        }
+        has_cache = same_domain && ha_client_light_discovery_has_ready_cache_locked();
+        pending = same_domain && pending_any;
+        if (connected && !pending_any && (refresh || !has_cache)) {
+            if (ha_client_light_discovery_start_locked(checked_domain, checked_search, now_ms)) {
+                pending = true;
+            }
+        }
+    } else {
+        if (connected && (refresh || !has_cache_before || pending_before)) {
+            (void)ha_client_light_discovery_refresh_from_model(checked_domain, checked_search, now_ms);
+        }
+
+        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+        has_cache = strncmp(s_client.light_discovery_domain, checked_domain,
+                        sizeof(s_client.light_discovery_domain)) == 0 &&
+            strncmp(s_client.light_discovery_search, checked_search, sizeof(s_client.light_discovery_search)) == 0 &&
+            ha_client_light_discovery_has_ready_cache_locked();
+        pending = false;
+    }
+
+    const char *status = "empty";
+    if (has_cache && pending) {
+        status = "refreshing";
+    } else if (has_cache) {
+        status = "ready";
+    } else if (pending) {
+        status = "pending";
+    } else if (!connected) {
+        status = "disconnected";
+    }
+
+    cJSON_AddStringToObject(root, "status", status);
+    cJSON_AddBoolToObject(root, "connected", connected);
+    cJSON_AddBoolToObject(root, "pending", pending);
+    cJSON_AddStringToObject(root, "domain", checked_domain);
+    cJSON_AddStringToObject(root, "search", checked_search);
+    cJSON_AddStringToObject(root, "phase", ha_client_light_discovery_phase_name(s_client.light_discovery_phase));
+    cJSON_AddBoolToObject(root, "truncated", has_cache ? s_client.light_discovery_truncated : false);
+    cJSON_AddNumberToObject(root, "count", has_cache ? (double)s_client.light_discovery_count : 0.0);
+    cJSON_AddNumberToObject(root, "loaded",
+        has_cache ? (double)s_client.light_discovery_count : (pending ? (double)s_client.light_discovery_pending_count : 0.0));
+    cJSON_AddNumberToObject(root, "total",
+        pending ? (double)s_client.light_discovery_template_total :
+            (has_cache ? (double)s_client.light_discovery_template_total : 0.0));
+    cJSON_AddNumberToObject(root, "limit", (double)APP_HA_LIGHT_DISCOVERY_MAX_ITEMS);
+    cJSON_AddNumberToObject(root, "page_size", (double)APP_HA_LIGHT_DISCOVERY_PAGE_SIZE);
+    cJSON_AddNumberToObject(root, "updated_ms", has_cache ? (double)s_client.light_discovery_updated_unix_ms : 0.0);
+    cJSON_AddNumberToObject(root, "age_ms",
+        (has_cache && s_client.light_discovery_updated_unix_ms > 0 && now_ms >= s_client.light_discovery_updated_unix_ms)
+            ? (double)(now_ms - s_client.light_discovery_updated_unix_ms)
+            : 0.0);
+
+    if (has_cache) {
+        for (uint16_t i = 0; i < s_client.light_discovery_count; i++) {
+            const ha_light_discovery_item_t *src = &s_client.light_discovery_items[i];
+            cJSON *item = cJSON_CreateObject();
+            if (item == NULL) {
+                continue;
+            }
+            cJSON_AddStringToObject(item, "id", src->id);
+            cJSON_AddStringToObject(item, "name", src->name);
+            cJSON_AddStringToObject(item, "room", src->room);
+            cJSON_AddStringToObject(item, "area_id", src->area_id);
+            cJSON_AddStringToObject(item, "icon", src->icon);
+            cJSON_AddItemToArray(items, item);
+        }
+    }
+    xSemaphoreGive(s_client.mutex);
+
+    cJSON_AddItemToObject(root, "items", items);
+    char *payload = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (payload == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    *out_json = payload;
+    return ESP_OK;
 }
 
 esp_err_t ha_client_call_service(const char *domain, const char *service, const char *json_service_data)

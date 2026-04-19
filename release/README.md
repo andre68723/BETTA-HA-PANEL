@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk -->
 ## Getting Started
-- Download the latest factory image: [betta86-ha-panel-v0.7.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.7.factory.bin)
+- Download the latest factory image: [betta86-ha-panel-v0.7.1.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.7.1.factory.bin)
 - Flash it with esptool or with a web flasher of your choice, for example: https://espressif.github.io/esptool-js/
 - Use the outer USB-C port on the Smart86 Box for flashing.
 - Choose baud rate `115200`.
@@ -8,7 +8,7 @@
 - Connect to the correct COM port.
 - Set the flash address to `0x0`.
   <img width="411" height="236" alt="image" src="https://github.com/user-attachments/assets/151c0026-15cc-450d-af28-d5629c5ec5e5" />
-- Select the downloaded `.bin` file. The v0.7 factory image is about 4.6 MB and already includes the C6 network adapter firmware used for this release.
+- Select the downloaded `.bin` file. The v0.7.1 factory image is about 4.8 MB and already includes the C6 network adapter firmware used for this release.
 - Click `Program`.
   <img width="662" height="469" alt="image" src="https://github.com/user-attachments/assets/732007c8-9e7d-4411-8360-665553782b6c" />
 - Reboot the device by pressing the reset button or briefly cutting power.
@@ -18,7 +18,7 @@
 - After reboot, the panel joins your Wi-Fi and receives an IP address from your local network.
 - Open that IP address in your browser to continue the Home Assistant setup and start configuring the dashboard.
   <img width="613" height="416" alt="image" src="https://github.com/user-attachments/assets/a81fab35-d599-490a-9e1f-2675924b099d" />
-
+- After v0.7.1 is installed, future app updates can be installed from the BETTA Editor with an OTA `.bin` upload or OTA URL.
 
 
 ## ESP-Hosted C6 Firmware Source
@@ -30,8 +30,9 @@ The original C6 adapter firmware used for this release was:
 Important:
 
 - The C6 `network_adapter` firmware is already embedded into the generated factory image `betta86-ha-panel-<version>.factory.bin`.
-- Running `tools/make_factory_bin.ps1` archives superseded factory images in `release/archive/`.
+- Running `tools/make_factory_bin.ps1` creates factory and OTA images and archives superseded images in `release/archive/` and `release/ota/archive/`.
 - For flashing/distribution, the factory image is sufficient.
+- For in-app OTA updates, use `release/ota/betta86-ha-panel-<version>.ota.bin`.
 - Keeping `network_adapter_esp32c6*.bin` in the repo is optional and not required for release delivery.
 
 Project policy (build/runtime):

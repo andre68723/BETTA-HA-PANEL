@@ -12,30 +12,30 @@ The dashboard is configured directly on the device via the integrated BETTA Edit
 
 - Live connection to Home Assistant via WebSocket, with optional REST fallback for selected state/forecast refreshes.
 - Local BETTA Editor at `http://<panel-ip>` for layout, widgets, Wi-Fi, Home Assistant, language, and time settings.
-- Integrated first-run provisioning flow for Wi-Fi and Home Assistant, including the setup AP `BETTA-Setup`.
+- Integrated first-run provisioning flow for Wi-Fi and Home Assistant, including the setup AP `BETTA-Setup` and a Quick Setup flow for the first dashboard.
 - Multi-page dashboard with draggable/resizable widgets: sensor, button, slider, graph, empty tile, light tile, heating tile, weather tile, and 3-day weather tile.
+- Home Assistant entity pickers in the editor, grouped by room where possible, so common tiles can be added without manually typing entity IDs.
 - Advanced light tiles with brightness, capability-aware dimming, RGB color control, color temperature control, presets, and compact Home Assistant light attributes.
 - Weather tiles with compact forecast handling and WS/REST forecast refresh support.
 - Multilingual web editor and device UI support with built-in English, German, Spanish, and French strings, plus custom translation JSON upload/download.
-- Version-aware release flow: factory images are named by release version and old images are archived automatically.
+- Browser-based OTA firmware updates from local `.ota.bin` files or OTA URLs.
+- Display auto-dimming lowers the backlight after idle time and restores full brightness on touch.
+- Version-aware release flow: factory and OTA images are named by release version and old images are archived automatically.
 
-## What's new in v0.7
+## What's new in v0.7.1
 
-- New versioned factory image: `release/betta86-ha-panel-v0.7.factory.bin`.
-- The previous generic factory image was moved to `release/archive/`.
-- The web editor now displays the running firmware version from `/api/version`.
-- Light tiles now detect Home Assistant light capabilities and only show dimming/color controls when the entity supports them.
-- RGB and color-temperature light control was added, including color swatches, Kelvin presets, and richer visual feedback.
-- Home Assistant state handling was made more compact for lights, media players, and weather forecasts to reduce runtime memory pressure.
-- Weather forecast refresh can use Home Assistant `weather.get_forecasts` and keeps the stored forecast compact.
-- Widget inspector controls were expanded: button mode, button accent color, slider entity domain, slider direction, slider accent color, graph line color, graph time window, and graph render point count.
-- Wi-Fi scanning is available in both first-run provisioning and settings, where supported by the current runtime mode.
-- The release tooling now reads the project version, emits a versioned factory image, and archives older factory images.
-- ESP-Hosted C6 adapter firmware can be embedded from `release/`, so the generated factory image is sufficient for distribution.
-- For flashing and distribution, the factory image is enough; no separate C6 firmware file is required for the current release image.
+- OTA firmware updates are now available from the web editor, using either a local `.ota.bin` upload or an OTA URL.
+- The release tooling now creates both `release/betta86-ha-panel-v0.7.1.factory.bin` and `release/ota/betta86-ha-panel-v0.7.1.ota.bin`.
+- The web editor can discover Home Assistant entities while adding tiles, with room grouping, caching, progress display, and sensor search for large installations.
+- A Quick Setup flow opens after Home Assistant provisioning to help new users build their first dashboard.
+- The Settings view was reorganized so section navigation stays in the sidebar and the active settings page opens in the main workspace.
+- OTA flashing now shows a dedicated progress screen on the panel and avoids the previous display flicker during flash writes.
+- GT911 touch startup is more reliable, and the panel now dims to 30% after 3 minutes of no touch.
+
+See [release-notes.md](release-notes.md) for the full changelog, upgrade notes, and OTA details.
 
 ## Getting Started
-- Download the latest factory image: [betta86-ha-panel-v0.7.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.7.factory.bin)
+- Download the latest factory image: [betta86-ha-panel-v0.7.1.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.7.1.factory.bin)
 - Flash it with esptool or with a web flasher of your choice, for example: https://espressif.github.io/esptool-js/
 - Use the outer USB-C port on the Smart86 Box for flashing.
 - Choose baud rate `115200`.
@@ -43,7 +43,7 @@ The dashboard is configured directly on the device via the integrated BETTA Edit
 - Connect to the correct COM port.
 - Set the flash address to `0x0`.
   <img width="411" height="236" alt="image" src="https://github.com/user-attachments/assets/151c0026-15cc-450d-af28-d5629c5ec5e5" />
-- Select the downloaded `.bin` file. The v0.7 factory image is about 4.6 MB and already includes the C6 network adapter firmware used for this release.
+- Select the downloaded `.bin` file. The v0.7.1 factory image is about 4.8 MB and already includes the C6 network adapter firmware used for this release.
 - Click `Program`.
   <img width="662" height="469" alt="image" src="https://github.com/user-attachments/assets/732007c8-9e7d-4411-8360-665553782b6c" />
 - Reboot the device by pressing the reset button or briefly cutting power.
@@ -53,6 +53,7 @@ The dashboard is configured directly on the device via the integrated BETTA Edit
 - After reboot, the panel joins your Wi-Fi and receives an IP address from your local network.
 - Open that IP address in your browser to continue the Home Assistant setup and start configuring the dashboard.
   <img width="613" height="416" alt="image" src="https://github.com/user-attachments/assets/a81fab35-d599-490a-9e1f-2675924b099d" />
+- After v0.7.1 is installed, future app updates can be installed from the BETTA Editor with an OTA `.bin` upload or OTA URL. See [release-notes.md](release-notes.md#ota-and-packaging).
 
 
 

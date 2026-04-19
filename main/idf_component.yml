@@ -14,6 +14,10 @@ dependencies:
     version: "^1.2.0"
     rules:
       - if: "target in [esp32p4]"
+  espressif/esp_lcd_touch_gt911:
+    version: "1.2.0~2"
+    rules:
+      - if: "target in [esp32p4]"
   joltwallet/littlefs:
     version: "^1.20.2"
   espressif/esp_hosted:

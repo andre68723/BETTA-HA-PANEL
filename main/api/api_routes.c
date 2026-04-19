@@ -21,6 +21,11 @@ static esp_err_t guarded_api_entities_get(httpd_req_t *req)
     return http_guard_handle(req, api_entities_get_handler);
 }
 
+static esp_err_t guarded_api_light_entities_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_light_entities_get_handler);
+}
+
 static esp_err_t guarded_api_state_get(httpd_req_t *req)
 {
     return http_guard_handle(req, api_state_get_handler);
@@ -66,6 +71,21 @@ static esp_err_t guarded_api_screenshot_bmp_get(httpd_req_t *req)
     return http_guard_handle(req, api_screenshot_bmp_get_handler);
 }
 
+static esp_err_t guarded_api_ota_status_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_ota_status_get_handler);
+}
+
+static esp_err_t guarded_api_ota_url_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_ota_url_post_handler);
+}
+
+static esp_err_t guarded_api_ota_upload_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_ota_upload_post_handler);
+}
+
 esp_err_t api_routes_register(httpd_handle_t server)
 {
     if (server == NULL) {
@@ -88,6 +108,12 @@ esp_err_t api_routes_register(httpd_handle_t server)
         .uri = "/api/entities",
         .method = HTTP_GET,
         .handler = guarded_api_entities_get,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t get_light_entities = {
+        .uri = "/api/ha/light_entities",
+        .method = HTTP_GET,
+        .handler = guarded_api_light_entities_get,
         .user_ctx = NULL,
     };
     httpd_uri_t get_state = {
@@ -144,10 +170,30 @@ esp_err_t api_routes_register(httpd_handle_t server)
         .handler = guarded_api_screenshot_bmp_get,
         .user_ctx = NULL,
     };
+    httpd_uri_t get_ota_status = {
+        .uri = "/api/ota/status",
+        .method = HTTP_GET,
+        .handler = guarded_api_ota_status_get,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t post_ota_url = {
+        .uri = "/api/ota/url",
+        .method = HTTP_POST,
+        .handler = guarded_api_ota_url_post,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t post_ota_upload = {
+        .uri = "/api/ota/upload",
+        .method = HTTP_POST,
+        .handler = guarded_api_ota_upload_post,
+        .user_ctx = NULL,
+    };
 
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_layout), "api_routes", "GET /api/layout");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &put_layout), "api_routes", "PUT /api/layout");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_entities), "api_routes", "GET /api/entities");
+    ESP_RETURN_ON_ERROR(
+        httpd_register_uri_handler(server, &get_light_entities), "api_routes", "GET /api/ha/light_entities");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_state), "api_routes", "GET /api/state");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_settings), "api_routes", "GET /api/settings");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &put_settings), "api_routes", "PUT /api/settings");
@@ -160,6 +206,9 @@ esp_err_t api_routes_register(httpd_handle_t server)
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_version), "api_routes", "GET /api/version");
     ESP_RETURN_ON_ERROR(
         httpd_register_uri_handler(server, &get_screenshot_bmp), "api_routes", "GET /api/screenshot.bmp");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_ota_status), "api_routes", "GET /api/ota/status");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_ota_url), "api_routes", "POST /api/ota/url");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_ota_upload), "api_routes", "POST /api/ota/upload");
 
     return ESP_OK;
 }

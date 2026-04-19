@@ -1,6 +1,7 @@
 param(
     [string]$BuildDir = "build",
-    [string]$OutFile = ""
+    [string]$OutFile = "",
+    [string]$OtaOutFile = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -99,6 +100,33 @@ function Move-ExistingFactoryImagesToArchive {
     }
 }
 
+function Move-ExistingOtaImagesToArchive {
+    param(
+        [string]$OutDir,
+        [string]$ArchiveDir,
+        [string]$TempOutPath
+    )
+
+    if (-not (Test-Path $ArchiveDir)) {
+        New-Item -ItemType Directory -Path $ArchiveDir -Force | Out-Null
+    }
+
+    $tempFullPath = [System.IO.Path]::GetFullPath($TempOutPath)
+    $otaImages = Get-ChildItem -LiteralPath $OutDir -File -Filter "*.bin" |
+        Where-Object {
+            $_.Name -like "betta86-ha-panel*.ota*.bin" -and
+            [System.IO.Path]::GetFullPath($_.FullName) -ne $tempFullPath
+        }
+
+    foreach ($image in $otaImages) {
+        $destination = Resolve-ArchiveDestination -ArchiveDir $ArchiveDir -FileName $image.Name
+        Move-Item -LiteralPath $image.FullName -Destination $destination
+        Write-Host "Archived old OTA image:"
+        Write-Host "  $($image.FullName)"
+        Write-Host "  -> $destination"
+    }
+}
+
 function Resolve-BuildConfig {
     param(
         [string]$BuildPath
@@ -115,6 +143,56 @@ function Resolve-BuildConfig {
     catch {
         throw "Failed to parse ${configPath}: $($_.Exception.Message)"
     }
+}
+
+function Resolve-AppImagePath {
+    param(
+        [string]$BuildPath
+    )
+
+    $flasherArgsPath = Join-Path $BuildPath "flasher_args.json"
+    if (Test-Path $flasherArgsPath) {
+        try {
+            $flasher = Get-Content -Raw -Path $flasherArgsPath | ConvertFrom-Json
+            $appFile = [string]$flasher.app.file
+            if (-not [string]::IsNullOrWhiteSpace($appFile)) {
+                $candidate = Join-Path $BuildPath $appFile
+                if (Test-Path $candidate) {
+                    return (Resolve-Path $candidate).Path
+                }
+            }
+        }
+        catch {
+            throw "Failed to parse app image from ${flasherArgsPath}: $($_.Exception.Message)"
+        }
+    }
+
+    $appArgsCandidates = @(
+        (Join-Path $BuildPath "app-flash_args"),
+        (Join-Path $BuildPath "flash_app_args")
+    )
+    foreach ($appArgsPath in $appArgsCandidates) {
+        if (-not (Test-Path $appArgsPath)) {
+            continue
+        }
+
+        foreach ($line in (Get-Content -Path $appArgsPath)) {
+            $trimmed = $line.Trim()
+            if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#") -or $trimmed.StartsWith("--")) {
+                continue
+            }
+
+            $match = [regex]::Match($trimmed, '^(0x[0-9A-Fa-f]+)\s+(.+)$')
+            if ($match.Success) {
+                $candidate = Join-Path $BuildPath $match.Groups[2].Value.Trim()
+                if (Test-Path $candidate) {
+                    return (Resolve-Path $candidate).Path
+                }
+            }
+        }
+    }
+
+    throw "App image for OTA not found. Run `idf.py build` first."
 }
 
 function Resolve-SerialToolInfo {
@@ -226,12 +304,31 @@ function Resolve-Chip {
     return "esp32p4"
 }
 
+function Resolve-OutputPath {
+    param(
+        [string]$Path,
+        [bool]$WasProvided,
+        [string]$RepoRoot
+    )
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return [System.IO.Path]::GetFullPath($Path)
+    }
+
+    $baseDir = if ($WasProvided) { (Get-Location).Path } else { $RepoRoot }
+    return [System.IO.Path]::GetFullPath((Join-Path $baseDir $Path))
+}
+
 $repoRoot = Resolve-RepoRoot
 $releaseVersion = Resolve-ReleaseVersion -RepoRoot $repoRoot
 $safeReleaseVersion = ConvertTo-SafeFileNamePart -Value $releaseVersion
 $outFileWasProvided = -not [string]::IsNullOrWhiteSpace($OutFile)
 if (-not $outFileWasProvided) {
     $OutFile = Join-Path "release" "betta86-ha-panel-$safeReleaseVersion.factory.bin"
+}
+$otaOutFileWasProvided = -not [string]::IsNullOrWhiteSpace($OtaOutFile)
+if (-not $otaOutFileWasProvided) {
+    $OtaOutFile = Join-Path (Join-Path "release" "ota") "betta86-ha-panel-$safeReleaseVersion.ota.bin"
 }
 
 $buildPath = (Resolve-Path $BuildDir).Path
@@ -244,15 +341,9 @@ $buildConfig = Resolve-BuildConfig -BuildPath $buildPath
 $serialToolInfo = Resolve-SerialToolInfo -BuildPath $buildPath
 $pythonExe = Resolve-Python -SerialToolInfo $serialToolInfo
 $esptoolPath = Resolve-EspToolPath -BuildConfig $buildConfig -SerialToolInfo $serialToolInfo
+$appImagePath = Resolve-AppImagePath -BuildPath $buildPath
 
-$outPath = if ([System.IO.Path]::IsPathRooted($OutFile)) {
-    $OutFile
-}
-else {
-    $baseDir = if ($outFileWasProvided) { (Get-Location).Path } else { $repoRoot }
-    Join-Path $baseDir $OutFile
-}
-$outPath = [System.IO.Path]::GetFullPath($outPath)
+$outPath = Resolve-OutputPath -Path $OutFile -WasProvided $outFileWasProvided -RepoRoot $repoRoot
 $outDir = Split-Path -Parent $outPath
 if (-not (Test-Path $outDir)) {
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
@@ -260,6 +351,16 @@ if (-not (Test-Path $outDir)) {
 $archiveDir = Join-Path $outDir "archive"
 if (-not (Test-Path $archiveDir)) {
     New-Item -ItemType Directory -Path $archiveDir -Force | Out-Null
+}
+
+$otaOutPath = Resolve-OutputPath -Path $OtaOutFile -WasProvided $otaOutFileWasProvided -RepoRoot $repoRoot
+$otaOutDir = Split-Path -Parent $otaOutPath
+if (-not (Test-Path $otaOutDir)) {
+    New-Item -ItemType Directory -Path $otaOutDir -Force | Out-Null
+}
+$otaArchiveDir = Join-Path $otaOutDir "archive"
+if (-not (Test-Path $otaArchiveDir)) {
+    New-Item -ItemType Directory -Path $otaArchiveDir -Force | Out-Null
 }
 
 $chip = Resolve-Chip -BuildPath $buildPath
@@ -311,9 +412,11 @@ foreach ($part in $parts) {
 Write-Host "Creating factory image:"
 Write-Host "  Version: $releaseVersion"
 Write-Host "  Out: $outPath"
+Write-Host "  OTA: $otaOutPath"
 Write-Host "  Archive: $archiveDir"
 Write-Host "  Chip: $chip"
 Write-Host "  Source: $flashArgsPath"
+Write-Host "  App image: $appImagePath"
 Write-Host "  Parts:"
 foreach ($part in $parts) {
     Write-Host "    $($part.Offset)  $($part.Path)"
@@ -330,9 +433,20 @@ if ($LASTEXITCODE -ne 0) {
 Move-ExistingFactoryImagesToArchive -OutDir $outDir -ArchiveDir $archiveDir -TempOutPath $tempOutPath
 Move-Item -LiteralPath $tempOutPath -Destination $outPath -Force
 
+$otaTempOutPath = Join-Path $otaOutDir ".$([System.IO.Path]::GetFileName($otaOutPath)).tmp"
+if (Test-Path $otaTempOutPath) {
+    Remove-Item -LiteralPath $otaTempOutPath -Force
+}
+Copy-Item -LiteralPath $appImagePath -Destination $otaTempOutPath -Force
+Move-ExistingOtaImagesToArchive -OutDir $otaOutDir -ArchiveDir $otaArchiveDir -TempOutPath $otaTempOutPath
+Move-Item -LiteralPath $otaTempOutPath -Destination $otaOutPath -Force
+
 Write-Host ""
 Write-Host "Factory image created:"
 Write-Host "  $outPath"
+Write-Host ""
+Write-Host "OTA image created:"
+Write-Host "  $otaOutPath"
 Write-Host ""
 Write-Host "Flash with esptool at offset 0x0, example:"
 Write-Host "  python -m esptool --chip $chip -p COM3 --before default_reset --after hard_reset write_flash 0x0 `"$outPath`""

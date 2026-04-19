@@ -3,12 +3,14 @@
  */
 #include "api/api_routes.h"
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "cJSON.h"
 
 #include "app_config.h"
+#include "ha/ha_client.h"
 #include "ha/ha_model.h"
 
 #define API_ENTITIES_MAX_ITEMS_DEFAULT 128U
@@ -109,6 +111,39 @@ esp_err_t api_entities_get_handler(httpd_req_t *req)
 
     set_json_headers(req);
     esp_err_t err = httpd_resp_sendstr(req, payload);
+    cJSON_free(payload);
+    return err;
+}
+
+esp_err_t api_light_entities_get_handler(httpd_req_t *req)
+{
+    char refresh_raw[8] = {0};
+    char domain[APP_HA_DISCOVERY_DOMAIN_MAX_LEN] = "light";
+    char search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
+
+    int query_len = httpd_req_get_url_query_len(req);
+    if (query_len > 0) {
+        char *query = calloc((size_t)query_len + 1U, sizeof(char));
+        if (query == NULL) {
+            return httpd_resp_send_500(req);
+        }
+        if (httpd_req_get_url_query_str(req, query, query_len + 1) == ESP_OK) {
+            httpd_query_key_value(query, "refresh", refresh_raw, sizeof(refresh_raw));
+            httpd_query_key_value(query, "domain", domain, sizeof(domain));
+            httpd_query_key_value(query, "search", search, sizeof(search));
+        }
+        free(query);
+    }
+
+    bool refresh = strcmp(refresh_raw, "1") == 0 || strcmp(refresh_raw, "true") == 0;
+    char *payload = NULL;
+    esp_err_t err = ha_client_get_domain_entities_json(domain, search, refresh, &payload);
+    if (err != ESP_OK || payload == NULL) {
+        return httpd_resp_send_500(req);
+    }
+
+    set_json_headers(req);
+    err = httpd_resp_sendstr(req, payload);
     cJSON_free(payload);
     return err;
 }

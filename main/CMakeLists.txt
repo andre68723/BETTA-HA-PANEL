@@ -15,6 +15,7 @@ idf_component_register(
         "api/api_wifi.c"
         "api/api_version.c"
         "api/api_screenshot.c"
+        "api/api_ota.c"
         "drivers/display_init.c"
         "drivers/touch_init.c"
         "ha/ha_client.c"
@@ -29,6 +30,7 @@ idf_component_register(
         "net/time_sync.c"
         "ui/ui_runtime.c"
         "ui/ui_boot_splash.c"
+        "ui/ui_ota_progress.c"
         "ui/ui_pages.c"
         "ui/ui_i18n.c"
         "ui/ui_widget_factory.c"
@@ -67,6 +69,7 @@ idf_component_register(
         esp_http_client
         esp_http_server
         esp_timer
+        app_update
         esp_app_format
         esp_lcd
         lvgl
