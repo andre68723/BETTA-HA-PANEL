@@ -3,8 +3,8 @@
 
 # BETTA HA Panel
 <p float="left">
-    <img src="images/heating%20on%20example.jpg" alt="Heating ON example" width="200" height="200" />
-    <img width="200" height="200" alt="image" src="https://github.com/user-attachments/assets/97be77c3-0716-4641-994c-efe90c929953" />
+    <img src="images/heating%20on%20example.jpg" alt="Heating ON example" width="25%" />
+    <img src="https://github.com/user-attachments/assets/97be77c3-0716-4641-994c-efe90c929953" width="25%" />
 </p>
 A runtime configurable Home Assistant dashboard for the ESP32-P4 Smart 86 Box development board.
 
