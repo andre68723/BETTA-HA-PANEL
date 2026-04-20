@@ -19,6 +19,7 @@
 #include "drivers/display_init.h"
 #include "drivers/touch_init.h"
 #include "ha/ha_client.h"
+#include "ha/ha_energy_model.h"
 #include "ha/ha_model.h"
 #include "layout/layout_store.h"
 #include "net/time_sync.h"
@@ -139,6 +140,7 @@ void app_main(void)
     ESP_ERROR_CHECK(init_net_stack());
     ESP_ERROR_CHECK(app_events_init());
     ESP_ERROR_CHECK(ha_model_init());
+    ESP_ERROR_CHECK(ha_energy_model_init());
     ESP_ERROR_CHECK(runtime_settings_init());
 
     esp_err_t settings_err = runtime_settings_load(&s_runtime_settings);

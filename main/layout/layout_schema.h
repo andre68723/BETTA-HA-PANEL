@@ -36,6 +36,7 @@ typedef struct {
 
 typedef struct {
     char id[APP_MAX_PAGE_ID_LEN];
+    char type[APP_MAX_UI_OPTION_LEN];
     char title[APP_MAX_NAME_LEN];
     uint16_t widget_count;
     layout_widget_t widgets[APP_MAX_WIDGETS_PER_PAGE];

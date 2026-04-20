@@ -8,6 +8,7 @@ idf_component_register(
         "api/http_guard.c"
         "api/api_routes.c"
         "api/api_layout.c"
+        "api/api_energy.c"
         "api/api_entities.c"
         "api/api_state.c"
         "api/api_settings.c"
@@ -21,6 +22,7 @@ idf_component_register(
         "ha/ha_client.c"
         "ha/ha_ws.c"
         "ha/ha_model.c"
+        "ha/ha_energy_model.c"
         "ha/ha_light_capabilities.c"
         "layout/layout_store.c"
         "layout/layout_validate.c"
@@ -32,6 +34,7 @@ idf_component_register(
         "ui/ui_boot_splash.c"
         "ui/ui_ota_progress.c"
         "ui/ui_pages.c"
+        "ui/ui_energy_page.c"
         "ui/ui_i18n.c"
         "ui/ui_widget_factory.c"
         "ui/ui_bindings.c"
@@ -174,6 +177,7 @@ set(MDI_TOP50_FONT42_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/fonts/mditop50icons42.
 set(MDI_TOP50_FONT_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/fonts/mditop50icons.c")
 set(MDI_STANDARD_FONT_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/fonts/mdi_standard_icons_56.c")
 set(MDI_WEATHER_FONT20_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/fonts/mdiweatherIcons20.c")
+set(MDI_ENERGY_FONT42_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/fonts/mdi_energy_42.c")
 set(POPPINS_REGULAR_12_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/fonts/poppins_regular_12.c")
 set(POPPINS_REGULAR_14_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/fonts/poppins_regular_14.c")
 set(POPPINS_REGULAR_16_SOURCE "${CMAKE_CURRENT_LIST_DIR}/ui/fonts/poppins_regular_16.c")
@@ -209,6 +213,18 @@ set(MDI_WEATHER_FONT20_AVAILABLE 0)
 if(EXISTS "${MDI_WEATHER_FONT20_SOURCE}")
     target_sources(${COMPONENT_LIB} PRIVATE "${MDI_WEATHER_FONT20_SOURCE}")
     set(MDI_WEATHER_FONT20_AVAILABLE 1)
+endif()
+
+set(APP_HAVE_MDI_ENERGY_FONT_42 0)
+if(EXISTS "${MDI_ENERGY_FONT42_SOURCE}")
+    target_sources(${COMPONENT_LIB} PRIVATE "${MDI_ENERGY_FONT42_SOURCE}")
+    set(APP_HAVE_MDI_ENERGY_FONT_42 1)
+endif()
+
+set(APP_HAVE_MDI_ENERGY_FONT_100 0)
+if(EXISTS "${MDI_ENERGY_FONT100_SOURCE}")
+    target_sources(${COMPONENT_LIB} PRIVATE "${MDI_ENERGY_FONT100_SOURCE}")
+    set(APP_HAVE_MDI_ENERGY_FONT_100 1)
 endif()
 
 set(APP_HAVE_POPPINS_REGULAR_12 0)
@@ -309,7 +325,9 @@ target_compile_definitions(
         APP_HAVE_POPPINS_REGULAR_34=${APP_HAVE_POPPINS_REGULAR_34}
         APP_HAVE_POPPINS_REGULAR_36=${APP_HAVE_POPPINS_REGULAR_36}
         APP_HAVE_POPPINS_REGULAR_38=${APP_HAVE_POPPINS_REGULAR_38}
-        APP_HAVE_POPPINS_REGULAR_40=${APP_HAVE_POPPINS_REGULAR_40})
+        APP_HAVE_POPPINS_REGULAR_40=${APP_HAVE_POPPINS_REGULAR_40}
+        APP_HAVE_MDI_ENERGY_FONT_42=${APP_HAVE_MDI_ENERGY_FONT_42}
+        APP_HAVE_MDI_ENERGY_FONT_100=${APP_HAVE_MDI_ENERGY_FONT_100})
 
 set(APP_UI_WEATHER_LOTTIE_ASSETS 0)
 if(CONFIG_LV_USE_LOTTIE)

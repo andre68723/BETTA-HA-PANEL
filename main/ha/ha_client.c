@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "cJSON.h"
 #include "esp_crt_bundle.h"
@@ -24,6 +25,7 @@
 
 #include "app_config.h"
 #include "app_events.h"
+#include "ha/ha_energy_model.h"
 #include "ha/ha_light_capabilities.h"
 #include "ha/ha_model.h"
 #include "ha/ha_ws.h"
@@ -57,10 +59,15 @@ typedef enum {
     HA_BG_BUDGET_CRITICAL = 3,
 } ha_bg_budget_level_t;
 
-#define HA_WS_ENTITIES_SUB_MAX (APP_MAX_WIDGETS_TOTAL * 2)
+#define HA_ENERGY_PAGE_ENTITY_MAX (APP_MAX_PAGES * 9)
+#define HA_LAYOUT_ENTITY_MAX ((APP_MAX_WIDGETS_TOTAL * 2) + HA_ENERGY_PAGE_ENTITY_MAX)
+#define HA_WS_ENTITIES_SUB_MAX HA_LAYOUT_ENTITY_MAX
 #define HA_WS_ENTITIES_SUB_ID_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * (size_t)APP_MAX_ENTITY_ID_LEN)
 #define HA_WS_ENTITIES_SUB_REQ_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * sizeof(uint32_t))
 #define HA_SVC_TRACE_CAPACITY 48U
+#define HA_ENERGY_STAT_REF_MAX 16U
+#define HA_ENERGY_SYNC_INTERVAL_MS (5 * 60 * 1000)
+#define HA_ENERGY_SYNC_RETRY_MS (60 * 1000)
 
 typedef enum {
     HA_LIGHT_DISCOVERY_PHASE_NONE = 0,
@@ -70,6 +77,22 @@ typedef enum {
     HA_LIGHT_DISCOVERY_PHASE_AREAS,
     HA_LIGHT_DISCOVERY_PHASE_DEVICES,
 } ha_light_discovery_phase_t;
+
+typedef enum {
+    HA_ENERGY_STAT_GRID_FROM = 0,
+    HA_ENERGY_STAT_GRID_TO,
+    HA_ENERGY_STAT_SOLAR,
+    HA_ENERGY_STAT_BATTERY_FROM,
+    HA_ENERGY_STAT_BATTERY_TO,
+    HA_ENERGY_STAT_GAS,
+    HA_ENERGY_STAT_WATER,
+} ha_energy_stat_kind_t;
+
+typedef struct {
+    char id[APP_MAX_ENTITY_ID_LEN];
+    char unit[APP_MAX_UNIT_LEN];
+    ha_energy_stat_kind_t kind;
+} ha_energy_stat_ref_t;
 
 typedef struct {
     char id[APP_MAX_ENTITY_ID_LEN];
@@ -164,6 +187,18 @@ typedef struct {
     bool weather_ws_req_inflight;
     uint32_t weather_ws_req_id;
     char weather_ws_req_entity_id[APP_MAX_ENTITY_ID_LEN];
+    bool layout_needs_ha_energy;
+    bool pending_energy_prefs;
+    bool pending_energy_stats;
+    bool energy_prefs_req_inflight;
+    bool energy_stats_req_inflight;
+    uint32_t energy_prefs_req_id;
+    uint32_t energy_stats_req_id;
+    uint8_t energy_stats_batch_offset;
+    int64_t next_energy_sync_unix_ms;
+    ha_energy_stat_ref_t energy_stat_refs[HA_ENERGY_STAT_REF_MAX];
+    uint8_t energy_stat_ref_count;
+    ha_energy_snapshot_t energy_staging;
     uint32_t layout_entity_signature;
     uint16_t layout_entity_count;
     int64_t ws_priority_boost_until_unix_ms;
@@ -285,6 +320,7 @@ static void safe_copy_cstr(char *dst, size_t dst_size, const char *src);
 static bool ha_client_is_tls_bad_input_data(int tls_stack_err);
 static void ha_client_priority_sync_queue_push_locked(const char *entity_id);
 static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_count, bool *out_need_weather_forecast);
+static bool ha_client_layout_needs_ha_energy(void);
 static bool ha_client_entity_is_weather(const char *entity_id);
 static bool ha_client_entity_id_in_list(const char *entity_ids, size_t entity_count, const char *entity_id);
 static void ha_client_queue_weather_priority_sync_from_layout(int64_t now_ms);
@@ -303,6 +339,8 @@ static bool ha_client_capture_layout_snapshot(
 static bool ha_client_rest_enabled(void);
 static esp_err_t ha_client_send_subscribe_single_entity(const char *entity_id, uint32_t *out_req_id);
 static esp_err_t ha_client_send_weather_daily_forecast_ws(const char *entity_id, uint32_t *out_req_id);
+static esp_err_t ha_client_send_energy_prefs_ws(uint32_t *out_req_id);
+static esp_err_t ha_client_send_energy_stats_ws(uint32_t *out_req_id);
 static esp_err_t ha_client_send_light_discovery_request(ha_light_discovery_phase_t phase);
 static void ha_client_mark_entities_seen(const char *entity_id);
 static esp_err_t ha_client_ensure_entities_sub_buffers(void);
@@ -669,7 +707,7 @@ static void ha_client_queue_weather_priority_sync_from_layout(int64_t now_ms)
         now_ms = ha_client_now_ms();
     }
 
-    size_t max_entities = (size_t)APP_MAX_WIDGETS_TOTAL * 2U;
+    size_t max_entities = (size_t)HA_LAYOUT_ENTITY_MAX;
     char *entity_ids = calloc(max_entities, APP_MAX_ENTITY_ID_LEN);
     if (entity_ids == NULL) {
         return;
@@ -834,7 +872,7 @@ static void ha_client_clear_entities_sub_buffers(void)
 
 static uint16_t ha_client_prepare_entities_resubscribe_locked(int64_t now_ms)
 {
-    size_t max_entities = (size_t)APP_MAX_WIDGETS_TOTAL * 2U;
+    size_t max_entities = (size_t)HA_LAYOUT_ENTITY_MAX;
     char *entity_ids = calloc(max_entities, APP_MAX_ENTITY_ID_LEN);
     size_t entity_count = 0;
 
@@ -3161,6 +3199,43 @@ static bool ha_client_entity_id_in_list(const char *entity_ids, size_t count, co
     return false;
 }
 
+static bool ha_client_energy_has_manual_entities(cJSON *energy)
+{
+    if (!cJSON_IsObject(energy)) {
+        return false;
+    }
+    static const char *energy_keys[] = {
+        "home_power_entity_id",
+        "solar_power_entity_id",
+        "grid_power_entity_id",
+        "grid_import_power_entity_id",
+        "grid_export_power_entity_id",
+        "battery_power_entity_id",
+        "battery_charge_power_entity_id",
+        "battery_discharge_power_entity_id",
+        "battery_soc_entity_id",
+    };
+    for (size_t i = 0; i < (sizeof(energy_keys) / sizeof(energy_keys[0])); i++) {
+        cJSON *item = cJSON_GetObjectItemCaseSensitive(energy, energy_keys[i]);
+        if (cJSON_IsString(item) && item->valuestring != NULL && item->valuestring[0] != '\0') {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool ha_client_energy_page_uses_manual_live(cJSON *energy)
+{
+    if (!cJSON_IsObject(energy)) {
+        return false;
+    }
+    cJSON *source = cJSON_GetObjectItemCaseSensitive(energy, "source");
+    if (cJSON_IsString(source) && source->valuestring != NULL && source->valuestring[0] != '\0') {
+        return strcmp(source->valuestring, "manual_live") == 0;
+    }
+    return ha_client_energy_has_manual_entities(energy);
+}
+
 static void ha_client_collect_entity_id(
     cJSON *widget, const char *key, char *entity_ids, size_t *count, size_t max_count)
 {
@@ -3215,6 +3290,31 @@ static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_c
         int page_count = cJSON_GetArraySize(pages);
         for (int p = 0; p < page_count && count < max_count; p++) {
             cJSON *page = cJSON_GetArrayItem(pages, p);
+            cJSON *page_type = cJSON_GetObjectItemCaseSensitive(page, "type");
+            if (cJSON_IsString(page_type) && page_type->valuestring != NULL &&
+                strcmp(page_type->valuestring, "energy_dashboard") == 0) {
+                cJSON *energy = cJSON_GetObjectItemCaseSensitive(page, "energy");
+                static const char *energy_keys[] = {
+                    "home_power_entity_id",
+                    "solar_power_entity_id",
+                    "grid_power_entity_id",
+                    "grid_import_power_entity_id",
+                    "grid_export_power_entity_id",
+                    "battery_power_entity_id",
+                    "battery_charge_power_entity_id",
+                    "battery_discharge_power_entity_id",
+                    "battery_soc_entity_id",
+                };
+                if (cJSON_IsObject(energy)) {
+                    if (ha_client_energy_page_uses_manual_live(energy)) {
+                        for (size_t i = 0; i < (sizeof(energy_keys) / sizeof(energy_keys[0])) && count < max_count; i++) {
+                            ha_client_collect_entity_id(energy, energy_keys[i], entity_ids, &count, max_count);
+                        }
+                    }
+                }
+                continue;
+            }
+
             cJSON *widgets = cJSON_GetObjectItemCaseSensitive(page, "widgets");
             if (!cJSON_IsArray(widgets)) {
                 continue;
@@ -3242,6 +3342,47 @@ static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_c
         *out_need_weather_forecast = need_weather_forecast;
     }
     return count;
+}
+
+static bool ha_client_layout_needs_ha_energy(void)
+{
+    char *layout_json = NULL;
+    esp_err_t load_err = layout_store_load(&layout_json);
+    if (load_err != ESP_OK || layout_json == NULL) {
+        layout_json = strdup(layout_store_default_json());
+        if (layout_json == NULL) {
+            return false;
+        }
+    }
+
+    cJSON *root = cJSON_Parse(layout_json);
+    free(layout_json);
+    if (root == NULL) {
+        return false;
+    }
+
+    bool needs_ha_energy = false;
+    cJSON *pages = cJSON_GetObjectItemCaseSensitive(root, "pages");
+    if (cJSON_IsArray(pages)) {
+        int page_count = cJSON_GetArraySize(pages);
+        for (int p = 0; p < page_count; p++) {
+            cJSON *page = cJSON_GetArrayItem(pages, p);
+            cJSON *page_type = cJSON_GetObjectItemCaseSensitive(page, "type");
+            if (!cJSON_IsString(page_type) || page_type->valuestring == NULL ||
+                strcmp(page_type->valuestring, "energy_dashboard") != 0) {
+                continue;
+            }
+
+            cJSON *energy = cJSON_GetObjectItemCaseSensitive(page, "energy");
+            if (!ha_client_energy_page_uses_manual_live(energy)) {
+                needs_ha_energy = true;
+                break;
+            }
+        }
+    }
+
+    cJSON_Delete(root);
+    return needs_ha_energy;
 }
 
 static int ha_client_entity_id_sort_cmp(const void *lhs, const void *rhs)
@@ -3288,7 +3429,7 @@ static bool ha_client_capture_layout_snapshot(
     *out_count = 0;
     *out_need_weather_forecast = false;
 
-    size_t max_entities = (size_t)APP_MAX_WIDGETS_TOTAL * 2U;
+    size_t max_entities = (size_t)HA_LAYOUT_ENTITY_MAX;
     char *entity_ids = calloc(max_entities, APP_MAX_ENTITY_ID_LEN);
     if (entity_ids == NULL) {
         return false;
@@ -3476,7 +3617,7 @@ static esp_err_t ha_client_sync_layout_entity_step(bool is_initial, uint32_t *io
         return ESP_ERR_INVALID_ARG;
     }
 
-    size_t max_entities = (size_t)APP_MAX_WIDGETS_TOTAL * 2U;
+    size_t max_entities = (size_t)HA_LAYOUT_ENTITY_MAX;
     char *entity_ids = calloc(max_entities, APP_MAX_ENTITY_ID_LEN);
     if (entity_ids == NULL) {
         return ESP_ERR_NO_MEM;
@@ -3638,6 +3779,303 @@ static esp_err_t ha_client_send_get_states(void)
     return err;
 }
 
+static void ha_client_energy_clear_refs_locked(void)
+{
+    memset(s_client.energy_stat_refs, 0, sizeof(s_client.energy_stat_refs));
+    s_client.energy_stat_ref_count = 0;
+}
+
+static void ha_client_energy_add_ref_locked(ha_energy_stat_kind_t kind, const char *stat_id, const char *unit)
+{
+    if (stat_id == NULL || stat_id[0] == '\0') {
+        return;
+    }
+    for (uint8_t i = 0; i < s_client.energy_stat_ref_count; i++) {
+        if (s_client.energy_stat_refs[i].kind == kind &&
+            strncmp(s_client.energy_stat_refs[i].id, stat_id, APP_MAX_ENTITY_ID_LEN) == 0) {
+            return;
+        }
+    }
+    if (s_client.energy_stat_ref_count >= HA_ENERGY_STAT_REF_MAX) {
+        return;
+    }
+    ha_energy_stat_ref_t *ref = &s_client.energy_stat_refs[s_client.energy_stat_ref_count++];
+    ref->kind = kind;
+    safe_copy_cstr(ref->id, sizeof(ref->id), stat_id);
+    safe_copy_cstr(ref->unit, sizeof(ref->unit), unit);
+}
+
+static const char *ha_client_json_string(cJSON *obj, const char *key)
+{
+    cJSON *item = cJSON_IsObject(obj) ? cJSON_GetObjectItemCaseSensitive(obj, key) : NULL;
+    return (cJSON_IsString(item) && item->valuestring != NULL) ? item->valuestring : "";
+}
+
+static void ha_client_energy_parse_prefs_locked(cJSON *result)
+{
+    ha_client_energy_clear_refs_locked();
+    cJSON *sources = cJSON_IsObject(result) ? cJSON_GetObjectItemCaseSensitive(result, "energy_sources") : NULL;
+    if (!cJSON_IsArray(sources)) {
+        return;
+    }
+
+    cJSON *source = NULL;
+    cJSON_ArrayForEach(source, sources)
+    {
+        const char *type = ha_client_json_string(source, "type");
+        if (strcmp(type, "grid") == 0) {
+            ha_client_energy_add_ref_locked(
+                HA_ENERGY_STAT_GRID_FROM, ha_client_json_string(source, "stat_energy_from"), NULL);
+            ha_client_energy_add_ref_locked(
+                HA_ENERGY_STAT_GRID_TO, ha_client_json_string(source, "stat_energy_to"), NULL);
+        } else if (strcmp(type, "solar") == 0) {
+            ha_client_energy_add_ref_locked(
+                HA_ENERGY_STAT_SOLAR, ha_client_json_string(source, "stat_energy_from"), NULL);
+        } else if (strcmp(type, "battery") == 0) {
+            ha_client_energy_add_ref_locked(
+                HA_ENERGY_STAT_BATTERY_FROM, ha_client_json_string(source, "stat_energy_from"), NULL);
+            ha_client_energy_add_ref_locked(
+                HA_ENERGY_STAT_BATTERY_TO, ha_client_json_string(source, "stat_energy_to"), NULL);
+        } else if (strcmp(type, "gas") == 0) {
+            ha_client_energy_add_ref_locked(HA_ENERGY_STAT_GAS,
+                ha_client_json_string(source, "stat_energy_from"),
+                ha_client_json_string(source, "unit_of_measurement"));
+        } else if (strcmp(type, "water") == 0) {
+            ha_client_energy_add_ref_locked(HA_ENERGY_STAT_WATER,
+                ha_client_json_string(source, "stat_energy_from"),
+                ha_client_json_string(source, "unit_of_measurement"));
+        }
+    }
+}
+
+static bool ha_client_format_energy_period_iso(char *start_buf, size_t start_size, char *end_buf, size_t end_size)
+{
+    if (start_buf == NULL || start_size == 0 || end_buf == NULL || end_size == 0) {
+        return false;
+    }
+
+    time_t now = time(NULL);
+    if (now <= 0) {
+        return false;
+    }
+
+    struct tm local_start = {0};
+    localtime_r(&now, &local_start);
+    local_start.tm_hour = 0;
+    local_start.tm_min = 0;
+    local_start.tm_sec = 0;
+    time_t start = mktime(&local_start);
+
+    struct tm local_end = local_start;
+    local_end.tm_hour = 23;
+    local_end.tm_min = 59;
+    local_end.tm_sec = 59;
+    time_t end = mktime(&local_end);
+    if (start <= 0 || end <= start) {
+        return false;
+    }
+
+    struct tm utc_start = {0};
+    struct tm utc_end = {0};
+    gmtime_r(&start, &utc_start);
+    gmtime_r(&end, &utc_end);
+    return strftime(start_buf, start_size, "%Y-%m-%dT%H:%M:%SZ", &utc_start) > 0 &&
+           strftime(end_buf, end_size, "%Y-%m-%dT%H:%M:%SZ", &utc_end) > 0;
+}
+
+static esp_err_t ha_client_send_energy_prefs_ws(uint32_t *out_req_id)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    uint32_t req_id = ha_client_next_message_id();
+    cJSON_AddNumberToObject(root, "id", (double)req_id);
+    cJSON_AddStringToObject(root, "type", "energy/get_prefs");
+    esp_err_t err = ha_client_send_json(root);
+    cJSON_Delete(root);
+    if (err == ESP_OK && out_req_id != NULL) {
+        *out_req_id = req_id;
+    }
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG_HA_CLIENT, "Failed to request HA energy preferences");
+    }
+    return err;
+}
+
+#define HA_ENERGY_STATS_BATCH_SIZE 3U
+
+static esp_err_t ha_client_send_energy_stats_ws(uint32_t *out_req_id)
+{
+    ha_energy_stat_ref_t refs[HA_ENERGY_STAT_REF_MAX] = {0};
+    uint8_t ref_count = 0;
+    uint8_t batch_offset = 0;
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    ref_count = s_client.energy_stat_ref_count;
+    batch_offset = s_client.energy_stats_batch_offset;
+    if (ref_count > 0) {
+        memcpy(refs, s_client.energy_stat_refs, sizeof(ha_energy_stat_ref_t) * ref_count);
+    }
+    xSemaphoreGive(s_client.mutex);
+
+    if (ref_count == 0 || batch_offset >= ref_count) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    uint8_t batch_end = batch_offset + HA_ENERGY_STATS_BATCH_SIZE;
+    if (batch_end > ref_count) {
+        batch_end = ref_count;
+    }
+
+    char start_time[32] = {0};
+    char end_time[32] = {0};
+    if (!ha_client_format_energy_period_iso(start_time, sizeof(start_time), end_time, sizeof(end_time))) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *stat_ids = cJSON_CreateArray();
+    cJSON *types = cJSON_CreateArray();
+    cJSON *units = cJSON_CreateObject();
+    if (root == NULL || stat_ids == NULL || types == NULL || units == NULL) {
+        cJSON_Delete(root);
+        cJSON_Delete(stat_ids);
+        cJSON_Delete(types);
+        cJSON_Delete(units);
+        return ESP_ERR_NO_MEM;
+    }
+
+    uint32_t req_id = ha_client_next_message_id();
+    cJSON_AddNumberToObject(root, "id", (double)req_id);
+    cJSON_AddStringToObject(root, "type", "recorder/statistics_during_period");
+    cJSON_AddStringToObject(root, "start_time", start_time);
+    cJSON_AddStringToObject(root, "end_time", end_time);
+    cJSON_AddStringToObject(root, "period", "hour");
+    cJSON_AddStringToObject(units, "energy", "kWh");
+    cJSON_AddItemToObject(root, "units", units);
+    units = NULL;
+    cJSON *change_type = cJSON_CreateString("change");
+    if (change_type == NULL) {
+        cJSON_Delete(root);
+        cJSON_Delete(stat_ids);
+        cJSON_Delete(types);
+        return ESP_ERR_NO_MEM;
+    }
+    cJSON_AddItemToArray(types, change_type);
+    cJSON_AddItemToObject(root, "types", types);
+    types = NULL;
+    for (uint8_t i = batch_offset; i < batch_end; i++) {
+        cJSON *stat_id = cJSON_CreateString(refs[i].id);
+        if (stat_id == NULL) {
+            cJSON_Delete(root);
+            cJSON_Delete(stat_ids);
+            return ESP_ERR_NO_MEM;
+        }
+        cJSON_AddItemToArray(stat_ids, stat_id);
+    }
+    cJSON_AddItemToObject(root, "statistic_ids", stat_ids);
+    stat_ids = NULL;
+
+    esp_err_t err = ha_client_send_json(root);
+    cJSON_Delete(root);
+    if (err == ESP_OK && out_req_id != NULL) {
+        *out_req_id = req_id;
+    }
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG_HA_CLIENT, "Failed to request HA energy statistics");
+    }
+    return err;
+}
+
+static float ha_client_energy_sum_change(cJSON *series)
+{
+    if (!cJSON_IsArray(series)) {
+        return 0.0f;
+    }
+    double total = 0.0;
+    cJSON *point = NULL;
+    cJSON_ArrayForEach(point, series)
+    {
+        cJSON *change = cJSON_IsObject(point) ? cJSON_GetObjectItemCaseSensitive(point, "change") : NULL;
+        if (cJSON_IsNumber(change)) {
+            total += change->valuedouble;
+        }
+    }
+    return (float)total;
+}
+
+static void ha_client_energy_handle_stats_result(cJSON *result, bool is_final_batch)
+{
+    ha_energy_stat_ref_t refs[HA_ENERGY_STAT_REF_MAX] = {0};
+    uint8_t ref_count = 0;
+    uint8_t batch_offset = 0;
+    uint8_t batch_end = 0;
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    ref_count = s_client.energy_stat_ref_count;
+    batch_offset = s_client.energy_stats_batch_offset;
+    batch_end = batch_offset + HA_ENERGY_STATS_BATCH_SIZE;
+    if (batch_end > ref_count) {
+        batch_end = ref_count;
+    }
+    if (ref_count > 0) {
+        memcpy(refs, s_client.energy_stat_refs, sizeof(ha_energy_stat_ref_t) * ref_count);
+    }
+    xSemaphoreGive(s_client.mutex);
+
+    /* Accumulate only the refs that were in this batch */
+    for (uint8_t i = batch_offset; i < batch_end; i++) {
+        cJSON *series = cJSON_IsObject(result) ? cJSON_GetObjectItemCaseSensitive(result, refs[i].id) : NULL;
+        float value = ha_client_energy_sum_change(series);
+        switch (refs[i].kind) {
+        case HA_ENERGY_STAT_GRID_FROM:
+            s_client.energy_staging.has_grid = true;
+            s_client.energy_staging.from_grid_kwh += value;
+            break;
+        case HA_ENERGY_STAT_GRID_TO:
+            s_client.energy_staging.has_grid = true;
+            s_client.energy_staging.to_grid_kwh += value;
+            break;
+        case HA_ENERGY_STAT_SOLAR:
+            s_client.energy_staging.has_solar = true;
+            s_client.energy_staging.solar_kwh += value;
+            break;
+        case HA_ENERGY_STAT_BATTERY_FROM:
+            s_client.energy_staging.has_battery = true;
+            s_client.energy_staging.from_battery_kwh += value;
+            break;
+        case HA_ENERGY_STAT_BATTERY_TO:
+            s_client.energy_staging.has_battery = true;
+            s_client.energy_staging.to_battery_kwh += value;
+            break;
+        case HA_ENERGY_STAT_GAS:
+            s_client.energy_staging.has_gas = true;
+            s_client.energy_staging.gas_value += value;
+            if (s_client.energy_staging.gas_unit[0] == '\0') {
+                safe_copy_cstr(s_client.energy_staging.gas_unit, sizeof(s_client.energy_staging.gas_unit), refs[i].unit);
+            }
+            break;
+        case HA_ENERGY_STAT_WATER:
+            s_client.energy_staging.has_water = true;
+            s_client.energy_staging.water_value += value;
+            if (s_client.energy_staging.water_unit[0] == '\0') {
+                safe_copy_cstr(s_client.energy_staging.water_unit, sizeof(s_client.energy_staging.water_unit), refs[i].unit);
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    /* Only publish to model after the final batch */
+    if (is_final_batch) {
+        s_client.energy_staging.available = ref_count > 0;
+        s_client.energy_staging.updated_unix_ms = esp_timer_get_time() / 1000;
+        ha_energy_model_update(&s_client.energy_staging);
+        ha_client_publish_event(EV_HA_ENERGY_CHANGED, NULL);
+    }
+}
+
 static const char *ha_client_light_discovery_ws_type(ha_light_discovery_phase_t phase)
 {
     switch (phase) {
@@ -3773,7 +4211,7 @@ static esp_err_t ha_client_send_subscribe_single_entity(const char *entity_id, u
 
 static esp_err_t ha_client_send_subscribe_layout_state_trigger(void)
 {
-    size_t max_entities = (size_t)APP_MAX_WIDGETS_TOTAL * 2U;
+    size_t max_entities = (size_t)HA_LAYOUT_ENTITY_MAX;
     char *entity_ids = calloc(max_entities, APP_MAX_ENTITY_ID_LEN);
     if (entity_ids == NULL) {
         return ESP_ERR_NO_MEM;
@@ -4455,6 +4893,8 @@ static void ha_client_handle_result_message(cJSON *root)
     bool is_entities_sub = false;
     bool entities_sub_failed = false;
     bool is_weather_ws_req = false;
+    bool is_energy_prefs_req = false;
+    bool is_energy_stats_req = false;
     char weather_entity_id[APP_MAX_ENTITY_ID_LEN] = {0};
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
     is_get_states = (msg_id == s_client.get_states_req_id);
@@ -4465,6 +4905,16 @@ static void ha_client_handle_result_message(cJSON *root)
         s_client.weather_ws_req_inflight = false;
         s_client.weather_ws_req_id = 0;
         s_client.weather_ws_req_entity_id[0] = '\0';
+    }
+    if (s_client.energy_prefs_req_inflight && msg_id == s_client.energy_prefs_req_id) {
+        is_energy_prefs_req = true;
+        s_client.energy_prefs_req_inflight = false;
+        s_client.energy_prefs_req_id = 0;
+    }
+    if (s_client.energy_stats_req_inflight && msg_id == s_client.energy_stats_req_id) {
+        is_energy_stats_req = true;
+        s_client.energy_stats_req_inflight = false;
+        s_client.energy_stats_req_id = 0;
     }
     if (is_entities_sub && cJSON_IsBool(success_item) && !cJSON_IsTrue(success_item)) {
         s_client.sub_state_via_entities = false;
@@ -4544,6 +4994,74 @@ static void ha_client_handle_result_message(cJSON *root)
         }
     }
 
+    if (is_energy_prefs_req) {
+        if (cJSON_IsBool(success_item) && cJSON_IsTrue(success_item)) {
+            cJSON *result_obj = cJSON_GetObjectItemCaseSensitive(root, "result");
+            uint8_t ref_count = 0;
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            ha_client_energy_parse_prefs_locked(result_obj);
+            ref_count = s_client.energy_stat_ref_count;
+            s_client.pending_energy_stats = (ref_count > 0);
+            s_client.energy_stats_batch_offset = 0;
+            memset(&s_client.energy_staging, 0, sizeof(s_client.energy_staging));
+            if (ref_count == 0) {
+                s_client.next_energy_sync_unix_ms = ha_client_now_ms() + HA_ENERGY_SYNC_RETRY_MS;
+            } else {
+                /* Delay before stats request to avoid WS congestion after prefs */
+                s_client.next_energy_sync_unix_ms = ha_client_now_ms() + 5000;
+            }
+            xSemaphoreGive(s_client.mutex);
+            if (ref_count > 0) {
+                ESP_LOGI(TAG_HA_CLIENT, "HA energy preferences loaded (%u statistics)", (unsigned)ref_count);
+            } else {
+                ha_energy_model_reset();
+                ha_client_publish_event(EV_HA_ENERGY_CHANGED, NULL);
+                ESP_LOGW(TAG_HA_CLIENT, "HA energy preferences contain no supported statistics");
+            }
+        } else {
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            s_client.pending_energy_prefs = true;
+            s_client.next_energy_sync_unix_ms = ha_client_now_ms() + HA_ENERGY_SYNC_RETRY_MS;
+            xSemaphoreGive(s_client.mutex);
+            ESP_LOGW(TAG_HA_CLIENT, "HA energy preferences request failed");
+        }
+        return;
+    }
+
+    if (is_energy_stats_req) {
+        if (cJSON_IsBool(success_item) && cJSON_IsTrue(success_item)) {
+            cJSON *result_obj = cJSON_GetObjectItemCaseSensitive(root, "result");
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            uint8_t next_offset = s_client.energy_stats_batch_offset + HA_ENERGY_STATS_BATCH_SIZE;
+            bool is_final = next_offset >= s_client.energy_stat_ref_count;
+            xSemaphoreGive(s_client.mutex);
+            ha_client_energy_handle_stats_result(result_obj, is_final);
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            if (!is_final) {
+                /* More batches to fetch */
+                s_client.energy_stats_batch_offset = next_offset;
+                s_client.pending_energy_stats = true;
+                s_client.next_energy_sync_unix_ms = ha_client_now_ms() + 1000;
+                ESP_LOGI(TAG_HA_CLIENT, "HA energy statistics batch done (offset %u/%u), next batch in 1s",
+                    (unsigned)next_offset, (unsigned)s_client.energy_stat_ref_count);
+            } else {
+                /* All batches complete */
+                s_client.energy_stats_batch_offset = 0;
+                memset(&s_client.energy_staging, 0, sizeof(s_client.energy_staging));
+                s_client.next_energy_sync_unix_ms = ha_client_now_ms() + HA_ENERGY_SYNC_INTERVAL_MS;
+                ESP_LOGI(TAG_HA_CLIENT, "HA energy statistics updated (%u refs)", (unsigned)s_client.energy_stat_ref_count);
+            }
+            xSemaphoreGive(s_client.mutex);
+        } else {
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            s_client.pending_energy_prefs = true;
+            s_client.next_energy_sync_unix_ms = ha_client_now_ms() + HA_ENERGY_SYNC_RETRY_MS;
+            xSemaphoreGive(s_client.mutex);
+            ESP_LOGW(TAG_HA_CLIENT, "HA energy statistics request failed");
+        }
+        return;
+    }
+
     cJSON *result = cJSON_GetObjectItemCaseSensitive(root, "result");
     if (!cJSON_IsArray(result)) {
         return;
@@ -4561,7 +5079,7 @@ static void ha_client_handle_result_message(cJSON *root)
     int imported = 0;
     size_t layout_entity_count = 0;
     bool filtered_to_layout = false;
-    size_t max_entities = (size_t)APP_MAX_WIDGETS_TOTAL * 2U;
+    size_t max_entities = (size_t)HA_LAYOUT_ENTITY_MAX;
     char *layout_entity_ids = calloc(max_entities, APP_MAX_ENTITY_ID_LEN);
     if (layout_entity_ids != NULL) {
         bool need_weather_forecast = false;
@@ -4778,6 +5296,7 @@ static void ha_client_handle_text_message(const char *data, int len)
         bool reconnect_ws_entities_resync = false;
         bool queue_weather_bootstrap = false;
         bool ws_entities_stream = false;
+        bool layout_needs_ha_energy_now = ha_client_layout_needs_ha_energy();
         uint32_t initial_sync_progress = 0;
         uint32_t initial_sync_total = 0;
         int64_t ws_get_states_block_until = 0;
@@ -4801,6 +5320,19 @@ static void ha_client_handle_text_message(const char *data, int len)
         s_client.weather_ws_req_inflight = false;
         s_client.weather_ws_req_id = 0;
         s_client.weather_ws_req_entity_id[0] = '\0';
+        s_client.layout_needs_ha_energy = layout_needs_ha_energy_now;
+        s_client.pending_energy_prefs = layout_needs_ha_energy_now;
+        s_client.pending_energy_stats = false;
+        s_client.energy_prefs_req_inflight = false;
+        s_client.energy_stats_req_inflight = false;
+        s_client.energy_prefs_req_id = 0;
+        s_client.energy_stats_req_id = 0;
+        s_client.energy_stats_batch_offset = 0;
+        memset(&s_client.energy_staging, 0, sizeof(s_client.energy_staging));
+        s_client.next_energy_sync_unix_ms = layout_needs_ha_energy_now ? (now_ms + 10000) : 0;
+        if (!layout_needs_ha_energy_now) {
+            ha_client_energy_clear_refs_locked();
+        }
         ws_get_states_block_until = s_client.ws_get_states_block_until_unix_ms;
         if (ws_entities_stream) {
             uint16_t target_count = ha_client_prepare_entities_resubscribe_locked(now_ms);
@@ -4995,6 +5527,10 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         s_client.weather_ws_req_inflight = false;
         s_client.weather_ws_req_id = 0;
         s_client.weather_ws_req_entity_id[0] = '\0';
+        s_client.energy_prefs_req_inflight = false;
+        s_client.energy_stats_req_inflight = false;
+        s_client.energy_prefs_req_id = 0;
+        s_client.energy_stats_req_id = 0;
         s_client.last_ws_tls_stack_err = 0;
         s_client.last_ws_tls_esp_err = ESP_OK;
         s_client.last_ws_sock_errno = 0;
@@ -5049,6 +5585,10 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         s_client.weather_ws_req_inflight = false;
         s_client.weather_ws_req_id = 0;
         s_client.weather_ws_req_entity_id[0] = '\0';
+        s_client.energy_prefs_req_inflight = false;
+        s_client.energy_stats_req_inflight = false;
+        s_client.energy_prefs_req_id = 0;
+        s_client.energy_stats_req_id = 0;
         if (s_client.light_discovery_phase != HA_LIGHT_DISCOVERY_PHASE_NONE) {
             if (APP_HA_LIGHT_DISCOVERY_TEMPLATE_ENABLED &&
                 s_client.light_discovery_phase == HA_LIGHT_DISCOVERY_PHASE_TEMPLATE) {
@@ -5178,6 +5718,12 @@ static void ha_client_task(void *arg)
         uint8_t ws_short_session_strikes = 0;
         bool pending_force_wifi_recover = false;
         bool layout_needs_weather_forecast = false;
+        bool layout_needs_ha_energy = false;
+        bool pending_energy_prefs = false;
+        bool pending_energy_stats = false;
+        bool energy_prefs_req_inflight = false;
+        bool energy_stats_req_inflight = false;
+        int64_t next_energy_sync_unix_ms = 0;
         bool rest_enabled = false;
         uint32_t ws_error_streak = 0;
         int64_t ws_priority_boost_until_unix_ms = 0;
@@ -5241,6 +5787,12 @@ static void ha_client_task(void *arg)
         ws_short_session_strikes = s_client.ws_short_session_strikes;
         pending_force_wifi_recover = s_client.pending_force_wifi_recover;
         layout_needs_weather_forecast = s_client.layout_needs_weather_forecast;
+        layout_needs_ha_energy = s_client.layout_needs_ha_energy;
+        pending_energy_prefs = s_client.pending_energy_prefs;
+        pending_energy_stats = s_client.pending_energy_stats;
+        energy_prefs_req_inflight = s_client.energy_prefs_req_inflight;
+        energy_stats_req_inflight = s_client.energy_stats_req_inflight;
+        next_energy_sync_unix_ms = s_client.next_energy_sync_unix_ms;
         rest_enabled = s_client.rest_enabled;
         ws_error_streak = s_client.ws_error_streak;
         ws_priority_boost_until_unix_ms = s_client.ws_priority_boost_until_unix_ms;
@@ -5552,6 +6104,38 @@ static void ha_client_task(void *arg)
             if (ha_client_send_pong(pending_pong_id) == ESP_OK) {
                 xSemaphoreTake(s_client.mutex, portMAX_DELAY);
                 s_client.pending_send_pong = false;
+                xSemaphoreGive(s_client.mutex);
+            }
+        }
+        if (connected && authenticated && layout_needs_ha_energy && !energy_prefs_req_inflight &&
+            !energy_stats_req_inflight && now_ms >= next_energy_sync_unix_ms &&
+            (!sub_state_via_entities || entities_sub_sent_count >= entities_sub_target_count)) {
+            if (pending_energy_stats) {
+                uint32_t req_id = 0;
+                esp_err_t err = ha_client_send_energy_stats_ws(&req_id);
+                xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                if (err == ESP_OK) {
+                    s_client.pending_energy_stats = false;
+                    s_client.energy_stats_req_inflight = true;
+                    s_client.energy_stats_req_id = req_id;
+                } else {
+                    s_client.pending_energy_stats = false;
+                    s_client.pending_energy_prefs = true;
+                    s_client.next_energy_sync_unix_ms = now_ms + HA_ENERGY_SYNC_RETRY_MS;
+                }
+                xSemaphoreGive(s_client.mutex);
+            } else if (pending_energy_prefs || now_ms >= next_energy_sync_unix_ms) {
+                uint32_t req_id = 0;
+                esp_err_t err = ha_client_send_energy_prefs_ws(&req_id);
+                xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                if (err == ESP_OK) {
+                    s_client.pending_energy_prefs = false;
+                    s_client.energy_prefs_req_inflight = true;
+                    s_client.energy_prefs_req_id = req_id;
+                } else {
+                    s_client.pending_energy_prefs = true;
+                    s_client.next_energy_sync_unix_ms = now_ms + HA_ENERGY_SYNC_RETRY_MS;
+                }
                 xSemaphoreGive(s_client.mutex);
             }
         }
@@ -6057,6 +6641,15 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
     s_client.weather_ws_req_inflight = false;
     s_client.weather_ws_req_id = 0;
     s_client.weather_ws_req_entity_id[0] = '\0';
+    s_client.layout_needs_ha_energy = ha_client_layout_needs_ha_energy();
+    s_client.pending_energy_prefs = s_client.layout_needs_ha_energy;
+    s_client.pending_energy_stats = false;
+    s_client.energy_prefs_req_inflight = false;
+    s_client.energy_stats_req_inflight = false;
+    s_client.energy_prefs_req_id = 0;
+    s_client.energy_stats_req_id = 0;
+    s_client.next_energy_sync_unix_ms = s_client.layout_needs_ha_energy ? ha_client_now_ms() : 0;
+    ha_client_energy_clear_refs_locked();
     s_client.layout_entity_signature = 0;
     s_client.layout_entity_count = 0;
     s_client.ws_priority_boost_until_unix_ms = 0;
@@ -6215,6 +6808,15 @@ void ha_client_stop(void)
     s_client.weather_ws_req_inflight = false;
     s_client.weather_ws_req_id = 0;
     s_client.weather_ws_req_entity_id[0] = '\0';
+    s_client.layout_needs_ha_energy = false;
+    s_client.pending_energy_prefs = false;
+    s_client.pending_energy_stats = false;
+    s_client.energy_prefs_req_inflight = false;
+    s_client.energy_stats_req_inflight = false;
+    s_client.energy_prefs_req_id = 0;
+    s_client.energy_stats_req_id = 0;
+    s_client.next_energy_sync_unix_ms = 0;
+    ha_client_energy_clear_refs_locked();
     s_client.layout_entity_signature = 0;
     s_client.layout_entity_count = 0;
     s_client.ws_priority_boost_until_unix_ms = 0;
@@ -6262,12 +6864,15 @@ esp_err_t ha_client_notify_layout_updated(void)
     uint32_t new_signature = 0;
     uint16_t new_count = 0;
     bool new_need_weather_forecast = false;
+    bool new_need_ha_energy = ha_client_layout_needs_ha_energy();
     bool has_snapshot = ha_client_capture_layout_snapshot(&new_signature, &new_count, &new_need_weather_forecast);
     bool started = false;
     bool scheduled_resync = false;
     bool scheduled_resubscribe = false;
     bool entity_set_changed = false;
     bool forecast_capability_changed = false;
+    bool energy_capability_changed = false;
+    bool reset_energy_model = false;
     bool rest_enabled = false;
     bool ws_entities_stream = false;
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
@@ -6278,9 +6883,24 @@ esp_err_t ha_client_notify_layout_updated(void)
         entity_set_changed =
             (s_client.layout_entity_signature != new_signature) || (s_client.layout_entity_count != new_count);
         forecast_capability_changed = (s_client.layout_needs_weather_forecast != new_need_weather_forecast);
+        energy_capability_changed = (s_client.layout_needs_ha_energy != new_need_ha_energy);
         s_client.layout_entity_signature = new_signature;
         s_client.layout_entity_count = new_count;
         s_client.layout_needs_weather_forecast = new_need_weather_forecast;
+        s_client.layout_needs_ha_energy = new_need_ha_energy;
+        if (energy_capability_changed || (new_need_ha_energy && s_client.next_energy_sync_unix_ms == 0)) {
+            s_client.pending_energy_prefs = new_need_ha_energy;
+            s_client.pending_energy_stats = false;
+            s_client.energy_prefs_req_inflight = false;
+            s_client.energy_stats_req_inflight = false;
+            s_client.energy_prefs_req_id = 0;
+            s_client.energy_stats_req_id = 0;
+            s_client.next_energy_sync_unix_ms = new_need_ha_energy ? now_ms : 0;
+            if (!new_need_ha_energy) {
+                ha_client_energy_clear_refs_locked();
+                reset_energy_model = true;
+            }
+        }
     }
 
     if (started && entity_set_changed) {
@@ -6297,7 +6917,7 @@ esp_err_t ha_client_notify_layout_updated(void)
             s_client.next_periodic_layout_sync_unix_ms = now_ms + ha_client_interval_periodic_step_ms(s_client.bg_budget_level);
             scheduled_resync = APP_HA_FETCH_INITIAL_STATES;
         } else if (ws_entities_stream) {
-            size_t max_entities = (size_t)APP_MAX_WIDGETS_TOTAL * 2U;
+            size_t max_entities = (size_t)HA_LAYOUT_ENTITY_MAX;
             char *entity_ids = calloc(max_entities, APP_MAX_ENTITY_ID_LEN);
             size_t entity_count = 0;
             if (entity_ids != NULL) {
@@ -6372,6 +6992,11 @@ esp_err_t ha_client_notify_layout_updated(void)
     }
     xSemaphoreGive(s_client.mutex);
 
+    if (reset_energy_model) {
+        ha_energy_model_reset();
+        ha_client_publish_event(EV_HA_ENERGY_CHANGED, NULL);
+    }
+
     if (started) {
         if (!has_snapshot) {
             ESP_LOGW(TAG_HA_CLIENT, "Layout updated: snapshot failed, keeping current HA subscriptions/sync state");
@@ -6384,11 +7009,38 @@ esp_err_t ha_client_notify_layout_updated(void)
             }
         } else if (forecast_capability_changed) {
             ESP_LOGI(TAG_HA_CLIENT, "Layout updated: weather forecast capability changed, keeping current subscriptions");
+        } else if (energy_capability_changed) {
+            ESP_LOGI(TAG_HA_CLIENT, "Layout updated: HA energy capability changed, scheduled energy sync");
         } else {
             ESP_LOGI(TAG_HA_CLIENT, "Layout updated: entity set unchanged, skipping HA resubscribe/resync");
         }
     }
     return ESP_OK;
+}
+
+esp_err_t ha_client_request_energy_refresh(void)
+{
+    if (s_client.mutex == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    int64_t now_ms = ha_client_now_ms();
+    bool scheduled = false;
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    if (s_client.started && s_client.authenticated) {
+        s_client.layout_needs_ha_energy = true;
+        if (!s_client.pending_energy_prefs && !s_client.pending_energy_stats &&
+            !s_client.energy_prefs_req_inflight && !s_client.energy_stats_req_inflight &&
+            (s_client.next_energy_sync_unix_ms == 0 || s_client.next_energy_sync_unix_ms <= now_ms)) {
+            s_client.pending_energy_prefs = true;
+            s_client.next_energy_sync_unix_ms = now_ms;
+            scheduled = true;
+        } else {
+            scheduled = true;
+        }
+    }
+    xSemaphoreGive(s_client.mutex);
+    return scheduled ? ESP_OK : ESP_ERR_INVALID_STATE;
 }
 
 bool ha_client_is_connected(void)

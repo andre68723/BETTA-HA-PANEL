@@ -26,6 +26,11 @@ static esp_err_t guarded_api_light_entities_get(httpd_req_t *req)
     return http_guard_handle(req, api_light_entities_get_handler);
 }
 
+static esp_err_t guarded_api_ha_energy_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_ha_energy_get_handler);
+}
+
 static esp_err_t guarded_api_state_get(httpd_req_t *req)
 {
     return http_guard_handle(req, api_state_get_handler);
@@ -116,6 +121,12 @@ esp_err_t api_routes_register(httpd_handle_t server)
         .handler = guarded_api_light_entities_get,
         .user_ctx = NULL,
     };
+    httpd_uri_t get_ha_energy = {
+        .uri = "/api/ha/energy",
+        .method = HTTP_GET,
+        .handler = guarded_api_ha_energy_get,
+        .user_ctx = NULL,
+    };
     httpd_uri_t get_state = {
         .uri = "/api/state",
         .method = HTTP_GET,
@@ -194,6 +205,7 @@ esp_err_t api_routes_register(httpd_handle_t server)
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_entities), "api_routes", "GET /api/entities");
     ESP_RETURN_ON_ERROR(
         httpd_register_uri_handler(server, &get_light_entities), "api_routes", "GET /api/ha/light_entities");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_ha_energy), "api_routes", "GET /api/ha/energy");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_state), "api_routes", "GET /api/state");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_settings), "api_routes", "GET /api/settings");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &put_settings), "api_routes", "PUT /api/settings");

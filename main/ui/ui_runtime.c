@@ -22,6 +22,7 @@
 #include "layout/layout_store.h"
 #include "net/wifi_mgr.h"
 #include "ui/fonts/mdi_font_registry.h"
+#include "ui/ui_energy_page.h"
 #include "ui/ui_pages.h"
 #include "ui/ui_widget_factory.h"
 #include "ui/theme/theme_default.h"
@@ -31,6 +32,8 @@
 
 static ui_widget_instance_t s_widgets[APP_MAX_WIDGETS_TOTAL];
 static size_t s_widget_count = 0;
+static ui_energy_page_instance_t s_energy_pages[APP_MAX_PAGES];
+static size_t s_energy_page_count = 0;
 static TaskHandle_t s_ui_task = NULL;
 static bool s_initialized = false;
 static int64_t s_last_topbar_refresh_ms = 0;
@@ -259,6 +262,12 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
             ui_widget_factory_mark_unavailable(&s_widgets[i]);
         }
     }
+
+    if (found) {
+        for (size_t i = 0; i < s_energy_page_count; i++) {
+            (void)ui_energy_page_apply_state(&s_energy_pages[i], &state);
+        }
+    }
 }
 
 static void ui_runtime_apply_entity_state(const char *entity_id)
@@ -275,6 +284,9 @@ static void ui_runtime_apply_all_states(void)
             ui_runtime_apply_entity_state(s_widgets[i].secondary_entity_id);
         }
     }
+    for (size_t i = 0; i < s_energy_page_count; i++) {
+        ui_energy_page_apply_all_states(&s_energy_pages[i]);
+    }
 }
 
 static void ui_runtime_apply_all_states_preserve_missing(void)
@@ -285,6 +297,9 @@ static void ui_runtime_apply_all_states_preserve_missing(void)
             strncmp(s_widgets[i].secondary_entity_id, s_widgets[i].entity_id, APP_MAX_ENTITY_ID_LEN) != 0) {
             ui_runtime_apply_entity_state_ex(s_widgets[i].secondary_entity_id, false);
         }
+    }
+    for (size_t i = 0; i < s_energy_page_count; i++) {
+        ui_energy_page_apply_all_states(&s_energy_pages[i]);
     }
 }
 
@@ -359,6 +374,76 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     return true;
 }
 
+static void ui_runtime_copy_json_string(cJSON *obj, const char *key, char *dst, size_t dst_size)
+{
+    if (dst == NULL || dst_size == 0) {
+        return;
+    }
+    dst[0] = '\0';
+    cJSON *item = (obj != NULL) ? cJSON_GetObjectItemCaseSensitive(obj, key) : NULL;
+    if (cJSON_IsString(item) && item->valuestring != NULL) {
+        snprintf(dst, dst_size, "%s", item->valuestring);
+    }
+}
+
+static void ui_runtime_energy_config_from_json(cJSON *page_json, const char *page_id, const char *page_title,
+    ui_energy_page_config_t *out)
+{
+    if (out == NULL) {
+        return;
+    }
+
+    memset(out, 0, sizeof(*out));
+    snprintf(out->page_id, sizeof(out->page_id), "%s", page_id != NULL ? page_id : "");
+    snprintf(out->title, sizeof(out->title), "%s", (page_title != NULL && page_title[0] != '\0') ? page_title : "Energy");
+    snprintf(out->source, sizeof(out->source), "%s", "ha_energy");
+
+    cJSON *energy = (page_json != NULL) ? cJSON_GetObjectItemCaseSensitive(page_json, "energy") : NULL;
+    if (!cJSON_IsObject(energy)) {
+        return;
+    }
+
+    cJSON *source_item = cJSON_GetObjectItemCaseSensitive(energy, "source");
+    bool source_was_configured =
+        cJSON_IsString(source_item) && source_item->valuestring != NULL && source_item->valuestring[0] != '\0';
+    ui_runtime_copy_json_string(energy, "source", out->source, sizeof(out->source));
+    if (strcmp(out->source, "manual_live") != 0 && strcmp(out->source, "ha_energy") != 0) {
+        snprintf(out->source, sizeof(out->source), "%s", "ha_energy");
+    }
+
+    ui_runtime_copy_json_string(
+        energy, "home_power_entity_id", out->home_power_entity_id, sizeof(out->home_power_entity_id));
+    ui_runtime_copy_json_string(
+        energy, "solar_power_entity_id", out->solar_power_entity_id, sizeof(out->solar_power_entity_id));
+    ui_runtime_copy_json_string(
+        energy, "grid_power_entity_id", out->grid_power_entity_id, sizeof(out->grid_power_entity_id));
+    ui_runtime_copy_json_string(
+        energy, "grid_import_power_entity_id", out->grid_import_power_entity_id, sizeof(out->grid_import_power_entity_id));
+    ui_runtime_copy_json_string(
+        energy, "grid_export_power_entity_id", out->grid_export_power_entity_id, sizeof(out->grid_export_power_entity_id));
+    ui_runtime_copy_json_string(
+        energy, "battery_power_entity_id", out->battery_power_entity_id, sizeof(out->battery_power_entity_id));
+    ui_runtime_copy_json_string(energy,
+        "battery_charge_power_entity_id",
+        out->battery_charge_power_entity_id,
+        sizeof(out->battery_charge_power_entity_id));
+    ui_runtime_copy_json_string(energy,
+        "battery_discharge_power_entity_id",
+        out->battery_discharge_power_entity_id,
+        sizeof(out->battery_discharge_power_entity_id));
+    ui_runtime_copy_json_string(
+        energy, "battery_soc_entity_id", out->battery_soc_entity_id, sizeof(out->battery_soc_entity_id));
+
+    if (!source_was_configured &&
+        (out->home_power_entity_id[0] != '\0' || out->solar_power_entity_id[0] != '\0' ||
+            out->grid_power_entity_id[0] != '\0' || out->grid_import_power_entity_id[0] != '\0' ||
+            out->grid_export_power_entity_id[0] != '\0' || out->battery_power_entity_id[0] != '\0' ||
+            out->battery_charge_power_entity_id[0] != '\0' || out->battery_discharge_power_entity_id[0] != '\0' ||
+            out->battery_soc_entity_id[0] != '\0')) {
+        snprintf(out->source, sizeof(out->source), "%s", "manual_live");
+    }
+}
+
 static bool ui_runtime_is_background_widget_type(const char *type)
 {
     return type != NULL && strcmp(type, "empty_tile") == 0;
@@ -389,20 +474,46 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
     ui_pages_reset();
     memset(s_widgets, 0, sizeof(s_widgets));
     s_widget_count = 0;
+    memset(s_energy_pages, 0, sizeof(s_energy_pages));
+    s_energy_page_count = 0;
 
     int page_count = cJSON_GetArraySize(pages);
     for (int p = 0; p < page_count; p++) {
         cJSON *page = cJSON_GetArrayItem(pages, p);
         cJSON *page_id = cJSON_GetObjectItemCaseSensitive(page, "id");
         cJSON *page_title = cJSON_GetObjectItemCaseSensitive(page, "title");
+        cJSON *page_type = cJSON_GetObjectItemCaseSensitive(page, "type");
         cJSON *widgets = cJSON_GetObjectItemCaseSensitive(page, "widgets");
-        if (!cJSON_IsString(page_id) || !cJSON_IsArray(widgets)) {
+        if (!cJSON_IsString(page_id)) {
             continue;
         }
 
         lv_obj_t *page_container = ui_pages_add(
             page_id->valuestring, cJSON_IsString(page_title) ? page_title->valuestring : page_id->valuestring);
         if (page_container == NULL) {
+            continue;
+        }
+
+        bool is_energy_page = cJSON_IsString(page_type) && page_type->valuestring != NULL &&
+                              strcmp(page_type->valuestring, "energy_dashboard") == 0;
+        if (is_energy_page) {
+            if (s_energy_page_count >= APP_MAX_PAGES) {
+                continue;
+            }
+            ui_energy_page_config_t energy_config = {0};
+            ui_runtime_energy_config_from_json(page,
+                page_id->valuestring,
+                cJSON_IsString(page_title) ? page_title->valuestring : page_id->valuestring,
+                &energy_config);
+            esp_err_t err =
+                ui_energy_page_create(&energy_config, page_container, &s_energy_pages[s_energy_page_count]);
+            if (err == ESP_OK) {
+                s_energy_page_count++;
+            }
+            continue;
+        }
+
+        if (!cJSON_IsArray(widgets)) {
             continue;
         }
 
@@ -464,7 +575,8 @@ static void ui_runtime_handle_event(const app_event_t *event)
 
     bool needs_lock = (event->type != EV_LAYOUT_UPDATED);
     if (needs_lock && !display_lock(0)) {
-        if (event->type == EV_HA_STATE_CHANGED || event->type == EV_HA_CONNECTED) {
+        if (event->type == EV_HA_STATE_CHANGED || event->type == EV_HA_CONNECTED ||
+            event->type == EV_HA_ENERGY_CHANGED) {
             s_pending_state_reconcile = true;
             s_pending_topbar_refresh = true;
         } else if (event->type == EV_HA_DISCONNECTED) {
@@ -494,6 +606,11 @@ static void ui_runtime_handle_event(const app_event_t *event)
         /* During initial/partial HA sync we may temporarily miss some entities.
          * Preserve currently rendered widgets instead of forcing unavailable. */
         ui_runtime_apply_all_states_preserve_missing();
+        break;
+    case EV_HA_ENERGY_CHANGED:
+        for (size_t i = 0; i < s_energy_page_count; i++) {
+            ui_energy_page_apply_all_states(&s_energy_pages[i]);
+        }
         break;
     case EV_HA_DISCONNECTED:
         ui_runtime_refresh_topbar();

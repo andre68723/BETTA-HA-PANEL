@@ -15,6 +15,27 @@ const GRAPH_POINTS_MIN = 16;
 const GRAPH_POINTS_MAX = 64;
 const GRAPH_TIME_WINDOW_MIN = 1;
 const GRAPH_TIME_WINDOW_MAX = 1440;
+const ENERGY_PAGE_TYPE = "energy_dashboard";
+const ENERGY_SOURCE_HA = "ha_energy";
+const ENERGY_SOURCE_MANUAL = "manual_live";
+const ENERGY_SOURCES = new Set([ENERGY_SOURCE_HA, ENERGY_SOURCE_MANUAL]);
+const ENERGY_PREVIEW_COLORS = {
+  grid: "#039bef",
+  solar: "#ff9800",
+  battery: "#26a69a",
+  idle: "#435566",
+};
+const ENERGY_ENTITY_KEYS = [
+  "home_power_entity_id",
+  "solar_power_entity_id",
+  "grid_power_entity_id",
+  "grid_import_power_entity_id",
+  "grid_export_power_entity_id",
+  "battery_power_entity_id",
+  "battery_charge_power_entity_id",
+  "battery_discharge_power_entity_id",
+  "battery_soc_entity_id",
+];
 const ENTITY_AUTOCOMPLETE_DEBOUNCE_MS = 220;
 const ENTITY_AUTOCOMPLETE_MAX_ITEMS = 24;
 const LIGHT_ENTITY_PICKER_POLL_MS = 700;
@@ -133,11 +154,46 @@ const WEB_I18N_BUILTIN = {
     "sidebar.subtitle": "Layout source of truth: JSON",
     "layout.pages.heading": "Pages",
     "layout.pages.add": "+ Page",
+    "layout.pages.add_energy": "+ Energy Page",
     "layout.pages.delete": "Delete",
     "layout.pages.title_label": "Page title",
     "layout.pages.title_placeholder": "Page name on the display",
     "layout.pages.apply_title": "Apply page title",
     "layout.pages.new_title": "Page {number}",
+    "layout.pages.energy_title": "Energy",
+    "layout.energy.heading": "Energy Page",
+    "layout.energy.hint": "Choose whether the page mirrors Home Assistant Energy or uses manual live sensors.",
+    "layout.energy.source": "Data source",
+    "layout.energy.source_ha": "Home Assistant Energy",
+    "layout.energy.source_manual": "Manual live sensors",
+    "layout.energy.source_hint_ha": "Uses the Energy dashboard configured in Home Assistant.",
+    "layout.energy.source_hint_manual": "Expert fallback: use explicit W/kW sensors from Home Assistant.",
+    "layout.energy.home_power": "Home power",
+    "layout.energy.solar_power": "Solar power",
+    "layout.energy.grid_power": "Grid power (signed)",
+    "layout.energy.grid_import": "Grid import",
+    "layout.energy.grid_export": "Grid export",
+    "layout.energy.battery_power": "Battery power (signed)",
+    "layout.energy.battery_charge": "Battery charge",
+    "layout.energy.battery_discharge": "Battery discharge",
+    "layout.energy.battery_soc": "Battery state of charge",
+    "layout.energy.apply": "Apply energy config",
+    "layout.energy.no_widgets": "Energy pages render a dedicated dashboard and do not use widgets.",
+    "layout.energy.preview_title": "Energy distribution",
+    "layout.energy.sensor_count_one": "{count} sensor",
+    "layout.energy.sensor_count_many": "{count} sensors",
+    "layout.energy.no_sensor": "no sensor",
+    "layout.energy.preview_source_ha": "HA Energy",
+    "layout.energy.preview_source_manual": "Live sensors",
+    "layout.energy.preview_auto": "automatic from HA",
+    "layout.energy.low_carbon": "Low-carbon",
+    "layout.energy.grid": "Grid",
+    "layout.energy.solar": "Solar",
+    "layout.energy.gas": "Gas",
+    "layout.energy.home": "Home",
+    "layout.energy.battery": "Battery",
+    "layout.energy.water": "Water",
+    "layout.status.energy_page_only": "Energy pages do not accept widgets.",
     "layout.widgets.heading": "Widgets",
     "layout.widgets.add_sensor": "+ Sensor",
     "layout.widgets.add_button": "+ Button",
@@ -401,11 +457,46 @@ const WEB_I18N_BUILTIN = {
     "sidebar.subtitle": "Layout Quelle: JSON",
     "layout.pages.heading": "Seiten",
     "layout.pages.add": "+ Seite",
+    "layout.pages.add_energy": "+ Energie-Seite",
     "layout.pages.delete": "Loeschen",
     "layout.pages.title_label": "Seitentitel",
     "layout.pages.title_placeholder": "Seitenname auf dem Display",
     "layout.pages.apply_title": "Seitentitel uebernehmen",
     "layout.pages.new_title": "Seite {number}",
+    "layout.pages.energy_title": "Energie",
+    "layout.energy.heading": "Energie-Seite",
+    "layout.energy.hint": "Waehle, ob die Seite Home Assistant Energy spiegelt oder manuelle Live-Sensoren nutzt.",
+    "layout.energy.source": "Datenquelle",
+    "layout.energy.source_ha": "Home Assistant Energy",
+    "layout.energy.source_manual": "Manuelle Live-Sensoren",
+    "layout.energy.source_hint_ha": "Verwendet das in Home Assistant konfigurierte Energy Dashboard.",
+    "layout.energy.source_hint_manual": "Expert-Fallback: explizite W/kW-Sensoren aus Home Assistant nutzen.",
+    "layout.energy.home_power": "Hausleistung",
+    "layout.energy.solar_power": "Solarleistung",
+    "layout.energy.grid_power": "Netzleistung (signed)",
+    "layout.energy.grid_import": "Netzbezug",
+    "layout.energy.grid_export": "Netzeinspeisung",
+    "layout.energy.battery_power": "Batterieleistung (signed)",
+    "layout.energy.battery_charge": "Batterie laden",
+    "layout.energy.battery_discharge": "Batterie entladen",
+    "layout.energy.battery_soc": "Batterieladestand",
+    "layout.energy.apply": "Energie-Konfig uebernehmen",
+    "layout.energy.no_widgets": "Energie-Seiten rendern ein eigenes Dashboard und verwenden keine Widgets.",
+    "layout.energy.preview_title": "Energieverteilung",
+    "layout.energy.sensor_count_one": "{count} Sensor",
+    "layout.energy.sensor_count_many": "{count} Sensoren",
+    "layout.energy.no_sensor": "kein Sensor",
+    "layout.energy.preview_source_ha": "HA Energy",
+    "layout.energy.preview_source_manual": "Live-Sensoren",
+    "layout.energy.preview_auto": "automatisch aus HA",
+    "layout.energy.low_carbon": "Low-carbon",
+    "layout.energy.grid": "Netz",
+    "layout.energy.solar": "Solar",
+    "layout.energy.gas": "Gas",
+    "layout.energy.home": "Haus",
+    "layout.energy.battery": "Batterie",
+    "layout.energy.water": "Wasser",
+    "layout.status.energy_page_only": "Energie-Seiten akzeptieren keine Widgets.",
     "layout.widgets.heading": "Widgets",
     "layout.widgets.add_sensor": "+ Sensor",
     "layout.widgets.add_button": "+ Button",
@@ -1137,6 +1228,7 @@ const editor = {
   layout: null,
   entities: [],
   states: new Map(),
+  energySnapshot: null,
   selectedPageId: null,
   selectedWidgetId: null,
   activePane: "layout",
@@ -1214,9 +1306,24 @@ const el = {
   toggleWidgetsSection: document.getElementById("toggleWidgetsSection"),
   toggleInspectorSection: document.getElementById("toggleInspectorSection"),
   addPageBtn: document.getElementById("addPageBtn"),
+  addEnergyPageBtn: document.getElementById("addEnergyPageBtn"),
   deletePageBtn: document.getElementById("deletePageBtn"),
   pageTitleInput: document.getElementById("pageTitleInput"),
   applyPageBtn: document.getElementById("applyPageBtn"),
+  energyPageOptions: document.getElementById("energyPageOptions"),
+  energySource: document.getElementById("energySource"),
+  energySourceHint: document.getElementById("energySourceHint"),
+  energyManualOptions: document.getElementById("energyManualOptions"),
+  energyHomePower: document.getElementById("energyHomePower"),
+  energySolarPower: document.getElementById("energySolarPower"),
+  energyGridPower: document.getElementById("energyGridPower"),
+  energyGridImport: document.getElementById("energyGridImport"),
+  energyGridExport: document.getElementById("energyGridExport"),
+  energyBatteryPower: document.getElementById("energyBatteryPower"),
+  energyBatteryCharge: document.getElementById("energyBatteryCharge"),
+  energyBatteryDischarge: document.getElementById("energyBatteryDischarge"),
+  energyBatterySoc: document.getElementById("energyBatterySoc"),
+  applyEnergyPageBtn: document.getElementById("applyEnergyPageBtn"),
   addSensorBtn: document.getElementById("addSensorBtn"),
   addButtonBtn: document.getElementById("addButtonBtn"),
   addSliderBtn: document.getElementById("addSliderBtn"),
@@ -1268,6 +1375,7 @@ const el = {
   fH: document.getElementById("fH"),
   applyInspectorBtn: document.getElementById("applyInspectorBtn"),
   entityOptions: document.getElementById("entityOptions"),
+  energyEntityOptions: document.getElementById("energyEntityOptions"),
   sensorEntityOptions: document.getElementById("sensorEntityOptions"),
   settingsWifiSsid: document.getElementById("settingsWifiSsid"),
   settingsWifiCountryCode: document.getElementById("settingsWifiCountryCode"),
@@ -1406,6 +1514,10 @@ function normalizeGraphTimeWindowMin(value) {
 function normalizeLayoutWidgets(layout) {
   if (!layout || !Array.isArray(layout.pages)) return;
   for (const page of layout.pages) {
+    if (isEnergyPage(page)) {
+      normalizeEnergyConfig(page);
+      continue;
+    }
     if (!page || !Array.isArray(page.widgets)) continue;
     for (const widget of page.widgets) {
       if (!widget || typeof widget !== "object") continue;
@@ -1678,10 +1790,26 @@ function applyWebTranslations() {
 
   setTextById("pagesHeading", "layout.pages.heading");
   setTextById("addPageBtn", "layout.pages.add");
+  setTextById("addEnergyPageBtn", "layout.pages.add_energy");
   setTextById("deletePageBtn", "layout.pages.delete");
   setTextById("pageTitleLabel", "layout.pages.title_label");
   setPlaceholderById("pageTitleInput", "layout.pages.title_placeholder");
   setTextById("applyPageBtn", "layout.pages.apply_title");
+  setTextById("energyPageHeading", "layout.energy.heading");
+  setTextById("energyPageHint", "layout.energy.hint");
+  setTextById("energySourceLabel", "layout.energy.source");
+  setTextById("energySourceHaOption", "layout.energy.source_ha");
+  setTextById("energySourceManualOption", "layout.energy.source_manual");
+  setTextById("energyHomePowerLabel", "layout.energy.home_power");
+  setTextById("energySolarPowerLabel", "layout.energy.solar_power");
+  setTextById("energyGridPowerLabel", "layout.energy.grid_power");
+  setTextById("energyGridImportLabel", "layout.energy.grid_import");
+  setTextById("energyGridExportLabel", "layout.energy.grid_export");
+  setTextById("energyBatteryPowerLabel", "layout.energy.battery_power");
+  setTextById("energyBatteryChargeLabel", "layout.energy.battery_charge");
+  setTextById("energyBatteryDischargeLabel", "layout.energy.battery_discharge");
+  setTextById("energyBatterySocLabel", "layout.energy.battery_soc");
+  setTextById("applyEnergyPageBtn", "layout.energy.apply");
 
   setTextById("widgetsHeading", "layout.widgets.heading");
   setTextById("addSensorBtn", "layout.widgets.add_sensor");
@@ -2783,6 +2911,55 @@ function defaultLayout() {
   };
 }
 
+function defaultEnergyConfig() {
+  return ENERGY_ENTITY_KEYS.reduce((config, key) => {
+    config[key] = "";
+    return config;
+  }, { source: ENERGY_SOURCE_HA });
+}
+
+function isEnergyPage(page) {
+  return page?.type === ENERGY_PAGE_TYPE;
+}
+
+function energyPageUsesHaSource(page) {
+  if (!isEnergyPage(page)) return false;
+  const source = typeof page.energy?.source === "string" ? page.energy.source.trim() : "";
+  return source !== ENERGY_SOURCE_MANUAL;
+}
+
+function layoutHasHaEnergyPage() {
+  return (editor.layout?.pages || []).some((page) => energyPageUsesHaSource(page));
+}
+
+function normalizeEnergyConfig(page) {
+  if (!page || !isEnergyPage(page)) return;
+  if (!page.energy || typeof page.energy !== "object" || Array.isArray(page.energy)) {
+    page.energy = defaultEnergyConfig();
+  }
+  const source = typeof page.energy.source === "string" ? page.energy.source.trim() : "";
+  const hasManualSensors = ENERGY_ENTITY_KEYS.some((key) => typeof page.energy[key] === "string" && page.energy[key].trim());
+  page.energy.source = ENERGY_SOURCES.has(source) ? source : (hasManualSensors ? ENERGY_SOURCE_MANUAL : ENERGY_SOURCE_HA);
+  for (const key of ENERGY_ENTITY_KEYS) {
+    page.energy[key] = typeof page.energy[key] === "string" ? page.energy[key].trim() : "";
+  }
+  page.widgets = [];
+}
+
+function getEnergyInputs() {
+  return {
+    home_power_entity_id: el.energyHomePower,
+    solar_power_entity_id: el.energySolarPower,
+    grid_power_entity_id: el.energyGridPower,
+    grid_import_power_entity_id: el.energyGridImport,
+    grid_export_power_entity_id: el.energyGridExport,
+    battery_power_entity_id: el.energyBatteryPower,
+    battery_charge_power_entity_id: el.energyBatteryCharge,
+    battery_discharge_power_entity_id: el.energyBatteryDischarge,
+    battery_soc_entity_id: el.energyBatterySoc,
+  };
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -2799,6 +2976,7 @@ function selectedPage() {
 function selectedWidget() {
   const page = selectedPage();
   if (!page) return null;
+  if (!Array.isArray(page.widgets)) return null;
   return page.widgets.find((w) => w.id === editor.selectedWidgetId) || null;
 }
 
@@ -3121,6 +3299,25 @@ async function refreshStates() {
     renderCanvas();
   } catch (_) {
     // Keep previous preview values.
+  }
+}
+
+async function loadEnergyPreview() {
+  if (!layoutHasHaEnergyPage()) {
+    if (editor.energySnapshot !== null) {
+      editor.energySnapshot = null;
+      renderCanvas();
+    }
+    return;
+  }
+  try {
+    editor.energySnapshot = await apiGet("/api/ha/energy");
+    renderCanvas();
+  } catch (_) {
+    if (editor.energySnapshot !== null) {
+      editor.energySnapshot = null;
+      renderCanvas();
+    }
   }
 }
 
@@ -3558,6 +3755,9 @@ function renderEntityOptions() {
     el.sensorEntityOptions,
     listEntitiesByDomain("sensor").slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS),
   );
+  if (el.energyEntityOptions) {
+    setEntityOptionsList(el.energyEntityOptions, listEntitiesByDomain("sensor").slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS));
+  }
 
   const secondaryEnabled = inspectorType === "heating_tile";
   if (el.fSecondaryEntityWrap) {
@@ -3585,7 +3785,8 @@ function renderPages() {
   for (const page of editor.layout.pages) {
     const li = document.createElement("li");
     li.className = `list-item ${page.id === editor.selectedPageId ? "active" : ""}`;
-    li.textContent = `${page.title || page.id}  [${page.id}]`;
+    const badge = isEnergyPage(page) ? "energy" : "page";
+    li.textContent = `${page.title || page.id}  [${page.id}] ${badge}`;
     li.onclick = () => {
       editor.selectedPageId = page.id;
       editor.selectedWidgetId = null;
@@ -3603,7 +3804,7 @@ function renderPagesMini() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `mini-page-btn ${page.id === editor.selectedPageId ? "active" : ""}`;
-    button.textContent = page.title || page.id;
+    button.textContent = `${isEnergyPage(page) ? "E " : ""}${page.title || page.id}`;
     button.title = `${page.title || page.id} [${page.id}]`;
     button.onclick = () => {
       editor.selectedPageId = page.id;
@@ -3620,17 +3821,79 @@ function renderPageEditor() {
     el.pageTitleInput.value = "";
     el.pageTitleInput.disabled = true;
     el.applyPageBtn.disabled = true;
+    if (el.energyPageOptions) {
+      el.energyPageOptions.classList.add("hidden");
+    }
     return;
   }
   el.pageTitleInput.disabled = false;
   el.applyPageBtn.disabled = false;
   el.pageTitleInput.value = page.title || page.id;
+
+  const energyPage = isEnergyPage(page);
+  if (el.energyPageOptions) {
+    el.energyPageOptions.classList.toggle("hidden", !energyPage);
+  }
+  if (energyPage) {
+    normalizeEnergyConfig(page);
+    if (el.energySource) {
+      el.energySource.value = page.energy.source || ENERGY_SOURCE_HA;
+    }
+    updateEnergySourceUi(page.energy.source);
+    const inputs = getEnergyInputs();
+    for (const key of ENERGY_ENTITY_KEYS) {
+      if (inputs[key]) {
+        inputs[key].value = page.energy[key] || "";
+      }
+    }
+  }
+}
+
+function updateEnergySourceUi(source) {
+  const checkedSource = ENERGY_SOURCES.has(source) ? source : ENERGY_SOURCE_HA;
+  const isManual = checkedSource === ENERGY_SOURCE_MANUAL;
+  if (el.energyManualOptions) {
+    el.energyManualOptions.classList.toggle("hidden", !isManual);
+  }
+  if (el.energySourceHint) {
+    el.energySourceHint.textContent = t(isManual ? "layout.energy.source_hint_manual" : "layout.energy.source_hint_ha");
+  }
 }
 
 function renderWidgets() {
   const page = selectedPage();
   el.widgetsList.innerHTML = "";
   if (!page) return;
+
+  const energyPage = isEnergyPage(page);
+  const addButtons = [
+    el.addSensorBtn,
+    el.addButtonBtn,
+    el.addSliderBtn,
+    el.addGraphBtn,
+    el.addEmptyTileBtn,
+    el.addLightTileBtn,
+    el.addHeatingTileBtn,
+    el.addWeatherTileBtn,
+    el.addWeather3DayBtn,
+  ];
+  for (const button of addButtons) {
+    if (button) button.disabled = energyPage;
+  }
+  if (el.openSetupWizardBtn) {
+    el.openSetupWizardBtn.disabled = energyPage;
+  }
+  if (el.deleteWidgetBtn) {
+    el.deleteWidgetBtn.disabled = energyPage || !editor.selectedWidgetId;
+  }
+
+  if (energyPage) {
+    const li = document.createElement("li");
+    li.className = "list-item muted";
+    li.textContent = t("layout.energy.no_widgets");
+    el.widgetsList.appendChild(li);
+    return;
+  }
 
   for (const widget of page.widgets) {
     const li = document.createElement("li");
@@ -3734,6 +3997,236 @@ function attachDragAndResize(box, widget) {
   });
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function energyPreviewSensorCount(count) {
+  return t(count === 1 ? "layout.energy.sensor_count_one" : "layout.energy.sensor_count_many", { count });
+}
+
+function energyPreviewEntityLabel(entityId) {
+  return escapeHtml(entityId || t("layout.energy.no_sensor"));
+}
+
+function energyPreviewNodeMarkup(id, label, value, style = "") {
+  const styleAttr = style ? ` style="${escapeHtml(style)}"` : "";
+  return `<div class="energy-preview-node ${id}"${styleAttr}><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+}
+
+function energyPreviewLabelMarkup(id, title, detail) {
+  return `<div class="energy-preview-label ${id}"><strong>${escapeHtml(title)}</strong><small>${energyPreviewEntityLabel(detail)}</small></div>`;
+}
+
+function energyPreviewNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function energyPreviewPositive(value) {
+  const n = energyPreviewNumber(value);
+  return n === null ? 0 : Math.max(n, 0);
+}
+
+function energyPreviewFormatValue(value, unit = "") {
+  const n = energyPreviewNumber(value);
+  const suffix = String(unit || "").trim();
+  if (n === null) return suffix ? `-- ${suffix}` : "--";
+  const abs = Math.abs(n);
+  const decimals = abs === 0 || abs >= 100 ? 0 : 1;
+  const text = n.toFixed(decimals);
+  return suffix ? `${text} ${suffix}` : text;
+}
+
+function energyPreviewFormatKwh(value) {
+  return energyPreviewFormatValue(value, "kWh");
+}
+
+function energyPreviewComputeFlows(snapshot) {
+  let fromGrid = energyPreviewPositive(snapshot?.from_grid_kwh);
+  let toGrid = energyPreviewPositive(snapshot?.to_grid_kwh);
+  let solar = energyPreviewPositive(snapshot?.solar_kwh);
+  let toBattery = energyPreviewPositive(snapshot?.to_battery_kwh);
+  let fromBattery = energyPreviewPositive(snapshot?.from_battery_kwh);
+  const out = {
+    usedSolar: 0,
+    usedGrid: 0,
+    usedBattery: 0,
+    usedTotal: fromGrid + solar + fromBattery - toGrid - toBattery,
+    gridToBattery: 0,
+    batteryToGrid: 0,
+    solarToBattery: 0,
+    solarToGrid: 0,
+  };
+  let remaining = Math.max(out.usedTotal, 0);
+
+  const gridToBattery = Math.max(0, Math.min(toBattery, fromGrid - remaining));
+  out.gridToBattery += gridToBattery;
+  toBattery -= gridToBattery;
+  fromGrid -= gridToBattery;
+
+  out.solarToBattery = Math.min(solar, toBattery);
+  toBattery -= out.solarToBattery;
+  solar -= out.solarToBattery;
+
+  out.solarToGrid = Math.min(solar, toGrid);
+  toGrid -= out.solarToGrid;
+  solar -= out.solarToGrid;
+
+  out.batteryToGrid = Math.min(fromBattery, toGrid);
+  fromBattery -= out.batteryToGrid;
+  toGrid -= out.batteryToGrid;
+
+  const secondGridToBattery = Math.min(fromGrid, toBattery);
+  out.gridToBattery += secondGridToBattery;
+  fromGrid -= secondGridToBattery;
+  toBattery -= secondGridToBattery;
+
+  out.usedSolar = Math.min(remaining, solar);
+  remaining -= out.usedSolar;
+  out.usedBattery = Math.min(fromBattery, remaining);
+  remaining -= out.usedBattery;
+  out.usedGrid = Math.min(remaining, fromGrid);
+  return out;
+}
+
+function energyPreviewHomeRingStyle(flows) {
+  const parts = [
+    { color: ENERGY_PREVIEW_COLORS.solar, value: energyPreviewPositive(flows?.usedSolar) },
+    { color: ENERGY_PREVIEW_COLORS.battery, value: energyPreviewPositive(flows?.usedBattery) },
+    { color: ENERGY_PREVIEW_COLORS.grid, value: energyPreviewPositive(flows?.usedGrid) },
+  ].filter((part) => part.value > 0.001);
+  const total = parts.reduce((sum, part) => sum + part.value, 0);
+  if (total <= 0.001 || parts.length === 0) {
+    return `--energy-home-ring: ${ENERGY_PREVIEW_COLORS.idle} 0deg 360deg;`;
+  }
+
+  let start = 0;
+  const segments = parts.map((part, index) => {
+    if (index === parts.length - 1) {
+      return `${part.color} ${start}deg 360deg`;
+    }
+    const remainingSegments = parts.length - index - 1;
+    const maxEnd = 360 - remainingSegments;
+    let end = Math.round(start + (part.value / total) * 360);
+    end = Math.max(start + 1, Math.min(maxEnd, end));
+    const segment = `${part.color} ${start}deg ${end}deg`;
+    start = end;
+    return segment;
+  });
+  return `--energy-home-ring: ${segments.join(", ")};`;
+}
+
+function energyPreviewFlowMarkup(id, visible, path, dot) {
+  if (!visible) return "";
+  const dotMarkup = dot ? `<circle class="dot ${id}" cx="${dot[0]}" cy="${dot[1]}" r="5" />` : "";
+  return `<path class="flow ${id}" d="${path}" />${dotMarkup}`;
+}
+
+function renderEnergyCanvasPreview(page) {
+  const energy = page.energy || {};
+  const source = energy.source === ENERGY_SOURCE_MANUAL ? ENERGY_SOURCE_MANUAL : ENERGY_SOURCE_HA;
+  const isManual = source === ENERGY_SOURCE_MANUAL;
+  const configured = ENERGY_ENTITY_KEYS.filter((key) => energy[key]).length;
+  const autoLabel = t("layout.energy.preview_auto");
+  const headerBadge = isManual ? energyPreviewSensorCount(configured) : t("layout.energy.preview_source_ha");
+  const snapshot = !isManual && editor.energySnapshot?.available === true ? editor.energySnapshot : null;
+  const snapshotFlows = snapshot ? energyPreviewComputeFlows(snapshot) : null;
+  const solarEntity = isManual ? energy.solar_power_entity_id : autoLabel;
+  const gridEntity = isManual
+    ? (energy.grid_power_entity_id || energy.grid_import_power_entity_id || energy.grid_export_power_entity_id)
+    : autoLabel;
+  const homeEntity = isManual ? energy.home_power_entity_id : autoLabel;
+  const batteryEntity = isManual
+    ? (energy.battery_power_entity_id || energy.battery_charge_power_entity_id ||
+      energy.battery_discharge_power_entity_id || energy.battery_soc_entity_id)
+    : autoLabel;
+  const nodes = isManual ? {
+    lowCarbon: false,
+    solar: !!solarEntity,
+    gas: false,
+    grid: !!gridEntity,
+    home: !!homeEntity || configured > 0,
+    battery: !!batteryEntity,
+    water: false,
+  } : {
+    lowCarbon: false,
+    solar: snapshot?.has_solar === true,
+    gas: snapshot?.has_gas === true,
+    grid: snapshot?.has_grid === true,
+    home: true,
+    battery: snapshot?.has_battery === true,
+    water: snapshot?.has_water === true,
+  };
+  if (isManual && configured === 0) {
+    nodes.home = true;
+  }
+  const homeValue = snapshot ? energyPreviewFormatKwh(Math.max(snapshotFlows?.usedTotal || 0, 0)) : (isManual ? "-- W" : "-- kWh");
+  const solarValue = snapshot ? energyPreviewFormatKwh(snapshot.solar_kwh) : (isManual ? "-- W" : "-- kWh");
+  const gridImport = energyPreviewPositive(snapshot?.from_grid_kwh);
+  const gridExport = energyPreviewPositive(snapshot?.to_grid_kwh);
+  const gridValue = snapshot
+    ? `${gridExport > gridImport && gridExport > 0.01 ? "out" : "in"} ${energyPreviewFormatKwh(Math.max(gridImport, gridExport))}`
+    : (isManual ? "-- W" : "-- kWh");
+  const batteryCharge = energyPreviewPositive(snapshot?.to_battery_kwh);
+  const batteryDischarge = energyPreviewPositive(snapshot?.from_battery_kwh);
+  const batteryValue = snapshot
+    ? `${batteryCharge > batteryDischarge && batteryCharge > 0.01 ? "chg" : "out"} ${energyPreviewFormatKwh(Math.max(batteryCharge, batteryDischarge))}`
+    : (isManual ? "--%" : "-- kWh");
+  const gasValue = snapshot ? energyPreviewFormatValue(snapshot.gas_value, snapshot.gas_unit) : "--";
+  const waterValue = snapshot ? energyPreviewFormatValue(snapshot.water_value, snapshot.water_unit) : "--";
+  const homeRingStyle = energyPreviewHomeRingStyle(snapshotFlows);
+  const flows = [
+    energyPreviewFlowMarkup("low-carbon", nodes.lowCarbon && nodes.grid, "M96 190 V282", [96, 254]),
+    energyPreviewFlowMarkup("solar-return", nodes.solar && nodes.grid, "M312 190 V286 A40 40 0 0 1 272 326 H150", [250, 326]),
+    energyPreviewFlowMarkup("solar", nodes.solar && nodes.home, "M312 190 V286 A40 40 0 0 0 352 326 H522", [402, 326]),
+    energyPreviewFlowMarkup("battery-in", nodes.solar && nodes.battery, "M312 190 V452", [312, 312]),
+    energyPreviewFlowMarkup("grid", nodes.grid && nodes.home, "M150 346 H522", [244, 346]),
+    energyPreviewFlowMarkup("battery-out", nodes.battery && nodes.home, "M336 452 V386 A40 40 0 0 1 376 346 H522", [394, 346]),
+    energyPreviewFlowMarkup("return", nodes.grid && nodes.battery, "M150 368 H272 A40 40 0 0 1 312 408 V452", [216, 368]),
+    energyPreviewFlowMarkup("gas", nodes.gas && nodes.home, "M528 190 V282", [528, 254]),
+    energyPreviewFlowMarkup("water", nodes.water && nodes.home, "M528 452 V402", [528, 426]),
+  ].join("");
+  const nodeMarkup = [
+    nodes.lowCarbon ? energyPreviewNodeMarkup("low-carbon", "LC", "-- kWh") : "",
+    nodes.solar ? energyPreviewNodeMarkup("solar", "PV", solarValue) : "",
+    nodes.gas ? energyPreviewNodeMarkup("gas", "GAS", gasValue) : "",
+    nodes.grid ? energyPreviewNodeMarkup("grid", "GRID", gridValue) : "",
+    nodes.home ? energyPreviewNodeMarkup("home", "HOME", homeValue, homeRingStyle) : "",
+    nodes.battery ? energyPreviewNodeMarkup("battery", "BAT", batteryValue) : "",
+    nodes.water ? energyPreviewNodeMarkup("water", "H2O", waterValue) : "",
+  ].join("");
+  const labelMarkup = [
+    nodes.lowCarbon ? energyPreviewLabelMarkup("low-carbon", t("layout.energy.low_carbon"), autoLabel) : "",
+    nodes.solar ? energyPreviewLabelMarkup("solar", t("layout.energy.solar"), solarEntity) : "",
+    nodes.gas ? energyPreviewLabelMarkup("gas", t("layout.energy.gas"), autoLabel) : "",
+    nodes.grid ? energyPreviewLabelMarkup("grid", t("layout.energy.grid"), gridEntity) : "",
+    nodes.home ? energyPreviewLabelMarkup("home", t("layout.energy.home"), homeEntity) : "",
+    nodes.battery ? energyPreviewLabelMarkup("battery", t("layout.energy.battery"), batteryEntity) : "",
+    nodes.water ? energyPreviewLabelMarkup("water", t("layout.energy.water"), autoLabel) : "",
+  ].join("");
+  const node = document.createElement("div");
+  node.className = "energy-page-preview";
+  node.innerHTML = `
+    <div class="energy-preview-card">
+      <div class="energy-preview-heading">
+        <strong>${escapeHtml(t("layout.energy.preview_title"))}</strong>
+        <span>${escapeHtml(headerBadge)}</span>
+      </div>
+      <svg class="energy-preview-flow" viewBox="0 0 720 600" aria-hidden="true">
+        ${flows}
+      </svg>
+      ${nodeMarkup}
+      ${labelMarkup}
+    </div>
+  `;
+  el.canvas.appendChild(node);
+}
+
 function renderCanvas() {
   if (editor.activePane === "settings") {
     setActiveSettingsSection(editor.activeSettingsSection);
@@ -3747,6 +4240,11 @@ function renderCanvas() {
   }
 
   el.canvasTitle.textContent = `${t("layout.canvas.title")}: ${page.title || page.id}`;
+
+  if (isEnergyPage(page)) {
+    renderEnergyCanvasPreview(page);
+    return;
+  }
 
   for (const widget of page.widgets) {
     const box = document.createElement("div");
@@ -3940,6 +4438,21 @@ function addPage() {
   renderAll();
 }
 
+function addEnergyPage() {
+  const pageId = uniqueId("energy", editor.layout.pages);
+  editor.layout.pages.push({
+    id: pageId,
+    type: ENERGY_PAGE_TYPE,
+    title: t("layout.pages.energy_title"),
+    energy: defaultEnergyConfig(),
+    widgets: [],
+  });
+  editor.selectedPageId = pageId;
+  editor.selectedWidgetId = null;
+  renderAll();
+  void loadEnergyPreview();
+}
+
 function deletePage() {
   if (!editor.layout.pages.length || !editor.selectedPageId) return;
   if (editor.layout.pages.length === 1) {
@@ -3957,12 +4470,39 @@ function applyPageName() {
   if (!page) return;
   const nextTitle = el.pageTitleInput.value.trim();
   page.title = nextTitle || page.id;
+  if (isEnergyPage(page)) {
+    applyEnergyPageConfig({ render: false });
+  }
   renderAll();
+}
+
+function applyEnergyPageConfig(options = {}) {
+  const page = selectedPage();
+  if (!isEnergyPage(page)) return false;
+  normalizeEnergyConfig(page);
+  const selectedSource = (el.energySource?.value || page.energy.source || ENERGY_SOURCE_HA).trim();
+  page.energy.source = ENERGY_SOURCES.has(selectedSource) ? selectedSource : ENERGY_SOURCE_HA;
+  const inputs = getEnergyInputs();
+  for (const key of ENERGY_ENTITY_KEYS) {
+    page.energy[key] = (inputs[key]?.value || "").trim();
+  }
+  updateEnergySourceUi(page.energy.source);
+  if (options.render !== false) {
+    renderAll();
+  }
+  if (page.energy.source === ENERGY_SOURCE_HA) {
+    void loadEnergyPreview();
+  }
+  return true;
 }
 
 function addWidget(type, options = {}) {
   const page = selectedPage();
   if (!page) return;
+  if (isEnergyPage(page)) {
+    setStatus(t("layout.status.energy_page_only"), true);
+    return null;
+  }
   const sliderDomain = DEFAULT_SLIDER_ENTITY_DOMAIN;
   const id = createWidgetIdForPage(page, type);
   const entityId = typeof options.entityId === "string" ? options.entityId : pickDefaultEntityForWidgetType(type, sliderDomain);
@@ -4124,6 +4664,10 @@ function bindInspectorAutoApply(input, events = ["change"], options = {}) {
 }
 
 async function saveLayout() {
+  if (isEnergyPage(selectedPage())) {
+    applyEnergyPageConfig({ render: false });
+  }
+  normalizeLayoutWidgets(editor.layout);
   setStatus(t("layout.status.saving"));
   const response = await fetch("/api/layout", {
     method: "PUT",
@@ -4142,6 +4686,10 @@ async function saveLayout() {
 }
 
 function exportLayout() {
+  if (isEnergyPage(selectedPage())) {
+    applyEnergyPageConfig({ render: false });
+  }
+  normalizeLayoutWidgets(editor.layout);
   const blob = new Blob([JSON.stringify(editor.layout, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -4187,8 +4735,22 @@ function bindUi() {
     await loadOtaStatus(true);
   };
   el.addPageBtn.onclick = addPage;
+  if (el.addEnergyPageBtn) {
+    el.addEnergyPageBtn.onclick = addEnergyPage;
+  }
   el.deletePageBtn.onclick = deletePage;
   el.applyPageBtn.onclick = applyPageName;
+  if (el.applyEnergyPageBtn) {
+    el.applyEnergyPageBtn.onclick = () => applyEnergyPageConfig();
+  }
+  if (el.energySource) {
+    el.energySource.onchange = () => applyEnergyPageConfig();
+  }
+  for (const input of Object.values(getEnergyInputs())) {
+    if (!input) continue;
+    input.onchange = () => applyEnergyPageConfig();
+    input.onblur = () => applyEnergyPageConfig();
+  }
   el.addSensorBtn.onclick = () => openLightEntityPicker("sensor");
   el.addButtonBtn.onclick = () => openLightEntityPicker("button");
   el.addSliderBtn.onclick = () => addWidget("slider");
@@ -4651,10 +5213,12 @@ async function startEditor() {
   setProvisioningVisible(false);
   setActivePane("layout");
   await Promise.all([loadLayout(), loadEntities(), refreshStates()]);
+  await loadEnergyPreview();
   if (setupWizardShouldAutoOpen()) {
     openSetupWizard();
   }
   window.setInterval(refreshStates, 5000);
+  window.setInterval(loadEnergyPreview, 15000);
 }
 
 async function bootstrap() {

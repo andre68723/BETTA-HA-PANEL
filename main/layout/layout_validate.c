@@ -84,6 +84,14 @@ static bool is_supported_widget_type(const char *type)
            (strcmp(type, "weather_3day") == 0);
 }
 
+static bool is_supported_page_type(const char *type)
+{
+    if (type == NULL || type[0] == '\0') {
+        return true;
+    }
+    return strcmp(type, "dashboard") == 0 || strcmp(type, "energy_dashboard") == 0;
+}
+
 typedef struct {
     int min_w;
     int min_h;
@@ -256,6 +264,83 @@ static bool button_mode_requires_media_player(const char *mode)
     }
     return strcmp(mode, "play_pause") == 0 || strcmp(mode, "stop") == 0 || strcmp(mode, "next") == 0 ||
            strcmp(mode, "previous") == 0;
+}
+
+static bool is_valid_energy_source(const char *source)
+{
+    if (source == NULL || source[0] == '\0') {
+        return false;
+    }
+    return strcmp(source, "ha_energy") == 0 || strcmp(source, "manual_live") == 0;
+}
+
+static void validate_energy_entity_field(cJSON *energy, const char *key, const char *page_id,
+    layout_validation_result_t *result)
+{
+    cJSON *item = cJSON_GetObjectItemCaseSensitive(energy, key);
+    if (item == NULL) {
+        return;
+    }
+
+    char msg[128];
+    if (!cJSON_IsString(item) || item->valuestring == NULL) {
+        snprintf(msg, sizeof(msg), "page %s energy.%s must be a string", page_id != NULL ? page_id : "?", key);
+        layout_validation_add(result, msg);
+        return;
+    }
+
+    if (item->valuestring[0] == '\0') {
+        return;
+    }
+
+    if (!is_valid_entity_id(item->valuestring) || !entity_in_domain(item->valuestring, "sensor")) {
+        snprintf(msg, sizeof(msg), "page %s energy.%s must be sensor.*", page_id != NULL ? page_id : "?", key);
+        layout_validation_add(result, msg);
+    }
+}
+
+static void validate_energy_page(cJSON *page, const char *page_id, layout_validation_result_t *result)
+{
+    cJSON *energy = cJSON_GetObjectItemCaseSensitive(page, "energy");
+    if (energy == NULL) {
+        return;
+    }
+    if (!cJSON_IsObject(energy)) {
+        char msg[96];
+        snprintf(msg, sizeof(msg), "page %s: energy must be object", page_id != NULL ? page_id : "?");
+        layout_validation_add(result, msg);
+        return;
+    }
+
+    cJSON *source = cJSON_GetObjectItemCaseSensitive(energy, "source");
+    if (source != NULL) {
+        char msg[128];
+        if (!cJSON_IsString(source) || source->valuestring == NULL) {
+            snprintf(msg, sizeof(msg), "page %s energy.source must be a string", page_id != NULL ? page_id : "?");
+            layout_validation_add(result, msg);
+        } else if (source->valuestring[0] != '\0' && !is_valid_energy_source(source->valuestring)) {
+            snprintf(msg,
+                sizeof(msg),
+                "page %s energy.source must be ha_energy or manual_live",
+                page_id != NULL ? page_id : "?");
+            layout_validation_add(result, msg);
+        }
+    }
+
+    static const char *keys[] = {
+        "home_power_entity_id",
+        "solar_power_entity_id",
+        "grid_power_entity_id",
+        "grid_import_power_entity_id",
+        "grid_export_power_entity_id",
+        "battery_power_entity_id",
+        "battery_charge_power_entity_id",
+        "battery_discharge_power_entity_id",
+        "battery_soc_entity_id",
+    };
+    for (size_t i = 0; i < (sizeof(keys) / sizeof(keys[0])); i++) {
+        validate_energy_entity_field(energy, keys[i], page_id, result);
+    }
 }
 
 void layout_validation_clear(layout_validation_result_t *result)
@@ -540,8 +625,10 @@ bool layout_validate_json(const char *json, layout_validation_result_t *result)
         }
 
         cJSON *page_id = cJSON_GetObjectItemCaseSensitive(page, "id");
+        cJSON *page_type = cJSON_GetObjectItemCaseSensitive(page, "type");
         cJSON *widgets = cJSON_GetObjectItemCaseSensitive(page, "widgets");
         char msg[96];
+        bool is_energy_dashboard_page = false;
 
         if (!cJSON_IsString(page_id) || page_id->valuestring == NULL || strlen(page_id->valuestring) == 0U) {
             snprintf(msg, sizeof(msg), "page[%u]: invalid id", (unsigned)i);
@@ -556,6 +643,29 @@ bool layout_validate_json(const char *json, layout_validation_result_t *result)
             char *dst = known_page_ids + (known_page_ids_len * APP_MAX_PAGE_ID_LEN);
             snprintf(dst, APP_MAX_PAGE_ID_LEN, "%s", page_id->valuestring);
             known_page_ids_len++;
+        }
+
+        if (page_type != NULL) {
+            if (!cJSON_IsString(page_type) || page_type->valuestring == NULL ||
+                !is_supported_page_type(page_type->valuestring)) {
+                snprintf(msg, sizeof(msg), "page %s: unsupported type", cJSON_IsString(page_id) ? page_id->valuestring : "?");
+                layout_validation_add(result, msg);
+            } else if (strcmp(page_type->valuestring, "energy_dashboard") == 0) {
+                is_energy_dashboard_page = true;
+            }
+        }
+
+        if (is_energy_dashboard_page) {
+            validate_energy_page(page, cJSON_IsString(page_id) ? page_id->valuestring : "?", result);
+            if (widgets != NULL && !cJSON_IsArray(widgets)) {
+                snprintf(msg, sizeof(msg), "page %s: widgets must be array", cJSON_IsString(page_id) ? page_id->valuestring : "?");
+                layout_validation_add(result, msg);
+            } else if (cJSON_IsArray(widgets) && cJSON_GetArraySize(widgets) > 0) {
+                snprintf(msg, sizeof(msg), "page %s: energy_dashboard pages cannot contain widgets",
+                    cJSON_IsString(page_id) ? page_id->valuestring : "?");
+                layout_validation_add(result, msg);
+            }
+            continue;
         }
 
         if (!cJSON_IsArray(widgets)) {

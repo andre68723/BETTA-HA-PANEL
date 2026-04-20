@@ -74,6 +74,7 @@
             <h2 id="pagesHeading">Pages</h2>
             <div class="row">
               <button id="addPageBtn" class="btn small">+ Page</button>
+              <button id="addEnergyPageBtn" class="btn small primary" type="button">+ Energy Page</button>
               <button id="deletePageBtn" class="btn small danger">Delete</button>
               <button id="togglePagesSection" class="btn small collapse-toggle" type="button" aria-expanded="true"
                 aria-controls="pagesSectionBody">-</button>
@@ -86,6 +87,51 @@
                 <input id="pageTitleInput" type="text" placeholder="Page name on the display" />
               </label>
               <button id="applyPageBtn" class="btn">Apply page title</button>
+              <div id="energyPageOptions" class="energy-page-options hidden">
+                <h2 id="energyPageHeading">Energy Page</h2>
+                <div class="meta" id="energyPageHint">Choose the data source for the dedicated energy dashboard page.</div>
+                <label><span id="energySourceLabel">Data source</span>
+                  <select id="energySource">
+                    <option id="energySourceHaOption" value="ha_energy">Home Assistant Energy</option>
+                    <option id="energySourceManualOption" value="manual_live">Manual live sensors</option>
+                  </select>
+                </label>
+                <div class="meta" id="energySourceHint">Uses the Energy dashboard configured in Home Assistant.</div>
+                <div id="energyManualOptions" class="energy-manual-options hidden">
+                  <label><span id="energyHomePowerLabel">Home power</span>
+                    <input id="energyHomePower" type="text" list="energyEntityOptions" placeholder="sensor.home_power" />
+                  </label>
+                  <label><span id="energySolarPowerLabel">Solar power</span>
+                    <input id="energySolarPower" type="text" list="energyEntityOptions" placeholder="sensor.solar_power" />
+                  </label>
+                  <label><span id="energyGridPowerLabel">Grid power (signed)</span>
+                    <input id="energyGridPower" type="text" list="energyEntityOptions" placeholder="sensor.grid_power" />
+                  </label>
+                  <div class="grid-2">
+                    <label><span id="energyGridImportLabel">Grid import</span>
+                      <input id="energyGridImport" type="text" list="energyEntityOptions" placeholder="sensor.grid_import_power" />
+                    </label>
+                    <label><span id="energyGridExportLabel">Grid export</span>
+                      <input id="energyGridExport" type="text" list="energyEntityOptions" placeholder="sensor.grid_export_power" />
+                    </label>
+                  </div>
+                  <label><span id="energyBatteryPowerLabel">Battery power (signed)</span>
+                    <input id="energyBatteryPower" type="text" list="energyEntityOptions" placeholder="sensor.battery_power" />
+                  </label>
+                  <div class="grid-2">
+                    <label><span id="energyBatteryChargeLabel">Battery charge</span>
+                      <input id="energyBatteryCharge" type="text" list="energyEntityOptions" placeholder="sensor.battery_charge_power" />
+                    </label>
+                    <label><span id="energyBatteryDischargeLabel">Battery discharge</span>
+                      <input id="energyBatteryDischarge" type="text" list="energyEntityOptions" placeholder="sensor.battery_discharge_power" />
+                    </label>
+                  </div>
+                  <label><span id="energyBatterySocLabel">Battery state of charge</span>
+                    <input id="energyBatterySoc" type="text" list="energyEntityOptions" placeholder="sensor.battery_soc" />
+                  </label>
+                </div>
+                <button id="applyEnergyPageBtn" class="btn" type="button">Apply energy config</button>
+              </div>
             </div>
           </div>
           <div id="pagesMiniList" class="section-mini"></div>
@@ -425,6 +471,7 @@
     <option value="AU"></option>
     <option value="CA"></option>
   </datalist>
+  <datalist id="energyEntityOptions"></datalist>
   <script src="/app.js"></script>
 </body>
 </html>

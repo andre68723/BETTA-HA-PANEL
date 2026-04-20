@@ -16,6 +16,7 @@ typedef enum {
     EV_HA_CONNECTED,
     EV_HA_DISCONNECTED,
     EV_HA_STATE_CHANGED,
+    EV_HA_ENERGY_CHANGED,
     EV_LAYOUT_UPDATED,
     EV_UI_NAVIGATE,
 } app_event_type_t;

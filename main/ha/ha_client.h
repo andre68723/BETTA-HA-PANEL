@@ -19,4 +19,5 @@ bool ha_client_is_connected(void);
 bool ha_client_is_initial_sync_done(void);
 esp_err_t ha_client_call_service(const char *domain, const char *service, const char *json_service_data);
 esp_err_t ha_client_notify_layout_updated(void);
+esp_err_t ha_client_request_energy_refresh(void);
 esp_err_t ha_client_get_domain_entities_json(const char *domain, const char *search, bool refresh, char **out_json);
