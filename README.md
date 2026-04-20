@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk -->
-<img src="images/BETTAOS.jpg" alt="BETTA OS Logo" width="20%" />
+<img src="images/BETTAOS.jpg" alt="BETTA OS Logo" width="10%" /> # BETTA HA Panel
 
-# BETTA HA Panel
+
 <p float="left">
     <img src="images/heating%20on%20example.jpg" alt="Heating ON example" width="25%" />
     <img src="https://github.com/user-attachments/assets/97be77c3-0716-4641-994c-efe90c929953" width="25%" />
