@@ -336,6 +336,8 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     cJSON *graph_line_color = cJSON_GetObjectItemCaseSensitive(widget_json, "graph_line_color");
     cJSON *graph_point_count = cJSON_GetObjectItemCaseSensitive(widget_json, "graph_point_count");
     cJSON *graph_time_window_min = cJSON_GetObjectItemCaseSensitive(widget_json, "graph_time_window_min");
+    cJSON *graph_display_mode = cJSON_GetObjectItemCaseSensitive(widget_json, "graph_display_mode");
+    cJSON *graph_bar_bucket_min = cJSON_GetObjectItemCaseSensitive(widget_json, "graph_bar_bucket_min");
     cJSON *rect = cJSON_GetObjectItemCaseSensitive(widget_json, "rect");
     if (!cJSON_IsString(id) || !cJSON_IsString(type) || !cJSON_IsObject(rect)) {
         return false;
@@ -384,6 +386,12 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     }
     if (cJSON_IsNumber(graph_time_window_min)) {
         out->graph_time_window_min = graph_time_window_min->valueint;
+    }
+    if (cJSON_IsString(graph_display_mode) && graph_display_mode->valuestring != NULL) {
+        snprintf(out->graph_display_mode, sizeof(out->graph_display_mode), "%s", graph_display_mode->valuestring);
+    }
+    if (cJSON_IsNumber(graph_bar_bucket_min)) {
+        out->graph_bar_bucket_min = graph_bar_bucket_min->valueint;
     }
     out->x = x->valueint;
     out->y = y->valueint;

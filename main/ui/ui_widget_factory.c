@@ -57,6 +57,8 @@ esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent,
     snprintf(out_instance->graph_line_color, sizeof(out_instance->graph_line_color), "%s", def->graph_line_color);
     out_instance->graph_point_count = def->graph_point_count;
     out_instance->graph_time_window_min = def->graph_time_window_min;
+    snprintf(out_instance->graph_display_mode, sizeof(out_instance->graph_display_mode), "%s", def->graph_display_mode);
+    out_instance->graph_bar_bucket_min = def->graph_bar_bucket_min;
     out_instance->ctx = NULL;
 
     if (strcmp(def->type, "sensor") == 0) {

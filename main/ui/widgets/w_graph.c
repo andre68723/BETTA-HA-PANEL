@@ -4,6 +4,7 @@
 #include "ui/ui_widget_factory.h"
 
 #include <ctype.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -28,14 +29,33 @@
 #define GRAPH_POINTS_MAX 64
 #define GRAPH_DEFAULT_POINT_COUNT 32
 
+/* Upper bound for the internally computed slot count used by smooth modes.
+   Higher values produce smoother curves at the cost of a bit more LVGL work. */
+#define GRAPH_SMOOTH_POINTS_MAX 160
+#define GRAPH_SMOOTH_POINTS_MIN 32
+
+#define GRAPH_BAR_BUCKETS_MAX 120
+#define GRAPH_BAR_BUCKET_MIN_DEFAULT 15
+
+#define GRAPH_DISPLAY_MODE_LINE         "line"
+#define GRAPH_DISPLAY_MODE_LINE_SMOOTH  "line_smooth"
+#define GRAPH_DISPLAY_MODE_LINE_SMOOTH_POINTS "line_smooth_points"
+#define GRAPH_DISPLAY_MODE_BARS         "bars"
+
 #define GRAPH_TIME_WINDOW_MIN_MIN 1
 #define GRAPH_TIME_WINDOW_MIN_MAX 1440
 #define GRAPH_DEFAULT_TIME_WINDOW_MIN 120
 
-#define GRAPH_HISTORY_BUCKET_SEC 60U
+#define GRAPH_HISTORY_MIN_INTERVAL_SEC 2U
 #define GRAPH_HISTORY_RETENTION_MIN 1440U
 #define GRAPH_HISTORY_RETENTION_SEC (GRAPH_HISTORY_RETENTION_MIN * 60U)
-#define GRAPH_HISTORY_MAX_SAMPLES ((int)(GRAPH_HISTORY_RETENTION_SEC / GRAPH_HISTORY_BUCKET_SEC))
+/* Cap samples by count as well as by age. Each sample is 8 bytes, so the
+   default cap uses ~32 KB RAM per widget. When the buffer fills before the
+   24h retention kicks in, graph_history_decimate_oldest merges the two
+   oldest samples instead of dropping them outright, so the graph keeps
+   covering the full 24h window at progressively coarser resolution at
+   the old end while the newest data stays at full event resolution. */
+#define GRAPH_HISTORY_MAX_SAMPLES 4096
 #define GRAPH_HISTORY_SAVE_INTERVAL_SEC 120U
 #define GRAPH_HISTORY_PERSIST_QUEUE_LEN 4U
 #define GRAPH_HISTORY_PERSIST_TASK_STACK 4096
@@ -87,6 +107,20 @@ typedef struct {
     int point_count;
     int time_window_min;
     int history_offset_min;
+
+    /* Display mode state: one of GRAPH_DISPLAY_MODE_*. */
+    char display_mode[24];
+    int bar_bucket_min;
+
+    /* Real-sample pixel coordinates cached during rebuild so the draw
+       callback can render dots at those positions for line_smooth_points. */
+    struct {
+        int16_t x_id;   /* chart value index (0..point_count-1) */
+        float value;
+    } real_points[GRAPH_HISTORY_MAX_SAMPLES];
+    int real_points_count;
+    int32_t range_min_scaled;
+    int32_t range_max_scaled;
 
     lv_color_t line_color;
     bool unavailable;
@@ -258,6 +292,37 @@ static int graph_clamp_time_window_min(int configured)
     return configured;
 }
 
+static const char *graph_normalize_display_mode(const char *raw)
+{
+    if (raw == NULL || raw[0] == '\0') {
+        return GRAPH_DISPLAY_MODE_LINE;
+    }
+    if (strcmp(raw, GRAPH_DISPLAY_MODE_LINE) == 0) return GRAPH_DISPLAY_MODE_LINE;
+    if (strcmp(raw, GRAPH_DISPLAY_MODE_LINE_SMOOTH) == 0) return GRAPH_DISPLAY_MODE_LINE_SMOOTH;
+    if (strcmp(raw, GRAPH_DISPLAY_MODE_LINE_SMOOTH_POINTS) == 0) return GRAPH_DISPLAY_MODE_LINE_SMOOTH_POINTS;
+    if (strcmp(raw, GRAPH_DISPLAY_MODE_BARS) == 0) return GRAPH_DISPLAY_MODE_BARS;
+    return GRAPH_DISPLAY_MODE_LINE;
+}
+
+static int graph_clamp_bar_bucket_min(int configured)
+{
+    switch (configured) {
+    case 5:
+    case 10:
+    case 15:
+    case 30:
+        return configured;
+    default:
+        return GRAPH_BAR_BUCKET_MIN_DEFAULT;
+    }
+}
+
+static bool graph_mode_is_smooth(const char *mode)
+{
+    return (strcmp(mode, GRAPH_DISPLAY_MODE_LINE_SMOOTH) == 0) ||
+           (strcmp(mode, GRAPH_DISPLAY_MODE_LINE_SMOOTH_POINTS) == 0);
+}
+
 static bool graph_is_epoch_valid(time_t epoch)
 {
     if (epoch < 0) {
@@ -272,8 +337,10 @@ static uint32_t graph_current_bucket_ts(void)
     if (!graph_is_epoch_valid(now)) {
         return 0U;
     }
-    uint32_t now_u = (uint32_t)now;
-    return now_u - (now_u % GRAPH_HISTORY_BUCKET_SEC);
+    /* Event-rate sampling: use the exact wall-clock second. Burst coalescing
+       happens in graph_history_append_or_update so we never rely on a fixed
+       minute alignment. */
+    return (uint32_t)now;
 }
 
 static uint32_t graph_display_now_bucket_ts(const w_graph_ctx_t *ctx)
@@ -364,6 +431,23 @@ static void graph_history_drop_oldest(w_graph_ctx_t *ctx, int drop_count)
         ctx->history + drop_count,
         (size_t)(ctx->history_count - drop_count) * sizeof(ctx->history[0]));
     ctx->history_count -= drop_count;
+}
+
+/* Merge the two oldest samples into one (average value, later timestamp) to
+   free a slot without losing the 24h coverage. Used when the ring buffer
+   fills before the retention window kicks in, so the old end of the graph
+   gets progressively downsampled instead of truncated. */
+static void graph_history_decimate_oldest(w_graph_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->history_count < 2) {
+        graph_history_drop_oldest(ctx, 1);
+        return;
+    }
+    graph_sample_t *a = &ctx->history[0];
+    graph_sample_t *b = &ctx->history[1];
+    b->value = (a->value + b->value) * 0.5f;
+    /* Keep b->bucket_ts (the newer of the two) so ordering stays strict. */
+    graph_history_drop_oldest(ctx, 1);
 }
 
 static void graph_history_trim_retention(w_graph_ctx_t *ctx, uint32_t newest_bucket_ts)
@@ -597,24 +681,30 @@ static bool graph_history_append_or_update(w_graph_ctx_t *ctx, uint32_t bucket_t
 
     if (ctx->history_count > 0) {
         graph_sample_t *last = &ctx->history[ctx->history_count - 1];
-        if (last->bucket_ts == bucket_ts) {
-            float delta = last->value - value;
-            if (delta < 0.0f) {
-                delta = -delta;
-            }
-            if (delta < 0.0001f) {
-                return false;
-            }
-            last->value = value;
-            return true;
-        }
         if (bucket_ts < last->bucket_ts) {
             return false;
+        }
+        /* Coalesce pushes that arrive within the min interval: keep the newest
+           timestamp + value, overwriting the previous sample. Prevents chatty
+           sensors (e.g. power meters reporting every 1-2s) from blowing the
+           fixed-size ring buffer. */
+        uint32_t delta_t = bucket_ts - last->bucket_ts;
+        if (delta_t < GRAPH_HISTORY_MIN_INTERVAL_SEC) {
+            float delta_v = last->value - value;
+            if (delta_v < 0.0f) delta_v = -delta_v;
+            bool value_changed = delta_v >= 0.0001f;
+            bool ts_changed = last->bucket_ts != bucket_ts;
+            if (!value_changed && !ts_changed) {
+                return false;
+            }
+            last->bucket_ts = bucket_ts;
+            last->value = value;
+            return true;
         }
     }
 
     if (ctx->history_count >= GRAPH_HISTORY_MAX_SAMPLES) {
-        graph_history_drop_oldest(ctx, 1);
+        graph_history_decimate_oldest(ctx);
     }
     ctx->history[ctx->history_count].bucket_ts = bucket_ts;
     ctx->history[ctx->history_count].value = value;
@@ -642,6 +732,62 @@ static int graph_desired_point_count(const w_graph_ctx_t *ctx)
         desired = GRAPH_POINTS_MAX;
     }
     return desired;
+}
+
+/* For smooth modes we oversample the curve so LVGL's piecewise-linear
+   rendering visually approximates a spline. */
+static int graph_desired_smooth_point_count(const w_graph_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->card == NULL) {
+        return GRAPH_SMOOTH_POINTS_MIN;
+    }
+    lv_coord_t content_w = lv_obj_get_width(ctx->card) - lv_obj_get_style_pad_left(ctx->card, LV_PART_MAIN) -
+                           lv_obj_get_style_pad_right(ctx->card, LV_PART_MAIN);
+    int desired = (int)(content_w / 4);
+    if (desired < GRAPH_SMOOTH_POINTS_MIN) desired = GRAPH_SMOOTH_POINTS_MIN;
+    if (desired > GRAPH_SMOOTH_POINTS_MAX) desired = GRAPH_SMOOTH_POINTS_MAX;
+    return desired;
+}
+
+static int graph_desired_bar_bucket_count(const w_graph_ctx_t *ctx)
+{
+    if (ctx == NULL) return 1;
+    int bucket_min = graph_clamp_bar_bucket_min(ctx->bar_bucket_min);
+    int buckets = (ctx->time_window_min + bucket_min - 1) / bucket_min;
+    if (buckets < 1) buckets = 1;
+    if (buckets > GRAPH_BAR_BUCKETS_MAX) buckets = GRAPH_BAR_BUCKETS_MAX;
+    return buckets;
+}
+
+/* Catmull-Rom interpolation between p1 and p2 using p0 and p3 as neighbours. */
+static float graph_catmull_rom(float p0, float p1, float p2, float p3, float t)
+{
+    const float t2 = t * t;
+    const float t3 = t2 * t;
+    return 0.5f * (
+        (2.0f * p1) +
+        (-p0 + p2) * t +
+        (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2 +
+        (-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t3);
+}
+
+/* Symmetric moving average around history index k, clamped to [lo, hi]. */
+static float graph_smoothed_value(const w_graph_ctx_t *ctx, int lo, int hi, int k, int half_window)
+{
+    int a = k - half_window;
+    int b = k + half_window;
+    if (a < lo) a = lo;
+    if (b > hi) b = hi;
+    double sum = 0.0;
+    int n = 0;
+    for (int i = a; i <= b; ++i) {
+        sum += ctx->history[i].value;
+        n++;
+    }
+    if (n <= 0) {
+        return ctx->history[k].value;
+    }
+    return (float)(sum / (double)n);
 }
 
 static int graph_max_history_offset_min(const w_graph_ctx_t *ctx, uint32_t now_bucket_ts)
@@ -679,11 +825,344 @@ static int graph_pan_step_min(const w_graph_ctx_t *ctx)
     return step;
 }
 
+/* Sync chart type + point count + indicator style to the current display mode.
+   Must be called before populating series values. */
+static void graph_sync_chart_to_mode(w_graph_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->chart == NULL) {
+        return;
+    }
+    const char *mode = graph_normalize_display_mode(ctx->display_mode);
+
+    if (strcmp(mode, GRAPH_DISPLAY_MODE_BARS) == 0) {
+        lv_chart_set_type(ctx->chart, LV_CHART_TYPE_BAR);
+        int buckets = graph_desired_bar_bucket_count(ctx);
+        ctx->point_count = buckets;
+        lv_chart_set_point_count(ctx->chart, (uint32_t)buckets);
+        /* Bars: no indicator dots. */
+        lv_obj_set_style_size(ctx->chart, 0, 0, LV_PART_INDICATOR);
+    } else {
+        lv_chart_set_type(ctx->chart, LV_CHART_TYPE_LINE);
+        int slots;
+        if (graph_mode_is_smooth(mode)) {
+            slots = graph_desired_smooth_point_count(ctx);
+            /* Dots at real samples are drawn via custom post-draw callback for
+               line_smooth_points; suppress LVGL's per-slot indicators to avoid
+               drawing them on every oversampled slot. */
+            lv_obj_set_style_size(ctx->chart, 0, 0, LV_PART_INDICATOR);
+        } else {
+            /* Plain line mode: user-configured or auto point count with dots. */
+            slots = (ctx->configured_point_count > 0)
+                ? ctx->configured_point_count
+                : graph_desired_point_count(ctx);
+            lv_obj_set_style_size(ctx->chart, 5, 5, LV_PART_INDICATOR);
+        }
+        ctx->point_count = slots;
+        lv_chart_set_point_count(ctx->chart, (uint32_t)slots);
+    }
+}
+
+/* Draw dots for real samples on top of the smooth line (line_smooth_points). */
+static void graph_draw_dots_cb(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_DRAW_POST_END) {
+        return;
+    }
+    w_graph_ctx_t *ctx = (w_graph_ctx_t *)lv_event_get_user_data(e);
+    if (ctx == NULL || ctx->chart == NULL) {
+        return;
+    }
+    if (strcmp(graph_normalize_display_mode(ctx->display_mode), GRAPH_DISPLAY_MODE_LINE_SMOOTH_POINTS) != 0) {
+        return;
+    }
+    if (ctx->real_points_count <= 0 || ctx->point_count <= 1) {
+        return;
+    }
+
+    lv_obj_t *chart = ctx->chart;
+    lv_area_t coords;
+    lv_obj_get_coords(chart, &coords);
+    lv_coord_t pad_left = lv_obj_get_style_pad_left(chart, LV_PART_MAIN);
+    lv_coord_t pad_right = lv_obj_get_style_pad_right(chart, LV_PART_MAIN);
+    lv_coord_t pad_top = lv_obj_get_style_pad_top(chart, LV_PART_MAIN);
+    lv_coord_t pad_bottom = lv_obj_get_style_pad_bottom(chart, LV_PART_MAIN);
+
+    lv_coord_t x0 = coords.x1 + pad_left;
+    lv_coord_t x1 = coords.x2 - pad_right;
+    lv_coord_t y0 = coords.y1 + pad_top;
+    lv_coord_t y1 = coords.y2 - pad_bottom;
+    if (x1 <= x0 || y1 <= y0) {
+        return;
+    }
+    int32_t plot_w = (int32_t)(x1 - x0);
+    int32_t plot_h = (int32_t)(y1 - y0);
+
+    int32_t range_span = ctx->range_max_scaled - ctx->range_min_scaled;
+    if (range_span <= 0) {
+        return;
+    }
+
+    lv_layer_t *layer = lv_event_get_layer(e);
+    if (layer == NULL) {
+        return;
+    }
+
+    lv_draw_rect_dsc_t dot_dsc;
+    lv_draw_rect_dsc_init(&dot_dsc);
+    dot_dsc.bg_color = ctx->line_color;
+    dot_dsc.bg_opa = LV_OPA_COVER;
+    dot_dsc.radius = LV_RADIUS_CIRCLE;
+    dot_dsc.border_width = 0;
+
+    const int slots = ctx->point_count;
+    for (int i = 0; i < ctx->real_points_count; ++i) {
+        int slot = ctx->real_points[i].x_id;
+        if (slot < 0 || slot >= slots) continue;
+
+        /* X position: LVGL spreads points so slot 0 at x0, slot (slots-1) at x1. */
+        int32_t px = (slots > 1)
+            ? (x0 + (int32_t)(((int64_t)slot * (int64_t)plot_w) / (int64_t)(slots - 1)))
+            : (x0 + plot_w / 2);
+
+        int32_t scaled = graph_scaled_value(ctx->real_points[i].value);
+        int32_t y_span = scaled - ctx->range_min_scaled;
+        /* Invert Y: higher value -> smaller Y. */
+        int32_t py = y1 - (int32_t)(((int64_t)y_span * (int64_t)plot_h) / (int64_t)range_span);
+
+        lv_area_t dot_area = {
+            .x1 = (lv_coord_t)(px - 2),
+            .y1 = (lv_coord_t)(py - 2),
+            .x2 = (lv_coord_t)(px + 2),
+            .y2 = (lv_coord_t)(py + 2),
+        };
+        lv_draw_rect(layer, &dot_dsc, &dot_area);
+    }
+}
+
+/* Populate the chart series for the current display mode. Returns true if
+   at least one slot has a value. Also records min/max. */
+static bool graph_populate_series(
+    w_graph_ctx_t *ctx,
+    uint32_t start_ts,
+    uint32_t window_sec,
+    float *out_min,
+    float *out_max)
+{
+    if (ctx == NULL || ctx->chart == NULL || ctx->series == NULL) {
+        return false;
+    }
+
+    /* Clear slots first. */
+    for (int i = 0; i < ctx->point_count; i++) {
+        lv_chart_set_value_by_id(ctx->chart, ctx->series, (uint32_t)i, LV_CHART_POINT_NONE);
+    }
+    ctx->real_points_count = 0;
+
+    const char *mode = graph_normalize_display_mode(ctx->display_mode);
+    bool has_values = false;
+    float min_v = 0.0f;
+    float max_v = 0.0f;
+
+    /* Locate first history sample inside the window (inclusive of start_ts). */
+    int first_in_window = 0;
+    while (first_in_window < ctx->history_count &&
+           ctx->history[first_in_window].bucket_ts < start_ts) {
+        first_in_window++;
+    }
+    uint32_t end_ts = start_ts + window_sec;
+
+    if (strcmp(mode, GRAPH_DISPLAY_MODE_BARS) == 0) {
+        /* Bucket averages. */
+        uint32_t bucket_sec = (uint32_t)graph_clamp_bar_bucket_min(ctx->bar_bucket_min) * 60U;
+        if (bucket_sec == 0U) bucket_sec = 60U;
+
+        for (int i = 0; i < ctx->point_count; i++) {
+            uint32_t slot_start = start_ts + (uint32_t)i * bucket_sec;
+            uint32_t slot_end = slot_start + bucket_sec;
+            if (slot_end > end_ts) slot_end = end_ts;
+            if (slot_start >= end_ts) break;
+
+            double sum = 0.0;
+            int count = 0;
+            for (int k = first_in_window; k < ctx->history_count; ++k) {
+                uint32_t ts = ctx->history[k].bucket_ts;
+                if (ts >= slot_end) break;
+                if (ts >= slot_start) {
+                    sum += ctx->history[k].value;
+                    count++;
+                }
+            }
+            if (count > 0) {
+                float avg = (float)(sum / (double)count);
+                lv_chart_set_value_by_id(ctx->chart, ctx->series, (uint32_t)i, graph_scaled_value(avg));
+                if (!has_values) {
+                    min_v = avg; max_v = avg; has_values = true;
+                } else {
+                    if (avg < min_v) min_v = avg;
+                    if (avg > max_v) max_v = avg;
+                }
+            }
+        }
+    } else if (graph_mode_is_smooth(mode)) {
+        /* Collect real samples inside the window. */
+        int real_start = first_in_window;
+        int real_end = first_in_window;
+        while (real_end < ctx->history_count && ctx->history[real_end].bucket_ts < end_ts) {
+            real_end++;
+        }
+        int real_count = real_end - real_start;
+
+        if (real_count <= 0) {
+            if (out_min) *out_min = 0.0f;
+            if (out_max) *out_max = 0.0f;
+            return false;
+        }
+
+        /* Moving-average pre-smoothing. Scale with sample density but stay
+           aggressive enough to dissolve short plateaus that would otherwise
+           produce visible stairsteps after Catmull-Rom. */
+        int half_window = real_count / 10;
+        if (half_window < 3) half_window = 3;
+        if (half_window > 24) half_window = 24;
+
+        /* Cache slot-position + smoothed value per real sample; also track min/max
+           from smoothed values so range padding matches the rendered line. */
+        has_values = true;
+        bool first = true;
+        for (int k = real_start; k < real_end; ++k) {
+            float vs = graph_smoothed_value(ctx, real_start, real_end - 1, k, half_window);
+            if (first) { min_v = vs; max_v = vs; first = false; }
+            else { if (vs < min_v) min_v = vs; if (vs > max_v) max_v = vs; }
+
+            uint32_t ts = ctx->history[k].bucket_ts;
+            if (ts < start_ts) ts = start_ts;
+            if (ts > end_ts) ts = end_ts;
+            int slot = (ctx->point_count > 1)
+                ? (int)(((uint64_t)(ts - start_ts) * (uint64_t)(ctx->point_count - 1)) / (uint64_t)window_sec)
+                : 0;
+            if (slot < 0) slot = 0;
+            if (slot >= ctx->point_count) slot = ctx->point_count - 1;
+            if (ctx->real_points_count < (int)(sizeof(ctx->real_points) / sizeof(ctx->real_points[0]))) {
+                ctx->real_points[ctx->real_points_count].x_id = (int16_t)slot;
+                ctx->real_points[ctx->real_points_count].value = vs;
+                ctx->real_points_count++;
+            }
+        }
+
+        if (real_count == 1) {
+            float vs = graph_smoothed_value(ctx, real_start, real_end - 1, real_start, half_window);
+            for (int i = 0; i < ctx->point_count; i++) {
+                lv_chart_set_value_by_id(ctx->chart, ctx->series, (uint32_t)i, graph_scaled_value(vs));
+            }
+        } else {
+            /* Fill every slot via Catmull-Rom over the smoothed sample values. */
+            int j = real_start;
+            for (int i = 0; i < ctx->point_count; i++) {
+                uint32_t slot_ts = (ctx->point_count > 1)
+                    ? (start_ts + (uint32_t)(((uint64_t)window_sec * (uint64_t)i) / (uint64_t)(ctx->point_count - 1)))
+                    : start_ts;
+
+                while (j + 1 < real_end && ctx->history[j + 1].bucket_ts <= slot_ts) {
+                    j++;
+                }
+
+                if (slot_ts <= ctx->history[real_start].bucket_ts) {
+                    float vs = graph_smoothed_value(ctx, real_start, real_end - 1, real_start, half_window);
+                    lv_chart_set_value_by_id(ctx->chart, ctx->series, (uint32_t)i, graph_scaled_value(vs));
+                    continue;
+                }
+                if (j >= real_end - 1) {
+                    float vs = graph_smoothed_value(ctx, real_start, real_end - 1, real_end - 1, half_window);
+                    lv_chart_set_value_by_id(ctx->chart, ctx->series, (uint32_t)i, graph_scaled_value(vs));
+                    continue;
+                }
+
+                uint32_t ts1 = ctx->history[j].bucket_ts;
+                uint32_t ts2 = ctx->history[j + 1].bucket_ts;
+                float p0 = (j > real_start)
+                    ? graph_smoothed_value(ctx, real_start, real_end - 1, j - 1, half_window)
+                    : graph_smoothed_value(ctx, real_start, real_end - 1, j, half_window);
+                float p1 = graph_smoothed_value(ctx, real_start, real_end - 1, j, half_window);
+                float p2 = graph_smoothed_value(ctx, real_start, real_end - 1, j + 1, half_window);
+                float p3 = (j + 2 < real_end)
+                    ? graph_smoothed_value(ctx, real_start, real_end - 1, j + 2, half_window)
+                    : graph_smoothed_value(ctx, real_start, real_end - 1, j + 1, half_window);
+
+                float t = (ts2 > ts1) ? ((float)(slot_ts - ts1) / (float)(ts2 - ts1)) : 0.0f;
+                if (t < 0.0f) t = 0.0f;
+                if (t > 1.0f) t = 1.0f;
+                float v = graph_catmull_rom(p0, p1, p2, p3, t);
+
+                /* Soft local clamp: allow the spline its natural curvature
+                   around plateaus but stop runaway ringing. */
+                float seg_min = p1 < p2 ? p1 : p2;
+                float seg_max = p1 > p2 ? p1 : p2;
+                float seg_span = seg_max - seg_min;
+                float margin = (seg_span > 0.0f) ? (seg_span * 0.75f) : (fabsf(p2 - p1) * 0.25f);
+                /* Also factor in the neighbourhood so completely flat segments
+                   can still curve gently toward the next non-equal sample. */
+                float nbr_span = fmaxf(fabsf(p3 - p2), fabsf(p1 - p0));
+                if (margin < nbr_span * 0.25f) margin = nbr_span * 0.25f;
+                float lo = seg_min - margin;
+                float hi = seg_max + margin;
+                if (v < lo) v = lo;
+                if (v > hi) v = hi;
+
+                lv_chart_set_value_by_id(ctx->chart, ctx->series, (uint32_t)i, graph_scaled_value(v));
+            }
+        }
+    } else {
+        /* Plain line mode (original behaviour): one real value per slot, gaps stay NONE. */
+        int history_idx = first_in_window;
+        for (int i = 0; i < ctx->point_count; i++) {
+            uint32_t slot_start = start_ts + (uint32_t)(((uint64_t)window_sec * (uint64_t)i) / (uint64_t)ctx->point_count);
+            uint32_t slot_end = start_ts + (uint32_t)(((uint64_t)window_sec * (uint64_t)(i + 1)) / (uint64_t)ctx->point_count);
+            if (slot_end <= slot_start) {
+                slot_end = slot_start + 1U;
+            }
+            bool is_last_slot = (i == (ctx->point_count - 1));
+
+            bool slot_has_value = false;
+            float slot_value = 0.0f;
+            while (history_idx < ctx->history_count) {
+                uint32_t ts = ctx->history[history_idx].bucket_ts;
+                if (is_last_slot ? (ts > slot_end) : (ts >= slot_end)) {
+                    break;
+                }
+                if (ts >= slot_start) {
+                    slot_has_value = true;
+                    slot_value = ctx->history[history_idx].value;
+                }
+                history_idx++;
+            }
+
+            if (slot_has_value) {
+                lv_chart_set_value_by_id(ctx->chart, ctx->series, (uint32_t)i, graph_scaled_value(slot_value));
+                if (!has_values) {
+                    min_v = slot_value; max_v = slot_value; has_values = true;
+                } else {
+                    if (slot_value < min_v) min_v = slot_value;
+                    if (slot_value > max_v) max_v = slot_value;
+                }
+            }
+        }
+    }
+
+    if (out_min) *out_min = min_v;
+    if (out_max) *out_max = max_v;
+    return has_values;
+}
+
 static void graph_rebuild_chart(w_graph_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->chart == NULL || ctx->series == NULL || ctx->meta_label == NULL) {
         return;
     }
+
+    /* Sync LVGL chart config (type, point count, indicator size) to the mode. */
+    graph_sync_chart_to_mode(ctx);
+
     if (ctx->point_count <= 0) {
         lv_obj_add_flag(ctx->chart, LV_OBJ_FLAG_HIDDEN);
         return;
@@ -716,58 +1195,9 @@ static void graph_rebuild_chart(w_graph_ctx_t *ctx)
     uint32_t end_ts = (now_bucket > offset_sec) ? (now_bucket - offset_sec) : 0U;
     uint32_t start_ts = (end_ts > window_sec) ? (end_ts - window_sec) : 0U;
 
-    for (int i = 0; i < ctx->point_count; i++) {
-        lv_chart_set_value_by_id(ctx->chart, ctx->series, (uint32_t)i, LV_CHART_POINT_NONE);
-    }
-
-    int history_idx = 0;
-    while (history_idx < ctx->history_count && ctx->history[history_idx].bucket_ts < start_ts) {
-        history_idx++;
-    }
-
-    bool has_values = false;
     float min_v = 0.0f;
     float max_v = 0.0f;
-
-    for (int i = 0; i < ctx->point_count; i++) {
-        uint32_t slot_start = start_ts + (uint32_t)(((uint64_t)window_sec * (uint64_t)i) / (uint64_t)ctx->point_count);
-        uint32_t slot_end = start_ts + (uint32_t)(((uint64_t)window_sec * (uint64_t)(i + 1)) / (uint64_t)ctx->point_count);
-        if (slot_end <= slot_start) {
-            slot_end = slot_start + 1U;
-        }
-        bool is_last_slot = (i == (ctx->point_count - 1));
-
-        bool slot_has_value = false;
-        float slot_value = 0.0f;
-
-        while (history_idx < ctx->history_count) {
-            uint32_t ts = ctx->history[history_idx].bucket_ts;
-            if (is_last_slot ? (ts > slot_end) : (ts >= slot_end)) {
-                break;
-            }
-            if (ts >= slot_start) {
-                slot_has_value = true;
-                slot_value = ctx->history[history_idx].value;
-            }
-            history_idx++;
-        }
-
-        if (slot_has_value) {
-            lv_chart_set_value_by_id(ctx->chart, ctx->series, (uint32_t)i, graph_scaled_value(slot_value));
-            if (!has_values) {
-                min_v = slot_value;
-                max_v = slot_value;
-                has_values = true;
-            } else {
-                if (slot_value < min_v) {
-                    min_v = slot_value;
-                }
-                if (slot_value > max_v) {
-                    max_v = slot_value;
-                }
-            }
-        }
-    }
+    bool has_values = graph_populate_series(ctx, start_ts, window_sec, &min_v, &max_v);
 
     if (!has_values) {
         lv_obj_add_flag(ctx->chart, LV_OBJ_FLAG_HIDDEN);
@@ -796,6 +1226,8 @@ static void graph_rebuild_chart(w_graph_ctx_t *ctx)
     if (min_i >= max_i) {
         max_i = min_i + 1;
     }
+    ctx->range_min_scaled = min_i;
+    ctx->range_max_scaled = max_i;
     lv_chart_set_range(ctx->chart, LV_CHART_AXIS_PRIMARY_Y, min_i, max_i);
     lv_chart_refresh(ctx->chart);
 
@@ -1021,6 +1453,11 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     ctx->point_count = (ctx->configured_point_count > 0) ? ctx->configured_point_count : GRAPH_DEFAULT_POINT_COUNT;
     ctx->time_window_min = graph_clamp_time_window_min(def->graph_time_window_min);
     ctx->history_offset_min = 0;
+    snprintf(ctx->display_mode, sizeof(ctx->display_mode), "%s", graph_normalize_display_mode(def->graph_display_mode));
+    ctx->bar_bucket_min = graph_clamp_bar_bucket_min(def->graph_bar_bucket_min);
+    ctx->real_points_count = 0;
+    ctx->range_min_scaled = 0;
+    ctx->range_max_scaled = 0;
     ctx->line_color = lv_color_hex(APP_UI_COLOR_NAV_TAB_ACTIVE);
     lv_color_t parsed_color = lv_color_hex(0);
     if (graph_parse_hex_color(def->graph_line_color, &parsed_color)) {
@@ -1047,6 +1484,7 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     lv_obj_add_event_cb(card, w_graph_event_cb, LV_EVENT_DELETE, ctx);
     lv_obj_add_event_cb(card, w_graph_event_cb, LV_EVENT_SIZE_CHANGED, ctx);
     lv_obj_add_event_cb(card, w_graph_event_cb, LV_EVENT_GESTURE, ctx);
+    lv_obj_add_event_cb(chart, graph_draw_dots_cb, LV_EVENT_DRAW_POST_END, ctx);
 
     graph_apply_unavailable(ctx);
     graph_apply_layout(ctx);

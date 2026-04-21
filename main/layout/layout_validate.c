@@ -18,6 +18,15 @@
 #define GRAPH_TIME_WINDOW_MIN_MIN 1
 #define GRAPH_TIME_WINDOW_MIN_MAX 1440
 
+static const char *const GRAPH_DISPLAY_MODES[] = {
+    "line",
+    "line_smooth",
+    "line_smooth_points",
+    "bars",
+};
+
+static const int GRAPH_BAR_BUCKET_MIN_ALLOWED[] = {5, 10, 15, 30};
+
 static bool str_in_list(const char *value, const void *list, size_t entry_size, size_t list_len)
 {
     if (value == NULL || list == NULL || entry_size == 0) {
@@ -148,7 +157,7 @@ static widget_size_limits_t widget_size_limits_for_type(const char *type)
         limits.min_w = 260;
         limits.min_h = 220;
         limits.max_w = 640;
-        limits.max_h = 420;
+        limits.max_h = 480;
     }
 
     if (limits.max_w > APP_CONTENT_BOX_WIDTH) {
@@ -380,6 +389,8 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
     cJSON *graph_line_color = cJSON_GetObjectItemCaseSensitive(widget, "graph_line_color");
     cJSON *graph_point_count = cJSON_GetObjectItemCaseSensitive(widget, "graph_point_count");
     cJSON *graph_time_window_min = cJSON_GetObjectItemCaseSensitive(widget, "graph_time_window_min");
+    cJSON *graph_display_mode = cJSON_GetObjectItemCaseSensitive(widget, "graph_display_mode");
+    cJSON *graph_bar_bucket_min = cJSON_GetObjectItemCaseSensitive(widget, "graph_bar_bucket_min");
     cJSON *rect = cJSON_GetObjectItemCaseSensitive(widget, "rect");
 
     if (!cJSON_IsString(id) || id->valuestring == NULL || strlen(id->valuestring) == 0U) {
@@ -526,6 +537,43 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
                     cJSON_IsString(id) ? id->valuestring : "?",
                     GRAPH_TIME_WINDOW_MIN_MIN,
                     GRAPH_TIME_WINDOW_MIN_MAX);
+                layout_validation_add(result, msg);
+            }
+        }
+
+        if (graph_display_mode != NULL) {
+            bool valid_mode = false;
+            if (cJSON_IsString(graph_display_mode) && graph_display_mode->valuestring != NULL) {
+                for (size_t i = 0; i < sizeof(GRAPH_DISPLAY_MODES) / sizeof(GRAPH_DISPLAY_MODES[0]); ++i) {
+                    if (strcmp(graph_display_mode->valuestring, GRAPH_DISPLAY_MODES[i]) == 0) {
+                        valid_mode = true;
+                        break;
+                    }
+                }
+            }
+            if (!valid_mode) {
+                snprintf(msg, sizeof(msg),
+                    "widget %s: graph_display_mode must be line|line_smooth|line_smooth_points|bars",
+                    cJSON_IsString(id) ? id->valuestring : "?");
+                layout_validation_add(result, msg);
+            }
+        }
+
+        if (graph_bar_bucket_min != NULL) {
+            bool valid_bucket = false;
+            if (cJSON_IsNumber(graph_bar_bucket_min) &&
+                (double)graph_bar_bucket_min->valueint == graph_bar_bucket_min->valuedouble) {
+                for (size_t i = 0; i < sizeof(GRAPH_BAR_BUCKET_MIN_ALLOWED) / sizeof(GRAPH_BAR_BUCKET_MIN_ALLOWED[0]); ++i) {
+                    if (graph_bar_bucket_min->valueint == GRAPH_BAR_BUCKET_MIN_ALLOWED[i]) {
+                        valid_bucket = true;
+                        break;
+                    }
+                }
+            }
+            if (!valid_bucket) {
+                snprintf(msg, sizeof(msg),
+                    "widget %s: graph_bar_bucket_min must be one of 5|10|15|30",
+                    cJSON_IsString(id) ? id->valuestring : "?");
                 layout_validation_add(result, msg);
             }
         }

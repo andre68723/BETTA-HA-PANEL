@@ -24,6 +24,8 @@ typedef struct {
     char graph_line_color[APP_MAX_COLOR_STR_LEN];
     int graph_point_count;
     int graph_time_window_min;
+    char graph_display_mode[APP_MAX_UI_OPTION_LEN];
+    int graph_bar_bucket_min;
     int x;
     int y;
     int w;
@@ -43,6 +45,8 @@ typedef struct {
     char graph_line_color[APP_MAX_COLOR_STR_LEN];
     int graph_point_count;
     int graph_time_window_min;
+    char graph_display_mode[APP_MAX_UI_OPTION_LEN];
+    int graph_bar_bucket_min;
     void *ctx;
     lv_obj_t *obj;
 } ui_widget_instance_t;

@@ -66,7 +66,10 @@
 
 #define APP_HA_MAX_ENTITIES 256
 #define APP_HA_MAX_STATES 256
-#define APP_HA_ATTRS_MAX_LEN 512
+/* Must fit weather entity attributes incl. the compact forecast array (up
+ * to HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6 entries, ~70-90 bytes each)
+ * plus temperature/humidity/units.  1024 leaves comfortable headroom. */
+#define APP_HA_ATTRS_MAX_LEN 1024
 #define APP_HA_LIGHT_DISCOVERY_MAX_ITEMS 256
 #define APP_HA_LIGHT_DISCOVERY_MAX_AREAS 96
 #define APP_HA_LIGHT_DISCOVERY_MAX_DEVICES 256

@@ -2,6 +2,106 @@
 
 # Release Notes
 
+## v0.7.3
+
+BETTA HA Panel v0.7.3 finalizes the graph overhaul, improves weather forecast density, and hardens the web editor interaction model for touch and pointer-heavy layout work.
+
+### Highlights
+
+- Added selectable graph display modes: `line`, `line_smooth_points`, `line_smooth`, and `bars`.
+- Added graph inspector options for display mode and bar interval (`5`, `10`, `15`, `30` minutes).
+- Graph widgets can now be created directly from sensor entity picker flow in the editor.
+- Reworked graph history sampling from fixed minute buckets to event-rate sampling with short-interval coalescing.
+- Increased graph history capacity to `4096` samples and added progressive oldest-sample decimation to preserve long time ranges.
+- Improved smooth graph rendering with moving-average preprocessing and Catmull-Rom interpolation.
+- Added explicit validation and runtime parsing for `graph_display_mode` and `graph_bar_bucket_min` in layout JSON.
+- Expanded compact Home Assistant weather forecast handling from 4 to 6 items.
+- Weather forecast tiles can now show up to 5 future days plus the current summary row, depending on tile height.
+- Improved forecast tile typography and row layout so taller cards use extra space instead of squeezing content.
+- Fixed web editor drag/resize interruptions by switching widget manipulation to pointer capture.
+- Prevented canvas re-renders during active widget interaction, avoiding lost drags while Home Assistant state updates arrive.
+- Added weather forecast height hints in the editor preview.
+- Finalized release packaging for `v0.7.3` factory and OTA binaries.
+
+### Graphs
+
+- `line` keeps the original direct sample rendering with indicator dots.
+- `line_smooth_points` draws a smooth curve and overlays dots at real sample positions.
+- `line_smooth` renders the smooth curve without sample dots.
+- `bars` aggregates data into configurable minute buckets and renders a bar chart.
+- Chatty sensors no longer exhaust the history buffer as quickly because rapid updates are merged within a short interval.
+- When the history buffer fills, older data is compacted instead of being dropped immediately, so the graph better preserves long-term context.
+
+### Weather
+
+- Forecast tiles are no longer effectively limited to a 3-day view.
+- The compact forecast payload now carries enough items for the current row plus up to 5 future days.
+- Visible forecast rows scale with widget height, making larger weather cards materially more useful.
+- The editor and UI wording now consistently use “Weather Forecast” instead of “Weather 3-day”.
+
+### Web Editor
+
+- Graph tiles now participate in entity picker workflow like other entity-bound widgets.
+- Graph inspector fields dynamically show or hide point-count and bar-interval controls based on the selected graph mode.
+- Dragging and resizing widgets is more stable on touch devices and in browsers where native drag behavior previously hijacked input.
+- Canvas updates triggered by async state pushes are deferred until the interaction completes.
+
+### Packaging
+
+- Factory image:
+  `release/betta86-ha-panel-v0.7.3.factory.bin`
+- OTA image:
+  `release/ota/betta86-ha-panel-v0.7.3.ota.bin`
+- Previous `v0.7.3-beta1` factory and OTA artifacts are archived automatically by `tools/make_factory_bin.ps1`.
+
+### Upgrade Notes
+
+- Existing layouts remain compatible, but graph widgets can now opt into the new display modes and bar aggregation settings.
+- Weather forecast tiles may render more rows on larger cards without requiring layout JSON changes.
+- The OTA image remains app-only and must be installed through the panel updater, not flashed as a full factory image.
+
+## v0.7.2
+
+BETTA HA Panel v0.7.2 adds the first dedicated energy dashboard page with animated power-flow visualization, Home Assistant energy model support, and the required editor/runtime plumbing to configure and render it on-device.
+
+### Highlights
+
+- Added a dedicated Energy Dashboard page type.
+- Added energy nodes for grid, solar, battery, gas, and water.
+- Added animated flow visualization between energy nodes.
+- Added dedicated MDI energy icon font assets for the dashboard.
+- Added Home Assistant energy model parsing and runtime storage.
+- Added `api_energy` endpoint support for the editor/runtime bridge.
+- Extended layout schema and layout validation to understand energy dashboard configuration.
+- Added editor UI to create and configure the energy page.
+- Added versioned `v0.7.2` factory and OTA release artifacts.
+
+### Energy Dashboard
+
+- The dashboard introduces a separate UI page instead of trying to squeeze energy data into a normal tile.
+- Grid, solar, battery, gas, and water are rendered as dedicated nodes with directional flow cues.
+- Flow animations make energy movement legible at a glance instead of presenting only static totals.
+- The runtime includes a dedicated Home Assistant energy model layer so page rendering stays decoupled from raw HA payloads.
+
+### Editor And Runtime
+
+- The web editor gained the necessary controls to add and configure the energy dashboard page.
+- Runtime page loading and JSON parsing were extended so energy pages survive normal layout persistence.
+- Layout validation was tightened to reject malformed energy dashboard definitions before they reach the device UI.
+
+### Packaging
+
+- Factory image:
+  `release/betta86-ha-panel-v0.7.2.factory.bin`
+- OTA image:
+  `release/ota/betta86-ha-panel-v0.7.2.ota.bin`
+- Previous `v0.7.1` factory and OTA artifacts were archived when `v0.7.2` was packaged.
+
+### Upgrade Notes
+
+- `v0.7.2` is the baseline that introduces the energy dashboard feature set later refined in subsequent builds.
+- Existing non-energy layouts remain usable; the new energy page is additive.
+
 ## v0.7.1
 
 BETTA HA Panel v0.7.1 focuses on easier onboarding, OTA updates, safer Home Assistant entity discovery, and display/panel reliability.

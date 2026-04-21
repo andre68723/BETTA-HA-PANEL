@@ -322,7 +322,10 @@ static inline void ha_client_ws_send_gate_mark_heavy_done_locked(int64_t now_ms)
 {
     s_client.heavy_ws_gate_next_allowed_unix_ms = now_ms + HA_WS_HEAVY_MIN_GAP_MS;
 }
-static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 4;
+/* Capacity matches the weather tile which shows up to 5 forecast days plus
+ * today's summary row (6 items total).  If the tile ever grows to more days,
+ * bump both this constant and WEATHER_3DAY_MAX_FORECAST in w_weather_tile.c. */
+static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6;
 static const int64_t HA_WS_RESTART_INTERVAL_MS = 12000;
 static const int64_t HA_WS_RESTART_INTERVAL_MAX_MS = 30000;
 static const int64_t HA_WS_RESTART_JITTER_MS = 1000;

@@ -447,7 +447,20 @@ textarea {
   cursor: grab;
   user-select: none;
   overflow: hidden;
+  touch-action: none;
   transition: box-shadow 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.widget-box * {
+  /* Prevent native HTML5 drag of child images/icons from hijacking the pointer
+     stream while the user is dragging or resizing the tile. */
+  -webkit-user-drag: none;
+  user-drag: none;
+  pointer-events: none;
+}
+
+.widget-box > .resize-handle {
+  pointer-events: auto;
 }
 
 .widget-box.empty-tile {
@@ -488,13 +501,21 @@ textarea {
   color: #c9d8e7;
 }
 
+.widget-box .w-hint {
+  margin-top: 2px;
+  font-size: 10px;
+  color: #8aa0b3;
+  font-style: italic;
+}
+
 .resize-handle {
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   cursor: nwse-resize;
+  touch-action: none;
   background: linear-gradient(135deg, transparent 50%, #ffd05e 50%);
 }
 

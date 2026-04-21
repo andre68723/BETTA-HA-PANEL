@@ -154,7 +154,7 @@
               <button id="addLightTileBtn" class="btn small">+ Light Tile</button>
               <button id="addHeatingTileBtn" class="btn small">+ Heating Tile</button>
               <button id="addWeatherTileBtn" class="btn small">+ Weather</button>
-              <button id="addWeather3DayBtn" class="btn small">+ Weather 3-day</button>
+              <button id="addWeather3DayBtn" class="btn small">+ Weather Forecast</button>
             </div>
             <ul id="widgetsList" class="list"></ul>
             <button id="deleteWidgetBtn" class="btn danger">Delete Widget</button>
@@ -226,13 +226,29 @@
                 </label>
               </div>
               <div id="graphOptions" class="slider-options hidden">
+                <label><span id="fGraphDisplayModeLabel">Display mode</span>
+                  <select id="fGraphDisplayMode">
+                    <option value="line">Line with points</option>
+                    <option value="line_smooth_points">Smooth line with points</option>
+                    <option value="line_smooth">Smooth line</option>
+                    <option value="bars">Bars</option>
+                  </select>
+                </label>
+                <label id="fGraphBarBucketMinWrap" class="hidden"><span id="fGraphBarBucketMinLabel">Bar interval (min)</span>
+                  <select id="fGraphBarBucketMin">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="15" selected>15</option>
+                    <option value="30">30</option>
+                  </select>
+                </label>
                 <label><span id="fGraphLineColorLabel">Graph line color</span>
                   <input id="fGraphLineColor" type="color" value="#6fe8ff" />
                 </label>
                 <label><span id="fGraphTimeWindowMinLabel">Time window (minutes)</span>
                   <input id="fGraphTimeWindowMin" type="number" min="1" max="1440" step="1" value="120" />
                 </label>
-                <label><span id="fGraphPointCountLabel">Render points (empty = auto)</span>
+                <label id="fGraphPointCountWrap"><span id="fGraphPointCountLabel">Render points (empty = auto)</span>
                   <input id="fGraphPointCount" type="number" min="16" max="64" step="1" placeholder="auto" />
                 </label>
               </div>

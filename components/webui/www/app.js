@@ -15,6 +15,10 @@ const GRAPH_POINTS_MIN = 16;
 const GRAPH_POINTS_MAX = 64;
 const GRAPH_TIME_WINDOW_MIN = 1;
 const GRAPH_TIME_WINDOW_MAX = 1440;
+const GRAPH_DISPLAY_MODES = ["line", "line_smooth_points", "line_smooth", "bars"];
+const DEFAULT_GRAPH_DISPLAY_MODE = "line";
+const GRAPH_BAR_BUCKET_MIN_OPTIONS = [5, 10, 15, 30];
+const DEFAULT_GRAPH_BAR_BUCKET_MIN = 15;
 const ENERGY_PAGE_TYPE = "energy_dashboard";
 const ENERGY_SOURCE_HA = "ha_energy";
 const ENERGY_SOURCE_MANUAL = "manual_live";
@@ -108,9 +112,22 @@ const ENTITY_PICKER_CONFIGS = {
     widgetKey: "entity_picker.widget_weather_3day",
     itemsKey: "entity_picker.items_weather",
     titleFallback: "Choose Weather",
-    blankFallback: "Blank Weather 3-day Tile",
-    widgetFallback: "Weather 3-day tile",
+    blankFallback: "Blank Weather Forecast Tile",
+    widgetFallback: "Weather Forecast tile",
     itemsFallback: "weather entities",
+  },
+  graph: {
+    domain: "sensor",
+    titleKey: "entity_picker.title_sensor",
+    blankKey: "entity_picker.blank_graph",
+    widgetKey: "entity_picker.widget_graph",
+    itemsKey: "entity_picker.items_sensor",
+    titleFallback: "Choose Sensor",
+    blankFallback: "Blank Graph Tile",
+    widgetFallback: "Graph tile",
+    itemsFallback: "sensors",
+    minSearch: 2,
+    liveSearch: false,
   },
 };
 const SETTINGS_NAV_ITEMS = [
@@ -203,7 +220,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_light_tile": "+ Light Tile",
     "layout.widgets.add_heating_tile": "+ Heating Tile",
     "layout.widgets.add_weather_tile": "+ Weather",
-    "layout.widgets.add_weather_3day": "+ Weather 3-day",
+    "layout.widgets.add_weather_3day": "+ Weather Forecast",
     "layout.widgets.quick_setup": "Quick Setup",
     "layout.widgets.delete": "Delete Widget",
     "entity_picker.title": "Choose Light",
@@ -223,7 +240,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_light": "Blank Light Tile",
     "entity_picker.blank_button": "Blank Button Tile",
     "entity_picker.blank_weather": "Blank Weather Tile",
-    "entity_picker.blank_weather_3day": "Blank Weather 3-day Tile",
+    "entity_picker.blank_weather_3day": "Blank Weather Forecast Tile",
+    "entity_picker.blank_graph": "Blank Graph Tile",
     "entity_picker.blank_heating": "Blank Heating Tile",
     "entity_picker.loading": "Loading lights...",
     "entity_picker.loading_items": "Loading {items}...",
@@ -250,7 +268,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.widget_sensor": "Sensor tile",
     "entity_picker.widget_button": "Button tile",
     "entity_picker.widget_weather": "Weather tile",
-    "entity_picker.widget_weather_3day": "Weather 3-day tile",
+    "entity_picker.widget_weather_3day": "Weather Forecast tile",
+    "entity_picker.widget_graph": "Graph tile",
     "entity_picker.widget_heating": "Heating tile",
     "layout.inspector.heading": "Inspector",
     "layout.inspector.title": "Title",
@@ -264,6 +283,12 @@ const WEB_I18N_BUILTIN = {
     "layout.inspector.graph_line_color": "Graph line color",
     "layout.inspector.graph_time_window_min": "Time window (minutes)",
     "layout.inspector.graph_point_count": "Render points (empty = auto)",
+    "layout.inspector.graph_display_mode": "Display mode",
+    "layout.inspector.graph_bar_bucket_min": "Bar interval (min)",
+    "layout.option.graph_display_mode.line": "Line with points",
+    "layout.option.graph_display_mode.line_smooth_points": "Smooth line with points",
+    "layout.option.graph_display_mode.line_smooth": "Smooth line",
+    "layout.option.graph_display_mode.bars": "Bars",
     "layout.inspector.apply": "Apply",
     "layout.option.button_mode.auto": "auto (default switch)",
     "layout.option.button_mode.play_pause": "play/pause (media_player)",
@@ -506,7 +531,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_light_tile": "+ Light Tile",
     "layout.widgets.add_heating_tile": "+ Heating Tile",
     "layout.widgets.add_weather_tile": "+ Weather",
-    "layout.widgets.add_weather_3day": "+ Weather 3 Tage",
+    "layout.widgets.add_weather_3day": "+ Wetter Vorhersage",
     "layout.widgets.quick_setup": "Quick Setup",
     "layout.widgets.delete": "Widget loeschen",
     "entity_picker.title": "Licht auswaehlen",
@@ -526,7 +551,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_light": "Leere Lichtkachel",
     "entity_picker.blank_button": "Leere Button-Kachel",
     "entity_picker.blank_weather": "Leere Wetterkachel",
-    "entity_picker.blank_weather_3day": "Leere Wetter-3-Tage-Kachel",
+    "entity_picker.blank_weather_3day": "Leere Wetter-Vorhersage-Kachel",
+    "entity_picker.blank_graph": "Leere Graph-Kachel",
     "entity_picker.blank_heating": "Leere Heizungskachel",
     "entity_picker.loading": "Lichter werden geladen...",
     "entity_picker.loading_items": "{items} werden geladen...",
@@ -553,7 +579,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.widget_sensor": "Sensorkachel",
     "entity_picker.widget_button": "Button-Kachel",
     "entity_picker.widget_weather": "Wetterkachel",
-    "entity_picker.widget_weather_3day": "Wetter-3-Tage-Kachel",
+    "entity_picker.widget_weather_3day": "Wetter-Vorhersage-Kachel",
+    "entity_picker.widget_graph": "Graph-Kachel",
     "entity_picker.widget_heating": "Heizungskachel",
     "layout.inspector.heading": "Inspektor",
     "layout.inspector.title": "Titel",
@@ -567,6 +594,12 @@ const WEB_I18N_BUILTIN = {
     "layout.inspector.graph_line_color": "Graph Linienfarbe",
     "layout.inspector.graph_time_window_min": "Zeitfenster (Minuten)",
     "layout.inspector.graph_point_count": "Render Punkte (leer = auto)",
+    "layout.inspector.graph_display_mode": "Anzeigeart",
+    "layout.inspector.graph_bar_bucket_min": "Balken-Intervall (min)",
+    "layout.option.graph_display_mode.line": "Linie mit Punkten",
+    "layout.option.graph_display_mode.line_smooth_points": "Glatte Linie mit Punkten",
+    "layout.option.graph_display_mode.line_smooth": "Glatte Linie",
+    "layout.option.graph_display_mode.bars": "Balken",
     "layout.inspector.apply": "Uebernehmen",
     "layout.option.button_mode.auto": "auto (Default switch)",
     "layout.option.button_mode.play_pause": "play/pause (media_player)",
@@ -774,7 +807,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_light_tile": "+ Tile de luz",
     "layout.widgets.add_heating_tile": "+ Tile de calefaccion",
     "layout.widgets.add_weather_tile": "+ Clima",
-    "layout.widgets.add_weather_3day": "+ Clima 3 dias",
+    "layout.widgets.add_weather_3day": "+ Previsão do tempo",
     "layout.widgets.delete": "Eliminar Widget",
     "entity_picker.title": "Elegir luz",
     "entity_picker.refresh": "Actualizar",
@@ -801,6 +834,12 @@ const WEB_I18N_BUILTIN = {
     "layout.inspector.graph_line_color": "Color de linea del grafico",
     "layout.inspector.graph_time_window_min": "Ventana de tiempo (minutos)",
     "layout.inspector.graph_point_count": "Puntos de render (vacio = auto)",
+    "layout.inspector.graph_display_mode": "Modo de visualizacion",
+    "layout.inspector.graph_bar_bucket_min": "Intervalo de barras (min)",
+    "layout.option.graph_display_mode.line": "Linea con puntos",
+    "layout.option.graph_display_mode.line_smooth_points": "Linea suave con puntos",
+    "layout.option.graph_display_mode.line_smooth": "Linea suave",
+    "layout.option.graph_display_mode.bars": "Barras",
     "layout.inspector.apply": "Aplicar",
     "layout.option.button_mode.auto": "auto (switch por defecto)",
     "layout.option.button_mode.play_pause": "play/pause (media_player)",
@@ -985,7 +1024,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_light_tile": "+ Tuile lumiere",
     "layout.widgets.add_heating_tile": "+ Tuile chauffage",
     "layout.widgets.add_weather_tile": "+ Meteo",
-    "layout.widgets.add_weather_3day": "+ Meteo 3 jours",
+    "layout.widgets.add_weather_3day": "+ Prévision météo",
     "layout.widgets.delete": "Supprimer le widget",
     "entity_picker.title": "Choisir une lumiere",
     "entity_picker.refresh": "Actualiser",
@@ -1012,6 +1051,12 @@ const WEB_I18N_BUILTIN = {
     "layout.inspector.graph_line_color": "Couleur de ligne du graphe",
     "layout.inspector.graph_time_window_min": "Fenetre de temps (minutes)",
     "layout.inspector.graph_point_count": "Points de rendu (vide = auto)",
+    "layout.inspector.graph_display_mode": "Mode d'affichage",
+    "layout.inspector.graph_bar_bucket_min": "Intervalle de barres (min)",
+    "layout.option.graph_display_mode.line": "Ligne avec points",
+    "layout.option.graph_display_mode.line_smooth_points": "Ligne lissee avec points",
+    "layout.option.graph_display_mode.line_smooth": "Ligne lissee",
+    "layout.option.graph_display_mode.bars": "Barres",
     "layout.inspector.apply": "Appliquer",
     "layout.option.button_mode.auto": "auto (interrupteur par defaut)",
     "layout.option.button_mode.play_pause": "play/pause (media_player)",
@@ -1203,7 +1248,7 @@ function widgetSizeLimits(type) {
     case "weather_tile":
       return { minW: 220, minH: 200, maxW: 480, maxH: 480 };
     case "weather_3day":
-      return { minW: 260, minH: 220, maxW: 640, maxH: 420 };
+      return { minW: 260, minH: 220, maxW: 640, maxH: 480 };
     default:
       return fallback;
   }
@@ -1369,6 +1414,12 @@ const el = {
   fGraphLineColor: document.getElementById("fGraphLineColor"),
   fGraphTimeWindowMin: document.getElementById("fGraphTimeWindowMin"),
   fGraphPointCount: document.getElementById("fGraphPointCount"),
+  fGraphPointCountWrap: document.getElementById("fGraphPointCountWrap"),
+  fGraphDisplayMode: document.getElementById("fGraphDisplayMode"),
+  fGraphDisplayModeLabel: document.getElementById("fGraphDisplayModeLabel"),
+  fGraphBarBucketMin: document.getElementById("fGraphBarBucketMin"),
+  fGraphBarBucketMinLabel: document.getElementById("fGraphBarBucketMinLabel"),
+  fGraphBarBucketMinWrap: document.getElementById("fGraphBarBucketMinWrap"),
   fX: document.getElementById("fX"),
   fY: document.getElementById("fY"),
   fW: document.getElementById("fW"),
@@ -1511,6 +1562,21 @@ function normalizeGraphTimeWindowMin(value) {
   return clamp(rounded, GRAPH_TIME_WINDOW_MIN, GRAPH_TIME_WINDOW_MAX);
 }
 
+function normalizeGraphDisplayMode(value) {
+  if (typeof value === "string" && GRAPH_DISPLAY_MODES.includes(value)) {
+    return value;
+  }
+  return DEFAULT_GRAPH_DISPLAY_MODE;
+}
+
+function normalizeGraphBarBucketMin(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_GRAPH_BAR_BUCKET_MIN;
+  const rounded = Math.round(parsed);
+  if (GRAPH_BAR_BUCKET_MIN_OPTIONS.includes(rounded)) return rounded;
+  return DEFAULT_GRAPH_BAR_BUCKET_MIN;
+}
+
 function normalizeLayoutWidgets(layout) {
   if (!layout || !Array.isArray(layout.pages)) return;
   for (const page of layout.pages) {
@@ -1538,6 +1604,8 @@ function normalizeLayoutWidgets(layout) {
       if (widget.type === "graph") {
         widget.graph_line_color = normalizeHexColor(widget.graph_line_color, DEFAULT_GRAPH_LINE_COLOR);
         widget.graph_time_window_min = normalizeGraphTimeWindowMin(widget.graph_time_window_min);
+        widget.graph_display_mode = normalizeGraphDisplayMode(widget.graph_display_mode);
+        widget.graph_bar_bucket_min = normalizeGraphBarBucketMin(widget.graph_bar_bucket_min);
         const normalizedGraphPoints = normalizeGraphPointCount(widget.graph_point_count);
         if (normalizedGraphPoints > 0) {
           widget.graph_point_count = normalizedGraphPoints;
@@ -1841,6 +1909,12 @@ function applyWebTranslations() {
   setTextById("fGraphLineColorLabel", "layout.inspector.graph_line_color");
   setTextById("fGraphTimeWindowMinLabel", "layout.inspector.graph_time_window_min");
   setTextById("fGraphPointCountLabel", "layout.inspector.graph_point_count");
+  setTextById("fGraphDisplayModeLabel", "layout.inspector.graph_display_mode");
+  setTextById("fGraphBarBucketMinLabel", "layout.inspector.graph_bar_bucket_min");
+  setSelectOptionText(el.fGraphDisplayMode, "line", "layout.option.graph_display_mode.line");
+  setSelectOptionText(el.fGraphDisplayMode, "line_smooth_points", "layout.option.graph_display_mode.line_smooth_points");
+  setSelectOptionText(el.fGraphDisplayMode, "line_smooth", "layout.option.graph_display_mode.line_smooth");
+  setSelectOptionText(el.fGraphDisplayMode, "bars", "layout.option.graph_display_mode.bars");
   setTextById("applyInspectorBtn", "layout.inspector.apply");
   setSelectOptionText(el.fButtonMode, "auto", "layout.option.button_mode.auto");
   setSelectOptionText(el.fButtonMode, "play_pause", "layout.option.button_mode.play_pause");
@@ -3004,7 +3078,7 @@ function allowedEntityDomainsForWidgetType(
   buttonMode = DEFAULT_BUTTON_MODE,
 ) {
   if (type === "empty_tile") return [];
-  if (type === "sensor") return ["sensor"];
+  if (type === "sensor" || type === "graph") return ["sensor"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     return buttonModeRequiresMediaPlayer(normalizedMode) ? ["media_player"] : ["switch", "media_player"];
@@ -3925,17 +3999,29 @@ function selectWidgetLive(widgetId, selectedBox) {
 }
 
 function attachDragAndResize(box, widget) {
-  const startMove = (mode, downEvent) => {
+  const startMove = (mode, downEvent, captureTarget) => {
     downEvent.preventDefault();
     downEvent.stopPropagation();
     const startX = downEvent.clientX;
     const startY = downEvent.clientY;
     const startRect = { ...widget.rect };
+    const pointerId = downEvent.pointerId;
     let moved = false;
+    let finished = false;
+
+    // Capture all subsequent pointer events on this element so they don't get
+    // hijacked by native drag, hover over iframes/images, or focus changes.
+    try { captureTarget.setPointerCapture(pointerId); } catch (_) { /* ignore */ }
+
+    // Suppress full canvas re-renders triggered by HA state pushes / other
+    // async events while the user is interacting with the tile.
+    editor.canvasInteractionActive = true;
+    editor.canvasRenderPending = false;
 
     box.classList.add(mode === "drag" ? "dragging" : "resizing");
 
     const onMove = (moveEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
       const dx = moveEvent.clientX - startX;
       const dy = moveEvent.clientY - startY;
       const limits = widgetSizeLimits(widget.type);
@@ -3967,33 +4053,55 @@ function attachDragAndResize(box, widget) {
       }
     };
 
-    const onUp = () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
+    const cleanup = () => {
+      if (finished) return;
+      finished = true;
+      captureTarget.removeEventListener("pointermove", onMove);
+      captureTarget.removeEventListener("pointerup", onUp);
+      captureTarget.removeEventListener("pointercancel", onUp);
+      captureTarget.removeEventListener("lostpointercapture", onUp);
+      try { captureTarget.releasePointerCapture(pointerId); } catch (_) { /* ignore */ }
       box.classList.remove("dragging");
       box.classList.remove("resizing");
+      editor.canvasInteractionActive = false;
+      const hadPendingRender = editor.canvasRenderPending;
+      editor.canvasRenderPending = false;
       if (moved) {
         renderWidgets();
         renderInspector();
       }
+      if (hadPendingRender) {
+        // Flush any canvas updates that async events requested while we were
+        // dragging (e.g. HA state pushes). The geometry is already live via
+        // geometryStyle(), so this only matters for content changes.
+        renderCanvas();
+      }
     };
 
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
+    const onUp = (upEvent) => {
+      if (upEvent && upEvent.pointerId !== undefined && upEvent.pointerId !== pointerId) return;
+      cleanup();
+    };
+
+    captureTarget.addEventListener("pointermove", onMove);
+    captureTarget.addEventListener("pointerup", onUp);
+    captureTarget.addEventListener("pointercancel", onUp);
+    captureTarget.addEventListener("lostpointercapture", onUp);
   };
 
-  box.addEventListener("mousedown", (event) => {
+  box.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
     if (event.target.classList.contains("resize-handle")) return;
     selectWidgetLive(widget.id, box);
-    startMove("drag", event);
+    startMove("drag", event, box);
   });
 
   const resizeHandle = box.querySelector(".resize-handle");
-  resizeHandle.addEventListener("mousedown", (event) => {
+  resizeHandle.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
+    event.stopPropagation();
     selectWidgetLive(widget.id, box);
-    startMove("resize", event);
+    startMove("resize", event, resizeHandle);
   });
 }
 
@@ -4232,6 +4340,14 @@ function renderCanvas() {
     setActiveSettingsSection(editor.activeSettingsSection);
     return;
   }
+  // While the user is actively dragging or resizing a tile we must not rebuild
+  // the canvas DOM — doing so would destroy the element that owns the pointer
+  // capture and cause the drag to "let go" mid-motion. Remember that a render
+  // was requested and replay it once the interaction ends.
+  if (editor.canvasInteractionActive) {
+    editor.canvasRenderPending = true;
+    return;
+  }
   const page = selectedPage();
   el.canvas.innerHTML = "";
   if (!page) {
@@ -4255,10 +4371,29 @@ function renderCanvas() {
     box.dataset.widgetId = widget.id;
     box.style.zIndex = isEmptyTile ? "1" : "10";
     const previewState = isEmptyTile ? "design" : (editor.states.get(widget.entity_id) || "unavailable");
+    let extraHint = "";
+    if (widget.type === "weather_3day") {
+      /* Mirrors the firmware layout in w_weather_tile.c:
+       *   ROWS_TOP=150, BOTTOM_PAD=12, ROW_HEIGHT=44, ROW_GAP=4
+       *   visible rows = clamp(floor((h-162+4)/48), 2, 6)
+       *   forecast days = visible rows - 1 (the "Now" row).
+       * Keep these constants in sync when the tile layout changes. */
+      const h = Number(widget.rect && widget.rect.h) || 0;
+      const avail = h - 150 - 12;
+      let rows = 2;
+      if (avail > 44) {
+        rows = Math.floor((avail + 4) / 48);
+      }
+      if (rows < 2) rows = 2;
+      if (rows > 6) rows = 6;
+      const days = rows - 1;
+      extraHint = `<div class="w-hint">forecast days ${days}/5</div>`;
+    }
     box.innerHTML = `
       <div class="w-type">${widget.type}</div>
       <div class="w-title">${previewTitle}</div>
       <div class="w-state">${previewState}</div>
+      ${extraHint}
       <div class="resize-handle"></div>
     `;
     geometryStyle(box, widget.rect);
@@ -4310,6 +4445,15 @@ function renderInspector() {
     }
     if (el.fGraphPointCount) {
       el.fGraphPointCount.value = "";
+    }
+    if (el.fGraphDisplayMode) {
+      el.fGraphDisplayMode.value = DEFAULT_GRAPH_DISPLAY_MODE;
+    }
+    if (el.fGraphBarBucketMin) {
+      el.fGraphBarBucketMin.value = String(DEFAULT_GRAPH_BAR_BUCKET_MIN);
+    }
+    if (el.fGraphBarBucketMinWrap) {
+      el.fGraphBarBucketMinWrap.classList.add("hidden");
     }
     renderEntityOptions();
     return;
@@ -4385,8 +4529,12 @@ function renderInspector() {
     const lineColor = normalizeHexColor(widget.graph_line_color, DEFAULT_GRAPH_LINE_COLOR);
     const timeWindowMin = normalizeGraphTimeWindowMin(widget.graph_time_window_min);
     const pointCount = normalizeGraphPointCount(widget.graph_point_count);
+    const displayMode = normalizeGraphDisplayMode(widget.graph_display_mode);
+    const barBucketMin = normalizeGraphBarBucketMin(widget.graph_bar_bucket_min);
     widget.graph_line_color = lineColor;
     widget.graph_time_window_min = timeWindowMin;
+    widget.graph_display_mode = displayMode;
+    widget.graph_bar_bucket_min = barBucketMin;
     if (pointCount > 0) {
       widget.graph_point_count = pointCount;
     } else {
@@ -4401,6 +4549,18 @@ function renderInspector() {
     if (el.fGraphPointCount) {
       el.fGraphPointCount.value = pointCount > 0 ? String(pointCount) : "";
     }
+    if (el.fGraphDisplayMode) {
+      el.fGraphDisplayMode.value = displayMode;
+    }
+    if (el.fGraphBarBucketMin) {
+      el.fGraphBarBucketMin.value = String(barBucketMin);
+    }
+    if (el.fGraphBarBucketMinWrap) {
+      el.fGraphBarBucketMinWrap.classList.toggle("hidden", displayMode !== "bars");
+    }
+    if (el.fGraphPointCountWrap) {
+      el.fGraphPointCountWrap.classList.toggle("hidden", displayMode !== "line");
+    }
   } else {
     if (el.fGraphLineColor) {
       el.fGraphLineColor.value = DEFAULT_GRAPH_LINE_COLOR;
@@ -4410,6 +4570,15 @@ function renderInspector() {
     }
     if (el.fGraphPointCount) {
       el.fGraphPointCount.value = "";
+    }
+    if (el.fGraphDisplayMode) {
+      el.fGraphDisplayMode.value = DEFAULT_GRAPH_DISPLAY_MODE;
+    }
+    if (el.fGraphBarBucketMin) {
+      el.fGraphBarBucketMin.value = String(DEFAULT_GRAPH_BAR_BUCKET_MIN);
+    }
+    if (el.fGraphBarBucketMinWrap) {
+      el.fGraphBarBucketMinWrap.classList.add("hidden");
     }
   }
 
@@ -4623,6 +4792,8 @@ function applyInspector(options = {}) {
   if (widgetType === "graph") {
     widget.graph_line_color = normalizeHexColor(el.fGraphLineColor?.value, DEFAULT_GRAPH_LINE_COLOR);
     widget.graph_time_window_min = normalizeGraphTimeWindowMin(el.fGraphTimeWindowMin?.value);
+    widget.graph_display_mode = normalizeGraphDisplayMode(el.fGraphDisplayMode?.value);
+    widget.graph_bar_bucket_min = normalizeGraphBarBucketMin(el.fGraphBarBucketMin?.value);
     const graphPointCount = normalizeGraphPointCount(el.fGraphPointCount?.value);
     if (graphPointCount > 0) {
       widget.graph_point_count = graphPointCount;
@@ -4633,6 +4804,8 @@ function applyInspector(options = {}) {
     delete widget.graph_line_color;
     delete widget.graph_time_window_min;
     delete widget.graph_point_count;
+    delete widget.graph_display_mode;
+    delete widget.graph_bar_bucket_min;
   }
   widget.rect = clampRectToCanvas(
     {
@@ -4754,7 +4927,7 @@ function bindUi() {
   el.addSensorBtn.onclick = () => openLightEntityPicker("sensor");
   el.addButtonBtn.onclick = () => openLightEntityPicker("button");
   el.addSliderBtn.onclick = () => addWidget("slider");
-  el.addGraphBtn.onclick = () => addWidget("graph");
+  el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
   el.addLightTileBtn.onclick = () => openLightEntityPicker("light_tile");
   if (el.openSetupWizardBtn) {
@@ -4925,6 +5098,12 @@ function bindUi() {
         const normalizedGraphPoints = normalizeGraphPointCount(el.fGraphPointCount.value);
         el.fGraphPointCount.value = normalizedGraphPoints > 0 ? String(normalizedGraphPoints) : "";
       }
+      if (el.fGraphDisplayMode) {
+        el.fGraphDisplayMode.value = normalizeGraphDisplayMode(el.fGraphDisplayMode.value);
+      }
+      if (el.fGraphBarBucketMin) {
+        el.fGraphBarBucketMin.value = String(normalizeGraphBarBucketMin(el.fGraphBarBucketMin.value));
+      }
     } else {
       if (el.fGraphLineColor) {
         el.fGraphLineColor.value = DEFAULT_GRAPH_LINE_COLOR;
@@ -4934,6 +5113,12 @@ function bindUi() {
       }
       if (el.fGraphPointCount) {
         el.fGraphPointCount.value = "";
+      }
+      if (el.fGraphDisplayMode) {
+        el.fGraphDisplayMode.value = DEFAULT_GRAPH_DISPLAY_MODE;
+      }
+      if (el.fGraphBarBucketMin) {
+        el.fGraphBarBucketMin.value = String(DEFAULT_GRAPH_BAR_BUCKET_MIN);
       }
     }
     renderEntityOptions();
@@ -4999,6 +5184,8 @@ function bindUi() {
   bindInspectorAutoApply(el.fGraphLineColor, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fGraphTimeWindowMin, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fGraphPointCount, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fGraphDisplayMode, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fGraphBarBucketMin, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fX, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fY, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fW, ["change"], { refreshInspector: true, softEntityValidation: true });
