@@ -24,6 +24,23 @@ LV_FONT_DECLARE(mdi_energy_42);
 #define ENERGY_ICON_FONT APP_FONT_TEXT_24
 #endif
 
+#if APP_HAVE_MDI_ARROWS_FONT_20
+LV_FONT_DECLARE(mdi_arrows_20);
+/* Arrow codepoints in mdi_arrows_20: U+F0045 arrow-down, U+F004D arrow-left, U+F0054 arrow-right, U+F005D arrow-up */
+#define ENERGY_ARROW_DOWN  "\xF3\xB0\x81\x85"  /* U+F0045 */
+#define ENERGY_ARROW_LEFT  "\xF3\xB0\x81\x8D"  /* U+F004D */
+#define ENERGY_ARROW_RIGHT "\xF3\xB0\x81\x94"  /* U+F0054 */
+#define ENERGY_ARROW_UP    "\xF3\xB0\x81\x9D"  /* U+F005D */
+/* Non-const wrapper so we can chain a fallback at runtime */
+static lv_font_t s_arrow_value_font;
+static bool s_arrow_value_font_ready = false;
+#else
+#define ENERGY_ARROW_DOWN  "\xE2\x86\x93"
+#define ENERGY_ARROW_UP    "\xE2\x86\x91"
+#define ENERGY_ARROW_LEFT  "\xE2\x86\x90"
+#define ENERGY_ARROW_RIGHT "\xE2\x86\x92"
+#endif
+
 /* MDI codepoints for energy node icons */
 #define ENERGY_ICON_HOME      "\xF3\xB0\x8B\x9C"  /* U+F02DC home */
 #define ENERGY_ICON_SOLAR     "\xF3\xB0\xA9\xB2"  /* U+F0A72 solar-power */
@@ -70,8 +87,8 @@ LV_FONT_DECLARE(mdi_energy_42);
 #define ENERGY_NODE_WATER_X  ENERGY_NODE_HOME_X
 #define ENERGY_NODE_WATER_Y  ENERGY_NODE_BATTERY_Y
 
-#define ENERGY_NODE_SIZE 116
-#define ENERGY_HOME_SIZE 126
+#define ENERGY_NODE_SIZE 128
+#define ENERGY_HOME_SIZE 139
 #define ENERGY_DOT_SIZE 16
 #define ENERGY_FLOW_MIN_VISIBLE_W 1.0f
 #define ENERGY_KWH_MIN_VISIBLE 0.001f
@@ -117,10 +134,14 @@ typedef struct {
 } energy_node_t;
 
 typedef struct {
-    lv_obj_t *line;
+    lv_obj_t *line;       /* straight flow: full line.  L-flow: pre-arc straight segment. */
+    lv_obj_t *arc;        /* L-flow only: the rounded corner.  NULL-equivalent when hidden. */
+    lv_obj_t *post_line;  /* L-flow only: post-arc straight segment. */
     lv_obj_t *dot;
-    lv_point_precise_t points[14];
+    lv_point_precise_t points[28];
+    lv_point_precise_t post_points[2];
     uint8_t point_count;
+    bool has_arc;
     bool visible;
     bool reverse;
     float value_w;
@@ -251,13 +272,7 @@ static void energy_format_kwh(char *dst, size_t dst_size, float kwh)
     }
 }
 
-static void energy_format_soc(char *dst, size_t dst_size, float soc)
-{
-    if (dst == NULL || dst_size == 0) {
-        return;
-    }
-    snprintf(dst, dst_size, "%.0f%%", (double)soc);
-}
+
 
 static void energy_format_value_unit(char *dst, size_t dst_size, float value, const char *unit)
 {
@@ -384,31 +399,45 @@ static void energy_create_node(energy_page_ctx_t *ctx, int node_id, int cx, int 
     lv_obj_clear_flag(circle, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(circle, LV_OBJ_FLAG_CLICKABLE);
 
+    /* Layout icon and value as a vertically centered group inside the circle. */
+    lv_obj_set_flex_flow(circle, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(circle, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(circle, 2, LV_PART_MAIN);
+
     lv_obj_t *icon = lv_label_create(circle);
     lv_label_set_text(icon, icon_text);
 #if APP_HAVE_MDI_ENERGY_FONT_42
     lv_obj_set_width(icon, size - 8);
     energy_style_text(icon, color, ENERGY_ICON_FONT, LV_TEXT_ALIGN_CENTER);
-    lv_obj_align(icon, LV_ALIGN_TOP_MID, 0, 8);
 #else
     lv_obj_set_width(icon, size - 16);
     energy_style_text(icon, color, APP_FONT_TEXT_24, LV_TEXT_ALIGN_CENTER);
-    lv_obj_align(icon, LV_ALIGN_TOP_MID, 0, 15);
 #endif
 
     lv_obj_t *value = lv_label_create(circle);
     lv_label_set_text(value, "--");
     lv_label_set_long_mode(value, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(value, size - 18);
-    energy_style_text(value, theme_default_color_text_primary(), APP_FONT_TEXT_16, LV_TEXT_ALIGN_CENTER);
-    lv_obj_align(value, LV_ALIGN_CENTER, 0, 18);
+#if APP_HAVE_MDI_ARROWS_FONT_20
+    const lv_font_t *value_font = (node_id == ENERGY_NODE_BATTERY || node_id == ENERGY_NODE_GRID)
+        ? &s_arrow_value_font
+        : APP_FONT_TEXT_18;
+#else
+    const lv_font_t *value_font = APP_FONT_TEXT_18;
+#endif
+    energy_style_text(value, theme_default_color_text_primary(), value_font, LV_TEXT_ALIGN_CENTER);
+    /* Battery and Grid values use per-line recolor markup to color the
+     * direction arrow + value independently (HA-style). */
+    if (node_id == ENERGY_NODE_BATTERY || node_id == ENERGY_NODE_GRID) {
+        lv_label_set_recolor(value, true);
+    }
 
     lv_obj_t *title_label = lv_label_create(ctx->root);
     lv_label_set_text(title_label, title);
-    lv_obj_set_width(title_label, 132);
-    energy_style_text(title_label, theme_default_color_text_muted(), APP_FONT_TEXT_16, LV_TEXT_ALIGN_CENTER);
-    int title_y = (cy < ENERGY_NODE_HOME_Y) ? (cy - (size / 2) - 24) : (cy + (size / 2) + 8);
-    lv_obj_set_pos(title_label, cx - 66, title_y);
+    lv_obj_set_width(title_label, 146);
+    energy_style_text(title_label, theme_default_color_text_muted(), APP_FONT_TEXT_18, LV_TEXT_ALIGN_CENTER);
+    int title_y = (cy < ENERGY_NODE_HOME_Y) ? (cy - (size / 2) - 26) : (cy + (size / 2) + 8);
+    lv_obj_set_pos(title_label, cx - 73, title_y);
 
     node->circle = circle;
     node->icon_label = icon;
@@ -455,10 +484,20 @@ static void energy_set_flow_points(energy_flow_t *flow, lv_point_precise_t p0, l
     flow->points[1] = p1;
     flow->points[2] = p2;
     flow->point_count = point_count;
+    flow->has_arc = false;
+    if (flow->line != NULL) {
+        lv_line_set_points(flow->line, flow->points, point_count);
+    }
+    if (flow->arc != NULL) {
+        lv_obj_add_flag(flow->arc, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (flow->post_line != NULL) {
+        lv_obj_add_flag(flow->post_line, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
-#define ENERGY_ARC_STEPS 10
-#define ENERGY_ARC_RADIUS 40.0f
+#define ENERGY_ARC_STEPS 16
+#define ENERGY_ARC_RADIUS 50.0f
 
 static void energy_set_L_path(energy_flow_t *flow,
     lv_point_precise_t start, lv_point_precise_t corner, lv_point_precise_t end, float radius)
@@ -496,6 +535,11 @@ static void energy_set_L_path(energy_flow_t *flow,
     float diff = ea - sa;
     while (diff > (float)M_PI) { diff -= 2.0f * (float)M_PI; }
     while (diff < -(float)M_PI) { diff += 2.0f * (float)M_PI; }
+
+    /* Tessellated points[] stays populated for the dot animation which walks
+     * along the flow by arc-length.  The visual line however is split into
+     * (straight -> lv_arc -> straight) so the corner is a mathematically
+     * perfect arc rather than a faceted polyline. */
     int idx = 0;
     flow->points[idx++] = start;
     for (int i = 0; i <= ENERGY_ARC_STEPS; i++) {
@@ -508,6 +552,51 @@ static void energy_set_L_path(energy_flow_t *flow,
     }
     flow->points[idx++] = end;
     flow->point_count = (uint8_t)idx;
+    flow->has_arc = true;
+
+    /* Pre-arc straight segment uses points[0] (= start) and points[1] (= arc
+     * entry).  The tessellation loop above already populated those two slots
+     * with the correct coordinates (points[1] == first arc sample == asx,asy
+     * by construction), so we just tell the line widget to render only the
+     * first two points.  lv_line stores the pointer, not a copy, but the
+     * remaining tessellated entries follow in memory and are not touched. */
+    if (flow->line != NULL) {
+        lv_line_set_points(flow->line, flow->points, 2);
+    }
+    /* Post-arc straight segment: arc exit -> end */
+    flow->post_points[0] = (lv_point_precise_t){(lv_value_precise_t)aex, (lv_value_precise_t)aey};
+    flow->post_points[1] = end;
+    if (flow->post_line != NULL) {
+        lv_line_set_points(flow->post_line, flow->post_points, 2);
+        lv_obj_clear_flag(flow->post_line, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    /* Configure the lv_arc widget to render the corner.
+     *
+     * LVGL computes the drawn arc radius as (min(w,h) - arc_width) / 2 using
+     * integer math, and places the arc center at the widget's pixel center
+     * (pos + size/2 with integer division).  To get pixel-perfect alignment
+     * with the straight line endpoints (asx/asy, aex/aey), we therefore need
+     *   size       = 2*radius + arc_width           (odd => clean center)
+     *   pos        = center_pixel - size/2          (integer math, same as LVGL)
+     * For axis-aligned L-corners cx/cy are integer, so the arc's drawn ends
+     * land exactly on asx/asy and aex/aey. */
+    if (flow->arc != NULL) {
+        const int stroke_w = 3;
+        int s = 2 * (int)lroundf(radius) + stroke_w;  /* odd */
+        int cxi = (int)lroundf(cx);
+        int cyi = (int)lroundf(cy);
+        lv_obj_set_size(flow->arc, s, s);
+        lv_obj_set_pos(flow->arc, cxi - s / 2, cyi - s / 2);
+
+        const float rad_to_deg = 57.29577951308232f;
+        float start_rad = (diff >= 0.0f) ? sa : ea;
+        float sweep_rad = fabsf(diff);
+        int start_deg = ((int)lroundf(start_rad * rad_to_deg) % 360 + 360) % 360;
+        int end_deg = start_deg + (int)lroundf(sweep_rad * rad_to_deg);
+        lv_arc_set_bg_angles(flow->arc, (uint32_t)start_deg, (uint32_t)end_deg);
+        lv_obj_clear_flag(flow->arc, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 static void energy_create_flow(energy_page_ctx_t *ctx, int flow_id, lv_color_t color)
@@ -521,7 +610,46 @@ static void energy_create_flow(energy_page_ctx_t *ctx, int flow_id, lv_color_t c
     lv_obj_set_style_line_width(line, 3, LV_PART_MAIN);
     lv_obj_set_style_line_color(line, color, LV_PART_MAIN);
     lv_obj_set_style_line_opa(line, LV_OPA_40, LV_PART_MAIN);
-    lv_obj_set_style_line_rounded(line, true, LV_PART_MAIN);
+    lv_obj_set_style_line_rounded(line, false, LV_PART_MAIN);
+
+    /* Second straight segment after the arc (used only for L-flows).
+     * Created as a zero-sized line widget; will be positioned/shown by
+     * energy_set_L_path when the static paths are applied. */
+    lv_obj_t *post_line = lv_line_create(ctx->root);
+    lv_obj_set_size(post_line, APP_CONTENT_BOX_WIDTH, APP_CONTENT_BOX_HEIGHT);
+    lv_obj_set_pos(post_line, 0, 0);
+    lv_obj_clear_flag(post_line, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(post_line, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_line_width(post_line, 3, LV_PART_MAIN);
+    lv_obj_set_style_line_color(post_line, color, LV_PART_MAIN);
+    lv_obj_set_style_line_opa(post_line, LV_OPA_40, LV_PART_MAIN);
+    lv_obj_set_style_line_rounded(post_line, false, LV_PART_MAIN);
+    lv_obj_add_flag(post_line, LV_OBJ_FLAG_HIDDEN);
+
+    /* Real arc widget for the corner (used only for L-flows).
+     * We use the MAIN part as the actual drawn arc (background arc in LVGL
+     * terminology) and hide the INDICATOR and KNOB parts. */
+    lv_obj_t *arc = lv_arc_create(ctx->root);
+    lv_obj_set_pos(arc, 0, 0);
+    lv_obj_clear_flag(arc, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(arc, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_remove_flag(arc, LV_OBJ_FLAG_GESTURE_BUBBLE);
+    lv_obj_set_style_pad_all(arc, 0, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(arc, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(arc, 0, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(arc, 3, LV_PART_MAIN);
+    lv_obj_set_style_arc_color(arc, color, LV_PART_MAIN);
+    lv_obj_set_style_arc_opa(arc, LV_OPA_40, LV_PART_MAIN);
+    lv_obj_set_style_arc_rounded(arc, false, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(arc, 0, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_opa(arc, LV_OPA_TRANSP, LV_PART_INDICATOR);
+    lv_obj_remove_style(arc, NULL, LV_PART_KNOB);
+    lv_obj_set_style_pad_all(arc, 0, LV_PART_KNOB);
+    lv_obj_set_style_bg_opa(arc, LV_OPA_TRANSP, LV_PART_KNOB);
+    lv_arc_set_value(arc, 0);
+    lv_arc_set_rotation(arc, 0);
+    lv_arc_set_bg_angles(arc, 0, 0);
+    lv_obj_add_flag(arc, LV_OBJ_FLAG_HIDDEN);
 
     lv_obj_t *dot = lv_obj_create(ctx->root);
     lv_obj_set_size(dot, ENERGY_DOT_SIZE, ENERGY_DOT_SIZE);
@@ -534,8 +662,11 @@ static void energy_create_flow(energy_page_ctx_t *ctx, int flow_id, lv_color_t c
     lv_obj_add_flag(dot, LV_OBJ_FLAG_HIDDEN);
 
     flow->line = line;
+    flow->arc = arc;
+    flow->post_line = post_line;
     flow->dot = dot;
     flow->color = color;
+    flow->has_arc = false;
     flow->visible = false;
     flow->reverse = false;
     flow->value_w = 0.0f;
@@ -625,7 +756,6 @@ static void energy_apply_static_flow_paths(energy_page_ctx_t *ctx)
         2);
 
     for (int i = 0; i < ENERGY_FLOW_COUNT; i++) {
-        lv_line_set_points(ctx->flows[i].line, ctx->flows[i].points, ctx->flows[i].point_count);
         energy_recompute_flow_length(&ctx->flows[i]);
     }
 }
@@ -826,15 +956,29 @@ static void energy_set_flow_active(energy_flow_t *flow, bool line_visible, float
     flow->color = color;
 
     bool active = flow->visible;
+    lv_opa_t line_opa = active ? LV_OPA_70 : LV_OPA_30;
+
     energy_set_obj_hidden(flow->line, !active);
     lv_obj_set_style_line_color(flow->line, color, LV_PART_MAIN);
+    lv_obj_set_style_line_opa(flow->line, line_opa, LV_PART_MAIN);
     lv_obj_set_style_bg_color(flow->dot, color, LV_PART_MAIN);
 
+    if (flow->has_arc) {
+        if (flow->arc != NULL) {
+            energy_set_obj_hidden(flow->arc, !active);
+            lv_obj_set_style_arc_color(flow->arc, color, LV_PART_MAIN);
+            lv_obj_set_style_arc_opa(flow->arc, line_opa, LV_PART_MAIN);
+        }
+        if (flow->post_line != NULL) {
+            energy_set_obj_hidden(flow->post_line, !active);
+            lv_obj_set_style_line_color(flow->post_line, color, LV_PART_MAIN);
+            lv_obj_set_style_line_opa(flow->post_line, line_opa, LV_PART_MAIN);
+        }
+    }
+
     if (!active) {
-        lv_obj_set_style_line_opa(flow->line, LV_OPA_30, LV_PART_MAIN);
         lv_obj_add_flag(flow->dot, LV_OBJ_FLAG_HIDDEN);
     } else {
-        lv_obj_set_style_line_opa(flow->line, LV_OPA_70, LV_PART_MAIN);
         lv_obj_clear_flag(flow->dot, LV_OBJ_FLAG_HIDDEN);
     }
 }
@@ -877,14 +1021,49 @@ static void energy_update_flow_visuals(energy_page_ctx_t *ctx, const energy_flow
         &ctx->flows[ENERGY_FLOW_WATER_HOME], has_water, has_water ? 500.0f : 0.0f, false, water_color);
 }
 
-static void energy_update_node_values(energy_page_ctx_t *ctx, float solar_w, float grid_import_w, float grid_export_w,
-    float battery_charge_w, float battery_discharge_w, float display_home_w)
+/* Update Grid/Battery node: builds the two-line value text with per-line
+ * recolor markup and sets the circle border color based on the dominant
+ * direction (HA-style).  Pass min_visible in the same unit as the values
+ * (W for power mode, kWh for energy mode). */
+static void energy_update_bidir_node(energy_node_t *node,
+    const char *arrow_in, const char *arrow_out,
+    const char *in_text, const char *out_text,
+    float in_val, float out_val,
+    uint32_t color_in_hex, uint32_t color_out_hex,
+    float min_visible)
 {
+    if (node == NULL || node->value_label == NULL) {
+        return;
+    }
+    char buf[160] = {0};
+    snprintf(buf, sizeof(buf),
+        "#%06X %s %s#\n#%06X %s %s#",
+        (unsigned int)(color_in_hex & 0xFFFFFFu), arrow_in, in_text,
+        (unsigned int)(color_out_hex & 0xFFFFFFu), arrow_out, out_text);
+    lv_label_set_text(node->value_label, buf);
+
+    /* Dominant direction determines the ring color. */
+    uint32_t border_hex;
+    if (out_val > in_val && out_val > min_visible) {
+        border_hex = color_out_hex;
+    } else if (in_val > min_visible) {
+        border_hex = color_in_hex;
+    } else {
+        /* No meaningful flow: fall back to the "in" color as neutral. */
+        border_hex = color_in_hex;
+    }
+    if (node->circle != NULL) {
+        lv_obj_set_style_border_color(node->circle, lv_color_hex(border_hex), LV_PART_MAIN);
+    }
+}
+
+static void energy_update_node_values(energy_page_ctx_t *ctx, float solar_w, float grid_import_w, float grid_export_w,
+    float battery_charge_w, float battery_discharge_w, float display_home_w){
     if (ctx == NULL) {
         return;
     }
 
-    char buf[64] = {0};
+    char buf[96] = {0};
 
     if (ctx->slots[ENERGY_SLOT_HOME_POWER].configured && !ctx->slots[ENERGY_SLOT_HOME_POWER].valid) {
         snprintf(buf, sizeof(buf), "--");
@@ -903,31 +1082,29 @@ static void energy_update_node_values(energy_page_ctx_t *ctx, float solar_w, flo
     }
 
     if (energy_has_grid_config(ctx)) {
-        char power_text[32] = {0};
-        if (grid_export_w > grid_import_w && grid_export_w > ENERGY_FLOW_MIN_VISIBLE_W) {
-            energy_format_power(power_text, sizeof(power_text), grid_export_w);
-            snprintf(buf, sizeof(buf), "%s\n%s", ui_i18n_get("energy.grid_out", "out"), power_text);
-        } else {
-            energy_format_power(power_text, sizeof(power_text), grid_import_w);
-            snprintf(buf, sizeof(buf), "%s\n%s", ui_i18n_get("energy.grid_in", "in"), power_text);
-        }
-        lv_label_set_text(ctx->nodes[ENERGY_NODE_GRID].value_label, buf);
+        char in_text[32] = {0};
+        char out_text[32] = {0};
+        energy_format_power(in_text, sizeof(in_text), grid_import_w);
+        energy_format_power(out_text, sizeof(out_text), grid_export_w);
+        energy_update_bidir_node(&ctx->nodes[ENERGY_NODE_GRID],
+            ENERGY_ARROW_RIGHT, ENERGY_ARROW_LEFT,
+            in_text, out_text,
+            grid_import_w, grid_export_w,
+            ENERGY_COLOR_GRID, ENERGY_COLOR_RETURN,
+            ENERGY_FLOW_MIN_VISIBLE_W);
     }
 
     if (energy_has_battery_config(ctx)) {
-        char power_text[32] = {0};
-        if (battery_charge_w > battery_discharge_w && battery_charge_w > ENERGY_FLOW_MIN_VISIBLE_W) {
-            energy_format_power(power_text, sizeof(power_text), battery_charge_w);
-            snprintf(buf, sizeof(buf), "%s\n%s", ui_i18n_get("energy.battery_charge", "chg"), power_text);
-        } else if (battery_discharge_w > ENERGY_FLOW_MIN_VISIBLE_W) {
-            energy_format_power(power_text, sizeof(power_text), battery_discharge_w);
-            snprintf(buf, sizeof(buf), "%s\n%s", ui_i18n_get("energy.battery_out", "out"), power_text);
-        } else if (ctx->slots[ENERGY_SLOT_BATTERY_SOC].valid) {
-            energy_format_soc(buf, sizeof(buf), ctx->slots[ENERGY_SLOT_BATTERY_SOC].value);
-        } else {
-            snprintf(buf, sizeof(buf), "--");
-        }
-        lv_label_set_text(ctx->nodes[ENERGY_NODE_BATTERY].value_label, buf);
+        char in_text[32] = {0};
+        char out_text[32] = {0};
+        energy_format_power(in_text, sizeof(in_text), battery_charge_w);
+        energy_format_power(out_text, sizeof(out_text), battery_discharge_w);
+        energy_update_bidir_node(&ctx->nodes[ENERGY_NODE_BATTERY],
+            ENERGY_ARROW_DOWN, ENERGY_ARROW_UP,
+            in_text, out_text,
+            battery_charge_w, battery_discharge_w,
+            ENERGY_COLOR_BATTERY_IN, ENERGY_COLOR_BATTERY_OUT,
+            ENERGY_FLOW_MIN_VISIBLE_W);
     }
 }
 
@@ -1004,7 +1181,7 @@ static void energy_recompute_ha_energy(energy_page_ctx_t *ctx)
         snapshot.to_battery_kwh,
         snapshot.from_battery_kwh);
 
-    char buf[64] = {0};
+    char buf[96] = {0};
     energy_format_kwh(buf, sizeof(buf), fmaxf(flows.used_total, 0.0f));
     lv_label_set_text(ctx->nodes[ENERGY_NODE_HOME].value_label, buf);
 
@@ -1014,29 +1191,33 @@ static void energy_recompute_ha_energy(energy_page_ctx_t *ctx)
     }
 
     if (has_grid) {
-        char energy_text[32] = {0};
-        if (snapshot.to_grid_kwh > snapshot.from_grid_kwh && snapshot.to_grid_kwh > ENERGY_KWH_MIN_VISIBLE) {
-            energy_format_kwh(energy_text, sizeof(energy_text), snapshot.to_grid_kwh);
-            snprintf(buf, sizeof(buf), "%s\n%s", ui_i18n_get("energy.grid_out", "out"), energy_text);
-        } else {
-            energy_format_kwh(energy_text, sizeof(energy_text), fmaxf(snapshot.from_grid_kwh, 0.0f));
-            snprintf(buf, sizeof(buf), "%s\n%s", ui_i18n_get("energy.grid_in", "in"), energy_text);
-        }
-        lv_label_set_text(ctx->nodes[ENERGY_NODE_GRID].value_label, buf);
+        char in_text[32] = {0};
+        char out_text[32] = {0};
+        float in_kwh = fmaxf(snapshot.from_grid_kwh, 0.0f);
+        float out_kwh = fmaxf(snapshot.to_grid_kwh, 0.0f);
+        energy_format_kwh(in_text, sizeof(in_text), in_kwh);
+        energy_format_kwh(out_text, sizeof(out_text), out_kwh);
+        energy_update_bidir_node(&ctx->nodes[ENERGY_NODE_GRID],
+            ENERGY_ARROW_RIGHT, ENERGY_ARROW_LEFT,
+            in_text, out_text,
+            in_kwh, out_kwh,
+            ENERGY_COLOR_GRID, ENERGY_COLOR_RETURN,
+            ENERGY_KWH_MIN_VISIBLE);
     }
 
     if (has_battery) {
-        char energy_text[32] = {0};
-        if (snapshot.to_battery_kwh > snapshot.from_battery_kwh && snapshot.to_battery_kwh > ENERGY_KWH_MIN_VISIBLE) {
-            energy_format_kwh(energy_text, sizeof(energy_text), snapshot.to_battery_kwh);
-            snprintf(buf, sizeof(buf), "%s\n%s", ui_i18n_get("energy.battery_charge", "chg"), energy_text);
-        } else if (snapshot.from_battery_kwh > ENERGY_KWH_MIN_VISIBLE) {
-            energy_format_kwh(energy_text, sizeof(energy_text), snapshot.from_battery_kwh);
-            snprintf(buf, sizeof(buf), "%s\n%s", ui_i18n_get("energy.battery_out", "out"), energy_text);
-        } else {
-            energy_format_kwh(buf, sizeof(buf), 0.0f);
-        }
-        lv_label_set_text(ctx->nodes[ENERGY_NODE_BATTERY].value_label, buf);
+        char in_text[32] = {0};
+        char out_text[32] = {0};
+        float in_kwh = fmaxf(snapshot.to_battery_kwh, 0.0f);
+        float out_kwh = fmaxf(snapshot.from_battery_kwh, 0.0f);
+        energy_format_kwh(in_text, sizeof(in_text), in_kwh);
+        energy_format_kwh(out_text, sizeof(out_text), out_kwh);
+        energy_update_bidir_node(&ctx->nodes[ENERGY_NODE_BATTERY],
+            ENERGY_ARROW_DOWN, ENERGY_ARROW_UP,
+            in_text, out_text,
+            in_kwh, out_kwh,
+            ENERGY_COLOR_BATTERY_IN, ENERGY_COLOR_BATTERY_OUT,
+            ENERGY_KWH_MIN_VISIBLE);
     }
 
     if (snapshot.has_gas) {
@@ -1261,6 +1442,14 @@ esp_err_t ui_energy_page_create(
         return ESP_ERR_NO_MEM;
     }
     ctx->config = *config;
+
+#if APP_HAVE_MDI_ARROWS_FONT_20
+    if (!s_arrow_value_font_ready) {
+        s_arrow_value_font = mdi_arrows_20;
+        s_arrow_value_font.fallback = APP_FONT_TEXT_18;
+        s_arrow_value_font_ready = true;
+    }
+#endif
 
     lv_obj_t *root = lv_obj_create(parent);
     lv_obj_remove_style_all(root);

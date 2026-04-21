@@ -34,6 +34,25 @@ static ui_widget_instance_t s_widgets[APP_MAX_WIDGETS_TOTAL];
 static size_t s_widget_count = 0;
 static ui_energy_page_instance_t s_energy_pages[APP_MAX_PAGES];
 static size_t s_energy_page_count = 0;
+
+/* Invoked by ui_pages whenever the active page changes.
+ * If the newly shown page is an energy dashboard, ask the HA client to
+ * refresh the statistics immediately so the user sees fresh kWh values
+ * instead of waiting for the next HA_ENERGY_SYNC_INTERVAL_MS tick. */
+static void ui_runtime_on_page_shown(const char *page_id, uint16_t index)
+{
+    (void)index;
+    if (page_id == NULL || page_id[0] == '\0') {
+        return;
+    }
+    for (size_t i = 0; i < s_energy_page_count; i++) {
+        if (strncmp(s_energy_pages[i].page_id, page_id, APP_MAX_PAGE_ID_LEN) == 0) {
+            (void)ha_client_request_energy_refresh();
+            (void)ui_energy_page_apply_all_states(&s_energy_pages[i]);
+            break;
+        }
+    }
+}
 static TaskHandle_t s_ui_task = NULL;
 static bool s_initialized = false;
 static int64_t s_last_topbar_refresh_ms = 0;
@@ -689,6 +708,7 @@ esp_err_t ui_runtime_init(void)
     s_topbar_cache.valid = false;
     theme_default_init();
     ui_pages_init();
+    ui_pages_set_show_callback(ui_runtime_on_page_shown);
     ui_runtime_show_weather_icon_overlay();
     ui_runtime_refresh_topbar();
     display_unlock();

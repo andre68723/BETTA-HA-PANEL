@@ -66,8 +66,58 @@ typedef enum {
 #define HA_WS_ENTITIES_SUB_REQ_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * sizeof(uint32_t))
 #define HA_SVC_TRACE_CAPACITY 48U
 #define HA_ENERGY_STAT_REF_MAX 16U
-#define HA_ENERGY_SYNC_INTERVAL_MS (5 * 60 * 1000)
+/* Energy statistics are daily kWh aggregates that tick slowly.
+ * 15 minutes is responsive enough for a wall panel and keeps TLS / WS
+ * pressure low; the UI additionally forces a refresh whenever the user
+ * navigates to the energy page (see ui_runtime energy page show hook). */
+#define HA_ENERGY_SYNC_INTERVAL_MS (15 * 60 * 1000)
 #define HA_ENERGY_SYNC_RETRY_MS (60 * 1000)
+
+/* ------------------------------------------------------------------------
+ *  Central WS/TLS send gate
+ * ------------------------------------------------------------------------
+ *  Single choke-point that prevents two "heavy" WebSocket requests (large
+ *  JSON responses that spike the mbedTLS record decoder + cJSON heap) from
+ *  overlapping.  This is the unified mechanism new WS features should dock
+ *  into so the TLS stack on the ESP32-P4 is never overloaded.
+ *
+ *  Classes:
+ *    HA_WS_SEND_LIGHT  auth, ping, pong, per-entity subscribe step,
+ *                      trigger subscriptions.  Small payloads; never gated.
+ *    HA_WS_SEND_HEAVY  energy prefs/stats, weather forecast, light
+ *                      discovery phases.  Gated via existing *_req_inflight
+ *                      flags plus a minimum inter-send cooldown.
+ *
+ *  Policy:
+ *    - At most ONE heavy request in flight across the whole client
+ *      (ha_client_heavy_in_flight_locked()).
+ *    - After a heavy response has been fully parsed we arm a cooldown of
+ *      HA_WS_HEAVY_MIN_GAP_MS before the next heavy send is permitted.
+ *      This gives mbedTLS + cJSON a window to free the receive buffer
+ *      before the next roundtrip starts.
+ *    - Light sends are never blocked.
+ *
+ *  Adding a new heavy request type:
+ *    1. Add `bool <name>_req_inflight;` to ha_client_state_t and include
+ *       it in ha_client_heavy_in_flight_locked().
+ *    2. At the send site (holding s_client.mutex):
+ *         if (!ha_client_ws_send_gate_ok_locked(HA_WS_SEND_HEAVY, now_ms))
+ *             break;   // or defer; try again on next task tick
+ *         ... issue send ...
+ *         s_client.<name>_req_inflight = true;
+ *    3. In the matching RX handler, *before* clearing the inflight flag:
+ *         ha_client_ws_send_gate_mark_heavy_done_locked(now_ms);
+ *         s_client.<name>_req_inflight = false;
+ *    4. Error/timeout/reconnect paths just clear the inflight flag; the
+ *       gate opens automatically (no cooldown is armed in that case,
+ *       which is correct: no big payload was processed).
+ */
+#define HA_WS_HEAVY_MIN_GAP_MS 400
+
+typedef enum {
+    HA_WS_SEND_LIGHT = 0,  /* small payload, never gated */
+    HA_WS_SEND_HEAVY,      /* large response, single-in-flight + cooldown */
+} ha_ws_send_class_t;
 
 typedef enum {
     HA_LIGHT_DISCOVERY_PHASE_NONE = 0,
@@ -196,6 +246,9 @@ typedef struct {
     uint32_t energy_stats_req_id;
     uint8_t energy_stats_batch_offset;
     int64_t next_energy_sync_unix_ms;
+    /* Central WS/TLS gate: earliest ms at which the next HEAVY send may
+     * leave.  See HA_WS_HEAVY_MIN_GAP_MS doc block. */
+    int64_t heavy_ws_gate_next_allowed_unix_ms;
     ha_energy_stat_ref_t energy_stat_refs[HA_ENERGY_STAT_REF_MAX];
     uint8_t energy_stat_ref_count;
     ha_energy_snapshot_t energy_staging;
@@ -240,6 +293,35 @@ typedef struct {
 } ha_client_state_t;
 
 static ha_client_state_t s_client = {0};
+
+/* ---- Central WS/TLS send gate helpers (caller must hold s_client.mutex) --- */
+
+static inline bool ha_client_heavy_in_flight_locked(void)
+{
+    return s_client.weather_ws_req_inflight ||
+           s_client.energy_prefs_req_inflight ||
+           s_client.energy_stats_req_inflight ||
+           s_client.light_discovery_inflight;
+}
+
+static inline bool ha_client_ws_send_gate_ok_locked(ha_ws_send_class_t cls, int64_t now_ms)
+{
+    if (cls == HA_WS_SEND_LIGHT) {
+        return true;
+    }
+    if (ha_client_heavy_in_flight_locked()) {
+        return false;
+    }
+    if (now_ms < s_client.heavy_ws_gate_next_allowed_unix_ms) {
+        return false;
+    }
+    return true;
+}
+
+static inline void ha_client_ws_send_gate_mark_heavy_done_locked(int64_t now_ms)
+{
+    s_client.heavy_ws_gate_next_allowed_unix_ms = now_ms + HA_WS_HEAVY_MIN_GAP_MS;
+}
 static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 4;
 static const int64_t HA_WS_RESTART_INTERVAL_MS = 12000;
 static const int64_t HA_WS_RESTART_INTERVAL_MAX_MS = 30000;
@@ -264,7 +346,13 @@ static const uint8_t HA_PING_TIMEOUT_STRIKES_TO_RECONNECT = 2;
 static const bool HA_USE_TRIGGER_SUBSCRIPTION = true;
 static const bool HA_USE_WS_ENTITIES_SUBSCRIPTION = (APP_HA_USE_WS_ENTITIES_SUBSCRIPTION != 0);
 static const TickType_t HA_CLIENT_TASK_DELAY_TICKS = pdMS_TO_TICKS(30);
-static const int64_t HA_WS_WEATHER_PRIORITY_GRACE_MS = 15000;
+/* Weather forecast is a HEAVY WS request; concurrent execution with energy
+ * stats / light discovery is prevented by the central send gate (see
+ * HA_WS_HEAVY_MIN_GAP_MS).  This grace only exists to let the WS session
+ * itself settle (handshake, auth, first subscribe burst) before we pile on
+ * large responses.  Observed boot timing: auth ~100 ms, 11 subscribes
+ * ~1.7 s after connect — 2 s is enough with margin. */
+static const int64_t HA_WS_WEATHER_PRIORITY_GRACE_MS = 2000;
 static const int HA_WS_TLS_ERR_BAD_INPUT_DATA = 0x7100;
 static const int64_t HA_WS_GET_STATES_MIN_SESSION_MS = 3000;
 static const int64_t HA_WS_GET_STATES_POST_SUBSCRIBE_DELAY_MS = 1200;
@@ -272,7 +360,11 @@ static const int64_t HA_WS_GET_STATES_BAD_INPUT_COOLDOWN_MS = 60000;
 /* If true, repeated WS failures while Wi-Fi is up can escalate to Wi-Fi/C6 recover.
    Keep disabled so intentional HA downtime does not trigger transport recovery loops. */
 static const bool HA_WS_ESCALATE_RECOVER_WHEN_WIFI_UP = false;
-static const int64_t HA_WS_ENTITIES_SUBSCRIBE_STEP_DELAY_MS = 300;
+/* Per-entity subscribe step cadence.  Subscribes are LIGHT sends (tiny
+ * request + tiny ack), so this is only about not flooding the WS send
+ * queue, not about TLS heap pressure.  150 ms paces ~6 subscribes/s which
+ * the esp_websocket_client TX path handles comfortably. */
+static const int64_t HA_WS_ENTITIES_SUBSCRIBE_STEP_DELAY_MS = 150;
 static const int64_t HA_LIGHT_DISCOVERY_WS_STABLE_DELAY_MS = 45000;
 static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_STABLE_DELAY_MS = 12000;
 static const int64_t HA_LIGHT_DISCOVERY_PAGE_STEP_DELAY_MS = 700;
@@ -305,7 +397,14 @@ static const int64_t HA_BG_INTERVAL_PERIODIC_CRITICAL_MS = 5400000;
 static const int64_t HA_HTTP_BUDGET_WINDOW_MS = 60000;
 static const int64_t HA_HTTP_BUDGET_LOG_INTERVAL_MS = 300000;
 static const int64_t HA_BG_BUDGET_CHANGE_LOG_MIN_MS = 10000;
-static const int64_t HA_WS_PRIORITY_BOOST_MS = 5000;
+/* Short "quiet window" after a user-initiated service call during which
+ * background heavy requests (weather forecast, energy prefs/stats) are held
+ * back so the service-call round-trip (call -> result -> state_changed)
+ * completes cleanly.  With the central WS/TLS send gate now serializing
+ * heavy requests (HA_WS_HEAVY_MIN_GAP_MS) a long boost is no longer needed;
+ * 1500 ms covers the typical svc RTT + state_changed without piling up when
+ * the user toggles multiple entities in rapid succession. */
+static const int64_t HA_WS_PRIORITY_BOOST_MS = 1500;
 static const int64_t HA_WEATHER_FORECAST_RETRY_MIN_MS = 300000;
 static const int64_t HA_SVC_LATENCY_INFO_MS = 0;
 static const int64_t HA_SVC_LATENCY_WARN_MS = 500;
@@ -3904,7 +4003,15 @@ static esp_err_t ha_client_send_energy_prefs_ws(uint32_t *out_req_id)
     return err;
 }
 
-#define HA_ENERGY_STATS_BATCH_SIZE 3U
+#define HA_ENERGY_STATS_BATCH_SIZE 2U
+/* Inter-batch delay.  Purpose is to relieve pressure on the mbedTLS stack
+ * on the ESP: each batch is a WSS request/response with a large JSON
+ * payload, which spikes heap + the TLS record decoder.  Pausing between
+ * batches lets the receive buffer drain and cJSON allocations be freed
+ * before the next roundtrip starts, avoiding -0x7100-class TLS errors.
+ * 400 ms is a solid compromise vs the original 1000 ms: still gives mbedTLS
+ * room to breathe while cutting ~2.4 s off a typical 4-batch sync. */
+#define HA_ENERGY_STATS_BATCH_DELAY_MS 400U
 
 static esp_err_t ha_client_send_energy_stats_ws(uint32_t *out_req_id)
 {
@@ -4804,6 +4911,8 @@ static bool ha_client_light_discovery_handle_result(uint32_t msg_id, cJSON *root
     if (s_client.light_discovery_inflight && s_client.light_discovery_req_id == msg_id) {
         is_light_discovery = true;
         phase = s_client.light_discovery_phase;
+        /* Heavy response fully received: arm gate cooldown before clearing flag. */
+        ha_client_ws_send_gate_mark_heavy_done_locked(ha_client_now_ms());
         s_client.light_discovery_inflight = false;
         s_client.light_discovery_req_id = 0;
     }
@@ -4902,17 +5011,21 @@ static void ha_client_handle_result_message(cJSON *root)
     if (s_client.weather_ws_req_inflight && msg_id == s_client.weather_ws_req_id) {
         is_weather_ws_req = true;
         safe_copy_cstr(weather_entity_id, sizeof(weather_entity_id), s_client.weather_ws_req_entity_id);
+        /* Heavy response fully received: arm cooldown before clearing flag. */
+        ha_client_ws_send_gate_mark_heavy_done_locked(ha_client_now_ms());
         s_client.weather_ws_req_inflight = false;
         s_client.weather_ws_req_id = 0;
         s_client.weather_ws_req_entity_id[0] = '\0';
     }
     if (s_client.energy_prefs_req_inflight && msg_id == s_client.energy_prefs_req_id) {
         is_energy_prefs_req = true;
+        ha_client_ws_send_gate_mark_heavy_done_locked(ha_client_now_ms());
         s_client.energy_prefs_req_inflight = false;
         s_client.energy_prefs_req_id = 0;
     }
     if (s_client.energy_stats_req_inflight && msg_id == s_client.energy_stats_req_id) {
         is_energy_stats_req = true;
+        ha_client_ws_send_gate_mark_heavy_done_locked(ha_client_now_ms());
         s_client.energy_stats_req_inflight = false;
         s_client.energy_stats_req_id = 0;
     }
@@ -5007,8 +5120,13 @@ static void ha_client_handle_result_message(cJSON *root)
             if (ref_count == 0) {
                 s_client.next_energy_sync_unix_ms = ha_client_now_ms() + HA_ENERGY_SYNC_RETRY_MS;
             } else {
-                /* Delay before stats request to avoid WS congestion after prefs */
-                s_client.next_energy_sync_unix_ms = ha_client_now_ms() + 5000;
+                /* Minimal spacing after prefs before we start the stats batch
+                 * sequence.  The central WS/TLS gate (HA_WS_HEAVY_MIN_GAP_MS)
+                 * already prevents overlap with weather forecast or any other
+                 * heavy WS response, so the old 20 s safety window is no
+                 * longer needed — 2 s is enough for the prefs payload to be
+                 * fully parsed + freed before the first stats batch goes out. */
+                s_client.next_energy_sync_unix_ms = ha_client_now_ms() + 2000;
             }
             xSemaphoreGive(s_client.mutex);
             if (ref_count > 0) {
@@ -5041,9 +5159,10 @@ static void ha_client_handle_result_message(cJSON *root)
                 /* More batches to fetch */
                 s_client.energy_stats_batch_offset = next_offset;
                 s_client.pending_energy_stats = true;
-                s_client.next_energy_sync_unix_ms = ha_client_now_ms() + 1000;
-                ESP_LOGI(TAG_HA_CLIENT, "HA energy statistics batch done (offset %u/%u), next batch in 1s",
-                    (unsigned)next_offset, (unsigned)s_client.energy_stat_ref_count);
+                s_client.next_energy_sync_unix_ms = ha_client_now_ms() + HA_ENERGY_STATS_BATCH_DELAY_MS;
+                ESP_LOGI(TAG_HA_CLIENT, "HA energy statistics batch done (offset %u/%u), next batch in %u ms",
+                    (unsigned)next_offset, (unsigned)s_client.energy_stat_ref_count,
+                    (unsigned)HA_ENERGY_STATS_BATCH_DELAY_MS);
             } else {
                 /* All batches complete */
                 s_client.energy_stats_batch_offset = 0;
@@ -5329,7 +5448,11 @@ static void ha_client_handle_text_message(const char *data, int len)
         s_client.energy_stats_req_id = 0;
         s_client.energy_stats_batch_offset = 0;
         memset(&s_client.energy_staging, 0, sizeof(s_client.energy_staging));
-        s_client.next_energy_sync_unix_ms = layout_needs_ha_energy_now ? (now_ms + 10000) : 0;
+        /* Initial post-auth kickoff for energy prefs.  The central WS/TLS
+         * gate (HA_WS_HEAVY_MIN_GAP_MS) now serializes against weather /
+         * subscribes, so we only need a tiny cushion (~2 s) to let the WS
+         * session fully settle before the first heavy request goes out. */
+        s_client.next_energy_sync_unix_ms = layout_needs_ha_energy_now ? (now_ms + 2000) : 0;
         if (!layout_needs_ha_energy_now) {
             ha_client_energy_clear_refs_locked();
         }
@@ -6110,7 +6233,12 @@ static void ha_client_task(void *arg)
         if (connected && authenticated && layout_needs_ha_energy && !energy_prefs_req_inflight &&
             !energy_stats_req_inflight && now_ms >= next_energy_sync_unix_ms &&
             (!sub_state_via_entities || entities_sub_sent_count >= entities_sub_target_count)) {
-            if (pending_energy_stats) {
+            /* Central TLS gate: no other heavy WS request in flight + cooldown elapsed. */
+            bool gate_ok = false;
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            gate_ok = ha_client_ws_send_gate_ok_locked(HA_WS_SEND_HEAVY, now_ms);
+            xSemaphoreGive(s_client.mutex);
+            if (gate_ok && pending_energy_stats) {
                 uint32_t req_id = 0;
                 esp_err_t err = ha_client_send_energy_stats_ws(&req_id);
                 xSemaphoreTake(s_client.mutex, portMAX_DELAY);
@@ -6124,7 +6252,7 @@ static void ha_client_task(void *arg)
                     s_client.next_energy_sync_unix_ms = now_ms + HA_ENERGY_SYNC_RETRY_MS;
                 }
                 xSemaphoreGive(s_client.mutex);
-            } else if (pending_energy_prefs || now_ms >= next_energy_sync_unix_ms) {
+            } else if (gate_ok && (pending_energy_prefs || now_ms >= next_energy_sync_unix_ms)) {
                 uint32_t req_id = 0;
                 esp_err_t err = ha_client_send_energy_prefs_ws(&req_id);
                 xSemaphoreTake(s_client.mutex, portMAX_DELAY);
@@ -6219,11 +6347,19 @@ static void ha_client_task(void *arg)
                     free_internal >= HA_LIGHT_DISCOVERY_MIN_INTERNAL_FREE_BYTES &&
                     largest_internal >= HA_LIGHT_DISCOVERY_MIN_INTERNAL_LARGEST_BYTES;
                 if (discovery_ws_stable) {
-                    if (ha_client_send_light_discovery_request(light_discovery_phase) != ESP_OK) {
-                        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-                        s_client.light_discovery_requested = true;
-                        s_client.light_discovery_inflight = false;
-                        xSemaphoreGive(s_client.mutex);
+                    /* Central TLS gate: defer if another heavy WS request is in flight
+                     * or the heavy-cooldown has not yet elapsed. */
+                    bool gate_ok = false;
+                    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                    gate_ok = ha_client_ws_send_gate_ok_locked(HA_WS_SEND_HEAVY, now_ms);
+                    xSemaphoreGive(s_client.mutex);
+                    if (gate_ok) {
+                        if (ha_client_send_light_discovery_request(light_discovery_phase) != ESP_OK) {
+                            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                            s_client.light_discovery_requested = true;
+                            s_client.light_discovery_inflight = false;
+                            xSemaphoreGive(s_client.mutex);
+                        }
                     }
                 }
             } else {
@@ -6437,20 +6573,33 @@ static void ha_client_task(void *arg)
                         s_client.next_priority_sync_unix_ms = now_ms + HA_PRIORITY_SYNC_RETRY_INTERVAL_MS;
                         xSemaphoreGive(s_client.mutex);
                     } else {
-                        uint32_t ws_req_id = 0;
-                        esp_err_t ws_req_err = ha_client_send_weather_daily_forecast_ws(entity_id, &ws_req_id);
+                        /* Central TLS gate: defer if another heavy WS request is in flight
+                         * or the heavy-cooldown has not yet elapsed. */
+                        bool gate_ok = false;
                         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-                        if (ws_req_err == ESP_OK) {
-                            s_client.weather_ws_req_inflight = true;
-                            s_client.weather_ws_req_id = ws_req_id;
-                            safe_copy_cstr(
-                                s_client.weather_ws_req_entity_id, sizeof(s_client.weather_ws_req_entity_id), entity_id);
-                            s_client.next_priority_sync_unix_ms = now_ms + ha_client_interval_priority_step_ms(bg_budget_level);
-                        } else {
+                        gate_ok = ha_client_ws_send_gate_ok_locked(HA_WS_SEND_HEAVY, now_ms);
+                        xSemaphoreGive(s_client.mutex);
+                        if (!gate_ok) {
+                            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
                             ha_client_priority_sync_queue_push_locked(entity_id);
                             s_client.next_priority_sync_unix_ms = now_ms + HA_PRIORITY_SYNC_RETRY_INTERVAL_MS;
+                            xSemaphoreGive(s_client.mutex);
+                        } else {
+                            uint32_t ws_req_id = 0;
+                            esp_err_t ws_req_err = ha_client_send_weather_daily_forecast_ws(entity_id, &ws_req_id);
+                            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                            if (ws_req_err == ESP_OK) {
+                                s_client.weather_ws_req_inflight = true;
+                                s_client.weather_ws_req_id = ws_req_id;
+                                safe_copy_cstr(
+                                    s_client.weather_ws_req_entity_id, sizeof(s_client.weather_ws_req_entity_id), entity_id);
+                                s_client.next_priority_sync_unix_ms = now_ms + ha_client_interval_priority_step_ms(bg_budget_level);
+                            } else {
+                                ha_client_priority_sync_queue_push_locked(entity_id);
+                                s_client.next_priority_sync_unix_ms = now_ms + HA_PRIORITY_SYNC_RETRY_INTERVAL_MS;
+                            }
+                            xSemaphoreGive(s_client.mutex);
                         }
-                        xSemaphoreGive(s_client.mutex);
                     }
                 } else {
                     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
@@ -6547,6 +6696,20 @@ static void ha_client_task(void *arg)
     }
 }
 
+static void *cjson_psram_malloc(size_t sz)
+{
+    void *p = heap_caps_malloc(sz, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (p == NULL) {
+        p = malloc(sz);
+    }
+    return p;
+}
+
+static void cjson_psram_free(void *ptr)
+{
+    free(ptr);
+}
+
 esp_err_t ha_client_start(const ha_client_config_t *cfg)
 {
     if (cfg == NULL || cfg->ws_url == NULL || cfg->access_token == NULL || cfg->ws_url[0] == '\0' ||
@@ -6555,6 +6718,14 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
     }
     if (s_client.started) {
         return ESP_OK;
+    }
+
+    /* Route all cJSON allocations to PSRAM to keep internal RAM free for TLS. */
+    static bool s_cjson_hooks_set = false;
+    if (!s_cjson_hooks_set) {
+        cJSON_Hooks hooks = { .malloc_fn = cjson_psram_malloc, .free_fn = cjson_psram_free };
+        cJSON_InitHooks(&hooks);
+        s_cjson_hooks_set = true;
     }
 
     if (s_client.mutex == NULL) {

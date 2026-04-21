@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Cpt_Kirk
 cmake_minimum_required(VERSION 3.16)
 
-set(BETTAOS_RELEASE_VERSION "v0.7.2")
+set(BETTAOS_RELEASE_VERSION "v0.7.3-beta1")
 set(PROJECT_VER "${BETTAOS_RELEASE_VERSION}")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)

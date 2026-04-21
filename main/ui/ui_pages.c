@@ -22,6 +22,12 @@ typedef struct {
 static ui_page_entry_t s_pages[APP_MAX_PAGES];
 static uint16_t s_page_count = 0;
 static int16_t s_current_index = -1;
+static ui_pages_show_cb_t s_show_cb = NULL;
+
+void ui_pages_set_show_callback(ui_pages_show_cb_t cb)
+{
+    s_show_cb = cb;
+}
 
 static lv_obj_t *s_background = NULL;
 static lv_obj_t *s_topbar = NULL;
@@ -443,6 +449,9 @@ bool ui_pages_show_index(uint16_t index)
     }
     s_current_index = (int16_t)index;
     ui_pages_apply_tab_style(index);
+    if (s_show_cb != NULL) {
+        s_show_cb(s_pages[index].id, index);
+    }
     return true;
 }
 
