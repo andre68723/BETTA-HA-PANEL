@@ -288,7 +288,7 @@ static void ui_pages_create_nav(lv_obj_t *screen)
     s_nav_bar = lv_obj_create(screen);
     lv_obj_remove_style_all(s_nav_bar);
     lv_obj_set_size(s_nav_bar, APP_SCREEN_WIDTH, 60);
-    lv_obj_set_pos(s_nav_bar, 0, 660);
+    lv_obj_set_pos(s_nav_bar, 0, APP_SCREEN_HEIGHT - 60);
     lv_obj_clear_flag(s_nav_bar, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(s_nav_bar, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(s_nav_bar, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN | LV_STATE_DEFAULT);

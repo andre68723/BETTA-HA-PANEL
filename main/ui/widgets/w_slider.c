@@ -124,7 +124,6 @@ static int slider_extract_percent_value(const ha_state_t *state, bool *out_has_n
     if (attrs != NULL) {
         cJSON *brightness_pct = cJSON_GetObjectItemCaseSensitive(attrs, "brightness_pct");
         cJSON *brightness = cJSON_GetObjectItemCaseSensitive(attrs, "brightness");
-        cJSON *volume_level = cJSON_GetObjectItemCaseSensitive(attrs, "volume_level");
         if (cJSON_IsNumber(brightness_pct)) {
             value = clamp_percent((int)(brightness_pct->valuedouble + 0.5));
             if (out_has_numeric != NULL) {
@@ -139,18 +138,6 @@ static int slider_extract_percent_value(const ha_state_t *state, bool *out_has_n
                 raw_255 = 255;
             }
             value = (raw_255 * 100 + 127) / 255;
-            if (out_has_numeric != NULL) {
-                *out_has_numeric = true;
-            }
-        } else if (cJSON_IsNumber(volume_level)) {
-            double normalized = volume_level->valuedouble;
-            if (normalized < 0.0) {
-                normalized = 0.0;
-            }
-            if (normalized > 1.0) {
-                normalized = 1.0;
-            }
-            value = clamp_percent((int)(normalized * 100.0 + 0.5));
             if (out_has_numeric != NULL) {
                 *out_has_numeric = true;
             }

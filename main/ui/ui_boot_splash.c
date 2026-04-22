@@ -406,7 +406,8 @@ void ui_boot_splash_hide(void)
         vTaskDelay(pdMS_TO_TICKS((uint32_t)remaining));
     }
 
-    if (!display_lock(200)) {
+    if (!display_lock(2000)) {
+        ESP_LOGW(TAG_UI, "Boot splash hide: display_lock timeout (LVGL still rendering)");
         return;
     }
 

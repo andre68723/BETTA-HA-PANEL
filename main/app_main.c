@@ -19,6 +19,7 @@
 #include "drivers/display_init.h"
 #include "drivers/touch_init.h"
 #include "ha/ha_client.h"
+#include "ha/ha_cover_fetcher.h"
 #include "ha/ha_energy_model.h"
 #include "ha/ha_model.h"
 #include "layout/layout_store.h"
@@ -246,6 +247,10 @@ void app_main(void)
         esp_err_t ha_err = ha_client_start(&ha_cfg);
         if (ha_err != ESP_OK) {
             ESP_LOGW(TAG_HA_CLIENT, "HA client start failed: %s", esp_err_to_name(ha_err));
+        }
+        esp_err_t cover_err = ha_cover_fetcher_init();
+        if (cover_err != ESP_OK) {
+            ESP_LOGW(TAG_HA_CLIENT, "HA cover fetcher init failed: %s", esp_err_to_name(cover_err));
         }
     } else if (boot_screen_mode == BOOT_SCREEN_WIFI_SETUP) {
         app_show_wifi_setup_screen(has_wifi_credentials);

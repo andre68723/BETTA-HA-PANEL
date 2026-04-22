@@ -137,6 +137,16 @@ static ui_widget_size_limits_t ui_runtime_widget_size_limits(const char *type)
         limits.min_h = 220;
         limits.max_w = 640;
         limits.max_h = 480;
+    } else if (strcmp(type, "todo_list") == 0) {
+        limits.min_w = 220;
+        limits.min_h = 200;
+        limits.max_w = 640;
+        limits.max_h = 640;
+    } else if (strcmp(type, "media_player") == 0) {
+        limits.min_w = 260;
+        limits.min_h = 220;
+        limits.max_w = APP_CONTENT_BOX_WIDTH;
+        limits.max_h = APP_CONTENT_BOX_HEIGHT;
     }
 
     if (limits.max_w > APP_CONTENT_BOX_WIDTH) {

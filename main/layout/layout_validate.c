@@ -90,7 +90,8 @@ static bool is_supported_widget_type(const char *type)
     return (strcmp(type, "sensor") == 0) || (strcmp(type, "button") == 0) || (strcmp(type, "slider") == 0) ||
            (strcmp(type, "graph") == 0) || (strcmp(type, "empty_tile") == 0) || (strcmp(type, "light_tile") == 0) ||
            (strcmp(type, "heating_tile") == 0) || (strcmp(type, "weather_tile") == 0) ||
-           (strcmp(type, "weather_3day") == 0);
+           (strcmp(type, "weather_3day") == 0) || (strcmp(type, "todo_list") == 0) ||
+           (strcmp(type, "media_player") == 0);
 }
 
 static bool is_supported_page_type(const char *type)
@@ -158,6 +159,16 @@ static widget_size_limits_t widget_size_limits_for_type(const char *type)
         limits.min_h = 220;
         limits.max_w = 640;
         limits.max_h = 480;
+    } else if (strcmp(type, "todo_list") == 0) {
+        limits.min_w = 220;
+        limits.min_h = 200;
+        limits.max_w = 640;
+        limits.max_h = 640;
+    } else if (strcmp(type, "media_player") == 0) {
+        limits.min_w = 260;
+        limits.min_h = 220;
+        limits.max_w = APP_CONTENT_BOX_WIDTH;
+        limits.max_h = APP_CONTENT_BOX_HEIGHT;
     }
 
     if (limits.max_w > APP_CONTENT_BOX_WIDTH) {
@@ -186,6 +197,12 @@ static const char *required_domain_for_widget_type(const char *type)
     if (strcmp(type, "weather_tile") == 0 || strcmp(type, "weather_3day") == 0) {
         return "weather";
     }
+    if (strcmp(type, "todo_list") == 0) {
+        return "todo";
+    }
+    if (strcmp(type, "media_player") == 0) {
+        return "media_player";
+    }
     return NULL;
 }
 
@@ -200,6 +217,9 @@ static bool widget_entity_domain_valid(const char *type, const char *entity_id)
     }
     if (strcmp(type, "button") == 0) {
         return entity_in_domain(entity_id, "switch") || entity_in_domain(entity_id, "media_player");
+    }
+    if (strcmp(type, "media_player") == 0) {
+        return entity_in_domain(entity_id, "media_player");
     }
     if (strcmp(type, "empty_tile") == 0) {
         return true;
