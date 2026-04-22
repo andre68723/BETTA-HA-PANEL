@@ -200,6 +200,7 @@ const WEB_I18N_BUILTIN = {
     "layout.pages.add": "+ Page",
     "layout.pages.add_energy": "+ Energy Page",
     "layout.pages.delete": "Delete",
+    "layout.pages.confirm_delete": "Delete page \"{name}\"? This removes all of its widgets.",
     "layout.pages.title_label": "Page title",
     "layout.pages.title_placeholder": "Page name on the display",
     "layout.pages.apply_title": "Apply page title",
@@ -252,6 +253,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_media_player": "+ Media Player",
     "layout.widgets.quick_setup": "Quick Setup",
     "layout.widgets.delete": "Delete Widget",
+    "layout.widgets.confirm_delete": "Delete widget \"{name}\"?",
     "entity_picker.title": "Choose Light",
     "entity_picker.title_sensor": "Choose Sensor",
     "entity_picker.title_light": "Choose Light",
@@ -514,6 +516,7 @@ const WEB_I18N_BUILTIN = {
     "layout.pages.add": "+ Seite",
     "layout.pages.add_energy": "+ Energie-Seite",
     "layout.pages.delete": "Loeschen",
+    "layout.pages.confirm_delete": "Seite \"{name}\" wirklich loeschen? Alle zugehoerigen Widgets werden entfernt.",
     "layout.pages.title_label": "Seitentitel",
     "layout.pages.title_placeholder": "Seitenname auf dem Display",
     "layout.pages.apply_title": "Seitentitel uebernehmen",
@@ -566,6 +569,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_media_player": "+ Media Player",
     "layout.widgets.quick_setup": "Quick Setup",
     "layout.widgets.delete": "Widget loeschen",
+    "layout.widgets.confirm_delete": "Widget \"{name}\" wirklich loeschen?",
     "entity_picker.title": "Licht auswaehlen",
     "entity_picker.title_sensor": "Sensor auswaehlen",
     "entity_picker.title_light": "Licht auswaehlen",
@@ -3929,12 +3933,12 @@ function renderPages() {
     label.textContent = `${page.title || page.id}${badge}`;
     label.title = `[${page.id}] ${isEnergyPage(page) ? "energy" : "page"}`;
     label.className = "list-item-label";
-    label.onclick = () => {
+    li.appendChild(label);
+    li.onclick = () => {
       editor.selectedPageId = page.id;
       editor.selectedWidgetId = null;
       renderAll();
     };
-    li.appendChild(label);
 
     const actions = document.createElement("span");
     actions.className = "row-actions";
@@ -3952,9 +3956,10 @@ function renderPages() {
 
     const delBtn = document.createElement("button");
     delBtn.type = "button";
-    delBtn.className = "row-icon-btn danger";
+    delBtn.className = "row-icon-btn row-delete-btn";
     delBtn.title = t("layout.pages.delete") || "Delete";
-    delBtn.textContent = "🗑";
+    delBtn.textContent = "✕";
+    delBtn.setAttribute("aria-label", t("layout.pages.delete") || "Delete");
     delBtn.onclick = (ev) => {
       ev.stopPropagation();
       editor.selectedPageId = page.id;
@@ -4111,19 +4116,20 @@ function renderWidgets() {
     label.className = "list-item-label";
     label.textContent = `${widgetDisplayLabel(widget)}`;
     label.title = `[${widget.id}] ${widget.type}`;
-    label.onclick = () => {
+    li.appendChild(label);
+    li.onclick = () => {
       editor.selectedWidgetId = widget.id;
       renderAll();
     };
-    li.appendChild(label);
 
     const actions = document.createElement("span");
     actions.className = "row-actions";
     const delBtn = document.createElement("button");
     delBtn.type = "button";
-    delBtn.className = "row-icon-btn danger";
+    delBtn.className = "row-icon-btn row-delete-btn";
     delBtn.title = t("layout.widgets.delete") || "Delete";
-    delBtn.textContent = "🗑";
+    delBtn.textContent = "✕";
+    delBtn.setAttribute("aria-label", t("layout.widgets.delete") || "Delete");
     delBtn.onclick = (ev) => {
       ev.stopPropagation();
       editor.selectedWidgetId = widget.id;
@@ -4833,6 +4839,10 @@ function deletePage() {
     setStatus(t("layout.status.at_least_one_page"), true);
     return;
   }
+  const page = editor.layout.pages.find((p) => p.id === editor.selectedPageId);
+  if (!page) return;
+  const name = page.title || page.id;
+  if (!window.confirm(t("layout.pages.confirm_delete", { name }))) return;
   editor.layout.pages = editor.layout.pages.filter((p) => p.id !== editor.selectedPageId);
   editor.selectedPageId = editor.layout.pages[0].id;
   editor.selectedWidgetId = null;
@@ -4927,6 +4937,10 @@ function addWidget(type, options = {}) {
 function deleteWidget() {
   const page = selectedPage();
   if (!page || !editor.selectedWidgetId) return;
+  const widget = page.widgets.find((w) => w.id === editor.selectedWidgetId);
+  if (!widget) return;
+  const name = widgetDisplayLabel(widget);
+  if (!window.confirm(t("layout.widgets.confirm_delete", { name }))) return;
   page.widgets = page.widgets.filter((w) => w.id !== editor.selectedWidgetId);
   editor.selectedWidgetId = null;
   renderAll();

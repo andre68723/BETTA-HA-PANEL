@@ -258,6 +258,17 @@ h2 {
   background: #142536;
   cursor: pointer;
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.list-item-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .list-item.active {
@@ -1163,6 +1174,27 @@ aside.actions-panel section {
 .row-icon-btn.danger:hover {
   color: #fff;
   background: var(--danger);
+}
+/* Right-aligned delete button: white X on a red circle. */
+.row-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--danger, #d23b3b);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+}
+.row-delete-btn:hover {
+  background: #ff4d4d;
+  color: #fff;
 }
 .row-rename-input {
   flex: 1;
