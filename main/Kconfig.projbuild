@@ -2,6 +2,30 @@
 # Copyright (c) 2026 Cpt_Kirk
 menu "Example Configuration"
 
+menu "Panel Hardware Variant"
+
+choice APP_PANEL_VARIANT
+    prompt "Display panel variant"
+    default APP_PANEL_VARIANT_4INCH_720
+    help
+        Select the physical LCD / touch panel this firmware image targets.
+        Affects screen resolution (APP_SCREEN_WIDTH/HEIGHT), panel init
+        sequence and touch-controller driver selection.
+
+config APP_PANEL_VARIANT_4INCH_720
+    bool "4\" 720x720 round (smart86 base)"
+    help
+        Original smart86 4-inch 720x720 square/round panel.
+
+config APP_PANEL_VARIANT_10INCH_1280
+    bool "10.1\" 1280x800 (betta large)"
+    help
+        10.1-inch 1280x800 panel variant.
+
+endchoice
+
+endmenu
+
 menu "Wi-Fi Station"
 
 config APP_WIFI_SSID

@@ -3,14 +3,27 @@
  */
 #pragma once
 
-#define APP_NAME "betta-ha-panel"
+#include "sdkconfig.h"
 
-#define APP_SCREEN_WIDTH 720
-#define APP_SCREEN_HEIGHT 720
+/* ---- Panel-variant-dependent geometry & identity ----------------------
+ * Selected via CONFIG_APP_PANEL_VARIANT_* (see main/Kconfig.projbuild).
+ * Defaults fall back to the 4" 720x720 baseline so an older sdkconfig
+ * (pre-variant) still builds the smart86 target unchanged. */
+#if defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
+#  define APP_NAME               "betta-ha-panel-10.1"
+#  define APP_SCREEN_WIDTH       1280
+#  define APP_SCREEN_HEIGHT      800
+#  define APP_CONTENT_BOX_WIDTH  1280
+#  define APP_CONTENT_BOX_HEIGHT 680
+#else /* CONFIG_APP_PANEL_VARIANT_4INCH_720 (default) */
+#  define APP_NAME               "betta-ha-panel"
+#  define APP_SCREEN_WIDTH       720
+#  define APP_SCREEN_HEIGHT      720
+#  define APP_CONTENT_BOX_WIDTH  720
+#  define APP_CONTENT_BOX_HEIGHT 600
+#endif
 #define APP_CONTENT_BOX_X 0
 #define APP_CONTENT_BOX_Y 60
-#define APP_CONTENT_BOX_WIDTH 720
-#define APP_CONTENT_BOX_HEIGHT 600
 #define APP_NAV_BUTTON_COUNT 5
 #define APP_LVGL_ANTIALIASING 0
 #define APP_UI_REWORK_V2 1

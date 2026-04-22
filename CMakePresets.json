@@ -1,0 +1,28 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": { "major": 3, "subMajor": 21, "patch": 0 },
+    "configurePresets": [
+        {
+            "name": "panel4",
+            "displayName": "Panel 4\" 720x720 (smart86 base)",
+            "description": "Build for the original 4-inch 720x720 round panel.",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build-panel4",
+            "cacheVariables": {
+                "SDKCONFIG_DEFAULTS": "sdkconfig.defaults;sdkconfig.defaults.panel4",
+                "SDKCONFIG": "${sourceDir}/sdkconfig.panel4"
+            }
+        },
+        {
+            "name": "panel10",
+            "displayName": "Panel 10.1\" 1280x800 (betta large)",
+            "description": "Build for the 10.1-inch 1280x800 MIPI-DSI panel.",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build-panel10",
+            "cacheVariables": {
+                "SDKCONFIG_DEFAULTS": "sdkconfig.defaults;sdkconfig.defaults.panel10",
+                "SDKCONFIG": "${sourceDir}/sdkconfig.panel10"
+            }
+        }
+    ]
+}

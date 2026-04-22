@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+#
+# Panel variant overlay: 4" 720x720 (original smart86 hardware).
+# Apply together with the common sdkconfig.defaults via
+#   idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.panel4" ...
+# or the CMake preset "panel4" (see CMakePresets.json).
+CONFIG_APP_PANEL_VARIANT_4INCH_720=y
+# CONFIG_APP_PANEL_VARIANT_10INCH_1280 is not set

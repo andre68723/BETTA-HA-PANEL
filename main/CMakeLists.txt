@@ -1,5 +1,22 @@
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1
 # Copyright (c) 2026 Cpt_Kirk
+
+# ---- Panel-variant-specific driver sources --------------------------------
+# The 4" (smart86) and 10.1" (nano) panels use different BSPs and different
+# touch controllers, so their display_init/touch_init implementations live
+# in separate source files.  Exactly one pair is compiled per build.
+if(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
+    set(PANEL_DRIVER_SRCS
+        "drivers/display_init_panel10.c"
+        "drivers/touch_init_panel10.c"
+    )
+else()
+    set(PANEL_DRIVER_SRCS
+        "drivers/display_init_panel4.c"
+        "drivers/touch_init_panel4.c"
+    )
+endif()
+
 idf_component_register(
     SRCS
         "app_main.c"
@@ -17,13 +34,14 @@ idf_component_register(
         "api/api_version.c"
         "api/api_screenshot.c"
         "api/api_ota.c"
-        "drivers/display_init.c"
-        "drivers/touch_init.c"
+        "api/api_theme.c"
+        ${PANEL_DRIVER_SRCS}
         "ha/ha_client.c"
         "ha/ha_ws.c"
         "ha/ha_model.c"
         "ha/ha_energy_model.c"
         "ha/ha_light_capabilities.c"
+        "ha/ha_cover_fetcher.c"
         "layout/layout_store.c"
         "layout/layout_validate.c"
         "settings/runtime_settings.c"
@@ -46,11 +64,12 @@ idf_component_register(
         "ui/widgets/w_light_tile.c"
         "ui/widgets/w_heating_tile.c"
         "ui/widgets/w_weather_tile.c"
+        "ui/widgets/w_todo.c"
+        "ui/widgets/w_media_player.c"
         "ui/fonts/mdi_font_registry.c"
         "ui/theme/theme_default.c"
         "ui/theme/theme_palette.c"
         "ui/theme/theme_store.c"
-        "api/api_theme.c"
         "util/json_util.c"
         "util/ringbuf.c"
     INCLUDE_DIRS
@@ -82,6 +101,7 @@ idf_component_register(
         json
         littlefs
         webui
+        esp_driver_jpeg
 )
 
 set(APP_HAVE_HOSTED_C6_FW_IMAGE 0)
