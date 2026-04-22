@@ -8,6 +8,10 @@ lvgl_design/
 sdkconfig
 sdkconfig.panel*
 sdkconfig.old
+
+# Internal merge / porting notes - never publish.
+portieren.md
+MERGE-PROTOCOL.md
 managed_components/
 tools/
 release/network_adapter_esp32c6*.bin
