@@ -9,13 +9,24 @@ set(BETTAOS_RELEASE_VERSION "v0.8.0")
 # list so PROJECT_VER / project name reflect the target hardware.
 set(_PV_SUFFIX "")
 set(_PROJECT_NAME "betta-ha-panel")
+set(_PANEL_MANIFEST "${CMAKE_CURRENT_LIST_DIR}/main/idf_component.panel4.yml")
 foreach(_sdk ${SDKCONFIG_DEFAULTS})
     if(_sdk MATCHES "panel10")
         set(_PV_SUFFIX "-10.1")
         set(_PROJECT_NAME "betta-ha-panel-10.1")
+        set(_PANEL_MANIFEST "${CMAKE_CURRENT_LIST_DIR}/main/idf_component.panel10.yml")
     endif()
 endforeach()
 set(PROJECT_VER "${BETTAOS_RELEASE_VERSION}${_PV_SUFFIX}")
+
+# The IDF component manager does not support Kconfig-based rules in
+# idf_component.yml, so we materialise the variant-specific manifest here,
+# BEFORE project() runs. The generated main/idf_component.yml is a build
+# artifact and is listed in .gitignore.
+configure_file("${_PANEL_MANIFEST}"
+               "${CMAKE_CURRENT_LIST_DIR}/main/idf_component.yml"
+               COPYONLY)
+message(STATUS "betta-ha-panel variant manifest: ${_PANEL_MANIFEST}")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(${_PROJECT_NAME})

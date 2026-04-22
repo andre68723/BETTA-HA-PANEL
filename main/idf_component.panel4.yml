@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+#
+# Manifest for the 4" 720x720 panel variant (smart86 original hardware).
+# Selected automatically by the top-level CMakeLists.txt based on the active
+# SDKCONFIG_DEFAULTS overlay. Do NOT edit main/idf_component.yml directly --
+# it is regenerated from this file on every configure.
+dependencies:
+  idf: ">=5.5"
+  espressif/esp_wifi_remote:
+    version: "*"
+    rules:
+      - if: "target in [esp32p4]"
+  lvgl/lvgl:
+    version: "^9"
+  waveshare/esp32_p4_wifi6_touch_lcd_4b:
+    version: "^1.0.1"
+    rules:
+      - if: "target in [esp32p4]"
+  espressif/esp_lcd_touch:
+    version: "^1.2.0"
+    rules:
+      - if: "target in [esp32p4]"
+  espressif/esp_lcd_touch_gt911:
+    version: "1.2.0~2"
+    rules:
+      - if: "target in [esp32p4]"
+  joltwallet/littlefs:
+    version: "^1.20.2"
+  espressif/esp_hosted:
+    version: "2.11.7"
+    rules:
+      - if: "target in [esp32p4]"
+  espressif/esp_websocket_client:
+    version: "*"

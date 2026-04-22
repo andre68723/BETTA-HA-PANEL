@@ -31,3 +31,7 @@ main/ui/fonts/poppins_regular_36.c
 main/ui/fonts/poppins_regular_38.c
 main/ui/fonts/poppins_regular_40.c
 main/ui/fonts/materialdesignicons-webfont.ttf
+
+# Panel variant manifest is generated from main/idf_component.panel{4,10}.yml
+# by the top-level CMakeLists.txt on every configure. Do not edit or commit.
+main/idf_component.yml
