@@ -2,8 +2,12 @@
  * Copyright (c) 2026 Cpt_Kirk
  */
 const GRID = 10;
-const CANVAS_WIDTH = 720;
-const CANVAS_HEIGHT = 600;
+// Canvas pixel dimensions default to the 4" panel (720x600 content area).
+// applyCanvasGeometry() below overrides them at runtime with the values
+// returned by /api/version, so the same app.js works on both the 4"
+// and 10.1" firmware variants.
+let CANVAS_WIDTH = 720;
+let CANVAS_HEIGHT = 600;
 const MIN_WIDGET_SIZE = 60;
 const DEFAULT_SLIDER_DIRECTION = "auto";
 const DEFAULT_BUTTON_MODE = "auto";
@@ -1790,10 +1794,25 @@ async function loadAppVersion() {
   try {
     const payload = await apiGet("/api/version");
     editor.appVersion = typeof payload?.version === "string" ? payload.version : "";
+    applyCanvasGeometry(payload);
   } catch (_) {
     editor.appVersion = "";
   }
   renderAppVersion();
+}
+
+function applyCanvasGeometry(payload) {
+  if (!payload || typeof payload !== "object") return;
+  const w = Number(payload.canvas_w);
+  const h = Number(payload.canvas_h);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return;
+  if (w === CANVAS_WIDTH && h === CANVAS_HEIGHT) return;
+  CANVAS_WIDTH = Math.round(w);
+  CANVAS_HEIGHT = Math.round(h);
+  if (el.canvas) {
+    el.canvas.style.width = `${CANVAS_WIDTH}px`;
+    el.canvas.style.height = `${CANVAS_HEIGHT}px`;
+  }
 }
 
 function setSelectOptionText(select, value, key, vars) {
