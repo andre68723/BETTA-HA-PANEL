@@ -16,9 +16,8 @@ CONFIG_APP_PANEL_VARIANT_10INCH_1280=y
 # --- mbedTLS IN buffer large enough for full todo.get_items responses ---
 CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=16384
 
-# --- LVGL allocator: C-lib (PSRAM-capable) instead of 64KB TLSF pool ---
-# CONFIG_LV_USE_BUILTIN_MALLOC is not set
-CONFIG_LV_USE_CLIB_MALLOC=y
+# (LV_USE_CLIB_MALLOC lives in the common sdkconfig.defaults, both
+#  variants need it for reliable label/vector-graphic reflow.)
 
 # --- BSP display/touch: Waveshare 10.1" 800x1280 ---
 CONFIG_BSP_LCD_COLOR_FORMAT_RGB565=y
