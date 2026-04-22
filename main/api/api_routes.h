@@ -25,3 +25,17 @@ esp_err_t api_screenshot_bmp_get_handler(httpd_req_t *req);
 esp_err_t api_ota_status_get_handler(httpd_req_t *req);
 esp_err_t api_ota_url_post_handler(httpd_req_t *req);
 esp_err_t api_ota_upload_post_handler(httpd_req_t *req);
+
+esp_err_t api_themes_list_get_handler(httpd_req_t *req);
+esp_err_t api_themes_active_get_handler(httpd_req_t *req);
+esp_err_t api_themes_active_put_handler(httpd_req_t *req);
+esp_err_t api_themes_get_handler(httpd_req_t *req);
+esp_err_t api_themes_custom_put_handler(httpd_req_t *req);
+esp_err_t api_themes_custom_delete_handler(httpd_req_t *req);
+
+esp_err_t api_themes_list_get_handler(httpd_req_t *req);
+esp_err_t api_themes_active_get_handler(httpd_req_t *req);
+esp_err_t api_themes_active_put_handler(httpd_req_t *req);
+esp_err_t api_themes_get_handler(httpd_req_t *req);
+esp_err_t api_themes_custom_put_handler(httpd_req_t *req);
+esp_err_t api_themes_custom_delete_handler(httpd_req_t *req);

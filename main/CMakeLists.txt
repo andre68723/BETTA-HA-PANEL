@@ -48,6 +48,9 @@ idf_component_register(
         "ui/widgets/w_weather_tile.c"
         "ui/fonts/mdi_font_registry.c"
         "ui/theme/theme_default.c"
+        "ui/theme/theme_palette.c"
+        "ui/theme/theme_store.c"
+        "api/api_theme.c"
         "util/json_util.c"
         "util/ringbuf.c"
     INCLUDE_DIRS

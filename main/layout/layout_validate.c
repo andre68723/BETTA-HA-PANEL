@@ -455,6 +455,27 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
                 layout_validation_add(result, msg);
             }
         }
+
+        cJSON *style_variant = cJSON_GetObjectItemCaseSensitive(widget, "style_variant");
+        if (cJSON_IsString(style_variant) && style_variant->valuestring != NULL &&
+            style_variant->valuestring[0] != '\0') {
+            if (strcmp(style_variant->valuestring, "default") != 0 &&
+                strcmp(style_variant->valuestring, "arc_semi") != 0) {
+                snprintf(msg, sizeof(msg), "widget %s: style_variant must be default|arc_semi",
+                    cJSON_IsString(id) ? id->valuestring : "?");
+                layout_validation_add(result, msg);
+            }
+        }
+        cJSON *arc_opening = cJSON_GetObjectItemCaseSensitive(widget, "arc_opening");
+        if (cJSON_IsString(arc_opening) && arc_opening->valuestring != NULL &&
+            arc_opening->valuestring[0] != '\0') {
+            const char *v = arc_opening->valuestring;
+            if (strcmp(v, "left") != 0 && strcmp(v, "right") != 0 && strcmp(v, "top") != 0 && strcmp(v, "bottom") != 0) {
+                snprintf(msg, sizeof(msg), "widget %s: arc_opening must be left|right|top|bottom",
+                    cJSON_IsString(id) ? id->valuestring : "?");
+                layout_validation_add(result, msg);
+            }
+        }
     }
 
     if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "slider") == 0) {

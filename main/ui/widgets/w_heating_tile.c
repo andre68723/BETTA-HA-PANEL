@@ -31,6 +31,8 @@ typedef struct {
     char climate_entity_id[APP_MAX_ENTITY_ID_LEN];
     char sensor_entity_id[APP_MAX_ENTITY_ID_LEN];
     bool is_on;
+    bool arc_semi;
+    char arc_opening[APP_MAX_UI_OPTION_LEN];
     float target_temp;
     float current_temp;
     bool has_current_temp;
@@ -41,6 +43,10 @@ typedef struct {
     lv_obj_t *target_label;
     lv_obj_t *actual_label;
     lv_obj_t *status_label;
+    lv_obj_t *minus_btn;
+    lv_obj_t *plus_btn;
+    lv_obj_t *min_label;
+    lv_obj_t *max_label;
 } w_heating_tile_ctx_t;
 
 typedef struct {
@@ -104,6 +110,12 @@ static float clamp_temp(float value)
         return 30.0f;
     }
     return value;
+}
+
+/* Snap to nearest 0.5 degree step. */
+static float snap_half_deg(float value)
+{
+    return (float)((int)(value * 2.0f + (value >= 0 ? 0.5f : -0.5f))) * 0.5f;
 }
 
 static void heating_copy_text(char *dst, size_t dst_size, const char *src)
@@ -281,6 +293,57 @@ static void heating_apply_layout(lv_obj_t *card, w_heating_tile_ctx_t *ctx)
     int card_w = lv_obj_get_width(card);
     int card_h = lv_obj_get_height(card);
 
+    if (ctx->arc_semi) {
+        /* Semi arc variant: big semicircle filling card with opening on one side. */
+        int arc_size = (card_w < card_h ? card_w : card_h) - 24;
+        if (arc_size < HEATING_ARC_SIZE_MIN) {
+            arc_size = HEATING_ARC_SIZE_MIN;
+        }
+        lv_obj_set_size(ctx->arc, arc_size, arc_size);
+        lv_obj_align(ctx->arc, LV_ALIGN_CENTER, 0, 0);
+
+        /* Center labels: target above actual. */
+        lv_obj_align(ctx->target_label, LV_ALIGN_CENTER, 0, -14);
+        lv_obj_align(ctx->actual_label, LV_ALIGN_CENTER, 0, 22);
+        lv_obj_align(ctx->status_label, LV_ALIGN_BOTTOM_MID, 0, -8);
+
+        /* +/- buttons positioned opposite the opening. */
+        int pad = 10;
+        const char *op = ctx->arc_opening;
+        if (ctx->minus_btn != NULL && ctx->plus_btn != NULL) {
+            if (strcmp(op, "left") == 0) {
+                lv_obj_align(ctx->minus_btn, LV_ALIGN_LEFT_MID, pad, 40);
+                lv_obj_align(ctx->plus_btn, LV_ALIGN_LEFT_MID, pad, -40);
+            } else if (strcmp(op, "right") == 0) {
+                lv_obj_align(ctx->minus_btn, LV_ALIGN_RIGHT_MID, -pad, 40);
+                lv_obj_align(ctx->plus_btn, LV_ALIGN_RIGHT_MID, -pad, -40);
+            } else if (strcmp(op, "top") == 0) {
+                lv_obj_align(ctx->minus_btn, LV_ALIGN_TOP_MID, -40, pad);
+                lv_obj_align(ctx->plus_btn, LV_ALIGN_TOP_MID, 40, pad);
+            } else { /* bottom */
+                lv_obj_align(ctx->minus_btn, LV_ALIGN_BOTTOM_MID, -40, -pad);
+                lv_obj_align(ctx->plus_btn, LV_ALIGN_BOTTOM_MID, 40, -pad);
+            }
+        }
+        /* Min / max labels near arc ends (opposite opening). */
+        if (ctx->min_label != NULL && ctx->max_label != NULL) {
+            if (strcmp(op, "left") == 0) {
+                lv_obj_align(ctx->min_label, LV_ALIGN_TOP_RIGHT, -14, 24);
+                lv_obj_align(ctx->max_label, LV_ALIGN_BOTTOM_RIGHT, -14, -24);
+            } else if (strcmp(op, "right") == 0) {
+                lv_obj_align(ctx->min_label, LV_ALIGN_TOP_LEFT, 14, 24);
+                lv_obj_align(ctx->max_label, LV_ALIGN_BOTTOM_LEFT, 14, -24);
+            } else if (strcmp(op, "top") == 0) {
+                lv_obj_align(ctx->min_label, LV_ALIGN_BOTTOM_LEFT, 24, -14);
+                lv_obj_align(ctx->max_label, LV_ALIGN_BOTTOM_RIGHT, -24, -14);
+            } else {
+                lv_obj_align(ctx->min_label, LV_ALIGN_TOP_LEFT, 24, 14);
+                lv_obj_align(ctx->max_label, LV_ALIGN_TOP_RIGHT, -24, 14);
+            }
+        }
+        return;
+    }
+
     /* Keep arc fully inside the card to avoid expensive clipping/mask paths on rounded tiles. */
     int arc_size = card_w - 38;
     int max_arc_h = card_h - 70;
@@ -380,7 +443,23 @@ static void heating_apply_visual(lv_obj_t *card, w_heating_tile_ctx_t *ctx, bool
         arc, is_on ? lv_color_hex(APP_UI_COLOR_HEAT_KNOB_ON) : lv_color_hex(APP_UI_COLOR_HEAT_KNOB_OFF), LV_PART_KNOB);
     lv_obj_set_style_bg_opa(arc, LV_OPA_COVER, LV_PART_KNOB);
 
-    int arc_value = (int)(clamp_temp(target_temp) + 0.5f);
+    if (ctx->arc_semi) {
+        uint32_t btn_color = is_on ? APP_UI_COLOR_HEAT_IND_ON : APP_UI_COLOR_HEAT_IND_OFF;
+        if (ctx->minus_btn != NULL) {
+            lv_obj_set_style_bg_color(ctx->minus_btn, lv_color_hex(btn_color), LV_PART_MAIN);
+        }
+        if (ctx->plus_btn != NULL) {
+            lv_obj_set_style_bg_color(ctx->plus_btn, lv_color_hex(btn_color), LV_PART_MAIN);
+        }
+        if (ctx->min_label != NULL) {
+            lv_obj_set_style_text_color(ctx->min_label, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
+        }
+        if (ctx->max_label != NULL) {
+            lv_obj_set_style_text_color(ctx->max_label, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
+        }
+    }
+
+    int arc_value = (int)(clamp_temp(target_temp) * 2.0f + 0.5f);
     lv_arc_set_value(arc, arc_value);
     heating_set_target_label(target_label, target_temp);
     heating_set_actual_label(actual_label, has_current_temp, current_temp, allow_status_fallback ? status_text : "");
@@ -436,16 +515,38 @@ static void w_heating_tile_arc_event_cb(lv_event_t *event)
 
     lv_obj_t *arc = lv_event_get_target(event);
     w_heating_tile_ctx_t *ctx = (w_heating_tile_ctx_t *)lv_event_get_user_data(event);
-    int value = (arc != NULL) ? lv_arc_get_value(arc) : 20;
+    int value = (arc != NULL) ? lv_arc_get_value(arc) : 40;
+    float target_c = (float)value * 0.5f;
 
-    heating_set_target_label((ctx != NULL) ? ctx->target_label : NULL, (float)value);
+    heating_set_target_label((ctx != NULL) ? ctx->target_label : NULL, target_c);
 
     if (code == LV_EVENT_RELEASED) {
         if (ctx != NULL) {
-            ctx->target_temp = (float)value;
-            ui_bindings_set_slider_value(ctx->climate_entity_id, value);
+            ctx->target_temp = target_c;
+            ui_bindings_set_climate_target_c(ctx->climate_entity_id, target_c);
         }
     }
+}
+
+static void w_heating_tile_step_event_cb(lv_event_t *event)
+{
+    if (lv_event_get_code(event) != LV_EVENT_CLICKED) {
+        return;
+    }
+    w_heating_tile_ctx_t *ctx = (w_heating_tile_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL) {
+        return;
+    }
+    lv_obj_t *btn = lv_event_get_target(event);
+    int delta = (btn == ctx->plus_btn) ? 1 : -1;
+    float next = snap_half_deg(clamp_temp(ctx->target_temp) + (float)delta * 0.5f);
+    next = clamp_temp(next);
+    ctx->target_temp = next;
+    if (ctx->arc != NULL) {
+        lv_arc_set_value(ctx->arc, (int)(next * 2.0f + 0.5f));
+    }
+    heating_set_target_label(ctx->target_label, next);
+    ui_bindings_set_climate_target_c(ctx->climate_entity_id, next);
 }
 
 esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance)
@@ -490,8 +591,8 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 
     lv_obj_t *arc = lv_arc_create(card);
     lv_obj_set_size(arc, HEATING_ARC_SIZE_MIN, HEATING_ARC_SIZE_MIN);
-    lv_arc_set_range(arc, 5, 30);
-    lv_arc_set_value(arc, 20);
+    lv_arc_set_range(arc, 10, 60);
+    lv_arc_set_value(arc, 40);
     lv_arc_set_bg_angles(arc, 160, 20);
 #if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(arc, LV_ALIGN_CENTER, 0, 30);
@@ -542,6 +643,59 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->target_label = target_label;
     ctx->actual_label = actual_label;
     ctx->status_label = status_label;
+
+    ctx->arc_semi = (def->style_variant[0] != '\0' && strcmp(def->style_variant, "arc_semi") == 0);
+    const char *opening = (def->arc_opening[0] != '\0') ? def->arc_opening : "left";
+    snprintf(ctx->arc_opening, sizeof(ctx->arc_opening), "%s", opening);
+
+    if (ctx->arc_semi) {
+        uint16_t bg_start = 270, bg_end = 90;
+        if (strcmp(ctx->arc_opening, "bottom") == 0) {
+            bg_start = 180;
+            bg_end = 360;
+        } else if (strcmp(ctx->arc_opening, "top") == 0) {
+            bg_start = 0;
+            bg_end = 180;
+        } else if (strcmp(ctx->arc_opening, "right") == 0) {
+            bg_start = 90;
+            bg_end = 270;
+        } else { /* left (default) */
+            bg_start = 270;
+            bg_end = 90;
+        }
+        lv_arc_set_bg_angles(arc, bg_start, bg_end);
+        lv_arc_set_rotation(arc, 0);
+
+        /* Min/Max labels at arc ends. */
+        ctx->min_label = lv_label_create(card);
+        lv_label_set_text(ctx->min_label, "5");
+        lv_obj_set_style_text_font(ctx->min_label, APP_FONT_TEXT_14, LV_PART_MAIN);
+        lv_obj_set_style_text_color(ctx->min_label, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
+
+        ctx->max_label = lv_label_create(card);
+        lv_label_set_text(ctx->max_label, "30");
+        lv_obj_set_style_text_font(ctx->max_label, APP_FONT_TEXT_14, LV_PART_MAIN);
+        lv_obj_set_style_text_color(ctx->max_label, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
+
+        /* +/- buttons. */
+        ctx->minus_btn = lv_btn_create(card);
+        lv_obj_set_size(ctx->minus_btn, 48, 48);
+        lv_obj_set_style_radius(ctx->minus_btn, 24, LV_PART_MAIN);
+        lv_obj_t *minus_lbl = lv_label_create(ctx->minus_btn);
+        lv_label_set_text(minus_lbl, "-");
+        lv_obj_set_style_text_font(minus_lbl, HEATING_TARGET_FONT, LV_PART_MAIN);
+        lv_obj_center(minus_lbl);
+        lv_obj_add_event_cb(ctx->minus_btn, w_heating_tile_step_event_cb, LV_EVENT_CLICKED, ctx);
+
+        ctx->plus_btn = lv_btn_create(card);
+        lv_obj_set_size(ctx->plus_btn, 48, 48);
+        lv_obj_set_style_radius(ctx->plus_btn, 24, LV_PART_MAIN);
+        lv_obj_t *plus_lbl = lv_label_create(ctx->plus_btn);
+        lv_label_set_text(plus_lbl, "+");
+        lv_obj_set_style_text_font(plus_lbl, HEATING_TARGET_FONT, LV_PART_MAIN);
+        lv_obj_center(plus_lbl);
+        lv_obj_add_event_cb(ctx->plus_btn, w_heating_tile_step_event_cb, LV_EVENT_CLICKED, ctx);
+    }
 
     lv_obj_add_event_cb(card, w_heating_tile_card_event_cb, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(card, w_heating_tile_card_event_cb, LV_EVENT_DELETE, ctx);

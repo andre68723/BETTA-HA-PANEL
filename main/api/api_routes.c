@@ -91,6 +91,31 @@ static esp_err_t guarded_api_ota_upload_post(httpd_req_t *req)
     return http_guard_handle(req, api_ota_upload_post_handler);
 }
 
+static esp_err_t guarded_api_themes_list_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_themes_list_get_handler);
+}
+static esp_err_t guarded_api_themes_active_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_themes_active_get_handler);
+}
+static esp_err_t guarded_api_themes_active_put(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_themes_active_put_handler);
+}
+static esp_err_t guarded_api_themes_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_themes_get_handler);
+}
+static esp_err_t guarded_api_themes_custom_put(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_themes_custom_put_handler);
+}
+static esp_err_t guarded_api_themes_custom_delete(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_themes_custom_delete_handler);
+}
+
 esp_err_t api_routes_register(httpd_handle_t server)
 {
     if (server == NULL) {
@@ -200,6 +225,43 @@ esp_err_t api_routes_register(httpd_handle_t server)
         .user_ctx = NULL,
     };
 
+    httpd_uri_t get_themes_list = {
+        .uri = "/api/themes",
+        .method = HTTP_GET,
+        .handler = guarded_api_themes_list_get,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t get_themes_active = {
+        .uri = "/api/themes/active",
+        .method = HTTP_GET,
+        .handler = guarded_api_themes_active_get,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t put_themes_active = {
+        .uri = "/api/themes/active",
+        .method = HTTP_PUT,
+        .handler = guarded_api_themes_active_put,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t get_themes_export = {
+        .uri = "/api/themes/get",
+        .method = HTTP_GET,
+        .handler = guarded_api_themes_get,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t put_themes_custom = {
+        .uri = "/api/themes/custom",
+        .method = HTTP_PUT,
+        .handler = guarded_api_themes_custom_put,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t delete_themes_custom = {
+        .uri = "/api/themes/custom",
+        .method = HTTP_DELETE,
+        .handler = guarded_api_themes_custom_delete,
+        .user_ctx = NULL,
+    };
+
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_layout), "api_routes", "GET /api/layout");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &put_layout), "api_routes", "PUT /api/layout");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_entities), "api_routes", "GET /api/entities");
@@ -221,6 +283,18 @@ esp_err_t api_routes_register(httpd_handle_t server)
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_ota_status), "api_routes", "GET /api/ota/status");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_ota_url), "api_routes", "POST /api/ota/url");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_ota_upload), "api_routes", "POST /api/ota/upload");
+
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_themes_list), "api_routes", "GET /api/themes");
+    ESP_RETURN_ON_ERROR(
+        httpd_register_uri_handler(server, &get_themes_active), "api_routes", "GET /api/themes/active");
+    ESP_RETURN_ON_ERROR(
+        httpd_register_uri_handler(server, &put_themes_active), "api_routes", "PUT /api/themes/active");
+    ESP_RETURN_ON_ERROR(
+        httpd_register_uri_handler(server, &get_themes_export), "api_routes", "GET /api/themes/get");
+    ESP_RETURN_ON_ERROR(
+        httpd_register_uri_handler(server, &put_themes_custom), "api_routes", "PUT /api/themes/custom");
+    ESP_RETURN_ON_ERROR(
+        httpd_register_uri_handler(server, &delete_themes_custom), "api_routes", "DELETE /api/themes/custom");
 
     return ESP_OK;
 }

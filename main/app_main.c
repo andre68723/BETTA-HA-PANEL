@@ -28,6 +28,7 @@
 #include "ui/ui_boot_splash.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_runtime.h"
+#include "ui/theme/theme_store.h"
 #include "util/log_tags.h"
 
 #if CONFIG_IDF_TARGET_ESP32P4 && CONFIG_ESP32P4_SELECTS_REV_LESS_V3 && (CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ > 360)
@@ -221,6 +222,7 @@ void app_main(void)
     }
 
     ESP_ERROR_CHECK(layout_store_init());
+    ESP_ERROR_CHECK(theme_store_init());
     ESP_ERROR_CHECK(http_server_start());
 
     if (boot_screen_mode == BOOT_SCREEN_DASHBOARD) {

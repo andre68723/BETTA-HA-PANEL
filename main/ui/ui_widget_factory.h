@@ -26,6 +26,8 @@ typedef struct {
     int graph_time_window_min;
     char graph_display_mode[APP_MAX_UI_OPTION_LEN];
     int graph_bar_bucket_min;
+    char style_variant[APP_MAX_UI_OPTION_LEN];
+    char arc_opening[APP_MAX_UI_OPTION_LEN];
     int x;
     int y;
     int w;
@@ -47,6 +49,8 @@ typedef struct {
     int graph_time_window_min;
     char graph_display_mode[APP_MAX_UI_OPTION_LEN];
     int graph_bar_bucket_min;
+    char style_variant[APP_MAX_UI_OPTION_LEN];
+    char arc_opening[APP_MAX_UI_OPTION_LEN];
     void *ctx;
     lv_obj_t *obj;
 } ui_widget_instance_t;

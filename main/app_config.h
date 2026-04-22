@@ -45,6 +45,9 @@
 #define APP_I18N_DIR "/littlefs/i18n"
 #define APP_I18N_MAX_JSON_LEN 32768
 
+#define APP_THEME_DIR "/littlefs/themes"
+#define APP_THEME_ACTIVE_PATH "/littlefs/themes/active.id"
+
 #define APP_SETUP_AP_SSID_PREFIX "BETTA-Setup"
 #define APP_SETUP_AP_PASSWORD ""
 #define APP_SETUP_AP_CHANNEL 1

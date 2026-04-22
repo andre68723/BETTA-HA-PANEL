@@ -135,6 +135,7 @@ const SETTINGS_NAV_ITEMS = [
   { sectionId: "settingsHaSection", headingId: "settingsHaHeading", labelKey: "settings.ha.heading" },
   { sectionId: "settingsTimeSection", headingId: "settingsTimeHeading", labelKey: "settings.time.heading" },
   { sectionId: "settingsUiSection", headingId: "settingsUiHeading", labelKey: "settings.ui.heading" },
+  { sectionId: "settingsThemeSection", headingId: "settingsThemeHeading", labelKey: "settings.theme.heading" },
   { sectionId: "settingsApSection", headingId: "settingsApHeading", labelKey: "settings.ap.heading" },
   { sectionId: "settingsOtaSection", headingId: "settingsOtaHeading", labelKey: "settings.ota.heading" },
 ];
@@ -377,6 +378,7 @@ const WEB_I18N_BUILTIN = {
     "settings.time.ntp_server": "NTP Server",
     "settings.time.timezone": "Timezone (POSIX TZ)",
     "settings.ui.heading": "UI",
+    "settings.theme.heading": "Theme",
     "settings.ui.language": "Language",
     "settings.ui.reload_languages": "Reload Languages",
     "settings.ui.download_json": "Download JSON",
@@ -688,6 +690,7 @@ const WEB_I18N_BUILTIN = {
     "settings.time.ntp_server": "NTP Server",
     "settings.time.timezone": "Zeitzone (POSIX TZ)",
     "settings.ui.heading": "UI",
+    "settings.theme.heading": "Theme",
     "settings.ui.language": "Sprache",
     "settings.ui.reload_languages": "Sprachen neu laden",
     "settings.ui.download_json": "JSON herunterladen",
@@ -905,6 +908,7 @@ const WEB_I18N_BUILTIN = {
     "settings.time.ntp_server": "Servidor NTP",
     "settings.time.timezone": "Zona horaria (POSIX TZ)",
     "settings.ui.heading": "UI",
+    "settings.theme.heading": "Tema",
     "settings.ui.language": "Idioma",
     "settings.ui.reload_languages": "Recargar idiomas",
     "settings.ui.download_json": "Descargar JSON",
@@ -1122,6 +1126,7 @@ const WEB_I18N_BUILTIN = {
     "settings.time.ntp_server": "Serveur NTP",
     "settings.time.timezone": "Fuseau horaire (POSIX TZ)",
     "settings.ui.heading": "UI",
+    "settings.theme.heading": "Thème",
     "settings.ui.language": "Langue",
     "settings.ui.reload_languages": "Recharger les langues",
     "settings.ui.download_json": "Telecharger JSON",
@@ -1420,6 +1425,10 @@ const el = {
   fGraphBarBucketMin: document.getElementById("fGraphBarBucketMin"),
   fGraphBarBucketMinLabel: document.getElementById("fGraphBarBucketMinLabel"),
   fGraphBarBucketMinWrap: document.getElementById("fGraphBarBucketMinWrap"),
+  heatingOptions: document.getElementById("heatingOptions"),
+  fHeatingStyleVariant: document.getElementById("fHeatingStyleVariant"),
+  fHeatingArcOpening: document.getElementById("fHeatingArcOpening"),
+  fHeatingArcOpeningWrap: document.getElementById("fHeatingArcOpeningWrap"),
   fX: document.getElementById("fX"),
   fY: document.getElementById("fY"),
   fW: document.getElementById("fW"),
@@ -3858,17 +3867,85 @@ function renderPages() {
   el.pagesList.innerHTML = "";
   for (const page of editor.layout.pages) {
     const li = document.createElement("li");
-    li.className = `list-item ${page.id === editor.selectedPageId ? "active" : ""}`;
-    const badge = isEnergyPage(page) ? "energy" : "page";
-    li.textContent = `${page.title || page.id}  [${page.id}] ${badge}`;
-    li.onclick = () => {
+    li.className = `list-item ${page.id === editor.selectedPageId ? "active selected" : ""}`;
+
+    const label = document.createElement("span");
+    const badge = isEnergyPage(page) ? " ⚡" : "";
+    label.textContent = `${page.title || page.id}${badge}`;
+    label.title = `[${page.id}] ${isEnergyPage(page) ? "energy" : "page"}`;
+    label.className = "list-item-label";
+    label.onclick = () => {
       editor.selectedPageId = page.id;
       editor.selectedWidgetId = null;
       renderAll();
     };
+    li.appendChild(label);
+
+    const actions = document.createElement("span");
+    actions.className = "row-actions";
+
+    const renameBtn = document.createElement("button");
+    renameBtn.type = "button";
+    renameBtn.className = "row-icon-btn";
+    renameBtn.title = t("layout.pages.rename") || "Rename";
+    renameBtn.textContent = "✎";
+    renameBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      startInlinePageRename(li, label, page);
+    };
+    actions.appendChild(renameBtn);
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "row-icon-btn danger";
+    delBtn.title = t("layout.pages.delete") || "Delete";
+    delBtn.textContent = "🗑";
+    delBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      editor.selectedPageId = page.id;
+      deletePage();
+    };
+    actions.appendChild(delBtn);
+
+    li.appendChild(actions);
     el.pagesList.appendChild(li);
   }
   renderPagesMini();
+}
+
+function startInlinePageRename(li, labelSpan, page) {
+  if (!li || !page) return;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "row-rename-input";
+  input.value = page.title || page.id;
+  input.maxLength = 63;
+
+  const commit = (save) => {
+    if (save) {
+      const next = input.value.trim();
+      page.title = next || page.id;
+      if (isEnergyPage(page)) {
+        applyEnergyPageConfig({ render: false });
+      }
+    }
+    renderAll();
+  };
+
+  input.onkeydown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commit(true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      commit(false);
+    }
+  };
+  input.onblur = () => commit(true);
+
+  li.replaceChild(input, labelSpan);
+  input.focus();
+  input.select();
 }
 
 function renderPagesMini() {
@@ -3971,14 +4048,43 @@ function renderWidgets() {
 
   for (const widget of page.widgets) {
     const li = document.createElement("li");
-    li.className = `list-item ${widget.id === editor.selectedWidgetId ? "active" : ""}`;
-    li.textContent = `${widget.type}  [${widget.id}]`;
-    li.onclick = () => {
+    li.className = `list-item ${widget.id === editor.selectedWidgetId ? "active selected" : ""}`;
+
+    const label = document.createElement("span");
+    label.className = "list-item-label";
+    label.textContent = `${widgetDisplayLabel(widget)}`;
+    label.title = `[${widget.id}] ${widget.type}`;
+    label.onclick = () => {
       editor.selectedWidgetId = widget.id;
       renderAll();
     };
+    li.appendChild(label);
+
+    const actions = document.createElement("span");
+    actions.className = "row-actions";
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "row-icon-btn danger";
+    delBtn.title = t("layout.widgets.delete") || "Delete";
+    delBtn.textContent = "🗑";
+    delBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      editor.selectedWidgetId = widget.id;
+      if (typeof el.deleteWidgetBtn?.click === "function") {
+        el.deleteWidgetBtn.click();
+      }
+    };
+    actions.appendChild(delBtn);
+    li.appendChild(actions);
+
     el.widgetsList.appendChild(li);
   }
+}
+
+function widgetDisplayLabel(widget) {
+  const title = (widget.title || "").trim();
+  if (title) return `${title} · ${widget.type}`;
+  return `${widget.type} [${widget.id}]`;
 }
 
 function geometryStyle(node, rect) {
@@ -4455,6 +4561,18 @@ function renderInspector() {
     if (el.fGraphBarBucketMinWrap) {
       el.fGraphBarBucketMinWrap.classList.add("hidden");
     }
+    if (el.heatingOptions) {
+      el.heatingOptions.classList.add("hidden");
+    }
+    if (el.fHeatingStyleVariant) {
+      el.fHeatingStyleVariant.value = "default";
+    }
+    if (el.fHeatingArcOpening) {
+      el.fHeatingArcOpening.value = "left";
+    }
+    if (el.fHeatingArcOpeningWrap) {
+      el.fHeatingArcOpeningWrap.classList.add("hidden");
+    }
     renderEntityOptions();
     return;
   }
@@ -4470,6 +4588,7 @@ function renderInspector() {
   const isButton = widget.type === "button";
   const isSlider = widget.type === "slider";
   const isGraph = widget.type === "graph";
+  const isHeating = widget.type === "heating_tile";
   if (el.buttonOptions) {
     el.buttonOptions.classList.toggle("hidden", !isButton);
   }
@@ -4478,6 +4597,9 @@ function renderInspector() {
   }
   if (el.graphOptions) {
     el.graphOptions.classList.toggle("hidden", !isGraph);
+  }
+  if (el.heatingOptions) {
+    el.heatingOptions.classList.toggle("hidden", !isHeating);
   }
   if (isButton) {
     const accent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
@@ -4579,6 +4701,32 @@ function renderInspector() {
     }
     if (el.fGraphBarBucketMinWrap) {
       el.fGraphBarBucketMinWrap.classList.add("hidden");
+    }
+  }
+
+  if (isHeating) {
+    const styleVariant = widget.style_variant === "arc_semi" ? "arc_semi" : "default";
+    const arcOpening = ["left", "right", "top", "bottom"].includes(widget.arc_opening) ? widget.arc_opening : "left";
+    widget.style_variant = styleVariant;
+    widget.arc_opening = arcOpening;
+    if (el.fHeatingStyleVariant) {
+      el.fHeatingStyleVariant.value = styleVariant;
+    }
+    if (el.fHeatingArcOpening) {
+      el.fHeatingArcOpening.value = arcOpening;
+    }
+    if (el.fHeatingArcOpeningWrap) {
+      el.fHeatingArcOpeningWrap.classList.toggle("hidden", styleVariant !== "arc_semi");
+    }
+  } else {
+    if (el.fHeatingStyleVariant) {
+      el.fHeatingStyleVariant.value = "default";
+    }
+    if (el.fHeatingArcOpening) {
+      el.fHeatingArcOpening.value = "left";
+    }
+    if (el.fHeatingArcOpeningWrap) {
+      el.fHeatingArcOpeningWrap.classList.add("hidden");
     }
   }
 
@@ -4807,6 +4955,19 @@ function applyInspector(options = {}) {
     delete widget.graph_display_mode;
     delete widget.graph_bar_bucket_min;
   }
+  if (widgetType === "heating_tile") {
+    const variant = el.fHeatingStyleVariant?.value === "arc_semi" ? "arc_semi" : "default";
+    widget.style_variant = variant;
+    if (variant === "arc_semi") {
+      const opening = el.fHeatingArcOpening?.value;
+      widget.arc_opening = ["left", "right", "top", "bottom"].includes(opening) ? opening : "left";
+    } else {
+      delete widget.arc_opening;
+    }
+  } else {
+    delete widget.style_variant;
+    delete widget.arc_opening;
+  }
   widget.rect = clampRectToCanvas(
     {
       x: Number(el.fX.value || 0),
@@ -4913,6 +5074,7 @@ function bindUi() {
   }
   el.deletePageBtn.onclick = deletePage;
   el.applyPageBtn.onclick = applyPageName;
+  initSimpleUiMenus();
   if (el.applyEnergyPageBtn) {
     el.applyEnergyPageBtn.onclick = () => applyEnergyPageConfig();
   }
@@ -5186,6 +5348,8 @@ function bindUi() {
   bindInspectorAutoApply(el.fGraphPointCount, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fGraphDisplayMode, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fGraphBarBucketMin, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fHeatingStyleVariant, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fHeatingArcOpening, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fX, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fY, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fW, ["change"], { refreshInspector: true, softEntityValidation: true });
@@ -5410,6 +5574,7 @@ async function startEditor() {
 
 async function bootstrap() {
   bindUi();
+  initThemeSection();
   setStatus(t("status.idle"));
   await loadAppVersion();
   const settings = await loadSettings(true);
@@ -5419,6 +5584,629 @@ async function bootstrap() {
     return;
   }
   await startEditor();
+}
+
+
+// ============================================================
+// Theme management (appended)
+// ============================================================
+const themeState = {
+  list: [],
+  activeId: "",
+  editing: null,
+  baseId: "",
+};
+
+function themeEl(id) {
+  return document.getElementById(id);
+}
+
+function themeSetInfo(msg, isError) {
+  const info = themeEl("settingsThemeInfo");
+  if (info) {
+    info.textContent = msg || "";
+    info.style.color = isError ? "#ff6b6b" : "";
+  }
+}
+
+async function themeFetchList() {
+  const resp = await fetch("/api/themes");
+  if (!resp.ok) throw new Error("themes list failed");
+  const data = await resp.json();
+  if (Array.isArray(data)) {
+    return { themes: data, active_id: "" };
+  }
+  return {
+    themes: Array.isArray(data && data.themes) ? data.themes : [],
+    active_id: (data && data.active_id) || "",
+  };
+}
+
+async function themeFetchActive() {
+  const resp = await fetch("/api/themes/active");
+  if (!resp.ok) throw new Error("themes active failed");
+  return resp.json();
+}
+
+async function themeFetchById(id) {
+  const resp = await fetch("/api/themes/get?id=" + encodeURIComponent(id));
+  if (!resp.ok) throw new Error("theme get failed");
+  return resp.json();
+}
+
+function themePopulateSelect() {
+  const sel = themeEl("settingsThemeSelect");
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = "";
+  for (const entry of themeState.list) {
+    const opt = document.createElement("option");
+    opt.value = entry.id;
+    opt.textContent = (entry.builtin ? "[built-in] " : "[custom] ") + (entry.name || entry.id);
+    sel.appendChild(opt);
+  }
+  if (themeState.activeId) {
+    sel.value = themeState.activeId;
+  } else if (prev) {
+    sel.value = prev;
+  }
+}
+
+function themeSnapTo565(hex) {
+  if (typeof hex !== "string") return hex;
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!m) return hex;
+  const v = parseInt(m[1], 16);
+  let r = (v >> 16) & 0xff;
+  let g = (v >> 8) & 0xff;
+  let b = v & 0xff;
+  const r5 = Math.round((r * 31) / 255);
+  const g6 = Math.round((g * 63) / 255);
+  const b5 = Math.round((b * 31) / 255);
+  r = (r5 << 3) | (r5 >> 2);
+  g = (g6 << 2) | (g6 >> 4);
+  b = (b5 << 3) | (b5 >> 2);
+  return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
+}
+
+const THEME_COLOR_GROUPS = [
+  {
+    id: "screen",
+    label: "Screen & Content",
+    keys: ["screen_bg", "screen_bg_grad", "content_bg", "content_border"],
+  },
+  {
+    id: "topbar",
+    label: "Top Bar",
+    keys: [
+      "topbar_bg",
+      "topbar_border",
+      "topbar_text",
+      "topbar_muted",
+      "topbar_chip_bg",
+      "topbar_chip_border",
+      "topbar_status_on",
+      "topbar_status_off",
+    ],
+  },
+  {
+    id: "text",
+    label: "Text",
+    keys: ["text_primary", "text_soft", "text_muted"],
+  },
+  {
+    id: "nav",
+    label: "Navigation",
+    keys: [
+      "nav_bg",
+      "nav_border",
+      "nav_btn_bg_idle",
+      "nav_btn_bg_active",
+      "nav_tab_idle",
+      "nav_tab_active",
+      "nav_home_idle",
+      "nav_home_active",
+    ],
+  },
+  {
+    id: "status",
+    label: "Status & Connectivity",
+    keys: ["ok", "error", "wifi_off"],
+  },
+  {
+    id: "cards",
+    label: "Cards (generic tiles)",
+    keys: [
+      "card_bg_off",
+      "card_bg_on",
+      "card_border",
+      "card_icon_off",
+      "card_icon_on",
+      "state_on",
+      "state_off",
+    ],
+  },
+  {
+    id: "light",
+    label: "Light Tiles",
+    keys: [
+      "light_icon_on",
+      "light_track_on",
+      "light_track_off",
+      "light_ind_on",
+      "light_ind_off",
+      "light_knob_on",
+      "light_knob_off",
+    ],
+  },
+  {
+    id: "heat",
+    label: "Heating Tiles",
+    keys: [
+      "heat_icon_on",
+      "heat_track_on",
+      "heat_track_off",
+      "heat_ind_on",
+      "heat_ind_off",
+      "heat_knob_on",
+      "heat_knob_off",
+    ],
+  },
+  {
+    id: "weather",
+    label: "Weather",
+    keys: ["weather_icon"],
+  },
+];
+
+function themeHumanizeKey(key) {
+  if (!key) return "";
+  return key
+    .replace(/_/g, " ")
+    .replace(/\bbg\b/gi, "background")
+    .replace(/\bind\b/gi, "indicator")
+    .replace(/\bbtn\b/gi, "button")
+    .replace(/\btxt\b/gi, "text")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function themeRenderColorGrid(palette) {
+  const grid = themeEl("settingsThemeColors");
+  if (!grid) return;
+  grid.innerHTML = "";
+  const colors = (palette && palette.colors) || {};
+  const seen = new Set();
+
+  const renderInput = (container, key) => {
+    if (!(key in colors)) return;
+    seen.add(key);
+    const lbl = document.createElement("label");
+    const span = document.createElement("span");
+    span.textContent = themeHumanizeKey(key);
+    span.title = key;
+    const input = document.createElement("input");
+    input.type = "color";
+    input.dataset.key = key;
+    const snapped = themeSnapTo565(colors[key]);
+    input.value = snapped;
+    if (themeState.editing && themeState.editing.colors) {
+      themeState.editing.colors[key] = snapped;
+    }
+    input.addEventListener("input", () => {
+      const snappedLive = themeSnapTo565(input.value);
+      if (snappedLive !== input.value) {
+        input.value = snappedLive;
+      }
+      themeState.editing.colors[key] = snappedLive;
+      themeRenderPreview();
+    });
+    lbl.appendChild(span);
+    lbl.appendChild(input);
+    container.appendChild(lbl);
+  };
+
+  const appendGroup = (label, keys, { open = true } = {}) => {
+    const available = keys.filter((k) => k in colors && !seen.has(k));
+    if (available.length === 0) return;
+    const group = document.createElement("details");
+    group.className = "theme-color-group";
+    if (open) group.open = true;
+    const summary = document.createElement("summary");
+    summary.textContent = label;
+    group.appendChild(summary);
+    const body = document.createElement("div");
+    body.className = "theme-color-group-body";
+    for (const key of available) renderInput(body, key);
+    group.appendChild(body);
+    grid.appendChild(group);
+  };
+
+  for (const g of THEME_COLOR_GROUPS) {
+    appendGroup(g.label, g.keys, { open: true });
+  }
+
+  // Any keys not covered by a known group — render as "Other" collapsed.
+  const leftover = Object.keys(colors)
+    .filter((k) => !seen.has(k))
+    .sort();
+  if (leftover.length > 0) {
+    appendGroup("Other", leftover, { open: false });
+  }
+}
+
+function themeRenderPreview() {
+  const canvas = themeEl("settingsThemePreviewCanvas");
+  if (!canvas || !themeState.editing) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const c = themeState.editing.colors || {};
+  const bg = c.screen_bg || "#121212";
+  const cardOff = c.card_bg_off || "#2a2a2a";
+  const cardOn = c.card_bg_on || "#3a3a3a";
+  const text = c.text_primary || "#ffffff";
+  const soft = c.text_soft || "#cccccc";
+  const accent = c.nav_tab_active || "#6fe8ff";
+  const heatInd = c.heat_ind_on || accent;
+
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Tile 1 (off)
+  ctx.fillStyle = cardOff;
+  themeRoundRect(ctx, 10, 10, 100, 90, 12, true);
+  ctx.fillStyle = text;
+  ctx.font = "11px sans-serif";
+  ctx.fillText("Sensor", 18, 28);
+  ctx.font = "bold 20px sans-serif";
+  ctx.fillText("21.5°", 18, 60);
+  ctx.font = "10px sans-serif";
+  ctx.fillStyle = soft;
+  ctx.fillText("off", 18, 88);
+
+  // Tile 2 (on)
+  ctx.fillStyle = cardOn;
+  themeRoundRect(ctx, 120, 10, 100, 90, 12, true);
+  ctx.fillStyle = text;
+  ctx.font = "11px sans-serif";
+  ctx.fillText("Light", 128, 28);
+  ctx.fillStyle = accent;
+  ctx.fillRect(128, 40, 80, 8);
+  ctx.fillStyle = text;
+  ctx.font = "10px sans-serif";
+  ctx.fillText("on", 128, 88);
+
+  // Tile 3 (heating arc)
+  ctx.fillStyle = cardOn;
+  themeRoundRect(ctx, 230, 10, 120, 200, 12, true);
+  ctx.strokeStyle = c.heat_track_on || "#555";
+  ctx.lineWidth = 10;
+  ctx.beginPath();
+  ctx.arc(290, 110, 45, Math.PI * 0.8, Math.PI * 0.2, false);
+  ctx.stroke();
+  ctx.strokeStyle = heatInd;
+  ctx.beginPath();
+  ctx.arc(290, 110, 45, Math.PI * 0.8, Math.PI * 1.4, false);
+  ctx.stroke();
+  ctx.fillStyle = text;
+  ctx.font = "bold 18px sans-serif";
+  ctx.fillText("22.5°", 272, 115);
+  ctx.fillStyle = soft;
+  ctx.font = "10px sans-serif";
+  ctx.fillText("Target 22.5", 270, 170);
+
+  // Bottom nav area
+  ctx.fillStyle = c.topbar_bg || "#1a1a1a";
+  ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+  ctx.fillStyle = accent;
+  ctx.fillRect(10, canvas.height - 26, 40, 22);
+  ctx.fillStyle = text;
+  ctx.font = "11px sans-serif";
+  ctx.fillText("Home", 14, canvas.height - 12);
+}
+
+function themeRoundRect(ctx, x, y, w, h, r, fill) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  if (fill) ctx.fill();
+  else ctx.stroke();
+}
+
+async function themeLoadAndRender() {
+  try {
+    const listResp = await themeFetchList();
+    themeState.list = listResp.themes;
+    const active = await themeFetchActive();
+    themeState.activeId = (active && active.id) || listResp.active_id || "";
+    themeState.baseId = themeState.activeId;
+    themeState.editing = JSON.parse(JSON.stringify(active));
+    themePopulateSelect();
+    themeRenderColorGrid(themeState.editing);
+    themeRenderPreview();
+    themeSyncEditFields();
+    themeSetInfo("");
+  } catch (e) {
+    themeSetInfo("Load failed: " + (e && e.message ? e.message : e), true);
+  }
+}
+
+/* Prefill the "Custom theme ID / name" inputs based on what's in the
+ * dropdown + the currently loaded palette, so that selecting an existing
+ * custom theme makes it immediately editable (Save overwrites the same id).
+ * For built-in themes we clear the inputs so the user has to pick a new id. */
+function themeSyncEditFields() {
+  const idInput = themeEl("settingsThemeNewId");
+  const nameInput = themeEl("settingsThemeNewName");
+  const baseMeta = themeEl("settingsThemeBase");
+  if (!idInput || !nameInput) return;
+
+  const editing = themeState.editing || {};
+  const entry = themeState.list.find((e) => e.id === editing.id);
+  const isCustom = entry && !entry.builtin;
+
+  if (isCustom) {
+    idInput.value = editing.id || "";
+    nameInput.value = editing.name || entry.name || "";
+    idInput.readOnly = true;
+    idInput.title = "Editing existing custom theme. Clear to save as a new one.";
+    if (baseMeta) {
+      baseMeta.textContent =
+        "Editing custom theme \"" + (editing.name || editing.id) +
+        "\". Changes are saved back to id \"" + editing.id + "\".";
+    }
+  } else {
+    idInput.value = "";
+    nameInput.value = "";
+    idInput.readOnly = false;
+    idInput.title = "";
+    if (baseMeta) {
+      baseMeta.textContent =
+        "Base palette: " + (editing.name || editing.id || "active theme") +
+        ". Edit colors below, then \"Save as custom\".";
+    }
+  }
+
+  const saveBtn = themeEl("settingsThemeSaveCustomBtn");
+  if (saveBtn) {
+    saveBtn.textContent = isCustom ? "Save changes" : "Save as custom";
+  }
+}
+
+async function themeApplyActive() {
+  const sel = themeEl("settingsThemeSelect");
+  if (!sel || !sel.value) return;
+  try {
+    const resp = await fetch("/api/themes/active", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: sel.value }),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    themeSetInfo("Active theme set to " + sel.value);
+    await themeLoadAndRender();
+  } catch (e) {
+    themeSetInfo("Apply failed: " + e.message, true);
+  }
+}
+
+async function themeExportActive() {
+  const sel = themeEl("settingsThemeSelect");
+  const id = (sel && sel.value) || themeState.activeId;
+  if (!id) return;
+  try {
+    const theme = await themeFetchById(id);
+    const blob = new Blob([JSON.stringify(theme, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "theme-" + id + ".json";
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    themeSetInfo("Export failed: " + e.message, true);
+  }
+}
+
+async function themeImportFile() {
+  const input = themeEl("settingsThemeImportFile");
+  if (!input || !input.files || !input.files[0]) {
+    themeSetInfo("Choose a JSON file first", true);
+    return;
+  }
+  try {
+    const text = await input.files[0].text();
+    const theme = JSON.parse(text);
+    if (!theme || !theme.id) throw new Error("invalid theme JSON: missing id");
+    const resp = await fetch("/api/themes/custom", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(theme),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    themeSetInfo("Imported theme " + theme.id);
+    await themeLoadAndRender();
+  } catch (e) {
+    themeSetInfo("Import failed: " + e.message, true);
+  }
+}
+
+async function themeSaveCustom() {
+  const idInput = themeEl("settingsThemeNewId");
+  const nameInput = themeEl("settingsThemeNewName");
+  let id = (idInput && idInput.value || "").trim();
+  let name = (nameInput && nameInput.value || "").trim();
+  // If the inputs are empty but we are editing an existing custom theme,
+  // reuse its id/name so "Save" overwrites the same theme.
+  const editing = themeState.editing || {};
+  const editingEntry = themeState.list.find((e) => e.id === editing.id);
+  if (!id && editingEntry && !editingEntry.builtin) {
+    id = editing.id || "";
+    if (!name) name = editing.name || editing.id || "";
+  }
+  if (!id || !/^[A-Za-z0-9_-]+$/.test(id)) {
+    themeSetInfo("Custom theme ID must be alphanumeric (_-) only", true);
+    return;
+  }
+  if (!themeState.editing || !themeState.editing.colors) {
+    themeSetInfo("No palette to save", true);
+    return;
+  }
+  const payload = {
+    id,
+    name: name || id,
+    builtin: false,
+    colors: themeState.editing.colors,
+  };
+  try {
+    const resp = await fetch("/api/themes/custom", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    themeSetInfo("Saved custom theme " + id);
+    await themeLoadAndRender();
+    // Re-select the just-saved theme so editing continues on it.
+    const selAfter = themeEl("settingsThemeSelect");
+    if (selAfter) {
+      selAfter.value = id;
+      if (typeof selAfter.onchange === "function") {
+        await selAfter.onchange();
+      }
+    }
+  } catch (e) {
+    themeSetInfo("Save failed: " + e.message, true);
+  }
+}
+
+async function themeDeleteCustom() {
+  const sel = themeEl("settingsThemeSelect");
+  if (!sel || !sel.value) return;
+  const entry = themeState.list.find((e) => e.id === sel.value);
+  if (!entry) return;
+  if (entry.builtin) {
+    themeSetInfo("Cannot delete built-in themes", true);
+    return;
+  }
+  if (!window.confirm("Delete theme " + entry.id + "?")) return;
+  try {
+    const resp = await fetch("/api/themes/custom?id=" + encodeURIComponent(entry.id), { method: "DELETE" });
+    if (!resp.ok) throw new Error(await resp.text());
+    themeSetInfo("Deleted " + entry.id);
+    await themeLoadAndRender();
+  } catch (e) {
+    themeSetInfo("Delete failed: " + e.message, true);
+  }
+}
+
+function themeResetToActive() {
+  void themeLoadAndRender();
+}
+
+function initThemeSection() {
+  const applyBtn = themeEl("settingsThemeApplyBtn");
+  if (applyBtn) applyBtn.onclick = () => void themeApplyActive();
+  const exportBtn = themeEl("settingsThemeExportBtn");
+  if (exportBtn) exportBtn.onclick = () => void themeExportActive();
+  const importBtn = themeEl("settingsThemeImportBtn");
+  if (importBtn) importBtn.onclick = () => void themeImportFile();
+  const delBtn = themeEl("settingsThemeDeleteBtn");
+  if (delBtn) delBtn.onclick = () => void themeDeleteCustom();
+  const saveBtn = themeEl("settingsThemeSaveCustomBtn");
+  if (saveBtn) saveBtn.onclick = () => void themeSaveCustom();
+  const resetBtn = themeEl("settingsThemeResetBtn");
+  if (resetBtn) resetBtn.onclick = () => themeResetToActive();
+  const sel = themeEl("settingsThemeSelect");
+  if (sel) {
+    sel.onchange = async () => {
+      try {
+        const theme = await themeFetchById(sel.value);
+        themeState.editing = theme;
+        themeState.baseId = theme.id;
+        themeRenderColorGrid(themeState.editing);
+        themeRenderPreview();
+        themeSyncEditFields();
+      } catch (e) {
+        themeSetInfo("Load failed: " + e.message, true);
+      }
+    };
+  }
+  void themeLoadAndRender();
+}
+
+// ============================================================
+// Simplified layout UI: + Add dropdowns for Pages / Widgets.
+// The original buttons are kept hidden (.legacy-hidden) so every
+// existing handler keeps working — menu items just click them.
+// ============================================================
+function initSimpleUiMenus() {
+  bindDropdown("addPageMenuBtn", "addPageMenu");
+  bindDropdown("addWidgetMenuBtn", "addWidgetMenu");
+
+  const pageNormal = document.getElementById("addPageMenuNormal");
+  if (pageNormal) {
+    pageNormal.onclick = () => {
+      closeAllDropdowns();
+      if (el.addPageBtn) el.addPageBtn.click();
+    };
+  }
+  const pageEnergy = document.getElementById("addPageMenuEnergy");
+  if (pageEnergy) {
+    pageEnergy.onclick = () => {
+      closeAllDropdowns();
+      if (el.addEnergyPageBtn) el.addEnergyPageBtn.click();
+    };
+  }
+
+  const widgetMenu = document.getElementById("addWidgetMenu");
+  if (widgetMenu) {
+    widgetMenu.querySelectorAll("[data-add-target]").forEach((item) => {
+      item.onclick = () => {
+        closeAllDropdowns();
+        const targetId = item.getAttribute("data-add-target");
+        const btn = document.getElementById(targetId);
+        if (btn) btn.click();
+      };
+    });
+  }
+
+  document.addEventListener("click", (ev) => {
+    const target = ev.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest(".dropdown")) return;
+    closeAllDropdowns();
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") closeAllDropdowns();
+  });
+}
+
+function bindDropdown(toggleId, menuId) {
+  const toggle = document.getElementById(toggleId);
+  const menu = document.getElementById(menuId);
+  if (!toggle || !menu) return;
+  toggle.onclick = (ev) => {
+    ev.stopPropagation();
+    const willOpen = menu.classList.contains("hidden");
+    closeAllDropdowns();
+    if (willOpen) {
+      menu.classList.remove("hidden");
+      toggle.setAttribute("aria-expanded", "true");
+    }
+  };
+}
+
+function closeAllDropdowns() {
+  for (const menu of document.querySelectorAll(".dropdown-menu")) {
+    menu.classList.add("hidden");
+  }
+  for (const toggle of document.querySelectorAll(".dropdown-toggle")) {
+    toggle.setAttribute("aria-expanded", "false");
+  }
 }
 
 bootstrap();

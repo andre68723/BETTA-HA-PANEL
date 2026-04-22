@@ -117,7 +117,7 @@ esp_err_t http_server_start(void)
         http_task_prio = 1;
     }
     cfg.task_priority = http_task_prio;
-    cfg.max_uri_handlers = 24;
+    cfg.max_uri_handlers = 32;
     cfg.max_open_sockets = 12;
     cfg.lru_purge_enable = true;
     cfg.recv_wait_timeout = 10;

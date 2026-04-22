@@ -9,18 +9,12 @@ static lv_style_t s_style_button_off;
 static lv_style_t s_style_button_on;
 static bool s_initialized = false;
 
-void theme_default_init(void)
+static void theme_default_configure_styles(void)
 {
-    if (s_initialized) {
-        return;
-    }
-
-    lv_style_init(&s_style_screen);
     lv_style_set_bg_color(&s_style_screen, lv_color_hex(APP_UI_COLOR_SCREEN_BG));
     lv_style_set_bg_grad_color(&s_style_screen, lv_color_hex(APP_UI_COLOR_SCREEN_BG_GRAD));
     lv_style_set_bg_grad_dir(&s_style_screen, LV_GRAD_DIR_VER);
 
-    lv_style_init(&s_style_card);
     lv_style_set_bg_color(&s_style_card, lv_color_hex(APP_UI_COLOR_CARD_BG_OFF));
     lv_style_set_bg_opa(&s_style_card, LV_OPA_COVER);
     lv_style_set_radius(&s_style_card, APP_UI_CARD_RADIUS);
@@ -33,7 +27,6 @@ void theme_default_init(void)
     lv_style_set_border_width(&s_style_card, 0);
 #endif
 
-    lv_style_init(&s_style_button_off);
     lv_style_set_bg_color(&s_style_button_off, lv_color_hex(APP_UI_COLOR_CARD_BG_OFF));
     lv_style_set_bg_opa(&s_style_button_off, LV_OPA_COVER);
     lv_style_set_radius(&s_style_button_off, APP_UI_CARD_RADIUS);
@@ -46,7 +39,6 @@ void theme_default_init(void)
 #endif
     lv_style_set_text_color(&s_style_button_off, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY));
 
-    lv_style_init(&s_style_button_on);
     lv_style_set_bg_color(&s_style_button_on, lv_color_hex(APP_UI_COLOR_CARD_BG_ON));
     lv_style_set_bg_opa(&s_style_button_on, LV_OPA_COVER);
     lv_style_set_radius(&s_style_button_on, APP_UI_CARD_RADIUS);
@@ -58,8 +50,36 @@ void theme_default_init(void)
     lv_style_set_border_width(&s_style_button_on, 0);
 #endif
     lv_style_set_text_color(&s_style_button_on, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY));
+}
+
+void theme_default_init(void)
+{
+    if (s_initialized) {
+        return;
+    }
+
+    lv_style_init(&s_style_screen);
+    lv_style_init(&s_style_card);
+    lv_style_init(&s_style_button_off);
+    lv_style_init(&s_style_button_on);
+    theme_default_configure_styles();
 
     s_initialized = true;
+}
+
+void theme_default_rebuild_styles(void)
+{
+    if (!s_initialized) {
+        theme_default_init();
+        return;
+    }
+    /* Reset then re-populate so the active theme colours replace the old
+     * ones without leaking style memory. */
+    lv_style_reset(&s_style_screen);
+    lv_style_reset(&s_style_card);
+    lv_style_reset(&s_style_button_off);
+    lv_style_reset(&s_style_button_on);
+    theme_default_configure_styles();
 }
 
 void theme_default_style_screen(lv_obj_t *obj)

@@ -136,7 +136,7 @@ static ui_widget_size_limits_t ui_runtime_widget_size_limits(const char *type)
         limits.min_w = 260;
         limits.min_h = 220;
         limits.max_w = 640;
-        limits.max_h = 420;
+        limits.max_h = 480;
     }
 
     if (limits.max_w > APP_CONTENT_BOX_WIDTH) {
@@ -338,6 +338,8 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     cJSON *graph_time_window_min = cJSON_GetObjectItemCaseSensitive(widget_json, "graph_time_window_min");
     cJSON *graph_display_mode = cJSON_GetObjectItemCaseSensitive(widget_json, "graph_display_mode");
     cJSON *graph_bar_bucket_min = cJSON_GetObjectItemCaseSensitive(widget_json, "graph_bar_bucket_min");
+    cJSON *style_variant = cJSON_GetObjectItemCaseSensitive(widget_json, "style_variant");
+    cJSON *arc_opening = cJSON_GetObjectItemCaseSensitive(widget_json, "arc_opening");
     cJSON *rect = cJSON_GetObjectItemCaseSensitive(widget_json, "rect");
     if (!cJSON_IsString(id) || !cJSON_IsString(type) || !cJSON_IsObject(rect)) {
         return false;
@@ -392,6 +394,12 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     }
     if (cJSON_IsNumber(graph_bar_bucket_min)) {
         out->graph_bar_bucket_min = graph_bar_bucket_min->valueint;
+    }
+    if (cJSON_IsString(style_variant) && style_variant->valuestring != NULL) {
+        snprintf(out->style_variant, sizeof(out->style_variant), "%s", style_variant->valuestring);
+    }
+    if (cJSON_IsString(arc_opening) && arc_opening->valuestring != NULL) {
+        snprintf(out->arc_opening, sizeof(out->arc_opening), "%s", arc_opening->valuestring);
     }
     out->x = x->valueint;
     out->y = y->valueint;
@@ -581,6 +589,11 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
 
 esp_err_t ui_runtime_reload_layout(void)
 {
+    /* Rebuild theme styles so that a live theme change is picked up by the
+     * newly created widgets. Safe: must be called from the UI task under the
+     * display lock, which is the case when triggered via EV_LAYOUT_UPDATED. */
+    theme_default_rebuild_styles();
+
     char *json = NULL;
     esp_err_t err = layout_store_load(&json);
     if (err != ESP_OK || json == NULL) {

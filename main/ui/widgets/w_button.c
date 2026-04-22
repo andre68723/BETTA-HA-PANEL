@@ -38,7 +38,11 @@ typedef struct {
 } w_button_ctx_t;
 
 static const uint32_t W_BUTTON_SWITCH_TRACK_OFF_HEX = 0x3A3E43;
-static const uint32_t W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX = APP_UI_COLOR_NAV_TAB_ACTIVE;
+/* The default switch accent used to be the compile-time NAV_TAB_ACTIVE
+ * constant.  Now that APP_UI_COLOR_NAV_TAB_ACTIVE resolves via the runtime
+ * theme palette it cannot be used as a static initialiser; use a macro so
+ * every call site re-reads the active palette. */
+#define W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX (APP_UI_COLOR_NAV_TAB_ACTIVE)
 static const uint32_t W_BUTTON_SWITCH_KNOB_HEX = 0xEAF2FA;
 static const lv_coord_t W_BUTTON_SWITCH_HEIGHT_PX = 40;
 
