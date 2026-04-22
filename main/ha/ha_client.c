@@ -246,6 +246,12 @@ typedef struct {
     uint32_t energy_stats_req_id;
     uint8_t energy_stats_batch_offset;
     int64_t next_energy_sync_unix_ms;
+    /* Generic call_service(return_response=true) inflight tracking.
+     * Treated as a HEAVY request by the central WS/TLS send gate so the
+     * response (which can be large, e.g. todo.get_items) does not collide
+     * with other heavy roundtrips like weather forecast or energy stats. */
+    bool call_response_req_inflight;
+    uint32_t call_response_req_id;
     /* Central WS/TLS gate: earliest ms at which the next HEAVY send may
      * leave.  See HA_WS_HEAVY_MIN_GAP_MS doc block. */
     int64_t heavy_ws_gate_next_allowed_unix_ms;
@@ -301,7 +307,8 @@ static inline bool ha_client_heavy_in_flight_locked(void)
     return s_client.weather_ws_req_inflight ||
            s_client.energy_prefs_req_inflight ||
            s_client.energy_stats_req_inflight ||
-           s_client.light_discovery_inflight;
+           s_client.light_discovery_inflight ||
+           s_client.call_response_req_inflight;
 }
 
 static inline bool ha_client_ws_send_gate_ok_locked(ha_ws_send_class_t cls, int64_t now_ms)
@@ -355,7 +362,18 @@ static const TickType_t HA_CLIENT_TASK_DELAY_TICKS = pdMS_TO_TICKS(30);
  * itself settle (handshake, auth, first subscribe burst) before we pile on
  * large responses.  Observed boot timing: auth ~100 ms, 11 subscribes
  * ~1.7 s after connect — 2 s is enough with margin. */
-static const int64_t HA_WS_WEATHER_PRIORITY_GRACE_MS = 2000;
+/* Grace window between WS connect and the first heavy roundtrip (weather
+ * forecast, energy stats, todo.get_items, ...).  Measured from the
+ * ws_last_connected_unix_ms.  Must cover:
+ *   - auth exchange (~100 ms)
+ *   - per-entity subscribe burst (~150 ms/entity, scales with layout size)
+ *   - HA's subsequent state_changed push for all subscribed entities,
+ *     which can be large when todo/media_player entities are included.
+ * 2 s was enough for light+weather+climate layouts but fat entities like
+ * todo lists push the tail of the state burst past that window and cause
+ * TLS BAD_INPUT_DATA collisions with the first heavy send.  4 s gives
+ * comfortable margin for typical 6-10 entity layouts. */
+static const int64_t HA_WS_WEATHER_PRIORITY_GRACE_MS = 4000;
 static const int HA_WS_TLS_ERR_BAD_INPUT_DATA = 0x7100;
 static const int64_t HA_WS_GET_STATES_MIN_SESSION_MS = 3000;
 static const int64_t HA_WS_GET_STATES_POST_SUBSCRIBE_DELAY_MS = 1200;
@@ -822,6 +840,27 @@ static void ha_client_queue_weather_priority_sync_from_layout(int64_t now_ms)
         return;
     }
 
+    /* Honour the min-retry window: if the weather forecast was fetched
+     * recently (e.g. on initial WS connect), a layout save that only adds
+     * a non-weather entity (new todo widget, new light, ...) must NOT
+     * re-trigger a heavy forecast roundtrip on top of the resubscribe
+     * burst.  Skip here; the regular 5-minute refresh path will handle it.
+     * On cold boot / WS reconnect the retry timestamp is reset to 0, so
+     * the first-ever fetch after connect is not blocked. */
+    int64_t next_retry_unix_ms = 0;
+    if (s_client.mutex != NULL) {
+        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+        next_retry_unix_ms = s_client.next_weather_forecast_retry_unix_ms;
+        xSemaphoreGive(s_client.mutex);
+    }
+    if (next_retry_unix_ms > now_ms) {
+        ESP_LOGD(TAG_HA_CLIENT,
+            "Skip weather forecast bootstrap: next retry in %" PRId64 " ms",
+            next_retry_unix_ms - now_ms);
+        free(entity_ids);
+        return;
+    }
+
     uint32_t queued_count = 0;
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
     for (size_t i = 0; i < entity_count; i++) {
@@ -1238,7 +1277,9 @@ static bool ha_client_discovery_domain_supported(const char *domain)
            strcmp(domain, "sensor") == 0 ||
            strcmp(domain, "switch") == 0 ||
            strcmp(domain, "weather") == 0 ||
-           strcmp(domain, "climate") == 0;
+           strcmp(domain, "climate") == 0 ||
+           strcmp(domain, "todo") == 0 ||
+           strcmp(domain, "media_player") == 0;
 }
 
 static const char *ha_client_discovery_domain_or_default(const char *domain)
@@ -1826,7 +1867,10 @@ static bool ha_client_media_player_attr_key_is_tracked(const char *key)
     if (key == NULL || key[0] == '\0') {
         return false;
     }
-    return (strcmp(key, "volume_level") == 0) || (strcmp(key, "is_volume_muted") == 0);
+    return (strcmp(key, "volume_level") == 0) || (strcmp(key, "is_volume_muted") == 0) ||
+           (strcmp(key, "media_title") == 0) || (strcmp(key, "media_artist") == 0) ||
+           (strcmp(key, "media_duration") == 0) || (strcmp(key, "media_position") == 0) ||
+           (strcmp(key, "media_position_updated_at") == 0) || (strcmp(key, "entity_picture") == 0);
 }
 
 static bool ha_client_ws_media_player_change_can_skip(cJSON *changed_entry)
@@ -2307,6 +2351,44 @@ static bool ha_client_serialize_media_player_attrs_compact(cJSON *src_attrs, cha
     cJSON *is_volume_muted = cJSON_GetObjectItemCaseSensitive(src_attrs, "is_volume_muted");
     if (cJSON_IsBool(is_volume_muted)) {
         cJSON_AddBoolToObject(compact, "is_volume_muted", cJSON_IsTrue(is_volume_muted));
+        any = true;
+    }
+
+    cJSON *media_title = cJSON_GetObjectItemCaseSensitive(src_attrs, "media_title");
+    if (cJSON_IsString(media_title) && media_title->valuestring != NULL && media_title->valuestring[0] != '\0') {
+        cJSON_AddStringToObject(compact, "media_title", media_title->valuestring);
+        any = true;
+    }
+
+    cJSON *media_artist = cJSON_GetObjectItemCaseSensitive(src_attrs, "media_artist");
+    if (cJSON_IsString(media_artist) && media_artist->valuestring != NULL && media_artist->valuestring[0] != '\0') {
+        cJSON_AddStringToObject(compact, "media_artist", media_artist->valuestring);
+        any = true;
+    }
+
+    cJSON *media_duration = cJSON_GetObjectItemCaseSensitive(src_attrs, "media_duration");
+    if (cJSON_IsNumber(media_duration)) {
+        cJSON_AddNumberToObject(compact, "media_duration", media_duration->valuedouble);
+        any = true;
+    }
+
+    cJSON *media_position = cJSON_GetObjectItemCaseSensitive(src_attrs, "media_position");
+    if (cJSON_IsNumber(media_position)) {
+        cJSON_AddNumberToObject(compact, "media_position", media_position->valuedouble);
+        any = true;
+    }
+
+    cJSON *media_position_updated_at = cJSON_GetObjectItemCaseSensitive(src_attrs, "media_position_updated_at");
+    if (cJSON_IsString(media_position_updated_at) && media_position_updated_at->valuestring != NULL &&
+        media_position_updated_at->valuestring[0] != '\0') {
+        cJSON_AddStringToObject(compact, "media_position_updated_at", media_position_updated_at->valuestring);
+        any = true;
+    }
+
+    cJSON *entity_picture = cJSON_GetObjectItemCaseSensitive(src_attrs, "entity_picture");
+    if (cJSON_IsString(entity_picture) && entity_picture->valuestring != NULL &&
+        entity_picture->valuestring[0] != '\0') {
+        cJSON_AddStringToObject(compact, "entity_picture", entity_picture->valuestring);
         any = true;
     }
 
@@ -3795,6 +3877,111 @@ static void ha_client_mark_ws_priority_boost(int64_t now_ms)
     xSemaphoreGive(s_client.mutex);
 }
 
+/* --------------------------------------------------------------------------
+ * Generic call_service_with_response registry.
+ *
+ * Small in-memory map of outstanding message-ids to user callbacks.  Kept
+ * tiny on purpose — the only current consumer is the todo list widget and
+ * it never has more than one request in flight per widget.
+ * ------------------------------------------------------------------------ */
+#define HA_CLIENT_PENDING_RESPONSE_MAX 4
+#define HA_CLIENT_PENDING_RESPONSE_TIMEOUT_MS 15000
+
+typedef struct {
+    uint32_t msg_id; /* 0 means slot free */
+    ha_client_response_cb_t cb;
+    void *user;
+    int64_t expires_unix_ms;
+} ha_client_pending_response_slot_t;
+
+static ha_client_pending_response_slot_t s_pending_responses[HA_CLIENT_PENDING_RESPONSE_MAX];
+
+static bool ha_client_pending_response_register_locked(
+    uint32_t msg_id, ha_client_response_cb_t cb, void *user, int64_t now_ms)
+{
+    if (msg_id == 0U || cb == NULL) {
+        return false;
+    }
+    /* Evict expired slots first. */
+    for (size_t i = 0; i < HA_CLIENT_PENDING_RESPONSE_MAX; i++) {
+        ha_client_pending_response_slot_t *s = &s_pending_responses[i];
+        if (s->msg_id != 0U && s->expires_unix_ms > 0 && now_ms >= s->expires_unix_ms) {
+            if (s_client.call_response_req_id == s->msg_id) {
+                s_client.call_response_req_inflight = false;
+                s_client.call_response_req_id = 0;
+            }
+            s->msg_id = 0U;
+            s->cb = NULL;
+            s->user = NULL;
+            s->expires_unix_ms = 0;
+        }
+    }
+    for (size_t i = 0; i < HA_CLIENT_PENDING_RESPONSE_MAX; i++) {
+        ha_client_pending_response_slot_t *s = &s_pending_responses[i];
+        if (s->msg_id == 0U) {
+            s->msg_id = msg_id;
+            s->cb = cb;
+            s->user = user;
+            s->expires_unix_ms = now_ms + HA_CLIENT_PENDING_RESPONSE_TIMEOUT_MS;
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool ha_client_pending_response_take_locked(
+    uint32_t msg_id, ha_client_response_cb_t *out_cb, void **out_user)
+{
+    if (msg_id == 0U) {
+        return false;
+    }
+    for (size_t i = 0; i < HA_CLIENT_PENDING_RESPONSE_MAX; i++) {
+        ha_client_pending_response_slot_t *s = &s_pending_responses[i];
+        if (s->msg_id == msg_id) {
+            if (out_cb != NULL) {
+                *out_cb = s->cb;
+            }
+            if (out_user != NULL) {
+                *out_user = s->user;
+            }
+            s->msg_id = 0U;
+            s->cb = NULL;
+            s->user = NULL;
+            s->expires_unix_ms = 0;
+            return true;
+        }
+    }
+    return false;
+}
+
+static void ha_client_pending_response_expire_all(bool invoke_callbacks)
+{
+    ha_client_response_cb_t cbs[HA_CLIENT_PENDING_RESPONSE_MAX] = {0};
+    void *users[HA_CLIENT_PENDING_RESPONSE_MAX] = {0};
+    size_t fired = 0;
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    for (size_t i = 0; i < HA_CLIENT_PENDING_RESPONSE_MAX; i++) {
+        ha_client_pending_response_slot_t *s = &s_pending_responses[i];
+        if (s->msg_id != 0U) {
+            if (invoke_callbacks && s->cb != NULL) {
+                cbs[fired] = s->cb;
+                users[fired] = s->user;
+                fired++;
+            }
+            s->msg_id = 0U;
+            s->cb = NULL;
+            s->user = NULL;
+            s->expires_unix_ms = 0;
+        }
+    }
+    s_client.call_response_req_inflight = false;
+    s_client.call_response_req_id = 0;
+    xSemaphoreGive(s_client.mutex);
+    for (size_t i = 0; i < fired; i++) {
+        cbs[i](false, NULL, users[i]);
+    }
+}
+
 static esp_err_t ha_client_send_json(cJSON *obj)
 {
     char *payload = cJSON_PrintUnformatted(obj);
@@ -3926,6 +4113,31 @@ static void ha_client_energy_parse_prefs_locked(cJSON *result)
     {
         const char *type = ha_client_json_string(source, "type");
         if (strcmp(type, "grid") == 0) {
+            /* Grid sources expose their statistics via flow_from[] / flow_to[]
+             * arrays (HA 2022.4+), not as top-level stat_energy_from/to.
+             * Each array entry is an object with stat_energy_from or
+             * stat_energy_to set.  Multiple entries are allowed (e.g. for
+             * day/night tariffs) and must all be summed. */
+            cJSON *flow_from = cJSON_GetObjectItemCaseSensitive(source, "flow_from");
+            if (cJSON_IsArray(flow_from)) {
+                cJSON *entry = NULL;
+                cJSON_ArrayForEach(entry, flow_from) {
+                    ha_client_energy_add_ref_locked(
+                        HA_ENERGY_STAT_GRID_FROM,
+                        ha_client_json_string(entry, "stat_energy_from"), NULL);
+                }
+            }
+            cJSON *flow_to = cJSON_GetObjectItemCaseSensitive(source, "flow_to");
+            if (cJSON_IsArray(flow_to)) {
+                cJSON *entry = NULL;
+                cJSON_ArrayForEach(entry, flow_to) {
+                    ha_client_energy_add_ref_locked(
+                        HA_ENERGY_STAT_GRID_TO,
+                        ha_client_json_string(entry, "stat_energy_to"), NULL);
+                }
+            }
+            /* Legacy fallback: older HA versions placed the stat IDs on the
+             * source object directly.  Still honored for compatibility. */
             ha_client_energy_add_ref_locked(
                 HA_ENERGY_STAT_GRID_FROM, ha_client_json_string(source, "stat_energy_from"), NULL);
             ha_client_energy_add_ref_locked(
@@ -3947,6 +4159,23 @@ static void ha_client_energy_parse_prefs_locked(cJSON *result)
                 ha_client_json_string(source, "stat_energy_from"),
                 ha_client_json_string(source, "unit_of_measurement"));
         }
+    }
+
+    /* Trace the parsed refs so we can diagnose mismatched stat IDs (e.g. if
+     * the user renamed a sensor in HA after configuring the energy page). */
+    for (uint8_t i = 0; i < s_client.energy_stat_ref_count; i++) {
+        const ha_energy_stat_ref_t *ref = &s_client.energy_stat_refs[i];
+        const char *kind = "?";
+        switch (ref->kind) {
+        case HA_ENERGY_STAT_GRID_FROM:    kind = "grid_from"; break;
+        case HA_ENERGY_STAT_GRID_TO:      kind = "grid_to"; break;
+        case HA_ENERGY_STAT_SOLAR:        kind = "solar"; break;
+        case HA_ENERGY_STAT_BATTERY_FROM: kind = "battery_from"; break;
+        case HA_ENERGY_STAT_BATTERY_TO:   kind = "battery_to"; break;
+        case HA_ENERGY_STAT_GAS:          kind = "gas"; break;
+        case HA_ENERGY_STAT_WATER:        kind = "water"; break;
+        }
+        ESP_LOGI(TAG_HA_CLIENT, "  energy stat[%u] %s = %s", (unsigned)i, kind, ref->id);
     }
 }
 
@@ -5052,7 +5281,25 @@ static void ha_client_handle_result_message(cJSON *root)
         }
         s_client.next_initial_layout_sync_unix_ms = retry_at;
     }
+    ha_client_response_cb_t pending_cb = NULL;
+    void *pending_cb_user = NULL;
+    bool has_pending_response = ha_client_pending_response_take_locked(
+        msg_id, &pending_cb, &pending_cb_user);
+    if (has_pending_response && s_client.call_response_req_id == msg_id) {
+        /* Heavy roundtrip done — arm the cooldown so the next heavy send
+         * (ours or someone else's) leaves a gap for the TLS receive path. */
+        ha_client_ws_send_gate_mark_heavy_done_locked(ha_client_now_ms());
+        s_client.call_response_req_inflight = false;
+        s_client.call_response_req_id = 0;
+    }
     xSemaphoreGive(s_client.mutex);
+
+    if (has_pending_response && pending_cb != NULL) {
+        bool ok = cJSON_IsBool(success_item) && cJSON_IsTrue(success_item);
+        cJSON *result_obj = ok ? cJSON_GetObjectItemCaseSensitive(root, "result") : NULL;
+        pending_cb(ok, result_obj, pending_cb_user);
+    }
+
 
     if (is_entities_sub) {
         if (entities_sub_failed) {
@@ -5735,6 +5982,7 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
             s_client.light_discovery_req_id = 0;
         }
         xSemaphoreGive(s_client.mutex);
+        ha_client_pending_response_expire_all(true);
         if (ws_session_age_ms > 0 && ws_session_age_ms < HA_WS_SHORT_SESSION_MS) {
             ESP_LOGW(TAG_HA_CLIENT,
                 "Short WS session detected (%" PRId64 " ms), strike=%u/%u",
@@ -7243,6 +7491,36 @@ bool ha_client_is_initial_sync_done(void)
     return done;
 }
 
+bool ha_client_get_http_context(ha_client_http_ctx_t *out)
+{
+    if (out == NULL) return false;
+    memset(out, 0, sizeof(*out));
+
+    char ws_url[APP_HA_WS_URL_MAX_LEN] = {0};
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    safe_copy_cstr(ws_url, sizeof(ws_url), s_client.ws_url);
+    safe_copy_cstr(out->bearer_token, sizeof(out->bearer_token), s_client.access_token);
+    xSemaphoreGive(s_client.mutex);
+
+    if (ws_url[0] == '\0') return false;
+
+    if (!ha_client_build_http_request_context(ws_url, out->base_url, sizeof(out->base_url), out->host_header,
+            sizeof(out->host_header), out->cert_common_name, sizeof(out->cert_common_name))) {
+        return false;
+    }
+    return out->base_url[0] != '\0';
+}
+
+bool ha_client_heavy_gate_is_busy(void)
+{
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    int64_t now_ms = esp_timer_get_time() / 1000;
+    bool busy = ha_client_heavy_in_flight_locked() ||
+                (now_ms < s_client.heavy_ws_gate_next_allowed_unix_ms);
+    xSemaphoreGive(s_client.mutex);
+    return busy;
+}
+
 esp_err_t ha_client_get_domain_entities_json(const char *domain, const char *search, bool refresh, char **out_json)
 {
     if (out_json == NULL) {
@@ -7485,4 +7763,117 @@ esp_err_t ha_client_call_service(const char *domain, const char *service, const 
     ha_client_trace_service_sent(req_id, err);
     cJSON_Delete(root);
     return err;
+}
+
+esp_err_t ha_client_call_service_with_response(
+    const char *domain,
+    const char *service,
+    const char *target_entity_id,
+    const char *json_service_data,
+    ha_client_response_cb_t cb,
+    void *user)
+{
+    if (domain == NULL || service == NULL || domain[0] == '\0' || service[0] == '\0' || cb == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!ha_client_is_connected()) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    int64_t now_ms = ha_client_now_ms();
+    /* Gate: treat as HEAVY so we don't pile on top of weather/energy/
+     * discovery roundtrips and blow up the TLS receive path. */
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    bool gate_ok = ha_client_ws_send_gate_ok_locked(HA_WS_SEND_HEAVY, now_ms);
+    xSemaphoreGive(s_client.mutex);
+    if (!gate_ok) {
+        return ESP_ERR_INVALID_STATE; /* caller retries later */
+    }
+
+    ha_client_mark_ws_priority_boost(now_ms);
+
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+    uint32_t req_id = ha_client_next_message_id();
+    cJSON_AddNumberToObject(root, "id", (double)req_id);
+    cJSON_AddStringToObject(root, "type", "call_service");
+    cJSON_AddStringToObject(root, "domain", domain);
+    cJSON_AddStringToObject(root, "service", service);
+    cJSON_AddBoolToObject(root, "return_response", true);
+
+    if (target_entity_id != NULL && target_entity_id[0] != '\0') {
+        cJSON *target = cJSON_CreateObject();
+        if (target == NULL) {
+            cJSON_Delete(root);
+            return ESP_ERR_NO_MEM;
+        }
+        cJSON_AddStringToObject(target, "entity_id", target_entity_id);
+        cJSON_AddItemToObject(root, "target", target);
+    }
+
+    if (json_service_data != NULL && json_service_data[0] != '\0') {
+        cJSON *sd = cJSON_Parse(json_service_data);
+        if (sd != NULL && cJSON_IsObject(sd)) {
+            cJSON_AddItemToObject(root, "service_data", sd);
+        } else if (sd != NULL) {
+            cJSON_Delete(sd);
+        }
+    }
+
+    bool registered = false;
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    registered = ha_client_pending_response_register_locked(req_id, cb, user, ha_client_now_ms());
+    if (registered) {
+        s_client.call_response_req_inflight = true;
+        s_client.call_response_req_id = req_id;
+    }
+    xSemaphoreGive(s_client.mutex);
+    if (!registered) {
+        cJSON_Delete(root);
+        ESP_LOGW(TAG_HA_CLIENT, "call_service_with_response: no free response slot");
+        return ESP_ERR_NO_MEM;
+    }
+
+    esp_err_t err = ha_client_send_json(root);
+    cJSON_Delete(root);
+    if (err != ESP_OK) {
+        /* Clean up slot if send failed so the caller's cb is not leaked. */
+        ha_client_response_cb_t evicted_cb = NULL;
+        void *evicted_user = NULL;
+        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+        ha_client_pending_response_take_locked(req_id, &evicted_cb, &evicted_user);
+        if (s_client.call_response_req_id == req_id) {
+            s_client.call_response_req_inflight = false;
+            s_client.call_response_req_id = 0;
+        }
+        xSemaphoreGive(s_client.mutex);
+        if (evicted_cb != NULL) {
+            evicted_cb(false, NULL, evicted_user);
+        }
+    }
+    return err;
+}
+
+void ha_client_cancel_pending_responses_for_user(void *user)
+{
+    if (user == NULL || s_client.mutex == NULL) {
+        return;
+    }
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    for (size_t i = 0; i < HA_CLIENT_PENDING_RESPONSE_MAX; i++) {
+        ha_client_pending_response_slot_t *s = &s_pending_responses[i];
+        if (s->msg_id != 0U && s->user == user) {
+            if (s_client.call_response_req_id == s->msg_id) {
+                s_client.call_response_req_inflight = false;
+                s_client.call_response_req_id = 0;
+            }
+            s->msg_id = 0U;
+            s->cb = NULL;
+            s->user = NULL;
+            s->expires_unix_ms = 0;
+        }
+    }
+    xSemaphoreGive(s_client.mutex);
 }

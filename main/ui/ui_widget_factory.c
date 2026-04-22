@@ -38,6 +38,14 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 void w_weather_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_weather_tile_mark_unavailable(ui_widget_instance_t *instance);
 
+esp_err_t w_todo_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
+void w_todo_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
+void w_todo_mark_unavailable(ui_widget_instance_t *instance);
+
+esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
+void w_media_player_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
+void w_media_player_mark_unavailable(ui_widget_instance_t *instance);
+
 esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance)
 {
     if (def == NULL || parent == NULL || out_instance == NULL) {
@@ -87,6 +95,12 @@ esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent,
     if (strcmp(def->type, "weather_tile") == 0 || strcmp(def->type, "weather_3day") == 0) {
         return w_weather_tile_create(def, parent, out_instance);
     }
+    if (strcmp(def->type, "todo_list") == 0) {
+        return w_todo_create(def, parent, out_instance);
+    }
+    if (strcmp(def->type, "media_player") == 0) {
+        return w_media_player_create(def, parent, out_instance);
+    }
     return ESP_ERR_NOT_SUPPORTED;
 }
 
@@ -111,6 +125,10 @@ void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_stat
         w_heating_tile_apply_state(instance, state);
     } else if (strcmp(instance->type, "weather_tile") == 0 || strcmp(instance->type, "weather_3day") == 0) {
         w_weather_tile_apply_state(instance, state);
+    } else if (strcmp(instance->type, "todo_list") == 0) {
+        w_todo_apply_state(instance, state);
+    } else if (strcmp(instance->type, "media_player") == 0) {
+        w_media_player_apply_state(instance, state);
     }
 }
 
@@ -135,5 +153,9 @@ void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance)
         w_heating_tile_mark_unavailable(instance);
     } else if (strcmp(instance->type, "weather_tile") == 0 || strcmp(instance->type, "weather_3day") == 0) {
         w_weather_tile_mark_unavailable(instance);
+    } else if (strcmp(instance->type, "todo_list") == 0) {
+        w_todo_mark_unavailable(instance);
+    } else if (strcmp(instance->type, "media_player") == 0) {
+        w_media_player_mark_unavailable(instance);
     }
 }
