@@ -202,6 +202,12 @@ typedef struct {
     uint16_t entities_sub_sent_count;
     uint16_t entities_sub_seen_count;
     int64_t next_entities_subscribe_unix_ms;
+    /* Watchdog: timestamp at which the last subscribe_entities request was
+     * placed on the wire.  If the stream hasn't delivered `added` payloads
+     * for every entity within HA_WS_ENTITIES_SUBSCRIBE_COMPLETION_TIMEOUT_MS
+     * after that, we force-complete the initial sync so a missing/renamed
+     * entity can never brick the panel forever. 0 = not armed. */
+    int64_t entities_sub_all_sent_unix_ms;
     char *entities_sub_targets;
     uint32_t *entities_sub_req_ids;
     char *entities_sub_seen;
@@ -386,6 +392,16 @@ static const bool HA_WS_ESCALATE_RECOVER_WHEN_WIFI_UP = false;
  * queue, not about TLS heap pressure.  150 ms paces ~6 subscribes/s which
  * the esp_websocket_client TX path handles comfortably. */
 static const int64_t HA_WS_ENTITIES_SUBSCRIBE_STEP_DELAY_MS = 150;
+/* Max time after the final subscribe_entities step to wait for the HA
+ * entities stream to deliver an `added` payload for every subscribed
+ * entity.  If a requested entity doesn't exist (e.g. renamed/deleted in
+ * HA) the stream will simply never include it, so without this watchdog
+ * initial_layout_sync_done would stay false forever and every heavy-gated
+ * call (todo.get_items, weather forecast, energy stats batches, …) would
+ * be blocked indefinitely.  5 s is well beyond the observed end-to-end
+ * latency (~100 ms per entity) and small enough that the user only sees
+ * a brief "loading" flicker on a broken layout. */
+static const int64_t HA_WS_ENTITIES_SUBSCRIBE_COMPLETION_TIMEOUT_MS = 5000;
 static const int64_t HA_LIGHT_DISCOVERY_WS_STABLE_DELAY_MS = 45000;
 static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_STABLE_DELAY_MS = 12000;
 static const int64_t HA_LIGHT_DISCOVERY_PAGE_STEP_DELAY_MS = 700;
@@ -1035,6 +1051,7 @@ static uint16_t ha_client_prepare_entities_resubscribe_locked(int64_t now_ms)
     s_client.entities_sub_target_count = target_count;
     s_client.entities_sub_sent_count = 0;
     s_client.entities_sub_seen_count = 0;
+    s_client.entities_sub_all_sent_unix_ms = 0;
     s_client.next_entities_subscribe_unix_ms = now_ms;
     s_client.sub_state_via_entities = false;
     s_client.entities_sub_req_id = 0;
@@ -4583,6 +4600,7 @@ static esp_err_t ha_client_send_subscribe_layout_state_trigger(void)
         s_client.entities_sub_target_count = 0;
         s_client.entities_sub_sent_count = 0;
         s_client.entities_sub_seen_count = 0;
+        s_client.entities_sub_all_sent_unix_ms = 0;
         s_client.next_entities_subscribe_unix_ms = 0;
         ha_client_clear_entities_sub_buffers();
         xSemaphoreGive(s_client.mutex);
@@ -4678,6 +4696,7 @@ static esp_err_t ha_client_send_subscribe_state_changed(void)
         s_client.entities_sub_target_count = 0;
         s_client.entities_sub_sent_count = 0;
         s_client.entities_sub_seen_count = 0;
+        s_client.entities_sub_all_sent_unix_ms = 0;
         s_client.next_entities_subscribe_unix_ms = 0;
         ha_client_clear_entities_sub_buffers();
         xSemaphoreGive(s_client.mutex);
@@ -5268,6 +5287,7 @@ static void ha_client_handle_result_message(cJSON *root)
         s_client.entities_sub_target_count = 0;
         s_client.entities_sub_sent_count = 0;
         s_client.entities_sub_seen_count = 0;
+        s_client.entities_sub_all_sent_unix_ms = 0;
         ha_client_clear_entities_sub_buffers();
         s_client.pending_subscribe = APP_HA_SUBSCRIBE_STATE_CHANGED;
         entities_sub_failed = true;
@@ -5891,6 +5911,7 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         s_client.entities_sub_target_count = 0;
         s_client.entities_sub_sent_count = 0;
         s_client.entities_sub_seen_count = 0;
+        s_client.entities_sub_all_sent_unix_ms = 0;
         s_client.next_entities_subscribe_unix_ms = 0;
         ha_client_clear_entities_sub_buffers();
         s_client.ping_inflight = false;
@@ -5949,6 +5970,7 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         s_client.entities_sub_target_count = 0;
         s_client.entities_sub_sent_count = 0;
         s_client.entities_sub_seen_count = 0;
+        s_client.entities_sub_all_sent_unix_ms = 0;
         s_client.next_entities_subscribe_unix_ms = 0;
         ha_client_clear_entities_sub_buffers();
         s_client.ping_inflight = false;
@@ -6074,6 +6096,7 @@ static void ha_client_task(void *arg)
         uint16_t entities_sub_target_count = 0;
         uint16_t entities_sub_sent_count = 0;
         int64_t next_entities_subscribe_unix_ms = 0;
+        int64_t entities_sub_all_sent_unix_ms = 0;
         uint32_t pending_pong_id = 0;
         uint32_t initial_layout_sync_index = 0;
         uint32_t initial_layout_sync_imported = 0;
@@ -6144,6 +6167,7 @@ static void ha_client_task(void *arg)
         entities_sub_target_count = s_client.entities_sub_target_count;
         entities_sub_sent_count = s_client.entities_sub_sent_count;
         next_entities_subscribe_unix_ms = s_client.next_entities_subscribe_unix_ms;
+        entities_sub_all_sent_unix_ms = s_client.entities_sub_all_sent_unix_ms;
         initial_layout_sync_index = s_client.initial_layout_sync_index;
         initial_layout_sync_imported = s_client.initial_layout_sync_imported;
         periodic_layout_sync_cursor = s_client.periodic_layout_sync_cursor;
@@ -6660,6 +6684,10 @@ static void ha_client_task(void *arg)
                             s_client.pending_subscribe =
                                 (s_client.entities_sub_sent_count < s_client.entities_sub_target_count);
                             s_client.next_entities_subscribe_unix_ms = now_ms + HA_WS_ENTITIES_SUBSCRIBE_STEP_DELAY_MS;
+                            /* Arm the completion watchdog once the final step went out. */
+                            if (s_client.entities_sub_sent_count >= s_client.entities_sub_target_count) {
+                                s_client.entities_sub_all_sent_unix_ms = now_ms;
+                            }
                             xSemaphoreGive(s_client.mutex);
                             ESP_LOGI(TAG_HA_CLIENT, "WS subscribe_entities step %u/%u: %s",
                                 (unsigned)sent_after, (unsigned)target_after, entity_id);
@@ -6684,6 +6712,88 @@ static void ha_client_task(void *arg)
                     s_client.get_states_req_id = 0;
                 }
                 xSemaphoreGive(s_client.mutex);
+            }
+        }
+        /* Watchdog: if all subscribe_entities steps have gone out but the
+         * HA entities stream hasn't delivered an `added` payload for every
+         * entity within the timeout, force-complete the initial sync so
+         * heavy-gated requests (todo.get_items, weather forecast,
+         * energy stats, ...) stop waiting forever.  This typically means
+         * one of the subscribed entities doesn't exist in HA (renamed,
+         * deleted, typo in the layout).  We log every missing entity so
+         * the user can fix the layout. */
+        if (connected && authenticated && sub_state_via_entities &&
+            !initial_layout_sync_done && entities_sub_target_count > 0 &&
+            entities_sub_sent_count >= entities_sub_target_count &&
+            entities_sub_all_sent_unix_ms > 0 &&
+            (now_ms - entities_sub_all_sent_unix_ms) >= HA_WS_ENTITIES_SUBSCRIBE_COMPLETION_TIMEOUT_MS) {
+            bool watchdog_fired = false;
+            uint16_t seen_local = 0;
+            uint16_t target_local = 0;
+            char missing[8][APP_MAX_ENTITY_ID_LEN];
+            uint16_t missing_count = 0;
+            uint16_t missing_total = 0;
+            bool queue_weather_bootstrap = false;
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            if (!s_client.initial_layout_sync_done &&
+                s_client.entities_sub_all_sent_unix_ms > 0 &&
+                s_client.entities_sub_sent_count >= s_client.entities_sub_target_count &&
+                (now_ms - s_client.entities_sub_all_sent_unix_ms) >=
+                    HA_WS_ENTITIES_SUBSCRIBE_COMPLETION_TIMEOUT_MS) {
+                seen_local = s_client.entities_sub_seen_count;
+                target_local = s_client.entities_sub_target_count;
+                for (uint16_t ti = 0; ti < target_local && ti < HA_WS_ENTITIES_SUB_MAX; ti++) {
+                    const char *target = ha_client_entities_sub_target_at(ti);
+                    if (target == NULL || target[0] == '\0') {
+                        continue;
+                    }
+                    bool found = false;
+                    for (uint16_t si = 0; si < seen_local && si < HA_WS_ENTITIES_SUB_MAX; si++) {
+                        const char *seen = ha_client_entities_sub_seen_at(si);
+                        if (seen != NULL &&
+                            strncmp(seen, target, APP_MAX_ENTITY_ID_LEN) == 0) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        missing_total++;
+                        if (missing_count < (uint16_t)(sizeof(missing) / sizeof(missing[0]))) {
+                            safe_copy_cstr(missing[missing_count], APP_MAX_ENTITY_ID_LEN, target);
+                            missing_count++;
+                        }
+                    }
+                }
+                s_client.pending_initial_layout_sync = false;
+                s_client.pending_get_states = false;
+                s_client.get_states_req_id = 0;
+                s_client.initial_layout_sync_done = true;
+                s_client.initial_layout_sync_imported = seen_local;
+                s_client.entities_sub_all_sent_unix_ms = 0;
+                if (!s_client.rest_enabled && s_client.layout_needs_weather_forecast) {
+                    queue_weather_bootstrap = true;
+                }
+                watchdog_fired = true;
+            }
+            xSemaphoreGive(s_client.mutex);
+            if (watchdog_fired) {
+                ESP_LOGW(TAG_HA_CLIENT,
+                    "Initial sync watchdog: forcing done after %lld ms (seen=%u/%u, missing=%u). "
+                    "Heavy-gated requests were blocked; check the layout for renamed/deleted entities.",
+                    (long long)(now_ms - entities_sub_all_sent_unix_ms),
+                    (unsigned)seen_local, (unsigned)target_local, (unsigned)missing_total);
+                for (uint16_t i = 0; i < missing_count; i++) {
+                    ESP_LOGW(TAG_HA_CLIENT, "  missing entity (not in HA): %s", missing[i]);
+                }
+                if (missing_total > missing_count) {
+                    ESP_LOGW(TAG_HA_CLIENT, "  (+%u more missing entities not listed)",
+                        (unsigned)(missing_total - missing_count));
+                }
+                if (queue_weather_bootstrap) {
+                    ha_client_queue_weather_priority_sync_from_layout(now_ms);
+                }
+                ha_client_publish_event(EV_HA_CONNECTED, NULL);
+                initial_layout_sync_done = true;
             }
         }
         if (connected && authenticated && !rest_enabled && !sub_state_via_entities && APP_HA_FETCH_INITIAL_STATES &&
@@ -7026,6 +7136,7 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
     s_client.entities_sub_target_count = 0;
     s_client.entities_sub_sent_count = 0;
     s_client.entities_sub_seen_count = 0;
+    s_client.entities_sub_all_sent_unix_ms = 0;
     s_client.next_entities_subscribe_unix_ms = 0;
     ha_client_clear_entities_sub_buffers();
     s_client.pending_pong_id = 0;
@@ -7193,6 +7304,7 @@ void ha_client_stop(void)
     s_client.entities_sub_target_count = 0;
     s_client.entities_sub_sent_count = 0;
     s_client.entities_sub_seen_count = 0;
+    s_client.entities_sub_all_sent_unix_ms = 0;
     s_client.next_entities_subscribe_unix_ms = 0;
     ha_client_clear_entities_sub_buffers();
     s_client.pending_pong_id = 0;
@@ -7359,6 +7471,7 @@ esp_err_t ha_client_notify_layout_updated(void)
             s_client.entities_sub_target_count = target_count;
             s_client.entities_sub_sent_count = 0;
             s_client.entities_sub_seen_count = 0;
+            s_client.entities_sub_all_sent_unix_ms = 0;
             s_client.next_entities_subscribe_unix_ms = now_ms;
             s_client.sub_state_via_entities = false;
             s_client.entities_sub_req_id = 0;
