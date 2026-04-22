@@ -758,6 +758,13 @@ static bool weather_has_lottie_for_key(const char *key)
     return false;
 }
 
+static lv_coord_t weather_pick_lottie_size(lv_obj_t *card, const w_weather_tile_ctx_t *ctx)
+{
+    LV_UNUSED(card);
+    LV_UNUSED(ctx);
+    return 0;
+}
+
 static void weather_hide_lottie(w_weather_tile_ctx_t *ctx)
 {
     LV_UNUSED(ctx);
