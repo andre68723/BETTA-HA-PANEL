@@ -116,6 +116,28 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Weather Forecast tile",
     itemsFallback: "weather entities",
   },
+  todo_list: {
+    domain: "todo",
+    titleKey: "entity_picker.title_todo",
+    blankKey: "entity_picker.blank_todo",
+    widgetKey: "entity_picker.widget_todo",
+    itemsKey: "entity_picker.items_todo",
+    titleFallback: "Choose Todo List",
+    blankFallback: "Blank Todo List Tile",
+    widgetFallback: "Todo List tile",
+    itemsFallback: "todo lists",
+  },
+  media_player: {
+    domain: "media_player",
+    titleKey: "entity_picker.title_media_player",
+    blankKey: "entity_picker.blank_media_player",
+    widgetKey: "entity_picker.widget_media_player",
+    itemsKey: "entity_picker.items_media_player",
+    titleFallback: "Choose Media Player",
+    blankFallback: "Blank Media Player Tile",
+    widgetFallback: "Media Player tile",
+    itemsFallback: "media players",
+  },
   graph: {
     domain: "sensor",
     titleKey: "entity_picker.title_sensor",
@@ -222,6 +244,8 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_heating_tile": "+ Heating Tile",
     "layout.widgets.add_weather_tile": "+ Weather",
     "layout.widgets.add_weather_3day": "+ Weather Forecast",
+    "layout.widgets.add_todo": "+ Todo List",
+    "layout.widgets.add_media_player": "+ Media Player",
     "layout.widgets.quick_setup": "Quick Setup",
     "layout.widgets.delete": "Delete Widget",
     "entity_picker.title": "Choose Light",
@@ -534,6 +558,8 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_heating_tile": "+ Heating Tile",
     "layout.widgets.add_weather_tile": "+ Weather",
     "layout.widgets.add_weather_3day": "+ Wetter Vorhersage",
+    "layout.widgets.add_todo": "+ Todo Liste",
+    "layout.widgets.add_media_player": "+ Media Player",
     "layout.widgets.quick_setup": "Quick Setup",
     "layout.widgets.delete": "Widget loeschen",
     "entity_picker.title": "Licht auswaehlen",
@@ -1254,6 +1280,10 @@ function widgetSizeLimits(type) {
       return { minW: 220, minH: 200, maxW: 480, maxH: 480 };
     case "weather_3day":
       return { minW: 260, minH: 220, maxW: 640, maxH: 480 };
+    case "todo_list":
+      return { minW: 220, minH: 200, maxW: 640, maxH: 640 };
+    case "media_player":
+      return { minW: 260, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     default:
       return fallback;
   }
@@ -1395,6 +1425,8 @@ const el = {
   addHeatingTileBtn: document.getElementById("addHeatingTileBtn"),
   addWeatherTileBtn: document.getElementById("addWeatherTileBtn"),
   addWeather3DayBtn: document.getElementById("addWeather3DayBtn"),
+  addTodoListBtn: document.getElementById("addTodoListBtn"),
+  addMediaPlayerBtn: document.getElementById("addMediaPlayerBtn"),
   deleteWidgetBtn: document.getElementById("deleteWidgetBtn"),
   reloadBtn: document.getElementById("reloadBtn"),
   saveBtn: document.getElementById("saveBtn"),
@@ -1899,6 +1931,8 @@ function applyWebTranslations() {
   setTextById("addHeatingTileBtn", "layout.widgets.add_heating_tile");
   setTextById("addWeatherTileBtn", "layout.widgets.add_weather_tile");
   setTextById("addWeather3DayBtn", "layout.widgets.add_weather_3day");
+  setTextById("addTodoListBtn", "layout.widgets.add_todo");
+  setTextById("addMediaPlayerBtn", "layout.widgets.add_media_player");
   setTextById("deleteWidgetBtn", "layout.widgets.delete");
   setTextById("lightEntityPickerTitle", "entity_picker.title");
   setTextById("lightEntityPickerRefreshBtn", "entity_picker.refresh");
@@ -3095,6 +3129,8 @@ function allowedEntityDomainsForWidgetType(
   if (type === "light_tile") return ["light"];
   if (type === "heating_tile") return ["climate"];
   if (type === "weather_tile" || type === "weather_3day") return ["weather"];
+  if (type === "todo_list") return ["todo"];
+  if (type === "media_player") return ["media_player"];
   if (type === "slider") {
     const normalized = normalizeSliderEntityDomain(sliderDomain);
     if (normalized === "auto") {
@@ -4027,6 +4063,8 @@ function renderWidgets() {
     el.addHeatingTileBtn,
     el.addWeatherTileBtn,
     el.addWeather3DayBtn,
+    el.addTodoListBtn,
+    el.addMediaPlayerBtn,
   ];
   for (const button of addButtons) {
     if (button) button.disabled = energyPage;
@@ -4826,10 +4864,14 @@ function addWidget(type, options = {}) {
   const secondaryEntityId = type === "heating_tile" ? pickDefaultEntityForWidgetType("sensor") : "";
   const defaultW =
     type === "weather_3day" ? 360
+      : type === "todo_list" ? 360
+      : type === "media_player" ? 360
       : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 300
       : 220;
   const defaultH =
     type === "weather_3day" ? 260
+      : type === "todo_list" ? 360
+      : type === "media_player" ? 280
       : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 260
       : 120;
   const rect = clampRectToCanvas({ x: 20, y: 20, w: defaultW, h: defaultH }, type);
@@ -5098,6 +5140,12 @@ function bindUi() {
   el.addHeatingTileBtn.onclick = () => openLightEntityPicker("heating_tile");
   el.addWeatherTileBtn.onclick = () => openLightEntityPicker("weather_tile");
   el.addWeather3DayBtn.onclick = () => openLightEntityPicker("weather_3day");
+  if (el.addTodoListBtn) {
+    el.addTodoListBtn.onclick = () => openLightEntityPicker("todo_list");
+  }
+  if (el.addMediaPlayerBtn) {
+    el.addMediaPlayerBtn.onclick = () => openLightEntityPicker("media_player");
+  }
   if (el.lightEntityPickerRefreshBtn) {
     el.lightEntityPickerRefreshBtn.onclick = () => {
       const config = entityPickerConfig();
