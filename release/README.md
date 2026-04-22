@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk -->
 ## Getting Started
-- Download the latest factory image: [betta86-ha-panel-v0.7.1.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.7.1.factory.bin)
+- Download the latest factory image: [betta86-ha-panel-v0.8.0-panel4.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.8.0-panel4.factory.bin)
 - Flash it with esptool or with a web flasher of your choice, for example: https://espressif.github.io/esptool-js/
 - Use the outer USB-C port on the Smart86 Box for flashing.
 - Choose baud rate `115200`.
