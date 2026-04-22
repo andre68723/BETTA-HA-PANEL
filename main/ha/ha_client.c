@@ -6781,7 +6781,22 @@ static void ha_client_task(void *arg)
             bool watchdog_fired = false;
             uint16_t seen_local = 0;
             uint16_t target_local = 0;
-            char missing[HA_MISSING_ENTITIES_REPORT_MAX][APP_MAX_ENTITY_ID_LEN];
+            /* The per-name buffer (~1.5 KB for 16 × 96 B) is too big for the
+             * HA client task stack, especially combined with TLS/WS work
+             * further down the call chain -- it has caused stack-overflow
+             * panics inside snprintf.  Allocate from the heap (PSRAM is
+             * preferred; fall back to any available pool) and gracefully
+             * degrade to "no names logged" if even that fails. */
+            char (*missing)[APP_MAX_ENTITY_ID_LEN] = heap_caps_malloc(
+                (size_t)HA_MISSING_ENTITIES_REPORT_MAX * APP_MAX_ENTITY_ID_LEN,
+                MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+            if (missing == NULL) {
+                missing = heap_caps_malloc(
+                    (size_t)HA_MISSING_ENTITIES_REPORT_MAX * APP_MAX_ENTITY_ID_LEN,
+                    MALLOC_CAP_8BIT);
+            }
+            const uint16_t missing_cap = (missing != NULL)
+                ? (uint16_t)HA_MISSING_ENTITIES_REPORT_MAX : 0;
             uint16_t missing_count = 0;
             uint16_t missing_total = 0;
             bool queue_weather_bootstrap = false;
@@ -6809,7 +6824,7 @@ static void ha_client_task(void *arg)
                     }
                     if (!found) {
                         missing_total++;
-                        if (missing_count < (uint16_t)(sizeof(missing) / sizeof(missing[0]))) {
+                        if (missing_count < missing_cap) {
                             safe_copy_cstr(missing[missing_count], APP_MAX_ENTITY_ID_LEN, target);
                             missing_count++;
                         }
@@ -6852,6 +6867,9 @@ static void ha_client_task(void *arg)
                 }
                 ha_client_publish_event(EV_HA_CONNECTED, NULL);
                 initial_layout_sync_done = true;
+            }
+            if (missing != NULL) {
+                heap_caps_free(missing);
             }
         }
         if (connected && authenticated && !rest_enabled && !sub_state_via_entities && APP_HA_FETCH_INITIAL_STATES &&

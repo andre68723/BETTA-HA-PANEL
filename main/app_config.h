@@ -99,7 +99,7 @@
 #define APP_HA_LIGHT_DISCOVERY_PAGE_SIZE 24
 
 #define APP_HA_QUEUE_LENGTH 96
-#define APP_HA_TASK_STACK 10240
+#define APP_HA_TASK_STACK 12288
 #define APP_HA_TASK_PRIO 8
 
 /* Keep pre-language behavior for light commands (explicit no-fade). */
