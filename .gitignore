@@ -3,7 +3,10 @@
 .vscode/
 build/
 build_*/
+build-panel*/
 lvgl_design/
+sdkconfig
+sdkconfig.panel*
 sdkconfig.old
 managed_components/
 tools/
