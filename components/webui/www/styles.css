@@ -399,7 +399,7 @@ textarea {
 .workspace {
   padding: 18px;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   gap: 12px;
   min-height: 0;
 }
@@ -419,6 +419,70 @@ textarea {
 .status {
   font-size: 12px;
   color: var(--muted);
+}
+
+.ha-diagnostics-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 8px 0 4px;
+  background: #3a2a14;
+  border: 1px solid #b8741f;
+  border-left-width: 4px;
+  border-radius: 4px;
+  color: #f3d9a8;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.ha-diagnostics-banner[hidden] {
+  display: none;
+}
+.ha-diagnostics-banner__icon {
+  font-size: 20px;
+  line-height: 1;
+  color: #f0b04a;
+  flex: 0 0 auto;
+  padding-top: 1px;
+}
+.ha-diagnostics-banner__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ha-diagnostics-banner__title {
+  font-weight: 600;
+  color: #ffe0b8;
+  margin-bottom: 4px;
+}
+.ha-diagnostics-banner__list {
+  margin: 4px 0;
+  padding-left: 18px;
+  font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: #ffd699;
+  word-break: break-all;
+}
+.ha-diagnostics-banner__list li {
+  margin: 1px 0;
+}
+.ha-diagnostics-banner__hint {
+  color: #e7c590;
+  opacity: 0.85;
+  font-size: 12px;
+}
+.ha-diagnostics-banner__close {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 0;
+  color: #f3d9a8;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.ha-diagnostics-banner__close:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .workspace-body {

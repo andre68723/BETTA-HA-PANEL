@@ -64,6 +64,10 @@ typedef enum {
 #define HA_WS_ENTITIES_SUB_MAX HA_LAYOUT_ENTITY_MAX
 #define HA_WS_ENTITIES_SUB_ID_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * (size_t)APP_MAX_ENTITY_ID_LEN)
 #define HA_WS_ENTITIES_SUB_REQ_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * sizeof(uint32_t))
+/* Upper bound on how many missing-entity names the client remembers for
+ * reporting to the web editor via /api/ha/diagnostics.  The watchdog still
+ * counts and logs all of them; only the first N get stored by entity_id. */
+#define HA_MISSING_ENTITIES_REPORT_MAX 16
 #define HA_SVC_TRACE_CAPACITY 48U
 #define HA_ENERGY_STAT_REF_MAX 16U
 /* Energy statistics are daily kWh aggregates that tick slowly.
@@ -208,6 +212,14 @@ typedef struct {
      * after that, we force-complete the initial sync so a missing/renamed
      * entity can never brick the panel forever. 0 = not armed. */
     int64_t entities_sub_all_sent_unix_ms;
+    /* Snapshot of entities that the watchdog identified as missing in HA
+     * (never produced an `added` payload).  Exposed via the HTTP API so the
+     * web editor can flag broken widgets to the user.  Count can exceed
+     * HA_MISSING_ENTITIES_REPORT_MAX; the array only stores the first N. */
+    int64_t missing_entities_updated_unix_ms;
+    uint16_t missing_entities_total;
+    uint16_t missing_entities_count;
+    char missing_entities[HA_MISSING_ENTITIES_REPORT_MAX][APP_MAX_ENTITY_ID_LEN];
     char *entities_sub_targets;
     uint32_t *entities_sub_req_ids;
     char *entities_sub_seen;
@@ -411,6 +423,15 @@ static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_FREE_BYTES = (180U * 1024U);
 static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_LARGEST_BYTES = (80U * 1024U);
 static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES = (120U * 1024U);
 static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES = (48U * 1024U);
+/* User-priority escalation: when the user is actively waiting for an entity picker
+ * result, the standard heap thresholds above can leave the request stuck for minutes
+ * because periodic background work (todo.get_items, energy sync, ping) keeps internal
+ * heap just below the template threshold. After this delay, relax the thresholds so
+ * the queued discovery can run. Values chosen so that a healthy idle panel with
+ * ~100-115 KiB free internal heap and ~48-56 KiB largest block can still proceed. */
+static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_WAIT_ESCALATE_MS = 8000;
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_FREE_BYTES = (96U * 1024U);
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_LARGEST_BYTES = (40U * 1024U);
 /* Internal heap on ESP32-P4 can be low in normal operation due to DMA/internal reservations.
    Tune thresholds to avoid permanent "protect" on healthy WS-only idle. */
 static const size_t HA_BG_HEAP_PRESSURE_BYTES = (12U * 1024U);
@@ -5562,6 +5583,10 @@ static void ha_client_handle_event_message(cJSON *root)
             if (!s_client.rest_enabled && s_client.layout_needs_weather_forecast) {
                 queue_weather_bootstrap = true;
             }
+            /* Clean sync completion -> no missing entities to report. */
+            s_client.missing_entities_total = 0;
+            s_client.missing_entities_count = 0;
+            s_client.missing_entities_updated_unix_ms = now_ms;
             mark_initial_done = true;
         }
         xSemaphoreGive(s_client.mutex);
@@ -6133,6 +6158,7 @@ static void ha_client_task(void *arg)
         char light_discovery_domain[APP_HA_DISCOVERY_DOMAIN_MAX_LEN] = {0};
         int64_t light_discovery_next_step_unix_ms = 0;
         int64_t light_discovery_last_wait_log_unix_ms = 0;
+        int64_t light_discovery_started_unix_ms = 0;
         uint16_t light_discovery_template_offset = 0;
         size_t free_internal = 0;
         size_t ws_q_used = 0;
@@ -6204,6 +6230,7 @@ static void ha_client_task(void *arg)
             ha_client_discovery_domain_or_default(s_client.light_discovery_domain));
         light_discovery_next_step_unix_ms = s_client.light_discovery_next_step_unix_ms;
         light_discovery_last_wait_log_unix_ms = s_client.light_discovery_last_wait_log_unix_ms;
+        light_discovery_started_unix_ms = s_client.light_discovery_started_unix_ms;
         light_discovery_template_offset = s_client.light_discovery_template_offset;
         if (connected && authenticated && wifi_up) {
             if (ping_inflight && (now_ms - ping_sent_unix_ms) >= ha_client_ping_timeout_ms()) {
@@ -6547,6 +6574,21 @@ static void ha_client_task(void *arg)
                 light_discovery_phase == HA_LIGHT_DISCOVERY_PHASE_TEMPLATE) {
                 size_t largest_internal = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
                 int64_t ws_age_ms = (ws_last_connected_unix_ms > 0) ? (now_ms - ws_last_connected_unix_ms) : 0;
+                /* Priority escalation: if the user has been waiting on this discovery
+                 * for more than HA_LIGHT_DISCOVERY_TEMPLATE_USER_WAIT_ESCALATE_MS, relax
+                 * the heap thresholds so the request can proceed even while periodic
+                 * background work keeps internal heap just below the normal floor. */
+                int64_t discovery_wait_ms = (light_discovery_started_unix_ms > 0)
+                    ? (now_ms - light_discovery_started_unix_ms)
+                    : 0;
+                bool discovery_user_priority =
+                    discovery_wait_ms >= HA_LIGHT_DISCOVERY_TEMPLATE_USER_WAIT_ESCALATE_MS;
+                size_t required_free_internal = discovery_user_priority
+                    ? HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_FREE_BYTES
+                    : HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES;
+                size_t required_largest_internal = discovery_user_priority
+                    ? HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_LARGEST_BYTES
+                    : HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES;
                 bool discovery_template_stable = !pending_subscribe &&
                     !pending_get_states &&
                     !ping_inflight &&
@@ -6557,13 +6599,21 @@ static void ha_client_task(void *arg)
                     ws_q_used == 0 &&
                     ws_last_connected_unix_ms > 0 &&
                     ws_age_ms >= HA_LIGHT_DISCOVERY_TEMPLATE_STABLE_DELAY_MS &&
-                    free_internal >= HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES &&
-                    largest_internal >= HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES &&
+                    free_internal >= required_free_internal &&
+                    largest_internal >= required_largest_internal &&
                     now_ms >= light_discovery_next_step_unix_ms;
                 if (discovery_template_stable) {
                     uint16_t page_size = APP_HA_LIGHT_DISCOVERY_PAGE_SIZE;
                     if (page_size == 0 || page_size > APP_HA_LIGHT_DISCOVERY_MAX_ITEMS) {
                         page_size = APP_HA_LIGHT_DISCOVERY_MAX_ITEMS;
+                    }
+                    if (discovery_user_priority) {
+                        ESP_LOGI(TAG_HA_CLIENT,
+                            "Entity discovery user-priority: domain=%s running after %" PRId64 " ms wait (int_free=%u int_largest=%u)",
+                            light_discovery_domain,
+                            discovery_wait_ms,
+                            (unsigned)free_internal,
+                            (unsigned)largest_internal);
                     }
                     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
                     s_client.light_discovery_last_wait_log_unix_ms = 0;
@@ -6586,18 +6636,19 @@ static void ha_client_task(void *arg)
                     } else if (ws_last_connected_unix_ms == 0 ||
                                ws_age_ms < HA_LIGHT_DISCOVERY_TEMPLATE_STABLE_DELAY_MS) {
                         reason = "ws_grace";
-                    } else if (free_internal < HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES) {
-                        reason = "internal_heap";
-                    } else if (largest_internal < HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES) {
-                        reason = "internal_block";
+                    } else if (free_internal < required_free_internal) {
+                        reason = discovery_user_priority ? "internal_heap_priority" : "internal_heap";
+                    } else if (largest_internal < required_largest_internal) {
+                        reason = discovery_user_priority ? "internal_block_priority" : "internal_block";
                     } else if (now_ms < light_discovery_next_step_unix_ms) {
                         reason = "page_delay";
                     }
                     ESP_LOGI(TAG_HA_CLIENT,
-                        "Entity discovery waiting: domain=%s reason=%s ws_age=%" PRId64 " ms int_free=%u int_largest=%u ws_q=%u initial_done=%u",
+                        "Entity discovery waiting: domain=%s reason=%s ws_age=%" PRId64 " ms wait=%" PRId64 " ms int_free=%u int_largest=%u ws_q=%u initial_done=%u",
                         light_discovery_domain,
                         reason,
                         ws_age_ms,
+                        discovery_wait_ms,
                         (unsigned)free_internal,
                         (unsigned)largest_internal,
                         (unsigned)ws_q_used,
@@ -6730,7 +6781,7 @@ static void ha_client_task(void *arg)
             bool watchdog_fired = false;
             uint16_t seen_local = 0;
             uint16_t target_local = 0;
-            char missing[8][APP_MAX_ENTITY_ID_LEN];
+            char missing[HA_MISSING_ENTITIES_REPORT_MAX][APP_MAX_ENTITY_ID_LEN];
             uint16_t missing_count = 0;
             uint16_t missing_total = 0;
             bool queue_weather_bootstrap = false;
@@ -6772,6 +6823,13 @@ static void ha_client_task(void *arg)
                 s_client.entities_sub_all_sent_unix_ms = 0;
                 if (!s_client.rest_enabled && s_client.layout_needs_weather_forecast) {
                     queue_weather_bootstrap = true;
+                }
+                /* Publish the missing-entity snapshot for the web editor. */
+                s_client.missing_entities_total = missing_total;
+                s_client.missing_entities_count = missing_count;
+                s_client.missing_entities_updated_unix_ms = now_ms;
+                for (uint16_t i = 0; i < missing_count; i++) {
+                    safe_copy_cstr(s_client.missing_entities[i], APP_MAX_ENTITY_ID_LEN, missing[i]);
                 }
                 watchdog_fired = true;
             }
@@ -7602,6 +7660,29 @@ bool ha_client_is_initial_sync_done(void)
         xSemaphoreGive(s_client.mutex);
     }
     return done;
+}
+
+void ha_client_get_diagnostics(ha_client_diagnostics_t *out)
+{
+    if (out == NULL) {
+        return;
+    }
+    memset(out, 0, sizeof(*out));
+    if (s_client.mutex == NULL) {
+        return;
+    }
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    out->updated_unix_ms = s_client.missing_entities_updated_unix_ms;
+    out->total = s_client.missing_entities_total;
+    uint16_t listed = s_client.missing_entities_count;
+    if (listed > HA_DIAGNOSTICS_MISSING_ENTITIES_CAP) {
+        listed = HA_DIAGNOSTICS_MISSING_ENTITIES_CAP;
+    }
+    out->listed = listed;
+    for (uint16_t i = 0; i < listed; i++) {
+        safe_copy_cstr(out->names[i], APP_MAX_ENTITY_ID_LEN, s_client.missing_entities[i]);
+    }
+    xSemaphoreGive(s_client.mutex);
 }
 
 bool ha_client_get_http_context(ha_client_http_ctx_t *out)

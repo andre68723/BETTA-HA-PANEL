@@ -35,6 +35,7 @@ idf_component_register(
         "api/api_screenshot.c"
         "api/api_ota.c"
         "api/api_theme.c"
+        "api/api_ha_diagnostics.c"
         ${PANEL_DRIVER_SRCS}
         "ha/ha_client.c"
         "ha/ha_ws.c"

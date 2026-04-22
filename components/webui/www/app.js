@@ -460,6 +460,10 @@ const WEB_I18N_BUILTIN = {
     "status.settings_loaded": "Settings loaded",
     "status.settings_load_failed": "Settings load failed: {error}",
     "status.settings_save_failed": "Settings save failed: {error}",
+    "ha_diagnostics.missing_title": "Some entities in this layout were not found in Home Assistant",
+    "ha_diagnostics.missing_title_more": "Some entities in this layout were not found in Home Assistant ({total} total, showing {listed})",
+    "ha_diagnostics.missing_hint": "Open the affected widget, pick a valid entity and save the layout.",
+    "ha_diagnostics.dismiss": "Dismiss",
     "status.saving_settings": "Saving settings...",
     "status.settings_saved_reboot": "Settings saved. Device reboots in ~2s. Reconnect and reopen the panel URL.",
     "status.wifi_scan_running": "Scanning Wi-Fi...",
@@ -776,6 +780,10 @@ const WEB_I18N_BUILTIN = {
     "status.settings_loaded": "Einstellungen geladen",
     "status.settings_load_failed": "Einstellungen laden fehlgeschlagen: {error}",
     "status.settings_save_failed": "Einstellungen speichern fehlgeschlagen: {error}",
+    "ha_diagnostics.missing_title": "Einige Entitäten aus diesem Layout wurden in Home Assistant nicht gefunden",
+    "ha_diagnostics.missing_title_more": "Einige Entitäten aus diesem Layout wurden in Home Assistant nicht gefunden ({total} insgesamt, {listed} angezeigt)",
+    "ha_diagnostics.missing_hint": "Öffne das betroffene Widget, wähle eine gültige Entität und speichere das Layout.",
+    "ha_diagnostics.dismiss": "Schließen",
     "status.saving_settings": "Einstellungen werden gespeichert...",
     "status.settings_saved_reboot": "Einstellungen gespeichert. Das Geraet startet in ~2s neu.",
     "status.wifi_scan_running": "WLAN Suche laeuft...",
@@ -1325,6 +1333,7 @@ const editor = {
   editorStarted: false,
   settings: null,
   appVersion: "",
+  haDiagnostics: { total: 0, listed: 0, updatedUnixMs: 0, names: [], dismissedSignature: "" },
   wifiScanItems: [],
   wifiScanHasRun: false,
   wifiScanInProgress: false,
@@ -1387,6 +1396,11 @@ const el = {
   canvas: document.getElementById("canvas"),
   canvasTitle: document.getElementById("canvasTitle"),
   status: document.getElementById("status"),
+  haDiagnosticsBanner: document.getElementById("haDiagnosticsBanner"),
+  haDiagnosticsTitle: document.getElementById("haDiagnosticsTitle"),
+  haDiagnosticsList: document.getElementById("haDiagnosticsList"),
+  haDiagnosticsHint: document.getElementById("haDiagnosticsHint"),
+  haDiagnosticsDismiss: document.getElementById("haDiagnosticsDismiss"),
   pagesSection: document.getElementById("pagesSection"),
   widgetsSection: document.getElementById("widgetsSection"),
   inspectorSection: document.getElementById("inspectorSection"),
@@ -1803,6 +1817,71 @@ async function loadAppVersion() {
     editor.appVersion = "";
   }
   renderAppVersion();
+}
+
+async function loadHaDiagnostics() {
+  try {
+    const payload = await apiGet("/api/ha/diagnostics");
+    if (!payload || typeof payload !== "object") return;
+    const names = Array.isArray(payload.missing_entities)
+      ? payload.missing_entities.filter((n) => typeof n === "string")
+      : [];
+    editor.haDiagnostics.total = Number(payload.missing_total) || 0;
+    editor.haDiagnostics.listed = Number(payload.missing_listed) || names.length;
+    editor.haDiagnostics.updatedUnixMs = Number(payload.updated_unix_ms) || 0;
+    editor.haDiagnostics.names = names;
+  } catch (_) {
+    /* keep previous state */
+  }
+  renderHaDiagnosticsBanner();
+}
+
+function haDiagnosticsSignature() {
+  const d = editor.haDiagnostics;
+  if (!d || !d.total) return "";
+  const names = Array.isArray(d.names) ? [...d.names].sort().join("|") : "";
+  return `${d.total}:${names}`;
+}
+
+function renderHaDiagnosticsBanner() {
+  const banner = el.haDiagnosticsBanner;
+  if (!banner) return;
+  const d = editor.haDiagnostics;
+  const signature = haDiagnosticsSignature();
+  if (!d || !d.total || !signature) {
+    banner.hidden = true;
+    return;
+  }
+  if (d.dismissedSignature && d.dismissedSignature === signature) {
+    banner.hidden = true;
+    return;
+  }
+  if (el.haDiagnosticsTitle) {
+    if (d.total > d.listed && d.listed > 0) {
+      el.haDiagnosticsTitle.textContent = t("ha_diagnostics.missing_title_more", {
+        total: d.total,
+        listed: d.listed,
+      });
+    } else {
+      el.haDiagnosticsTitle.textContent = t("ha_diagnostics.missing_title");
+    }
+  }
+  if (el.haDiagnosticsHint) {
+    el.haDiagnosticsHint.textContent = t("ha_diagnostics.missing_hint");
+  }
+  if (el.haDiagnosticsDismiss) {
+    el.haDiagnosticsDismiss.setAttribute("aria-label", t("ha_diagnostics.dismiss"));
+    el.haDiagnosticsDismiss.title = t("ha_diagnostics.dismiss");
+  }
+  if (el.haDiagnosticsList) {
+    el.haDiagnosticsList.innerHTML = "";
+    for (const name of Array.isArray(d.names) ? d.names : []) {
+      const li = document.createElement("li");
+      li.textContent = name;
+      el.haDiagnosticsList.appendChild(li);
+    }
+  }
+  banner.hidden = false;
 }
 
 function applyCanvasGeometry(payload) {
@@ -5126,9 +5205,6 @@ function bindUi() {
   for (const button of el.settingsNavButtons || []) {
     button.onclick = () => setActiveSettingsSection(button.dataset.settingsSection);
   }
-  if (el.togglePagesSection) {
-    el.togglePagesSection.onclick = () => toggleSection("pages");
-  }
   if (el.toggleWidgetsSection) {
     el.toggleWidgetsSection.onclick = () => toggleSection("widgets");
   }
@@ -5646,11 +5722,19 @@ async function startEditor() {
   setActivePane("layout");
   await Promise.all([loadLayout(), loadEntities(), refreshStates()]);
   await loadEnergyPreview();
+  await loadHaDiagnostics();
   if (setupWizardShouldAutoOpen()) {
     openSetupWizard();
   }
+  /* Poll diagnostics again shortly after startup so the banner appears automatically
+   * once the ha_client watchdog has classified the missing entities (typically ~5-8 s
+   * after WebSocket auth). Further refreshes are less frequent. */
+  window.setTimeout(loadHaDiagnostics, 3000);
+  window.setTimeout(loadHaDiagnostics, 8000);
+  window.setTimeout(loadHaDiagnostics, 15000);
   window.setInterval(refreshStates, 5000);
   window.setInterval(loadEnergyPreview, 15000);
+  window.setInterval(loadHaDiagnostics, 30000);
 }
 
 async function bootstrap() {

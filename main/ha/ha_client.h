@@ -4,9 +4,12 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "esp_err.h"
 #include "cJSON.h"
+
+#include "app_config.h"
 
 /* Callback invoked from the WS RX task context when a response for a request
  * issued via ha_client_call_service_with_response() arrives. `result_payload`
@@ -67,3 +70,25 @@ bool ha_client_get_http_context(ha_client_http_ctx_t *out);
  * background sync) must poll this and defer their own TLS traffic while it
  * returns true so the UI/WS path always has priority on the TLS engine. */
 bool ha_client_heavy_gate_is_busy(void);
+
+/* Diagnostic snapshot produced by the initial-sync watchdog.  When one or
+ * more entities in the current layout don't exist in Home Assistant (e.g.
+ * renamed, deleted, typo), the watchdog force-completes the sync after a
+ * timeout and records them here for reporting through /api/ha/diagnostics.
+ *
+ * `names` contains up to `HA_DIAGNOSTICS_MISSING_ENTITIES_CAP` entity IDs
+ * (remaining `total - listed` names are dropped).  `updated_unix_ms` is
+ * 0 until the watchdog has produced a snapshot at least once.  `total`
+ * drops back to 0 once a clean sync completes (user fixed the typo). */
+#define HA_DIAGNOSTICS_MISSING_ENTITIES_CAP 16
+
+typedef struct {
+    int64_t updated_unix_ms;
+    uint16_t total;   /* Total missing count (may exceed `listed`). */
+    uint16_t listed;  /* Number of entries actually populated in `names`. */
+    char names[HA_DIAGNOSTICS_MISSING_ENTITIES_CAP][APP_MAX_ENTITY_ID_LEN];
+} ha_client_diagnostics_t;
+
+/* Fill `out` with the current diagnostics snapshot.  Safe to call from any
+ * task; the implementation takes an internal mutex briefly. */
+void ha_client_get_diagnostics(ha_client_diagnostics_t *out);

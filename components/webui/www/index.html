@@ -497,6 +497,19 @@
         <h2 id="canvasTitle">Canvas</h2>
         <div id="status" class="status">Idle</div>
       </div>
+      <div id="haDiagnosticsBanner" class="ha-diagnostics-banner" hidden>
+        <div class="ha-diagnostics-banner__icon" aria-hidden="true">&#9888;</div>
+        <div class="ha-diagnostics-banner__body">
+          <div class="ha-diagnostics-banner__title" id="haDiagnosticsTitle">
+            Some entities in this layout were not found in Home Assistant
+          </div>
+          <ul class="ha-diagnostics-banner__list" id="haDiagnosticsList"></ul>
+          <div class="ha-diagnostics-banner__hint" id="haDiagnosticsHint">
+            Open the affected widget, pick a valid entity and save the layout.
+          </div>
+        </div>
+        <button type="button" class="ha-diagnostics-banner__close" id="haDiagnosticsDismiss" aria-label="Dismiss">&times;</button>
+      </div>
       <div class="workspace-body">
         <div class="canvas-wrap">
           <div id="canvas" class="canvas"></div>
