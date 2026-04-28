@@ -427,10 +427,12 @@ static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES = (48
  * result, the standard heap thresholds above can leave the request stuck for minutes
  * because periodic background work (todo.get_items, energy sync, ping) keeps internal
  * heap just below the template threshold. After this delay, relax the thresholds so
- * the queued discovery can run. Values chosen so that a healthy idle panel with
- * ~100-115 KiB free internal heap and ~48-56 KiB largest block can still proceed. */
+ * the queued discovery can run. Newer high-information pages keep more LVGL
+ * objects alive, so a healthy panel can idle around 75-85 KiB internal heap
+ * while still having enough PSRAM and contiguous internal space for the small
+ * template-page request. */
 static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_WAIT_ESCALATE_MS = 8000;
-static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_FREE_BYTES = (96U * 1024U);
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_FREE_BYTES = (72U * 1024U);
 static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_LARGEST_BYTES = (40U * 1024U);
 /* Internal heap on ESP32-P4 can be low in normal operation due to DMA/internal reservations.
    Tune thresholds to avoid permanent "protect" on healthy WS-only idle. */
@@ -1317,7 +1319,9 @@ static bool ha_client_discovery_domain_supported(const char *domain)
            strcmp(domain, "weather") == 0 ||
            strcmp(domain, "climate") == 0 ||
            strcmp(domain, "todo") == 0 ||
-           strcmp(domain, "media_player") == 0;
+           strcmp(domain, "media_player") == 0 ||
+           strcmp(domain, "vacuum") == 0 ||
+           strcmp(domain, "image") == 0;
 }
 
 static const char *ha_client_discovery_domain_or_default(const char *domain)
@@ -1372,6 +1376,14 @@ static bool ha_client_entity_is_media_player(const char *entity_id)
         return false;
     }
     return strncmp(entity_id, "media_player.", 13) == 0;
+}
+
+static bool ha_client_entity_is_image(const char *entity_id)
+{
+    if (entity_id == NULL) {
+        return false;
+    }
+    return strncmp(entity_id, "image.", 6) == 0;
 }
 
 static bool ha_client_json_string_value(cJSON *obj, const char *key, char *dst, size_t dst_size)
@@ -2483,6 +2495,142 @@ static bool ha_client_serialize_light_attrs_compact(cJSON *src_attrs, char *out_
         if (effect_marker != NULL) {
             cJSON_AddItemToObject(compact, "effect_list", effect_marker);
             any = true;
+        }
+    }
+
+    if (!any) {
+        cJSON_Delete(compact);
+        return false;
+    }
+
+    char *compact_json = cJSON_PrintUnformatted(compact);
+    cJSON_Delete(compact);
+    if (compact_json == NULL) {
+        return false;
+    }
+
+    size_t len = strlen(compact_json);
+    bool fits = (len < out_json_size);
+    if (fits) {
+        memcpy(out_json, compact_json, len + 1U);
+    }
+    cJSON_free(compact_json);
+    return fits;
+}
+
+static bool ha_client_serialize_image_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size)
+{
+    if (!cJSON_IsObject(src_attrs) || out_json == NULL || out_json_size == 0) {
+        return false;
+    }
+
+    cJSON *compact = cJSON_CreateObject();
+    if (compact == NULL) {
+        return false;
+    }
+
+    bool any = false;
+    any |= ha_client_copy_attr_dup(compact, "entity_picture", src_attrs, "entity_picture");
+    any |= ha_client_copy_attr_dup(compact, "entity_picture_local", src_attrs, "entity_picture_local");
+    any |= ha_client_copy_attr_dup(compact, "access_token", src_attrs, "access_token");
+
+    cJSON *calibration_points = cJSON_GetObjectItemCaseSensitive(src_attrs, "calibration_points");
+    if (cJSON_IsArray(calibration_points)) {
+        cJSON *dst_points = cJSON_CreateArray();
+        if (dst_points != NULL) {
+            cJSON *src_point = NULL;
+            cJSON_ArrayForEach(src_point, calibration_points)
+            {
+                cJSON *vacuum = cJSON_GetObjectItemCaseSensitive(src_point, "vacuum");
+                cJSON *map = cJSON_GetObjectItemCaseSensitive(src_point, "map");
+                cJSON *vacuum_x = cJSON_IsObject(vacuum) ? cJSON_GetObjectItemCaseSensitive(vacuum, "x") : NULL;
+                cJSON *vacuum_y = cJSON_IsObject(vacuum) ? cJSON_GetObjectItemCaseSensitive(vacuum, "y") : NULL;
+                cJSON *map_x = cJSON_IsObject(map) ? cJSON_GetObjectItemCaseSensitive(map, "x") : NULL;
+                cJSON *map_y = cJSON_IsObject(map) ? cJSON_GetObjectItemCaseSensitive(map, "y") : NULL;
+                if (!cJSON_IsNumber(vacuum_x) || !cJSON_IsNumber(vacuum_y) ||
+                    !cJSON_IsNumber(map_x) || !cJSON_IsNumber(map_y)) {
+                    continue;
+                }
+
+                cJSON *dst_point = cJSON_CreateObject();
+                cJSON *dst_vacuum = cJSON_CreateObject();
+                cJSON *dst_map = cJSON_CreateObject();
+                if (dst_point == NULL || dst_vacuum == NULL || dst_map == NULL) {
+                    cJSON_Delete(dst_point);
+                    cJSON_Delete(dst_vacuum);
+                    cJSON_Delete(dst_map);
+                    continue;
+                }
+
+                cJSON_AddNumberToObject(dst_vacuum, "x", vacuum_x->valuedouble);
+                cJSON_AddNumberToObject(dst_vacuum, "y", vacuum_y->valuedouble);
+                cJSON_AddNumberToObject(dst_map, "x", map_x->valuedouble);
+                cJSON_AddNumberToObject(dst_map, "y", map_y->valuedouble);
+                cJSON_AddItemToObject(dst_point, "vacuum", dst_vacuum);
+                cJSON_AddItemToObject(dst_point, "map", dst_map);
+                cJSON_AddItemToArray(dst_points, dst_point);
+            }
+
+            if (cJSON_GetArraySize(dst_points) > 0) {
+                cJSON_AddItemToObject(compact, "calibration_points", dst_points);
+                any = true;
+            } else {
+                cJSON_Delete(dst_points);
+            }
+        }
+    }
+
+    cJSON *rooms = cJSON_GetObjectItemCaseSensitive(src_attrs, "rooms");
+    if (cJSON_IsObject(rooms)) {
+        cJSON *dst_rooms = cJSON_CreateObject();
+        if (dst_rooms != NULL) {
+            for (cJSON *room = rooms->child; room != NULL; room = room->next) {
+                if (room->string == NULL || room->string[0] == '\0' || !cJSON_IsObject(room)) {
+                    continue;
+                }
+
+                cJSON *x0 = cJSON_GetObjectItemCaseSensitive(room, "x0");
+                cJSON *y0 = cJSON_GetObjectItemCaseSensitive(room, "y0");
+                cJSON *x1 = cJSON_GetObjectItemCaseSensitive(room, "x1");
+                cJSON *y1 = cJSON_GetObjectItemCaseSensitive(room, "y1");
+                if (!cJSON_IsNumber(x0) || !cJSON_IsNumber(y0) ||
+                    !cJSON_IsNumber(x1) || !cJSON_IsNumber(y1)) {
+                    continue;
+                }
+
+                cJSON *dst_room = cJSON_CreateObject();
+                if (dst_room == NULL) {
+                    continue;
+                }
+                cJSON_AddNumberToObject(dst_room, "x0", x0->valuedouble);
+                cJSON_AddNumberToObject(dst_room, "y0", y0->valuedouble);
+                cJSON_AddNumberToObject(dst_room, "x1", x1->valuedouble);
+                cJSON_AddNumberToObject(dst_room, "y1", y1->valuedouble);
+
+                cJSON *name = cJSON_GetObjectItemCaseSensitive(room, "name");
+                if (cJSON_IsString(name) && name->valuestring != NULL && name->valuestring[0] != '\0') {
+                    cJSON_AddStringToObject(dst_room, "name", name->valuestring);
+                }
+
+                cJSON *iot_name = cJSON_GetObjectItemCaseSensitive(room, "iot_name");
+                if (cJSON_IsString(iot_name) && iot_name->valuestring != NULL && iot_name->valuestring[0] != '\0') {
+                    cJSON_AddStringToObject(dst_room, "iot_name", iot_name->valuestring);
+                }
+
+                cJSON *room_name = cJSON_GetObjectItemCaseSensitive(room, "room_name");
+                if (cJSON_IsString(room_name) && room_name->valuestring != NULL && room_name->valuestring[0] != '\0') {
+                    cJSON_AddStringToObject(dst_room, "room_name", room_name->valuestring);
+                }
+
+                cJSON_AddItemToObject(dst_rooms, room->string, dst_room);
+            }
+
+            if (dst_rooms->child != NULL) {
+                cJSON_AddItemToObject(compact, "rooms", dst_rooms);
+                any = true;
+            } else {
+                cJSON_Delete(dst_rooms);
+            }
         }
     }
 
@@ -4823,6 +4971,13 @@ static bool ha_client_import_state_object(cJSON *state_obj)
             }
         } else if (ha_client_entity_is_media_player(model_state.entity_id)) {
             serialized = ha_client_serialize_media_player_attrs_compact(
+                attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
+            if (!serialized) {
+                snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");
+                serialized = true;
+            }
+        } else if (ha_client_entity_is_image(model_state.entity_id)) {
+            serialized = ha_client_serialize_image_attrs_compact(
                 attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
             if (!serialized) {
                 snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");

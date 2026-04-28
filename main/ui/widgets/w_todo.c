@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
  *
- * Todo list widget.  Displays the items of a HA `todo.*` entity as a
- * scrollable list of checkboxes.  Items are pulled on demand via the
+ * Todo list widget. Displays the items of a HA `todo.*` entity as a
+ * touch-friendly scrollable list. Items are pulled on demand via the
  * `todo.get_items` service call (return_response=true) and periodically
- * refreshed.  Ticking / unticking a box fires `todo.update_item`.
+ * refreshed. Tapping a row toggles the item's completion state via
+ * `todo.update_item`.
  *
  * Adding or removing items is intentionally NOT supported from the panel –
  * that is expected to be driven via HA voice assist.
@@ -12,11 +13,13 @@
 #include "ui/ui_widget_factory.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "cJSON.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -37,8 +40,13 @@
 #define W_TODO_MAX_ITEMS 48
 #define W_TODO_UID_LEN 80
 #define W_TODO_SUMMARY_LEN 96
-#define W_TODO_REFRESH_PERIOD_MS 60000
+#define W_TODO_REFRESH_PERIOD_MS 300000
 #define W_TODO_REFRESH_AFTER_UPDATE_MS 800
+#define W_TODO_TICK_PERIOD_MS 1000
+#define W_TODO_ROW_H 58
+#define W_TODO_ROW_GAP 8
+#define W_TODO_BADGE_SIZE 34
+#define W_TODO_ROW_POOL 14
 
 typedef struct {
     char uid[W_TODO_UID_LEN];
@@ -51,6 +59,17 @@ typedef struct w_todo_ctx {
     lv_obj_t *title_label;
     lv_obj_t *status_label;
     lv_obj_t *list_container;
+    lv_obj_t *placeholder_label;
+    lv_obj_t *scroll_spacer;
+    lv_obj_t *rows[W_TODO_ROW_POOL];
+    lv_obj_t *row_badges[W_TODO_ROW_POOL];
+    lv_obj_t *row_badge_labels[W_TODO_ROW_POOL];
+    lv_obj_t *row_texts[W_TODO_ROW_POOL];
+    size_t row_bound_item_index1[W_TODO_ROW_POOL];
+    lv_coord_t row_bound_width[W_TODO_ROW_POOL];
+    bool row_bound_completed[W_TODO_ROW_POOL];
+    lv_coord_t scroll_spacer_width;
+    lv_coord_t scroll_spacer_total_h;
     char entity_id[APP_MAX_ENTITY_ID_LEN];
 
     /* Displayed items (accessed from LVGL context only). */
@@ -58,8 +77,11 @@ typedef struct w_todo_ctx {
     size_t display_item_count;
     bool unavailable;
     bool fetching;
+    int64_t fetch_started_unix_ms;
     int64_t last_fetch_unix_ms;
     int64_t next_fetch_unix_ms;
+    char last_entity_state[APP_MAX_STATE_LEN];
+    int64_t last_entity_state_changed_unix_ms;
 
     /* Staging slot filled by the WS response callback, drained by the
      * refresh timer which runs in LVGL task context. */
@@ -70,6 +92,7 @@ typedef struct w_todo_ctx {
     bool pending_failure;
 
     lv_timer_t *tick_timer;
+    bool scrolling;
     bool destroyed;
 } w_todo_ctx_t;
 
@@ -78,7 +101,51 @@ static int64_t w_todo_now_ms(void)
     return esp_timer_get_time() / 1000;
 }
 
+static lv_color_t w_todo_surface_fill(uint8_t mix)
+{
+    return lv_color_mix(lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BG), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), mix);
+}
+
+static lv_color_t w_todo_pressed_fill(lv_color_t color)
+{
+    return lv_color_brightness(color) > 127 ? lv_color_darken(color, 24) : lv_color_lighten(color, 24);
+}
+
+static lv_color_t w_todo_contrast_text(lv_color_t bg)
+{
+    return lv_color_brightness(bg) > 150 ? lv_color_hex(0x101418) : lv_color_hex(0xFFFFFF);
+}
+
 static void w_todo_request_items(w_todo_ctx_t *ctx);
+static void w_todo_render(w_todo_ctx_t *ctx);
+static void w_todo_update_status_label(w_todo_ctx_t *ctx);
+static void w_todo_layout_visible_rows(w_todo_ctx_t *ctx);
+
+static bool w_todo_is_visible(const w_todo_ctx_t *ctx)
+{
+    return ctx != NULL && ctx->card != NULL && lv_obj_is_visible(ctx->card);
+}
+
+static void *w_todo_calloc(size_t count, size_t size)
+{
+    void *ptr = heap_caps_calloc(count, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (ptr == NULL) {
+        ptr = calloc(count, size);
+    }
+    return ptr;
+}
+
+static void w_todo_reset_row_bindings(w_todo_ctx_t *ctx)
+{
+    if (ctx == NULL) {
+        return;
+    }
+    for (size_t i = 0; i < W_TODO_ROW_POOL; i++) {
+        ctx->row_bound_item_index1[i] = 0;
+        ctx->row_bound_width[i] = 0;
+        ctx->row_bound_completed[i] = false;
+    }
+}
 
 /* ----- Response callback (runs on HA WS RX task!) ----------------------- */
 static void w_todo_response_cb(bool success, cJSON *result, void *user)
@@ -91,7 +158,7 @@ static void w_todo_response_cb(bool success, cJSON *result, void *user)
     /* Keep the scratch buffer off the WS RX task stack — with
      * W_TODO_MAX_ITEMS=48 and ~180 bytes per entry we would otherwise
      * burn ~9 KB of stack every response. */
-    w_todo_item_t *parsed = calloc(W_TODO_MAX_ITEMS, sizeof(*parsed));
+    w_todo_item_t *parsed = w_todo_calloc(W_TODO_MAX_ITEMS, sizeof(*parsed));
     if (parsed == NULL) {
         ESP_LOGW(W_TODO_TAG, "get_items: out of memory staging %d items",
             (int)W_TODO_MAX_ITEMS);
@@ -179,28 +246,12 @@ static void w_todo_response_cb(bool success, cJSON *result, void *user)
             (int)success, (void *)result);
     }
 
-    /* Sort: open (needs_action) first, completed at the end.  HA's
-     * `todo.get_items` may return completed items first which, combined with
-     * a limited card height, hides the active ones below the fold.  Stable
-     * insertion sort keeps HA's relative order within each group. */
-    if (parsed_count > 1) {
-        for (size_t i = 1; i < parsed_count; i++) {
-            if (!parsed[i].completed) {
-                size_t j = i;
-                while (j > 0 && parsed[j - 1].completed) {
-                    w_todo_item_t tmp = parsed[j - 1];
-                    parsed[j - 1] = parsed[j];
-                    parsed[j] = tmp;
-                    j--;
-                }
-            }
-        }
-    }
-
     xSemaphoreTake(ctx->staging_mutex, portMAX_DELAY);
     if (!ctx->destroyed) {
-        memcpy(ctx->pending_items, parsed,
-            sizeof(ctx->pending_items[0]) * W_TODO_MAX_ITEMS);
+        if (parsed_count > 0) {
+            memcpy(ctx->pending_items, parsed,
+                sizeof(ctx->pending_items[0]) * parsed_count);
+        }
         ctx->pending_item_count = parsed_count;
         ctx->pending_valid = success && any_items_found;
         ctx->pending_failure = !success;
@@ -210,15 +261,412 @@ static void w_todo_response_cb(bool success, cJSON *result, void *user)
 }
 
 /* ----- UI rendering (LVGL context only) -------------------------------- */
-static void w_todo_clear_list(w_todo_ctx_t *ctx)
+static void w_todo_item_event_cb(lv_event_t *e);
+
+static bool w_todo_items_equal(const w_todo_item_t *a, const w_todo_item_t *b, size_t count)
+{
+    if (a == NULL || b == NULL) {
+        return false;
+    }
+    for (size_t i = 0; i < count; i++) {
+        if (a[i].completed != b[i].completed) {
+            return false;
+        }
+        if (strcmp(a[i].uid, b[i].uid) != 0) {
+            return false;
+        }
+        if (strcmp(a[i].summary, b[i].summary) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void w_todo_move_item(w_todo_ctx_t *ctx, size_t from, size_t to)
+{
+    if (ctx == NULL || from >= ctx->display_item_count || to >= ctx->display_item_count || from == to) {
+        return;
+    }
+
+    w_todo_item_t moved = ctx->display_items[from];
+    if (from < to) {
+        memmove(&ctx->display_items[from], &ctx->display_items[from + 1],
+            sizeof(ctx->display_items[0]) * (to - from));
+    } else {
+        memmove(&ctx->display_items[to + 1], &ctx->display_items[to],
+            sizeof(ctx->display_items[0]) * (from - to));
+    }
+    ctx->display_items[to] = moved;
+}
+
+static size_t w_todo_reposition_toggled_item(w_todo_ctx_t *ctx, size_t idx)
+{
+    if (ctx == NULL || idx >= ctx->display_item_count) {
+        return idx;
+    }
+
+    size_t target = idx;
+    if (ctx->display_items[idx].completed) {
+        while (target + 1 < ctx->display_item_count && !ctx->display_items[target + 1].completed) {
+            target++;
+        }
+    } else {
+        while (target > 0 && ctx->display_items[target - 1].completed) {
+            target--;
+        }
+    }
+
+    w_todo_move_item(ctx, idx, target);
+    return target;
+}
+
+static bool w_todo_find_item_index_by_uid(const w_todo_ctx_t *ctx, const char *uid, size_t *out_idx)
+{
+    if (ctx == NULL || uid == NULL || uid[0] == '\0' || out_idx == NULL) {
+        return false;
+    }
+
+    for (size_t i = 0; i < ctx->display_item_count; i++) {
+        if (strcmp(ctx->display_items[i].uid, uid) == 0) {
+            *out_idx = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+static void w_todo_style_item_row(lv_obj_t *row, bool completed)
+{
+    if (row == NULL) {
+        return;
+    }
+
+    lv_obj_t *badge = lv_obj_get_child(row, 0);
+    lv_obj_t *text = lv_obj_get_child(row, 1);
+    lv_obj_t *badge_label = (badge != NULL) ? lv_obj_get_child(badge, 0) : NULL;
+
+    lv_color_t row_bg = completed ? w_todo_surface_fill(172) : w_todo_surface_fill(228);
+    lv_color_t row_bg_pressed = w_todo_pressed_fill(row_bg);
+    lv_color_t row_border = completed ? lv_color_hex(APP_UI_COLOR_CARD_BORDER)
+                                      : lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER);
+    lv_color_t badge_bg = completed ? lv_color_hex(APP_UI_COLOR_OK) : w_todo_surface_fill(148);
+    lv_color_t badge_border = completed ? lv_color_hex(APP_UI_COLOR_OK)
+                                        : lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER);
+    lv_color_t badge_text = completed ? w_todo_contrast_text(badge_bg) : lv_color_hex(APP_UI_COLOR_TEXT_MUTED);
+
+    lv_obj_set_style_bg_color(row, row_bg, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(row, row_bg_pressed, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(row, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(row, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_border_width(row, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(row, 1, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_border_color(row, row_border, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(row, row_border, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_border_opa(row, LV_OPA_80, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(row, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_shadow_width(row, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(row, 0, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_outline_width(row, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_outline_width(row, 0, LV_PART_MAIN | LV_STATE_PRESSED);
+
+    if (badge != NULL) {
+        lv_obj_set_style_bg_color(badge, badge_bg, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(badge, completed ? LV_OPA_COVER : LV_OPA_70, LV_PART_MAIN);
+        lv_obj_set_style_border_width(badge, completed ? 0 : 1, LV_PART_MAIN);
+        lv_obj_set_style_border_color(badge, badge_border, LV_PART_MAIN);
+        lv_obj_set_style_border_opa(badge, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(badge, 0, LV_PART_MAIN);
+    }
+
+    if (badge_label != NULL) {
+        lv_label_set_text(badge_label, completed ? LV_SYMBOL_OK : "");
+        lv_obj_set_style_text_color(badge_label, badge_text, LV_PART_MAIN);
+    }
+
+    if (text != NULL) {
+        lv_obj_set_style_text_color(
+            text, completed ? theme_default_color_text_muted() : theme_default_color_text_primary(), LV_PART_MAIN);
+        lv_obj_set_style_text_decor(
+            text, completed ? LV_TEXT_DECOR_STRIKETHROUGH : LV_TEXT_DECOR_NONE, LV_PART_MAIN);
+    }
+}
+
+static lv_obj_t *w_todo_ensure_placeholder_label(w_todo_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->list_container == NULL) {
+        return NULL;
+    }
+    if (ctx->placeholder_label == NULL) {
+        lv_obj_t *lbl = lv_label_create(ctx->list_container);
+        lv_obj_set_width(lbl, LV_PCT(100));
+        lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_set_style_text_font(lbl, APP_FONT_TEXT_18, LV_PART_MAIN);
+        ctx->placeholder_label = lbl;
+    }
+    return ctx->placeholder_label;
+}
+
+static void w_todo_layout_placeholder(w_todo_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->list_container == NULL || ctx->placeholder_label == NULL) {
+        return;
+    }
+    lv_coord_t w = lv_obj_get_content_width(ctx->list_container);
+    if (w <= 0) {
+        w = lv_obj_get_width(ctx->list_container);
+    }
+    if (w < 40) {
+        w = 40;
+    }
+    lv_obj_set_width(ctx->placeholder_label, w);
+    lv_obj_center(ctx->placeholder_label);
+}
+
+static lv_obj_t *w_todo_ensure_scroll_spacer(w_todo_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->list_container == NULL) {
+        return NULL;
+    }
+    if (ctx->scroll_spacer != NULL) {
+        return ctx->scroll_spacer;
+    }
+
+    lv_obj_t *spacer = lv_obj_create(ctx->list_container);
+    lv_obj_remove_style_all(spacer);
+    lv_obj_clear_flag(spacer, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(spacer, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(spacer, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(spacer, 0, LV_PART_MAIN);
+    ctx->scroll_spacer = spacer;
+    return spacer;
+}
+
+static void w_todo_update_scroll_spacer(w_todo_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->list_container == NULL) {
         return;
     }
-    lv_obj_clean(ctx->list_container);
+    lv_obj_t *spacer = w_todo_ensure_scroll_spacer(ctx);
+    if (spacer == NULL) {
+        return;
+    }
+
+    if (ctx->display_item_count == 0) {
+        lv_obj_add_flag(spacer, LV_OBJ_FLAG_HIDDEN);
+        ctx->scroll_spacer_width = 0;
+        ctx->scroll_spacer_total_h = 0;
+        return;
+    }
+
+    lv_coord_t row_w = lv_obj_get_content_width(ctx->list_container);
+    if (row_w <= 0) {
+        row_w = lv_obj_get_width(ctx->list_container);
+    }
+    if (row_w < 1) {
+        row_w = 1;
+    }
+    lv_coord_t total_h = (lv_coord_t)(ctx->display_item_count * (W_TODO_ROW_H + W_TODO_ROW_GAP));
+    if (total_h > 0) {
+        total_h -= W_TODO_ROW_GAP;
+    }
+    if (total_h < 1) {
+        total_h = 1;
+    }
+
+    if (ctx->scroll_spacer_width != row_w || ctx->scroll_spacer_total_h != total_h) {
+        lv_obj_set_pos(spacer, 0, total_h - 1);
+        lv_obj_set_size(spacer, row_w, 1);
+        ctx->scroll_spacer_width = row_w;
+        ctx->scroll_spacer_total_h = total_h;
+    }
+    lv_obj_clear_flag(spacer, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_background(spacer);
 }
 
-static void w_todo_checkbox_event_cb(lv_event_t *e);
+static lv_obj_t *w_todo_ensure_row(w_todo_ctx_t *ctx, size_t slot)
+{
+    if (ctx == NULL || ctx->list_container == NULL || slot >= W_TODO_ROW_POOL) {
+        return NULL;
+    }
+    if (ctx->rows[slot] != NULL) {
+        return ctx->rows[slot];
+    }
+
+    lv_obj_t *row = lv_btn_create(ctx->list_container);
+    lv_obj_remove_style_all(row);
+    lv_obj_set_width(row, LV_PCT(100));
+    lv_obj_set_height(row, W_TODO_ROW_H);
+    lv_obj_set_style_radius(row, 12, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(row, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(row, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(row, w_todo_item_event_cb, LV_EVENT_CLICKED, ctx);
+
+    lv_obj_t *badge = lv_obj_create(row);
+    lv_obj_remove_style_all(badge);
+    lv_obj_set_size(badge, W_TODO_BADGE_SIZE, W_TODO_BADGE_SIZE);
+    lv_obj_set_style_radius(badge, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_clear_flag(badge, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(badge, LV_OBJ_FLAG_CLICKABLE);
+
+    lv_obj_t *badge_label = lv_label_create(badge);
+    lv_label_set_text(badge_label, "");
+    lv_obj_set_style_text_font(badge_label, LV_FONT_DEFAULT, LV_PART_MAIN);
+    lv_obj_center(badge_label);
+
+    lv_obj_t *text = lv_label_create(row);
+    lv_label_set_long_mode(text, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_font(text, APP_FONT_TEXT_18, LV_PART_MAIN);
+    lv_obj_set_style_text_align(text, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+
+    ctx->rows[slot] = row;
+    ctx->row_badges[slot] = badge;
+    ctx->row_badge_labels[slot] = badge_label;
+    ctx->row_texts[slot] = text;
+    return row;
+}
+
+static lv_coord_t w_todo_get_row_width(w_todo_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->list_container == NULL) {
+        return 120;
+    }
+    lv_coord_t row_w = lv_obj_get_content_width(ctx->list_container);
+    if (row_w <= 0) {
+        row_w = lv_obj_get_width(ctx->list_container);
+    }
+    if (row_w < 120) {
+        row_w = 120;
+    }
+    return row_w;
+}
+
+static void w_todo_layout_row(w_todo_ctx_t *ctx, size_t slot, size_t item_index, lv_coord_t row_w)
+{
+    if (ctx == NULL || slot >= W_TODO_ROW_POOL) {
+        return;
+    }
+    lv_obj_t *row = ctx->rows[slot];
+    lv_obj_t *badge = ctx->row_badges[slot];
+    lv_obj_t *text = ctx->row_texts[slot];
+    if (row == NULL || badge == NULL || text == NULL) {
+        return;
+    }
+
+    lv_obj_set_size(row, row_w, W_TODO_ROW_H);
+    lv_obj_set_pos(row, 0, (lv_coord_t)(item_index * (W_TODO_ROW_H + W_TODO_ROW_GAP)));
+    lv_coord_t badge_y = (W_TODO_ROW_H - W_TODO_BADGE_SIZE) / 2;
+    if (badge_y < 0) {
+        badge_y = 0;
+    }
+    lv_obj_set_pos(badge, 10, badge_y);
+
+    lv_coord_t text_x = 10 + W_TODO_BADGE_SIZE + 12;
+    lv_coord_t text_w = row_w - text_x - 14;
+    if (text_w < 32) {
+        text_w = 32;
+    }
+    const lv_font_t *text_font = lv_obj_get_style_text_font(text, LV_PART_MAIN);
+    lv_coord_t text_h = (text_font != NULL) ? (lv_coord_t)lv_font_get_line_height(text_font) : W_TODO_ROW_H;
+    if (text_h > W_TODO_ROW_H) {
+        text_h = W_TODO_ROW_H;
+    }
+    lv_coord_t text_y = (W_TODO_ROW_H - text_h) / 2;
+    if (text_y < 0) {
+        text_y = 0;
+    }
+    lv_obj_set_width(text, text_w);
+    lv_obj_set_height(text, text_h);
+    lv_obj_set_pos(text, text_x, text_y);
+}
+
+static void w_todo_layout_visible_rows(w_todo_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->list_container == NULL) {
+        return;
+    }
+
+    w_todo_update_scroll_spacer(ctx);
+
+    if (ctx->display_item_count == 0) {
+        for (size_t i = 0; i < W_TODO_ROW_POOL; i++) {
+            if (ctx->rows[i] != NULL) {
+                lv_obj_add_flag(ctx->rows[i], LV_OBJ_FLAG_HIDDEN);
+            }
+            ctx->row_bound_item_index1[i] = 0;
+            ctx->row_bound_width[i] = 0;
+        }
+        return;
+    }
+
+    lv_coord_t row_w = w_todo_get_row_width(ctx);
+    lv_coord_t scroll_y = lv_obj_get_scroll_y(ctx->list_container);
+    if (scroll_y < 0) {
+        scroll_y = 0;
+    }
+    lv_coord_t viewport_h = lv_obj_get_height(ctx->list_container);
+    if (viewport_h <= 0) {
+        viewport_h = W_TODO_ROW_H * 4;
+    }
+    const lv_coord_t row_step = W_TODO_ROW_H + W_TODO_ROW_GAP;
+    size_t first = (size_t)(scroll_y / row_step);
+    if (first > 0) {
+        first--;
+    }
+    if (first >= ctx->display_item_count) {
+        first = ctx->display_item_count - 1U;
+    }
+    size_t wanted = (size_t)(viewport_h / row_step) + 4U;
+    if (wanted > W_TODO_ROW_POOL) {
+        wanted = W_TODO_ROW_POOL;
+    }
+    if (wanted > ctx->display_item_count - first) {
+        wanted = ctx->display_item_count - first;
+    }
+
+    for (size_t slot = 0; slot < W_TODO_ROW_POOL; slot++) {
+        if (slot >= wanted) {
+            if (ctx->rows[slot] != NULL) {
+                lv_obj_add_flag(ctx->rows[slot], LV_OBJ_FLAG_HIDDEN);
+            }
+            ctx->row_bound_item_index1[slot] = 0;
+            ctx->row_bound_width[slot] = 0;
+            continue;
+        }
+
+        size_t item_index = first + slot;
+        if (item_index >= ctx->display_item_count) {
+            if (ctx->rows[slot] != NULL) {
+                lv_obj_add_flag(ctx->rows[slot], LV_OBJ_FLAG_HIDDEN);
+            }
+            ctx->row_bound_item_index1[slot] = 0;
+            ctx->row_bound_width[slot] = 0;
+            continue;
+        }
+        lv_obj_t *row = w_todo_ensure_row(ctx, slot);
+        if (row == NULL) {
+            continue;
+        }
+        const w_todo_item_t *it = &ctx->display_items[item_index];
+        size_t item_index1 = item_index + 1U;
+        bool binding_changed = ctx->row_bound_item_index1[slot] != item_index1;
+        bool completed_changed = binding_changed || ctx->row_bound_completed[slot] != it->completed;
+        if (binding_changed) {
+            lv_label_set_text(ctx->row_texts[slot], it->summary[0] != '\0' ? it->summary : it->uid);
+            lv_obj_set_user_data(row, (void *)(uintptr_t)item_index1);
+            ctx->row_bound_item_index1[slot] = item_index1;
+        }
+        if (completed_changed) {
+            w_todo_style_item_row(row, it->completed);
+            ctx->row_bound_completed[slot] = it->completed;
+        }
+        if (binding_changed || ctx->row_bound_width[slot] != row_w) {
+            w_todo_layout_row(ctx, slot, item_index, row_w);
+            ctx->row_bound_width[slot] = row_w;
+        }
+        lv_obj_clear_flag(row, LV_OBJ_FLAG_HIDDEN);
+    }
+}
 
 static void w_todo_render(w_todo_ctx_t *ctx)
 {
@@ -226,45 +674,61 @@ static void w_todo_render(w_todo_ctx_t *ctx)
         return;
     }
 
-    w_todo_clear_list(ctx);
-
     if (ctx->unavailable) {
-        lv_obj_t *lbl = lv_label_create(ctx->list_container);
-        lv_label_set_text(lbl, ui_i18n_get("common.unavailable", "unavailable"));
-        lv_obj_set_style_text_color(lbl, theme_default_color_text_muted(), LV_PART_MAIN);
-        lv_obj_set_style_text_font(lbl, APP_FONT_TEXT_20, LV_PART_MAIN);
+        lv_obj_t *lbl = w_todo_ensure_placeholder_label(ctx);
+        if (lbl != NULL) {
+            lv_label_set_text(lbl, ui_i18n_get("common.unavailable", "unavailable"));
+            lv_obj_set_style_text_color(lbl, theme_default_color_text_muted(), LV_PART_MAIN);
+            lv_obj_clear_flag(lbl, LV_OBJ_FLAG_HIDDEN);
+            w_todo_layout_placeholder(ctx);
+        }
+        if (ctx->scroll_spacer != NULL) {
+            lv_obj_add_flag(ctx->scroll_spacer, LV_OBJ_FLAG_HIDDEN);
+            ctx->scroll_spacer_width = 0;
+            ctx->scroll_spacer_total_h = 0;
+        }
+        for (size_t i = 0; i < W_TODO_ROW_POOL; i++) {
+            if (ctx->rows[i] != NULL) {
+                lv_obj_add_flag(ctx->rows[i], LV_OBJ_FLAG_HIDDEN);
+            }
+            ctx->row_bound_item_index1[i] = 0;
+            ctx->row_bound_width[i] = 0;
+        }
         return;
     }
 
     if (ctx->display_item_count == 0) {
-        lv_obj_t *lbl = lv_label_create(ctx->list_container);
-        const char *txt = ctx->last_fetch_unix_ms > 0
-            ? ui_i18n_get("todo.empty", "no open items")
-            : ui_i18n_get("todo.loading", "loading...");
-        lv_label_set_text(lbl, txt);
-        lv_obj_set_style_text_color(lbl, theme_default_color_text_muted(), LV_PART_MAIN);
-        lv_obj_set_style_text_font(lbl, APP_FONT_TEXT_20, LV_PART_MAIN);
+        lv_obj_t *lbl = w_todo_ensure_placeholder_label(ctx);
+        if (lbl != NULL) {
+            const char *txt = ctx->last_fetch_unix_ms > 0
+                ? ui_i18n_get("todo.empty", "no open items")
+                : ui_i18n_get("todo.loading", "loading...");
+            lv_label_set_text(lbl, txt);
+            lv_obj_set_style_text_color(lbl, theme_default_color_text_muted(), LV_PART_MAIN);
+            lv_obj_clear_flag(lbl, LV_OBJ_FLAG_HIDDEN);
+            w_todo_layout_placeholder(ctx);
+        }
+        if (ctx->scroll_spacer != NULL) {
+            lv_obj_add_flag(ctx->scroll_spacer, LV_OBJ_FLAG_HIDDEN);
+            ctx->scroll_spacer_width = 0;
+            ctx->scroll_spacer_total_h = 0;
+        }
+        for (size_t i = 0; i < W_TODO_ROW_POOL; i++) {
+            if (ctx->rows[i] != NULL) {
+                lv_obj_add_flag(ctx->rows[i], LV_OBJ_FLAG_HIDDEN);
+            }
+            ctx->row_bound_item_index1[i] = 0;
+            ctx->row_bound_width[i] = 0;
+        }
         return;
     }
 
-    for (size_t i = 0; i < ctx->display_item_count; i++) {
-        const w_todo_item_t *it = &ctx->display_items[i];
-        lv_obj_t *cb = lv_checkbox_create(ctx->list_container);
-        lv_checkbox_set_text(cb, it->summary[0] != '\0' ? it->summary : it->uid);
-        if (it->completed) {
-            lv_obj_add_state(cb, LV_STATE_CHECKED);
-        }
-        lv_obj_set_style_text_font(cb, APP_FONT_TEXT_20, LV_PART_MAIN);
-        lv_obj_set_style_text_color(cb, theme_default_color_text_primary(), LV_PART_MAIN);
-        if (it->completed) {
-            lv_obj_set_style_text_decor(cb, LV_TEXT_DECOR_STRIKETHROUGH, LV_PART_MAIN);
-            lv_obj_set_style_text_color(cb, theme_default_color_text_muted(), LV_PART_MAIN);
-        }
-        lv_obj_set_width(cb, LV_PCT(100));
-        /* Store item index via user data. */
-        lv_obj_add_event_cb(cb, w_todo_checkbox_event_cb, LV_EVENT_VALUE_CHANGED, ctx);
-        lv_obj_set_user_data(cb, (void *)(uintptr_t)(i + 1));
+    if (ctx->placeholder_label != NULL) {
+        lv_obj_add_flag(ctx->placeholder_label, LV_OBJ_FLAG_HIDDEN);
     }
+
+    w_todo_reset_row_bindings(ctx);
+    w_todo_layout_visible_rows(ctx);
 }
 
 static void w_todo_update_status_label(w_todo_ctx_t *ctx)
@@ -280,9 +744,39 @@ static void w_todo_update_status_label(w_todo_ctx_t *ctx)
     }
     /* Focus on the active count — the completed items are extras the user
      * can scroll to but aren't the point of the widget. */
+    const char *text = NULL;
     char buf[24];
-    snprintf(buf, sizeof(buf), "%u", (unsigned)open);
-    lv_label_set_text(ctx->status_label, buf);
+    lv_color_t chip_bg = w_todo_surface_fill(184);
+    lv_color_t chip_border = lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER);
+    lv_color_t chip_text = theme_default_color_text_primary();
+
+    if (ctx->unavailable) {
+        text = "-";
+        chip_bg = w_todo_surface_fill(132);
+        chip_border = lv_color_hex(APP_UI_COLOR_CARD_BORDER);
+        chip_text = theme_default_color_text_muted();
+    } else if (ctx->last_fetch_unix_ms <= 0 && ctx->display_item_count == 0) {
+        text = "...";
+        chip_bg = w_todo_surface_fill(148);
+        chip_text = theme_default_color_text_muted();
+    } else {
+        snprintf(buf, sizeof(buf), "%u", (unsigned)open);
+        text = buf;
+        if (open == 0) {
+            chip_bg = lv_color_mix(lv_color_hex(APP_UI_COLOR_OK), lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BG), 72);
+            chip_border = lv_color_hex(APP_UI_COLOR_OK);
+            chip_text = w_todo_contrast_text(chip_bg);
+        }
+    }
+
+    lv_label_set_text(ctx->status_label, text);
+    lv_obj_set_style_text_color(ctx->status_label, chip_text, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ctx->status_label, chip_bg, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ctx->status_label, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ctx->status_label, 1, LV_PART_MAIN);
+    lv_obj_set_style_border_color(ctx->status_label, chip_border, LV_PART_MAIN);
+    lv_obj_set_style_border_opa(ctx->status_label, LV_OPA_80, LV_PART_MAIN);
+    lv_obj_set_style_radius(ctx->status_label, LV_RADIUS_CIRCLE, LV_PART_MAIN);
 }
 
 static void w_todo_drain_pending(w_todo_ctx_t *ctx)
@@ -292,15 +786,29 @@ static void w_todo_drain_pending(w_todo_ctx_t *ctx)
     }
     bool have_update = false;
     bool failure = false;
-    w_todo_item_t snapshot[W_TODO_MAX_ITEMS];
     size_t snapshot_count = 0;
+    bool had_fetch_before = ctx->last_fetch_unix_ms > 0;
+    bool was_unavailable = ctx->unavailable;
+    bool changed = false;
 
     xSemaphoreTake(ctx->staging_mutex, portMAX_DELAY);
     if (ctx->pending_valid || ctx->pending_failure) {
-        memcpy(snapshot, ctx->pending_items, sizeof(snapshot));
         snapshot_count = ctx->pending_item_count;
         have_update = ctx->pending_valid;
         failure = ctx->pending_failure;
+        if (have_update && !failure) {
+            changed = was_unavailable || !had_fetch_before || ctx->display_item_count != snapshot_count;
+            if (!changed && snapshot_count > 0) {
+                changed = !w_todo_items_equal(ctx->display_items, ctx->pending_items, snapshot_count);
+            }
+            if (changed) {
+                if (snapshot_count > 0) {
+                    memcpy(ctx->display_items, ctx->pending_items,
+                        sizeof(ctx->display_items[0]) * snapshot_count);
+                }
+                ctx->display_item_count = snapshot_count;
+            }
+        }
         ctx->pending_valid = false;
         ctx->pending_failure = false;
         ctx->pending_item_count = 0;
@@ -312,20 +820,24 @@ static void w_todo_drain_pending(w_todo_ctx_t *ctx)
     }
 
     ctx->fetching = false;
+    ctx->fetch_started_unix_ms = 0;
     ctx->last_fetch_unix_ms = w_todo_now_ms();
 
     if (failure) {
+        bool needs_render = !ctx->unavailable || ctx->display_item_count != 0;
         ctx->unavailable = true;
         ctx->display_item_count = 0;
-        w_todo_render(ctx);
+        if (needs_render) {
+            w_todo_render(ctx);
+        }
         w_todo_update_status_label(ctx);
         return;
     }
 
     ctx->unavailable = false;
-    memcpy(ctx->display_items, snapshot, sizeof(snapshot));
-    ctx->display_item_count = snapshot_count;
-    w_todo_render(ctx);
+    if (changed) {
+        w_todo_render(ctx);
+    }
     w_todo_update_status_label(ctx);
 }
 
@@ -365,6 +877,7 @@ static void w_todo_request_items(w_todo_ctx_t *ctx)
     }
 
     ctx->fetching = true;
+    ctx->fetch_started_unix_ms = w_todo_now_ms();
     ctx->next_fetch_unix_ms = w_todo_now_ms() + W_TODO_REFRESH_PERIOD_MS;
 
     ESP_LOGI(W_TODO_TAG, "Requesting todo.get_items for %s", ctx->entity_id);
@@ -372,6 +885,7 @@ static void w_todo_request_items(w_todo_ctx_t *ctx)
         "todo", "get_items", ctx->entity_id, NULL, w_todo_response_cb, ctx);
     if (err != ESP_OK) {
         ctx->fetching = false;
+        ctx->fetch_started_unix_ms = 0;
         if (err == ESP_ERR_INVALID_STATE) {
             /* WS not connected yet, or heavy send gate currently closed.
              * Retry soon and stay quiet in the log — this is expected. */
@@ -386,18 +900,18 @@ static void w_todo_request_items(w_todo_ctx_t *ctx)
     }
 }
 
-/* ----- Checkbox toggle handler ----------------------------------------- */
-static void w_todo_checkbox_event_cb(lv_event_t *e)
+/* ----- Touch row toggle handler ---------------------------------------- */
+static void w_todo_item_event_cb(lv_event_t *e)
 {
     if (e == NULL) {
         return;
     }
     w_todo_ctx_t *ctx = (w_todo_ctx_t *)lv_event_get_user_data(e);
-    lv_obj_t *cb = lv_event_get_target(e);
-    if (ctx == NULL || cb == NULL) {
+    lv_obj_t *row = lv_event_get_target(e);
+    if (ctx == NULL || row == NULL) {
         return;
     }
-    uintptr_t idx1 = (uintptr_t)lv_obj_get_user_data(cb);
+    uintptr_t idx1 = (uintptr_t)lv_obj_get_user_data(row);
     if (idx1 == 0 || idx1 > ctx->display_item_count) {
         return;
     }
@@ -407,30 +921,36 @@ static void w_todo_checkbox_event_cb(lv_event_t *e)
         return;
     }
 
-    bool new_completed = lv_obj_has_state(cb, LV_STATE_CHECKED);
+    char uid[W_TODO_UID_LEN];
+    snprintf(uid, sizeof(uid), "%s", it->uid);
+    bool was_completed = it->completed;
+    bool new_completed = !it->completed;
 
     /* Optimistic local update for immediate feedback. */
     it->completed = new_completed;
-    if (new_completed) {
-        lv_obj_set_style_text_decor(cb, LV_TEXT_DECOR_STRIKETHROUGH, LV_PART_MAIN);
-        lv_obj_set_style_text_color(cb, theme_default_color_text_muted(), LV_PART_MAIN);
-    } else {
-        lv_obj_set_style_text_decor(cb, LV_TEXT_DECOR_NONE, LV_PART_MAIN);
-        lv_obj_set_style_text_color(cb, theme_default_color_text_primary(), LV_PART_MAIN);
-    }
+    w_todo_reposition_toggled_item(ctx, idx);
+    w_todo_render(ctx);
     w_todo_update_status_label(ctx);
 
-    /* Build payload: { "entity_id": "...", "item": "<uid>", "status": "needs_action"|"completed" }
-     * HA todo.update_item also accepts `rename`, but we only toggle status. */
+    /* Build payload: { "entity_id": "...", "item": "<uid>", "status":
+     * "needs_action"|"completed" } */
     char payload[384];
     snprintf(payload, sizeof(payload),
         "{\"entity_id\":\"%s\",\"item\":\"%s\",\"status\":\"%s\"}",
-        ctx->entity_id, it->uid, new_completed ? "completed" : "needs_action");
+        ctx->entity_id, uid, new_completed ? "completed" : "needs_action");
 
     esp_err_t err = ha_client_call_service("todo", "update_item", payload);
     if (err != ESP_OK) {
         ESP_LOGW(W_TODO_TAG, "update_item failed (%s): %s",
             ctx->entity_id, esp_err_to_name(err));
+        size_t current_idx = 0;
+        if (w_todo_find_item_index_by_uid(ctx, uid, &current_idx)) {
+            ctx->display_items[current_idx].completed = was_completed;
+            w_todo_move_item(ctx, current_idx, idx);
+        }
+        w_todo_render(ctx);
+        w_todo_update_status_label(ctx);
+        return;
     }
 
     /* Schedule a refresh shortly after to reconcile with server. */
@@ -448,23 +968,83 @@ static void w_todo_tick_cb(lv_timer_t *timer)
         return;
     }
 
+    int64_t now = w_todo_now_ms();
+    if (!w_todo_is_visible(ctx)) {
+        if (ctx->fetching && ctx->fetch_started_unix_ms > 0 &&
+            (now - ctx->fetch_started_unix_ms) > 15000) {
+            ctx->fetching = false;
+            ctx->fetch_started_unix_ms = 0;
+            ctx->next_fetch_unix_ms = now;
+        }
+        return;
+    }
+
+    if (ctx->scrolling) {
+        if (ctx->fetching && ctx->fetch_started_unix_ms > 0 &&
+            (now - ctx->fetch_started_unix_ms) > 15000) {
+            ctx->fetching = false;
+            ctx->fetch_started_unix_ms = 0;
+            ctx->next_fetch_unix_ms = now + 2000;
+        }
+        return;
+    }
+
     w_todo_drain_pending(ctx);
 
-    int64_t now = w_todo_now_ms();
     if (!ctx->fetching && now >= ctx->next_fetch_unix_ms) {
         w_todo_request_items(ctx);
     }
 
     /* If a fetch has been outstanding for >12 s, clear the flag so the next
      * tick can retry.  The registry itself times out at 15 s. */
-    if (ctx->fetching && ctx->last_fetch_unix_ms > 0 &&
-        (now - ctx->last_fetch_unix_ms) > 15000) {
+    if (ctx->fetching && ctx->fetch_started_unix_ms > 0 &&
+        (now - ctx->fetch_started_unix_ms) > 15000) {
         ctx->fetching = false;
+        ctx->fetch_started_unix_ms = 0;
         ctx->next_fetch_unix_ms = now + 2000;
     }
 }
 
 /* ----- Event / lifecycle ------------------------------------------------ */
+static void w_todo_list_event_cb(lv_event_t *event)
+{
+    if (event == NULL) {
+        return;
+    }
+    w_todo_ctx_t *ctx = (w_todo_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL) {
+        return;
+    }
+    lv_event_code_t code = lv_event_get_code(event);
+    if (code == LV_EVENT_SCROLL_BEGIN) {
+        ctx->scrolling = true;
+        return;
+    }
+    if (code == LV_EVENT_SCROLL) {
+        w_todo_layout_visible_rows(ctx);
+        return;
+    }
+    if (code == LV_EVENT_SCROLL_END) {
+        ctx->scrolling = false;
+        if (!w_todo_is_visible(ctx)) {
+            return;
+        }
+        w_todo_drain_pending(ctx);
+        int64_t now = w_todo_now_ms();
+        if (!ctx->fetching && now >= ctx->next_fetch_unix_ms) {
+            w_todo_request_items(ctx);
+        }
+        return;
+    }
+    if (code == LV_EVENT_SIZE_CHANGED) {
+        if (ctx->display_item_count > 0) {
+            w_todo_layout_visible_rows(ctx);
+        } else {
+            w_todo_layout_placeholder(ctx);
+        }
+    }
+}
+
 static void w_todo_event_cb(lv_event_t *event)
 {
     if (event == NULL) {
@@ -510,11 +1090,11 @@ esp_err_t w_todo_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_
     lv_obj_set_size(card, def->w, def->h);
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
     theme_default_style_card(card);
-    lv_obj_set_style_pad_all(card, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(card, 12, LV_PART_MAIN);
     lv_obj_set_layout(card, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(card, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(card, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-    lv_obj_set_style_pad_row(card, 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(card, 8, LV_PART_MAIN);
 
     /* Header row: title + status. */
     lv_obj_t *header = lv_obj_create(card);
@@ -533,23 +1113,23 @@ esp_err_t w_todo_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_
 
     lv_obj_t *status = lv_label_create(header);
     lv_label_set_text(status, "");
-    lv_obj_set_style_text_color(status, theme_default_color_text_muted(), LV_PART_MAIN);
     lv_obj_set_style_text_font(status, APP_FONT_TEXT_18, LV_PART_MAIN);
+    lv_obj_set_style_pad_left(status, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(status, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(status, 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(status, 4, LV_PART_MAIN);
 
     /* Scrollable list container. */
     lv_obj_t *list = lv_obj_create(card);
     lv_obj_remove_style_all(list);
     lv_obj_set_width(list, LV_PCT(100));
     lv_obj_set_flex_grow(list, 1);
-    lv_obj_set_layout(list, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(list, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-    lv_obj_set_style_pad_row(list, 6, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(list, 0, LV_PART_MAIN);
     lv_obj_add_flag(list, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scroll_dir(list, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_AUTO);
 
-    w_todo_ctx_t *ctx = calloc(1, sizeof(w_todo_ctx_t));
+    w_todo_ctx_t *ctx = w_todo_calloc(1, sizeof(w_todo_ctx_t));
     if (ctx == NULL) {
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;
@@ -567,13 +1147,19 @@ esp_err_t w_todo_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_
     }
 
     lv_obj_add_event_cb(card, w_todo_event_cb, LV_EVENT_DELETE, ctx);
+    lv_obj_add_event_cb(list, w_todo_list_event_cb, LV_EVENT_SIZE_CHANGED, ctx);
+    lv_obj_add_event_cb(list, w_todo_list_event_cb, LV_EVENT_SCROLL, ctx);
+    lv_obj_add_event_cb(list, w_todo_list_event_cb, LV_EVENT_SCROLL_BEGIN, ctx);
+    lv_obj_add_event_cb(list, w_todo_list_event_cb, LV_EVENT_SCROLL_END, ctx);
 
     /* Initial placeholder render. */
     w_todo_render(ctx);
+    w_todo_update_status_label(ctx);
 
-    /* Periodic tick drives both refresh and response draining.  1 Hz keeps
-     * it cheap and responsive enough. */
-    ctx->tick_timer = lv_timer_create(w_todo_tick_cb, 1000, ctx);
+    /* Periodic tick drives both refresh and response draining.  Entity state
+     * changes wake reconciliation quickly; the slow periodic poll is only a
+     * safety net, so keep the timer gentle on LVGL/TLS. */
+    ctx->tick_timer = lv_timer_create(w_todo_tick_cb, W_TODO_TICK_PERIOD_MS, ctx);
 
     /* First fetch is deferred: we want the HA WS to be fully idle after
      * the initial subscribe burst (which also delivers state for our todo
@@ -599,7 +1185,28 @@ void w_todo_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
         return;
     }
     w_todo_ctx_t *ctx = (w_todo_ctx_t *)instance->ctx;
-    ctx->next_fetch_unix_ms = w_todo_now_ms() + 250;
+    bool changed = (strncmp(ctx->last_entity_state, state->state, sizeof(ctx->last_entity_state)) != 0) ||
+                   (ctx->last_entity_state_changed_unix_ms != state->last_changed_unix_ms);
+    snprintf(ctx->last_entity_state, sizeof(ctx->last_entity_state), "%s", state->state);
+    ctx->last_entity_state_changed_unix_ms = state->last_changed_unix_ms;
+
+    /* ui_runtime periodically reapplies all widget states during global
+     * model reconcile. Ignore those no-op replays and only accelerate a
+     * refresh when the todo entity itself actually changed. */
+    if (!changed) {
+        return;
+    }
+
+    /* Preserve the deliberate startup grace until the first full list
+     * snapshot has been fetched. */
+    if (ctx->last_fetch_unix_ms <= 0) {
+        return;
+    }
+
+    int64_t target_ms = w_todo_now_ms() + (w_todo_is_visible(ctx) ? 250 : 0);
+    if (ctx->next_fetch_unix_ms <= 0 || ctx->next_fetch_unix_ms > target_ms) {
+        ctx->next_fetch_unix_ms = target_ms;
+    }
 }
 
 void w_todo_mark_unavailable(ui_widget_instance_t *instance)
@@ -610,6 +1217,8 @@ void w_todo_mark_unavailable(ui_widget_instance_t *instance)
     w_todo_ctx_t *ctx = (w_todo_ctx_t *)instance->ctx;
     ctx->unavailable = true;
     ctx->display_item_count = 0;
-    w_todo_render(ctx);
-    w_todo_update_status_label(ctx);
+    if (w_todo_is_visible(ctx)) {
+        w_todo_render(ctx);
+        w_todo_update_status_label(ctx);
+    }
 }

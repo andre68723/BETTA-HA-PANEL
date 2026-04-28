@@ -91,7 +91,7 @@ static bool is_supported_widget_type(const char *type)
            (strcmp(type, "graph") == 0) || (strcmp(type, "empty_tile") == 0) || (strcmp(type, "light_tile") == 0) ||
            (strcmp(type, "heating_tile") == 0) || (strcmp(type, "weather_tile") == 0) ||
            (strcmp(type, "weather_3day") == 0) || (strcmp(type, "todo_list") == 0) ||
-           (strcmp(type, "media_player") == 0);
+           (strcmp(type, "media_player") == 0) || (strcmp(type, "roborock_tile") == 0);
 }
 
 static bool is_supported_page_type(const char *type)
@@ -169,6 +169,11 @@ static widget_size_limits_t widget_size_limits_for_type(const char *type)
         limits.min_h = 220;
         limits.max_w = APP_CONTENT_BOX_WIDTH;
         limits.max_h = APP_CONTENT_BOX_HEIGHT;
+    } else if (strcmp(type, "roborock_tile") == 0) {
+        limits.min_w = 240;
+        limits.min_h = 220;
+        limits.max_w = APP_CONTENT_BOX_WIDTH;
+        limits.max_h = APP_CONTENT_BOX_HEIGHT;
     }
 
     if (limits.max_w > APP_CONTENT_BOX_WIDTH) {
@@ -203,6 +208,9 @@ static const char *required_domain_for_widget_type(const char *type)
     if (strcmp(type, "media_player") == 0) {
         return "media_player";
     }
+    if (strcmp(type, "roborock_tile") == 0) {
+        return "vacuum";
+    }
     return NULL;
 }
 
@@ -220,6 +228,9 @@ static bool widget_entity_domain_valid(const char *type, const char *entity_id)
     }
     if (strcmp(type, "media_player") == 0) {
         return entity_in_domain(entity_id, "media_player");
+    }
+    if (strcmp(type, "roborock_tile") == 0) {
+        return entity_in_domain(entity_id, "vacuum");
     }
     if (strcmp(type, "empty_tile") == 0) {
         return true;
@@ -492,6 +503,18 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
             const char *v = arc_opening->valuestring;
             if (strcmp(v, "left") != 0 && strcmp(v, "right") != 0 && strcmp(v, "top") != 0 && strcmp(v, "bottom") != 0) {
                 snprintf(msg, sizeof(msg), "widget %s: arc_opening must be left|right|top|bottom",
+                    cJSON_IsString(id) ? id->valuestring : "?");
+                layout_validation_add(result, msg);
+            }
+        }
+    }
+
+    if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "roborock_tile") == 0) {
+        if (cJSON_IsString(secondary_entity_id) && secondary_entity_id->valuestring != NULL &&
+            secondary_entity_id->valuestring[0] != '\0') {
+            if (!is_valid_entity_id(secondary_entity_id->valuestring) ||
+                !entity_in_domain(secondary_entity_id->valuestring, "image")) {
+                snprintf(msg, sizeof(msg), "widget %s: secondary_entity_id must be image.*",
                     cJSON_IsString(id) ? id->valuestring : "?");
                 layout_validation_add(result, msg);
             }

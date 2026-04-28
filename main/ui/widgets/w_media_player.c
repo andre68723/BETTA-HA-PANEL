@@ -36,9 +36,11 @@ typedef struct {
     lv_obj_t *pos_label;
     lv_obj_t *dur_label;
     lv_obj_t *btn_prev;
+    lv_obj_t *btn_prev_label;
     lv_obj_t *btn_play;
     lv_obj_t *btn_play_label;
     lv_obj_t *btn_next;
+    lv_obj_t *btn_next_label;
     lv_obj_t *volume_slider;
     lv_obj_t *volume_icon;
     lv_color_t accent_color;
@@ -51,6 +53,8 @@ typedef struct {
     int duration_s;            /* media_duration in seconds, 0 if unknown */
     int position_s;            /* media_position (seconds) reported by HA */
     time_t position_anchor_s;  /* wall-clock unix timestamp at which position_s was reported */
+    int resume_guard_pos_s;    /* local resume anchor while HA catches up */
+    int64_t resume_guard_until_ms;
     lv_timer_t *tick_timer;
     /* Cover art */
     lv_obj_t *cover_img;
@@ -60,14 +64,16 @@ typedef struct {
     uint32_t cover_dominant_rgb;     /* 0 when no cover tint is applied */
 } w_mp_ctx_t;
 
-static const uint32_t W_MP_ACCENT_DEFAULT_HEX = 0x4DA3FF;
-static const uint32_t W_MP_TRACK_HEX = 0x3A3E43;
-
 static int clampi(int v, int lo, int hi)
 {
     if (v < lo) return lo;
     if (v > hi) return hi;
     return v;
+}
+
+static int64_t mp_now_ms(void)
+{
+    return esp_timer_get_time() / 1000;
 }
 
 static bool mp_is_hex_digit(char c)
@@ -124,11 +130,31 @@ static void format_time(int seconds, char *out, size_t out_sz)
     }
 }
 
+static lv_color_t mp_theme_surface_fill(uint8_t mix)
+{
+    return lv_color_mix(lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), mix);
+}
+
+static lv_color_t mp_pressed_variant(lv_color_t color)
+{
+    return lv_color_brightness(color) > 127 ? lv_color_darken(color, 28) : lv_color_lighten(color, 28);
+}
+
+static lv_color_t mp_contrast_text_color(lv_color_t bg)
+{
+    return lv_color_brightness(bg) > 150 ? lv_color_hex(0x101418) : lv_color_hex(0xFFFFFF);
+}
+
+static lv_color_t mp_tint_card_bg_v2(uint32_t dominant_rgb)
+{
+    return lv_color_mix(lv_color_hex(dominant_rgb & 0xFFFFFFU), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), 64);
+}
+
 /* Mix a dominant RGB color with the stock card background to obtain a muted
- * tint: ~22% cover color + ~78% card bg.  The result stays dark enough for
+ * tint: ~25% cover color + ~75% card bg.  The result stays dark enough for
  * the text overlay to keep contrast while still giving each title its own
  * mood. */
-static lv_color_t mp_tint_card_bg(uint32_t dominant_rgb)
+static lv_color_t __attribute__((unused)) mp_tint_card_bg(uint32_t dominant_rgb)
 {
     uint32_t card = APP_UI_COLOR_CARD_BG_OFF;
     uint8_t dr = (dominant_rgb >> 16) & 0xFF;
@@ -203,6 +229,38 @@ static int mp_current_position_s(const w_mp_ctx_t *ctx)
     return pos;
 }
 
+static bool mp_media_identity_matches(const w_mp_ctx_t *ctx, const char *title_text, int duration_s, const char *pic_url)
+{
+    if (ctx == NULL) return false;
+
+    bool matched = false;
+    if (title_text != NULL && title_text[0] != '\0' && ctx->now_title != NULL) {
+        const char *current_title = lv_label_get_text(ctx->now_title);
+        if (current_title != NULL && current_title[0] != '\0') {
+            if (strcmp(current_title, title_text) != 0) {
+                return false;
+            }
+            matched = true;
+        }
+    }
+
+    if (duration_s > 0 && ctx->duration_s > 0) {
+        if (duration_s != ctx->duration_s) {
+            return false;
+        }
+        matched = true;
+    }
+
+    if (pic_url != NULL && pic_url[0] != '\0' && ctx->cover_url[0] != '\0') {
+        if (strcmp(ctx->cover_url, pic_url) != 0) {
+            return false;
+        }
+        matched = true;
+    }
+
+    return matched;
+}
+
 static void mp_update_progress_visual(w_mp_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->progress_bar == NULL) return;
@@ -237,13 +295,40 @@ static void mp_update_progress_visual(w_mp_ctx_t *ctx)
 
 static void mp_release_cover(w_mp_ctx_t *ctx);
 
+static void mp_style_control_button(lv_obj_t *btn, lv_obj_t *label, lv_color_t bg, lv_color_t border, lv_color_t text)
+{
+    if (btn == NULL) {
+        return;
+    }
+
+    lv_color_t pressed_bg = mp_pressed_variant(bg);
+    lv_obj_set_style_bg_color(btn, bg, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(btn, pressed_bg, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_border_width(btn, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(btn, 1, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_border_color(btn, border, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(btn, border, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_border_opa(btn, LV_OPA_80, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(btn, LV_OPA_80, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_outline_width(btn, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_outline_width(btn, 0, LV_PART_MAIN | LV_STATE_PRESSED);
+
+    if (label != NULL) {
+        lv_obj_set_style_text_color(label, text, LV_PART_MAIN);
+    }
+}
+
 static void mp_apply_visual(w_mp_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->card == NULL) return;
 
     lv_color_t card_bg;
     if (ctx->is_playing && !ctx->unavailable && ctx->cover_dominant_rgb != 0) {
-        card_bg = mp_tint_card_bg(ctx->cover_dominant_rgb);
+        card_bg = mp_tint_card_bg_v2(ctx->cover_dominant_rgb);
     } else {
         card_bg = lv_color_hex(ctx->is_playing && !ctx->unavailable ? APP_UI_COLOR_CARD_BG_ON
                                                                     : APP_UI_COLOR_CARD_BG_OFF);
@@ -274,33 +359,85 @@ static void mp_apply_visual(w_mp_ctx_t *ctx)
     }
 
     lv_color_t accent = ctx->unavailable ? lv_color_hex(APP_UI_COLOR_CARD_BORDER) : ctx->accent_color;
+    lv_color_t control_surface = mp_theme_surface_fill(224);
+    lv_color_t track_surface = mp_theme_surface_fill(196);
+    lv_color_t control_border = lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER);
+    lv_color_t control_text = lv_color_hex(ctx->unavailable ? APP_UI_COLOR_TEXT_MUTED : APP_UI_COLOR_CARD_ICON_OFF);
+    lv_color_t play_bg = ctx->unavailable ? control_surface : lv_color_mix(accent, lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 224);
+    lv_color_t play_border = ctx->unavailable ? control_border : lv_color_mix(accent, control_border, 168);
+    lv_color_t play_text = ctx->unavailable ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED) : mp_contrast_text_color(play_bg);
+    lv_color_t slider_knob = ctx->unavailable
+                                 ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED)
+                                 : lv_color_mix(lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), accent, 72);
 
     if (ctx->progress_bar) {
-        lv_obj_set_style_bg_color(ctx->progress_bar, lv_color_hex(W_MP_TRACK_HEX), LV_PART_MAIN);
+        lv_obj_set_style_radius(ctx->progress_bar, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+        lv_obj_set_style_radius(ctx->progress_bar, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
+        lv_obj_set_style_bg_color(ctx->progress_bar, track_surface, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(ctx->progress_bar, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_border_width(ctx->progress_bar, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(ctx->progress_bar, 0, LV_PART_MAIN);
+        lv_obj_set_style_clip_corner(ctx->progress_bar, true, LV_PART_MAIN);
         lv_obj_set_style_bg_color(ctx->progress_bar, accent, LV_PART_INDICATOR);
         lv_obj_set_style_bg_opa(ctx->progress_bar, LV_OPA_COVER, LV_PART_INDICATOR);
+        lv_obj_set_style_border_width(ctx->progress_bar, 0, LV_PART_INDICATOR);
     }
     if (ctx->volume_slider) {
-        lv_obj_set_style_bg_color(ctx->volume_slider, lv_color_hex(W_MP_TRACK_HEX), LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(ctx->volume_slider, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_style_bg_color(ctx->volume_slider, accent, LV_PART_INDICATOR);
-        lv_obj_set_style_bg_opa(ctx->volume_slider, LV_OPA_COVER, LV_PART_INDICATOR);
-        lv_obj_set_style_bg_color(ctx->volume_slider, accent, LV_PART_KNOB);
-        lv_obj_set_style_bg_opa(ctx->volume_slider, LV_OPA_COVER, LV_PART_KNOB);
+        lv_obj_set_style_radius(ctx->volume_slider, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+        lv_obj_set_style_radius(ctx->volume_slider, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
+        lv_obj_set_style_radius(ctx->volume_slider, LV_RADIUS_CIRCLE, LV_PART_KNOB);
+        lv_obj_set_style_bg_color(ctx->volume_slider, track_surface, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_color(ctx->volume_slider, track_surface, LV_PART_MAIN | LV_STATE_PRESSED);
+        lv_obj_set_style_bg_opa(ctx->volume_slider, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(ctx->volume_slider, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_PRESSED);
+        lv_obj_set_style_border_width(ctx->volume_slider, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_border_width(ctx->volume_slider, 0, LV_PART_MAIN | LV_STATE_PRESSED);
+        lv_obj_set_style_pad_all(ctx->volume_slider, 0, LV_PART_MAIN);
+        lv_obj_set_style_clip_corner(ctx->volume_slider, true, LV_PART_MAIN);
+
+        lv_obj_set_style_bg_color(ctx->volume_slider, accent, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_color(ctx->volume_slider, accent, LV_PART_INDICATOR | LV_STATE_PRESSED);
+        lv_obj_set_style_bg_opa(ctx->volume_slider, LV_OPA_COVER, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(ctx->volume_slider, LV_OPA_COVER, LV_PART_INDICATOR | LV_STATE_PRESSED);
+        lv_obj_set_style_border_width(ctx->volume_slider, 0, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+        lv_obj_set_style_border_width(ctx->volume_slider, 0, LV_PART_INDICATOR | LV_STATE_PRESSED);
+
+        lv_obj_set_style_bg_color(ctx->volume_slider, slider_knob, LV_PART_KNOB | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_color(ctx->volume_slider, slider_knob, LV_PART_KNOB | LV_STATE_PRESSED);
+        lv_obj_set_style_bg_opa(ctx->volume_slider, LV_OPA_90, LV_PART_KNOB | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(ctx->volume_slider, LV_OPA_COVER, LV_PART_KNOB | LV_STATE_PRESSED);
+        lv_obj_set_style_border_width(ctx->volume_slider, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
+        lv_obj_set_style_border_width(ctx->volume_slider, 0, LV_PART_KNOB | LV_STATE_PRESSED);
+        lv_obj_set_style_outline_width(ctx->volume_slider, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
+        lv_obj_set_style_outline_width(ctx->volume_slider, 0, LV_PART_KNOB | LV_STATE_PRESSED);
+        lv_obj_set_style_shadow_width(ctx->volume_slider, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
+        lv_obj_set_style_shadow_width(ctx->volume_slider, 0, LV_PART_KNOB | LV_STATE_PRESSED);
+        lv_obj_set_style_transform_width(ctx->volume_slider, -4, LV_PART_KNOB);
+        lv_obj_set_style_transform_height(ctx->volume_slider, -4, LV_PART_KNOB);
     }
 
     if (ctx->btn_play_label) {
         lv_label_set_text(ctx->btn_play_label, ctx->is_playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY);
     }
 
+    mp_style_control_button(ctx->btn_prev, ctx->btn_prev_label, control_surface, control_border, control_text);
+    mp_style_control_button(ctx->btn_play, ctx->btn_play_label, play_bg, play_border, play_text);
+    mp_style_control_button(ctx->btn_next, ctx->btn_next_label, control_surface, control_border, control_text);
+
     /* disable controls visually when unavailable */
     const lv_opa_t control_opa = ctx->unavailable ? LV_OPA_30 : LV_OPA_COVER;
     if (ctx->btn_prev) lv_obj_set_style_opa(ctx->btn_prev, control_opa, LV_PART_MAIN);
     if (ctx->btn_play) lv_obj_set_style_opa(ctx->btn_play, control_opa, LV_PART_MAIN);
     if (ctx->btn_next) lv_obj_set_style_opa(ctx->btn_next, control_opa, LV_PART_MAIN);
-    if (ctx->volume_slider) lv_obj_set_style_opa(ctx->volume_slider, control_opa, LV_PART_MAIN);
-    if (ctx->progress_bar) lv_obj_set_style_opa(ctx->progress_bar, control_opa, LV_PART_MAIN);
+    if (ctx->volume_slider) {
+        lv_obj_set_style_opa(ctx->volume_slider, control_opa, LV_PART_MAIN);
+        lv_obj_set_style_opa(ctx->volume_slider, control_opa, LV_PART_INDICATOR);
+        lv_obj_set_style_opa(ctx->volume_slider, control_opa, LV_PART_KNOB);
+    }
+    if (ctx->progress_bar) {
+        lv_obj_set_style_opa(ctx->progress_bar, control_opa, LV_PART_MAIN);
+        lv_obj_set_style_opa(ctx->progress_bar, control_opa, LV_PART_INDICATOR);
+    }
 
     mp_update_progress_visual(ctx);
 }
@@ -317,12 +454,14 @@ static void mp_play_clicked(lv_event_t *event)
 {
     w_mp_ctx_t *ctx = (w_mp_ctx_t *)lv_event_get_user_data(event);
     if (ctx == NULL || ctx->unavailable) return;
+    int current_pos = mp_current_position_s(ctx);
     bool next_playing = !ctx->is_playing;
     if (ui_bindings_media_player_action(ctx->entity_id, UI_BINDINGS_MEDIA_ACTION_PLAY_PAUSE) == ESP_OK) {
+        ctx->position_s = current_pos;
         ctx->is_playing = next_playing;
-        if (next_playing) {
-            ctx->position_anchor_s = time(NULL);
-        }
+        ctx->position_anchor_s = next_playing ? time(NULL) : 0;
+        ctx->resume_guard_pos_s = current_pos;
+        ctx->resume_guard_until_ms = mp_now_ms() + 15000;
         mp_apply_visual(ctx);
     }
 }
@@ -386,15 +525,14 @@ static void mp_volume_event_cb(lv_event_t *event)
 static lv_obj_t *mp_create_icon_button(lv_obj_t *parent, const char *symbol, w_mp_ctx_t *ctx, lv_event_cb_t cb,
                                         lv_obj_t **out_label)
 {
-    lv_obj_t *btn = lv_obj_create(parent);
+    lv_obj_t *btn = lv_btn_create(parent);
     lv_obj_set_size(btn, 54, 54);
     lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(btn, LV_OBJ_FLAG_EVENT_BUBBLE);
     lv_obj_set_style_radius(btn, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(btn, lv_color_hex(W_MP_TRACK_HEX), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
-    lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+    lv_obj_set_style_outline_width(btn, 0, LV_PART_MAIN);
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *label = lv_label_create(btn);
@@ -426,7 +564,7 @@ static void mp_cover_show_placeholder(w_mp_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->cover_img == NULL) return;
     lv_image_set_src(ctx->cover_img, NULL);
-    lv_obj_set_style_bg_color(ctx->cover_img, lv_color_hex(W_MP_TRACK_HEX), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ctx->cover_img, mp_theme_surface_fill(184), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ctx->cover_img, LV_OPA_COVER, LV_PART_MAIN);
 }
 
@@ -506,7 +644,7 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     }
     snprintf(ctx->entity_id, sizeof(ctx->entity_id), "%s", def->entity_id);
     ctx->card = card;
-    ctx->accent_color = lv_color_hex(W_MP_ACCENT_DEFAULT_HEX);
+    ctx->accent_color = lv_color_hex(APP_UI_COLOR_CARD_ICON_ON);
     lv_color_t parsed_color;
     if (mp_parse_hex_color(def->button_accent_color, &parsed_color) ||
         mp_parse_hex_color(def->slider_accent_color, &parsed_color)) {
@@ -530,9 +668,9 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     const lv_coord_t widget_title_h = has_widget_title ? 22 : 0;
     const lv_coord_t now_title_h = 26;
     const lv_coord_t now_artist_h = 22;
-    const lv_coord_t progress_row_h = 38; /* 6 bar + 6 gap + 14 label + 12 gap */
+    const lv_coord_t progress_row_h = 40; /* 10 bar + labels + spacing */
     const lv_coord_t controls_row_h = 72; /* 64 play button + 8 gap       */
-    const lv_coord_t volume_row_h = 26;   /* slider (6) + icon baseline   */
+    const lv_coord_t volume_row_h = 30;   /* slider + icon baseline       */
 
     lv_coord_t cover_x = 0;
     lv_coord_t cover_y = 0;
@@ -570,7 +708,7 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_set_pos(cover, cover_x, cover_y);
     lv_obj_set_style_radius(cover, 10, LV_PART_MAIN);
     lv_obj_set_style_clip_corner(cover, true, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(cover, lv_color_hex(W_MP_TRACK_HEX), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(cover, mp_theme_surface_fill(184), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(cover, LV_OPA_COVER, LV_PART_MAIN);
     ctx->cover_img = cover;
 
@@ -631,8 +769,8 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_t *progress = lv_bar_create(card);
     lv_bar_set_range(progress, 0, 100);
     lv_bar_set_value(progress, 0, LV_ANIM_OFF);
-    lv_obj_set_style_radius(progress, 3, LV_PART_MAIN);
-    lv_obj_set_style_radius(progress, 3, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(progress, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_set_style_radius(progress, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
     ctx->progress_bar = progress;
 
     lv_obj_t *pos_label = lv_label_create(card);
@@ -648,11 +786,10 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->dur_label = dur_label;
 
     /* Controls row */
-    ctx->btn_prev = mp_create_icon_button(card, LV_SYMBOL_PREV, ctx, mp_prev_clicked, NULL);
+    ctx->btn_prev = mp_create_icon_button(card, LV_SYMBOL_PREV, ctx, mp_prev_clicked, &ctx->btn_prev_label);
     ctx->btn_play = mp_create_icon_button(card, LV_SYMBOL_PLAY, ctx, mp_play_clicked, &ctx->btn_play_label);
-    ctx->btn_next = mp_create_icon_button(card, LV_SYMBOL_NEXT, ctx, mp_next_clicked, NULL);
+    ctx->btn_next = mp_create_icon_button(card, LV_SYMBOL_NEXT, ctx, mp_next_clicked, &ctx->btn_next_label);
     lv_obj_set_size(ctx->btn_play, 64, 64);
-    lv_obj_set_style_bg_color(ctx->btn_play, ctx->accent_color, LV_PART_MAIN);
 
     /* Volume slider + icon */
     lv_obj_t *vol_icon = lv_label_create(card);
@@ -669,8 +806,9 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_add_event_cb(vol_slider, mp_volume_event_cb, LV_EVENT_RELEASED, ctx);
     lv_obj_add_event_cb(vol_slider, mp_volume_event_cb, LV_EVENT_PRESS_LOST, ctx);
     lv_obj_add_event_cb(vol_slider, mp_volume_event_cb, LV_EVENT_DELETE, ctx);
-    lv_obj_set_style_radius(vol_slider, 3, LV_PART_MAIN);
-    lv_obj_set_style_radius(vol_slider, 3, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(vol_slider, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_set_style_radius(vol_slider, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(vol_slider, LV_RADIUS_CIRCLE, LV_PART_KNOB);
     ctx->volume_slider = vol_slider;
 
     /* Stack the bottom rows (volume, controls, progress) within the active
@@ -686,8 +824,8 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     const lv_coord_t bar_x = col_x + time_label_w + time_gap;
     lv_obj_set_width(pos_label, time_label_w);
     lv_obj_set_width(dur_label, time_label_w);
-    lv_obj_set_size(progress, bar_w > 20 ? bar_w : 20, 6);
-    lv_obj_align(progress, LV_ALIGN_TOP_LEFT, bar_x, prog_y + 6);
+    lv_obj_set_size(progress, bar_w > 20 ? bar_w : 20, 10);
+    lv_obj_align(progress, LV_ALIGN_TOP_LEFT, bar_x, prog_y + 5);
     lv_obj_align(pos_label, LV_ALIGN_TOP_LEFT, col_x, prog_y + 1);
     lv_obj_align(dur_label, LV_ALIGN_TOP_LEFT, col_x + col_w - time_label_w, prog_y + 1);
 
@@ -698,8 +836,8 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_align(ctx->btn_next, LV_ALIGN_TOP_MID, col_mid_dx + 80, ctrl_y + 4);
 
     lv_obj_align(vol_icon, LV_ALIGN_TOP_LEFT, col_x, vol_y + 2);
-    lv_obj_set_pos(vol_slider, col_x + 28, vol_y + 8);
-    lv_obj_set_size(vol_slider, col_w - 28, 6);
+    lv_obj_set_pos(vol_slider, col_x + 28, vol_y + 7);
+    lv_obj_set_size(vol_slider, col_w - 28, 12);
 
     ctx->tick_timer = lv_timer_create(mp_tick_cb, 1000, ctx);
     if (ctx->tick_timer) {
@@ -718,10 +856,13 @@ void w_media_player_apply_state(ui_widget_instance_t *instance, const ha_state_t
     if (instance == NULL || instance->obj == NULL || state == NULL) return;
     w_mp_ctx_t *ctx = (w_mp_ctx_t *)instance->ctx;
     if (ctx == NULL) return;
+    int local_pos_before = mp_current_position_s(ctx);
+    int64_t now_ms = mp_now_ms();
 
     if (mp_state_is_unavailable(state->state)) {
         ctx->unavailable = true;
         ctx->is_playing = false;
+        ctx->resume_guard_until_ms = 0;
         if (ctx->tick_timer) lv_timer_pause(ctx->tick_timer);
         if (ctx->now_title) lv_label_set_text(ctx->now_title, ui_i18n_get("common.unavailable", "unavailable"));
         if (ctx->now_artist) lv_label_set_text(ctx->now_artist, "");
@@ -730,16 +871,19 @@ void w_media_player_apply_state(ui_widget_instance_t *instance, const ha_state_t
     }
 
     ctx->unavailable = false;
-    ctx->is_playing = (strcmp(state->state, "playing") == 0);
+    bool next_is_playing = (strcmp(state->state, "playing") == 0);
+    bool playback_state_changed = (ctx->is_playing != next_is_playing);
 
     /* Defaults when attrs are missing */
     const char *title_text = "";
     const char *artist_text = state->state;
+    const char *pic_url = NULL;
     int duration_s = 0;
     int position_s = 0;
     bool have_position = false;
     time_t position_anchor_s = 0;
     double volume_level = -1.0;
+    bool same_media_hint = false;
 
     cJSON *attrs = cJSON_Parse(state->attributes_json);
     if (attrs != NULL) {
@@ -782,11 +926,17 @@ void w_media_player_apply_state(ui_widget_instance_t *instance, const ha_state_t
             lv_label_set_text(ctx->volume_icon, LV_SYMBOL_VOLUME_MID);
         }
 
+        if (cJSON_IsString(pic) && pic->valuestring != NULL && pic->valuestring[0] != '\0') {
+            pic_url = pic->valuestring;
+        }
+
+        same_media_hint = mp_media_identity_matches(ctx, title_text, duration_s, pic_url);
+
         if (ctx->now_title) lv_label_set_text(ctx->now_title, title_text);
         if (ctx->now_artist) lv_label_set_text(ctx->now_artist, artist_text);
 
-        if (cJSON_IsString(pic) && pic->valuestring != NULL && pic->valuestring[0] != '\0') {
-            mp_request_cover(ctx, pic->valuestring);
+        if (pic_url != NULL) {
+            mp_request_cover(ctx, pic_url);
         } else if (ctx->cover_url[0] != '\0') {
             /* Source stopped providing a cover – clear cached state. */
             ctx->cover_url[0] = '\0';
@@ -801,12 +951,43 @@ void w_media_player_apply_state(ui_widget_instance_t *instance, const ha_state_t
         if (ctx->now_artist) lv_label_set_text(ctx->now_artist, artist_text);
     }
 
+    if (playback_state_changed && local_pos_before > 0 && same_media_hint) {
+        ctx->resume_guard_pos_s = local_pos_before;
+        if (ctx->resume_guard_until_ms < now_ms + 15000) {
+            ctx->resume_guard_until_ms = now_ms + 15000;
+        }
+    }
+    ctx->is_playing = next_is_playing;
+
     ctx->duration_s = duration_s;
+    bool resume_guard_active = ctx->resume_guard_until_ms > now_ms && ctx->resume_guard_pos_s > 0;
+    bool incoming_position_regressive = have_position && local_pos_before > 0 && position_s + 2 < local_pos_before;
     if (have_position) {
-        ctx->position_s = position_s;
-        ctx->position_anchor_s = (position_anchor_s > 0) ? position_anchor_s : time(NULL);
+        if (resume_guard_active && incoming_position_regressive) {
+            /* Some integrations briefly report a stale low/zero media_position
+             * while transitioning back to play. Keep the locally visible
+             * position until HA catches up with a non-regressive update. */
+            ctx->position_s = local_pos_before;
+            ctx->position_anchor_s = ctx->is_playing ? time(NULL) : 0;
+        } else {
+            ctx->position_s = position_s;
+            ctx->position_anchor_s = ctx->is_playing ? ((position_anchor_s > 0) ? position_anchor_s : time(NULL)) : 0;
+            if (resume_guard_active && position_s + 2 >= ctx->resume_guard_pos_s) {
+                ctx->resume_guard_until_ms = 0;
+                ctx->resume_guard_pos_s = 0;
+            }
+        }
     } else if (!ctx->is_playing) {
+        ctx->position_s = local_pos_before;
         ctx->position_anchor_s = 0;
+    } else if (resume_guard_active && local_pos_before > 0) {
+        ctx->position_s = local_pos_before;
+        ctx->position_anchor_s = time(NULL);
+    }
+
+    if (ctx->resume_guard_until_ms > 0 && now_ms >= ctx->resume_guard_until_ms) {
+        ctx->resume_guard_until_ms = 0;
+        ctx->resume_guard_pos_s = 0;
     }
 
     if (volume_level >= 0.0 && !ctx->volume_dragging) {

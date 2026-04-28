@@ -4,9 +4,10 @@
  * Global, single-worker cover-art fetcher.
  *
  * Consumers submit a target size + HA `entity_picture` proxy path and receive
- * an LVGL-ready RGB565 buffer plus a derived dominant color via a callback on
- * the LVGL thread.  HTTP/TLS traffic always yields to the HA WS client and the
- * heavy-TLS gate (see ha_client_heavy_gate_is_busy()).
+ * an LVGL-ready image buffer (RGB565 for JPEG, RGB565A8 for PNG) plus a
+ * derived dominant color via a callback on the LVGL thread. HTTP/TLS traffic
+ * always yields to the HA WS client and the heavy-TLS gate
+ * (see ha_client_heavy_gate_is_busy()).
  */
 #pragma once
 
@@ -22,9 +23,11 @@ extern "C" {
 #endif
 
 typedef struct {
-    lv_image_dsc_t image;     /* RGB565, data allocated in PSRAM via jpeg_alloc_decoder_mem */
-    uint32_t dominant_rgb;    /* 0xRRGGBB of the most prominent cover color  */
-    bool valid;               /* true if decode+analysis succeeded           */
+    lv_image_dsc_t image;     /* LVGL-ready pixel buffer owned by the callback */
+    uint32_t dominant_rgb;    /* 0xRRGGBB of the most prominent cover color (0 if unavailable) */
+    uint32_t source_w;        /* Original source image width before any downscale */
+    uint32_t source_h;        /* Original source image height before any downscale */
+    bool valid;               /* true if fetch+decode/prepare succeeded      */
 } ha_cover_result_t;
 
 /* Callback is invoked on the LVGL task via lv_async_call.  Ownership of

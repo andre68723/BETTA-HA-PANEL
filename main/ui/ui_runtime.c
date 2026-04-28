@@ -147,6 +147,11 @@ static ui_widget_size_limits_t ui_runtime_widget_size_limits(const char *type)
         limits.min_h = 220;
         limits.max_w = APP_CONTENT_BOX_WIDTH;
         limits.max_h = APP_CONTENT_BOX_HEIGHT;
+    } else if (strcmp(type, "roborock_tile") == 0) {
+        limits.min_w = 240;
+        limits.min_h = 220;
+        limits.max_w = APP_CONTENT_BOX_WIDTH;
+        limits.max_h = APP_CONTENT_BOX_HEIGHT;
     }
 
     if (limits.max_w > APP_CONTENT_BOX_WIDTH) {

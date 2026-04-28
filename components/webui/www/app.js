@@ -142,6 +142,17 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Media Player tile",
     itemsFallback: "media players",
   },
+  roborock_tile: {
+    domain: "vacuum",
+    titleKey: "entity_picker.title_roborock",
+    blankKey: "entity_picker.blank_roborock",
+    widgetKey: "entity_picker.widget_roborock",
+    itemsKey: "entity_picker.items_vacuum",
+    titleFallback: "Choose Roborock",
+    blankFallback: "Blank Roborock Tile",
+    widgetFallback: "Roborock tile",
+    itemsFallback: "vacuum robots",
+  },
   graph: {
     domain: "sensor",
     titleKey: "entity_picker.title_sensor",
@@ -251,6 +262,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_weather_3day": "+ Weather Forecast",
     "layout.widgets.add_todo": "+ Todo List",
     "layout.widgets.add_media_player": "+ Media Player",
+    "layout.widgets.add_roborock": "+ Roborock",
     "layout.widgets.quick_setup": "Quick Setup",
     "layout.widgets.delete": "Delete Widget",
     "layout.widgets.confirm_delete": "Delete widget \"{name}\"?",
@@ -260,6 +272,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.title_switch": "Choose Switch",
     "entity_picker.title_weather": "Choose Weather",
     "entity_picker.title_climate": "Choose Heating",
+    "entity_picker.title_roborock": "Choose Roborock",
     "entity_picker.refresh": "Refresh",
     "entity_picker.search": "Search",
     "entity_picker.close": "Close",
@@ -274,6 +287,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_weather_3day": "Blank Weather Forecast Tile",
     "entity_picker.blank_graph": "Blank Graph Tile",
     "entity_picker.blank_heating": "Blank Heating Tile",
+    "entity_picker.blank_roborock": "Blank Roborock Tile",
     "entity_picker.loading": "Loading lights...",
     "entity_picker.loading_items": "Loading {items}...",
     "entity_picker.refreshing": "Refreshing lights...",
@@ -295,6 +309,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.items_switch": "switches",
     "entity_picker.items_weather": "weather entities",
     "entity_picker.items_climate": "climate entities",
+    "entity_picker.items_vacuum": "vacuum robots",
     "entity_picker.widget_light": "Light tile",
     "entity_picker.widget_sensor": "Sensor tile",
     "entity_picker.widget_button": "Button tile",
@@ -302,10 +317,12 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.widget_weather_3day": "Weather Forecast tile",
     "entity_picker.widget_graph": "Graph tile",
     "entity_picker.widget_heating": "Heating tile",
+    "entity_picker.widget_roborock": "Roborock tile",
     "layout.inspector.heading": "Inspector",
     "layout.inspector.title": "Title",
     "layout.inspector.entity": "Entity",
     "layout.inspector.secondary_entity": "Actual entity (sensor)",
+    "layout.inspector.secondary_entity_roborock": "Map entity (image, optional)",
     "layout.inspector.button_mode": "Button mode",
     "layout.inspector.button_accent_color": "Button accent color",
     "layout.inspector.slider_entity_domain": "Slider entity type",
@@ -354,6 +371,7 @@ const WEB_I18N_BUILTIN = {
     "layout.status.entity_domain_required": "Entity must use domain: {domains}",
     "layout.status.expected_domain": "the expected domain",
     "layout.status.secondary_sensor_required": "Actual entity must start with sensor.",
+    "layout.status.secondary_image_required": "Map entity must start with image.",
     "layout.status.invalid_json": "Invalid layout JSON",
     "layout.status.save_failed": "Save failed: {error}",
     "layout.status.import_failed": "Import failed: {error}",
@@ -571,6 +589,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_weather_3day": "+ Wetter Vorhersage",
     "layout.widgets.add_todo": "+ Todo Liste",
     "layout.widgets.add_media_player": "+ Media Player",
+    "layout.widgets.add_roborock": "+ Roborock",
     "layout.widgets.quick_setup": "Quick Setup",
     "layout.widgets.delete": "Widget loeschen",
     "layout.widgets.confirm_delete": "Widget \"{name}\" wirklich loeschen?",
@@ -580,6 +599,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.title_switch": "Schalter auswaehlen",
     "entity_picker.title_weather": "Wetter auswaehlen",
     "entity_picker.title_climate": "Heizung auswaehlen",
+    "entity_picker.title_roborock": "Roborock auswaehlen",
     "entity_picker.refresh": "Aktualisieren",
     "entity_picker.search": "Suchen",
     "entity_picker.close": "Schliessen",
@@ -594,6 +614,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_weather_3day": "Leere Wetter-Vorhersage-Kachel",
     "entity_picker.blank_graph": "Leere Graph-Kachel",
     "entity_picker.blank_heating": "Leere Heizungskachel",
+    "entity_picker.blank_roborock": "Leere Roborock-Kachel",
     "entity_picker.loading": "Lichter werden geladen...",
     "entity_picker.loading_items": "{items} werden geladen...",
     "entity_picker.refreshing": "Lichter werden aktualisiert...",
@@ -615,6 +636,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.items_switch": "Schalter",
     "entity_picker.items_weather": "Wetter-Entitaeten",
     "entity_picker.items_climate": "Climate-Entitaeten",
+    "entity_picker.items_vacuum": "Saugroboter",
     "entity_picker.widget_light": "Lichtkachel",
     "entity_picker.widget_sensor": "Sensorkachel",
     "entity_picker.widget_button": "Button-Kachel",
@@ -622,10 +644,12 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.widget_weather_3day": "Wetter-Vorhersage-Kachel",
     "entity_picker.widget_graph": "Graph-Kachel",
     "entity_picker.widget_heating": "Heizungskachel",
+    "entity_picker.widget_roborock": "Roborock-Kachel",
     "layout.inspector.heading": "Inspektor",
     "layout.inspector.title": "Titel",
     "layout.inspector.entity": "Entitaet",
     "layout.inspector.secondary_entity": "Ist-Entitaet (Sensor)",
+    "layout.inspector.secondary_entity_roborock": "Karten-Entitaet (image, optional)",
     "layout.inspector.button_mode": "Button Modus",
     "layout.inspector.button_accent_color": "Button Akzentfarbe",
     "layout.inspector.slider_entity_domain": "Slider Entitaetstyp",
@@ -674,6 +698,7 @@ const WEB_I18N_BUILTIN = {
     "layout.status.entity_domain_required": "Entitaet muss diese Domain nutzen: {domains}",
     "layout.status.expected_domain": "die erwartete Domain",
     "layout.status.secondary_sensor_required": "Ist-Entitaet muss mit sensor. beginnen.",
+    "layout.status.secondary_image_required": "Karten-Entitaet muss mit image. beginnen.",
     "layout.status.invalid_json": "Ungueltiges Layout JSON",
     "layout.status.save_failed": "Speichern fehlgeschlagen: {error}",
     "layout.status.import_failed": "Import fehlgeschlagen: {error}",
@@ -1300,6 +1325,8 @@ function widgetSizeLimits(type) {
       return { minW: 220, minH: 200, maxW: 640, maxH: 640 };
     case "media_player":
       return { minW: 260, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "roborock_tile":
+      return { minW: 240, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     default:
       return fallback;
   }
@@ -1449,6 +1476,7 @@ const el = {
   addWeather3DayBtn: document.getElementById("addWeather3DayBtn"),
   addTodoListBtn: document.getElementById("addTodoListBtn"),
   addMediaPlayerBtn: document.getElementById("addMediaPlayerBtn"),
+  addRoborockTileBtn: document.getElementById("addRoborockTileBtn"),
   deleteWidgetBtn: document.getElementById("deleteWidgetBtn"),
   reloadBtn: document.getElementById("reloadBtn"),
   saveBtn: document.getElementById("saveBtn"),
@@ -1461,6 +1489,7 @@ const el = {
   fEntityWrap: document.getElementById("fEntityWrap"),
   fEntity: document.getElementById("fEntity"),
   fSecondaryEntityWrap: document.getElementById("fSecondaryEntityWrap"),
+  fSecondaryEntityLabel: document.getElementById("fSecondaryEntityLabel"),
   fSecondaryEntity: document.getElementById("fSecondaryEntity"),
   buttonOptions: document.getElementById("buttonOptions"),
   fButtonMode: document.getElementById("fButtonMode"),
@@ -2035,6 +2064,7 @@ function applyWebTranslations() {
   setTextById("addWeather3DayBtn", "layout.widgets.add_weather_3day");
   setTextById("addTodoListBtn", "layout.widgets.add_todo");
   setTextById("addMediaPlayerBtn", "layout.widgets.add_media_player");
+  setTextById("addRoborockTileBtn", "layout.widgets.add_roborock");
   setTextById("deleteWidgetBtn", "layout.widgets.delete");
   setTextById("lightEntityPickerTitle", "entity_picker.title");
   setTextById("lightEntityPickerRefreshBtn", "entity_picker.refresh");
@@ -3233,6 +3263,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "weather_tile" || type === "weather_3day") return ["weather"];
   if (type === "todo_list") return ["todo"];
   if (type === "media_player") return ["media_player"];
+  if (type === "roborock_tile") return ["vacuum"];
   if (type === "slider") {
     const normalized = normalizeSliderEntityDomain(sliderDomain);
     if (normalized === "auto") {
@@ -3250,6 +3281,37 @@ function expectedDomainForWidgetType(
 ) {
   const domains = allowedEntityDomainsForWidgetType(type, sliderDomain, buttonMode);
   return domains.length === 1 ? domains[0] : "";
+}
+
+function secondaryEntityConfigForWidgetType(type) {
+  if (type === "heating_tile") {
+    return {
+      enabled: true,
+      domain: "sensor",
+      optional: false,
+      labelKey: "layout.inspector.secondary_entity",
+      labelFallback: "Actual entity (sensor)",
+      invalidStatusKey: "layout.status.secondary_sensor_required",
+    };
+  }
+  if (type === "roborock_tile") {
+    return {
+      enabled: true,
+      domain: "image",
+      optional: true,
+      labelKey: "layout.inspector.secondary_entity_roborock",
+      labelFallback: "Map entity (image, optional)",
+      invalidStatusKey: "layout.status.secondary_image_required",
+    };
+  }
+  return {
+    enabled: false,
+    domain: "",
+    optional: true,
+    labelKey: "layout.inspector.secondary_entity",
+    labelFallback: "Actual entity (sensor)",
+    invalidStatusKey: "layout.status.secondary_sensor_required",
+  };
 }
 
 function listEntitiesByDomain(domain) {
@@ -3424,9 +3486,11 @@ function scheduleEntityAutocomplete(kind, immediate = false) {
   const state = isSecondary ? entityAutocomplete.secondary : entityAutocomplete.primary;
   const input = isSecondary ? el.fSecondaryEntity : el.fEntity;
   const options = isSecondary ? el.sensorEntityOptions : el.entityOptions;
+  const secondaryConfig = secondaryEntityConfigForWidgetType(inspectorWidgetType());
   if (!input || !options) return;
   if (!isSecondary && input.disabled) return;
   if (isSecondary && input.disabled) return;
+  if (isSecondary && !secondaryConfig.enabled) return;
 
   if (state.timerId !== null) {
     window.clearTimeout(state.timerId);
@@ -3436,11 +3500,11 @@ function scheduleEntityAutocomplete(kind, immediate = false) {
   const run = async () => {
     const requestSeq = ++state.requestSeq;
     const raw = input.value || "";
-    const fallbackDomain = isSecondary ? "sensor" : defaultPrimaryEntityDomain();
+    const fallbackDomain = isSecondary ? secondaryConfig.domain : defaultPrimaryEntityDomain();
     const { domain, search } = parseEntitySearchInput(raw, fallbackDomain);
-    const source = isSecondary ? listEntitiesByDomain("sensor") : primaryEntitySource();
+    const source = isSecondary ? listEntitiesByDomain(secondaryConfig.domain) : primaryEntitySource();
     const allowedDomains = isSecondary
-      ? ["sensor"]
+      ? [secondaryConfig.domain]
       : allowedEntityDomainsForWidgetType(inspectorWidgetType(), inspectorSliderEntityDomain(), inspectorButtonMode());
 
     if (domain && allowedDomains.length > 0 && !allowedDomains.includes(domain)) {
@@ -3968,19 +4032,26 @@ function renderEntityOptions() {
   const inspectorType = inspectorWidgetType();
   const sliderDomain = inspectorSliderEntityDomain();
   const buttonMode = inspectorButtonMode();
+  const secondaryConfig = secondaryEntityConfigForWidgetType(inspectorType);
   const inspectorOptions = listEntitiesForWidgetType(inspectorType, sliderDomain, buttonMode);
   const primaryOptions = inspectorOptions.length > 0 ? inspectorOptions : editor.entities;
   setEntityOptionsList(el.entityOptions, primaryOptions.slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS));
 
   setEntityOptionsList(
     el.sensorEntityOptions,
-    listEntitiesByDomain("sensor").slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS),
+    secondaryConfig.domain
+      ? listEntitiesByDomain(secondaryConfig.domain).slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS)
+      : [],
   );
   if (el.energyEntityOptions) {
     setEntityOptionsList(el.energyEntityOptions, listEntitiesByDomain("sensor").slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS));
   }
 
-  const secondaryEnabled = inspectorType === "heating_tile";
+  if (el.fSecondaryEntityLabel) {
+    el.fSecondaryEntityLabel.textContent = t(secondaryConfig.labelKey, {}, secondaryConfig.labelFallback);
+  }
+
+  const secondaryEnabled = secondaryConfig.enabled;
   if (el.fSecondaryEntityWrap) {
     el.fSecondaryEntityWrap.classList.toggle("hidden", !secondaryEnabled);
   }
@@ -4974,12 +5045,14 @@ function addWidget(type, options = {}) {
     type === "weather_3day" ? 360
       : type === "todo_list" ? 360
       : type === "media_player" ? 360
+      : type === "roborock_tile" ? 360
       : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 300
       : 220;
   const defaultH =
     type === "weather_3day" ? 260
       : type === "todo_list" ? 360
       : type === "media_player" ? 280
+      : type === "roborock_tile" ? 300
       : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 260
       : 120;
   const rect = clampRectToCanvas({ x: 20, y: 20, w: defaultW, h: defaultH }, type);
@@ -5048,6 +5121,7 @@ function applyInspector(options = {}) {
   const buttonMode = widgetType === "button"
     ? normalizeButtonMode(el.fButtonMode?.value)
     : DEFAULT_BUTTON_MODE;
+  const secondaryConfig = secondaryEntityConfigForWidgetType(widgetType);
   const nextEntityId = el.fEntity.value.trim() || pickDefaultEntityForWidgetType(widgetType, sliderDomain, buttonMode);
 
   const primaryEntityValid = entityMatchesWidgetType({ id: nextEntityId }, widgetType, sliderDomain, buttonMode);
@@ -5062,11 +5136,14 @@ function applyInspector(options = {}) {
   if (primaryEntityValid) {
     widget.entity_id = nextEntityId;
   }
-  if (widgetType === "heating_tile") {
-    const secondaryEntityId = el.fSecondaryEntity.value.trim() || pickDefaultEntityForWidgetType("sensor");
-    if (!secondaryEntityId.startsWith("sensor.")) {
+  if (secondaryConfig.enabled) {
+    const typedSecondaryEntityId = el.fSecondaryEntity.value.trim();
+    const secondaryEntityId = secondaryConfig.optional
+      ? typedSecondaryEntityId
+      : (typedSecondaryEntityId || pickDefaultEntityForWidgetType(secondaryConfig.domain));
+    if (secondaryEntityId.length > 0 && !secondaryEntityId.startsWith(`${secondaryConfig.domain}.`)) {
       if (!softEntityValidation) {
-        setStatus(t("layout.status.secondary_sensor_required"), true);
+        setStatus(t(secondaryConfig.invalidStatusKey), true);
         return false;
       }
     } else {
@@ -5254,6 +5331,9 @@ function bindUi() {
   }
   if (el.addMediaPlayerBtn) {
     el.addMediaPlayerBtn.onclick = () => openLightEntityPicker("media_player");
+  }
+  if (el.addRoborockTileBtn) {
+    el.addRoborockTileBtn.onclick = () => openLightEntityPicker("roborock_tile");
   }
   if (el.lightEntityPickerRefreshBtn) {
     el.lightEntityPickerRefreshBtn.onclick = () => {
