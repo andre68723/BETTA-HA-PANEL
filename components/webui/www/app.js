@@ -51,6 +51,7 @@ const LIGHT_ENTITY_PICKER_MAX_POLLS = 90;
 const ENTITY_PICKER_SEARCH_DEBOUNCE_MS = 350;
 const SETUP_WIZARD_PENDING_STORAGE_KEY = "betta.setupWizard.pending";
 const SETUP_WIZARD_DISMISSED_STORAGE_KEY = "betta.setupWizard.dismissed";
+const OTA_RELEASE_REPO = "cptkirki/BETTA-HA-PANEL";
 const ENTITY_PICKER_CONFIGS = {
   sensor: {
     domain: "sensor",
@@ -437,7 +438,7 @@ const WEB_I18N_BUILTIN = {
     "settings.ap.hint": "If setup AP is active, connect to it and open <code>http://192.168.4.1</code>.",
     "settings.ota.heading": "Firmware Update",
     "settings.ota.url": "OTA URL",
-    "settings.ota.url_placeholder": "https://github.com/.../release/betta86-ha-panel-v0.7.ota.bin",
+    "settings.ota.url_placeholder": "https://github.com/cptkirki/BETTA-HA-PANEL/releases/latest/download/...",
     "settings.ota.flash_url": "Flash URL",
     "settings.ota.refresh": "Refresh Status",
     "settings.ota.file": "OTA .bin File",
@@ -764,7 +765,7 @@ const WEB_I18N_BUILTIN = {
     "settings.ap.hint": "Wenn Setup AP aktiv ist, verbinden und <code>http://192.168.4.1</code> oeffnen.",
     "settings.ota.heading": "Firmware Update",
     "settings.ota.url": "OTA URL",
-    "settings.ota.url_placeholder": "https://github.com/.../release/betta86-ha-panel-v0.7.ota.bin",
+    "settings.ota.url_placeholder": "https://github.com/cptkirki/BETTA-HA-PANEL/releases/latest/download/...",
     "settings.ota.flash_url": "URL flashen",
     "settings.ota.refresh": "Status aktualisieren",
     "settings.ota.file": "OTA .bin Datei",
@@ -986,7 +987,7 @@ const WEB_I18N_BUILTIN = {
     "settings.ap.hint": "Si el AP de setup esta activo, conectate y abre <code>http://192.168.4.1</code>.",
     "settings.ota.heading": "Actualizacion de firmware",
     "settings.ota.url": "URL OTA",
-    "settings.ota.url_placeholder": "https://github.com/.../release/betta86-ha-panel-v0.7.ota.bin",
+    "settings.ota.url_placeholder": "https://github.com/cptkirki/BETTA-HA-PANEL/releases/latest/download/...",
     "settings.ota.flash_url": "Flashear URL",
     "settings.ota.refresh": "Actualizar estado",
     "settings.ota.file": "Archivo OTA .bin",
@@ -1204,7 +1205,7 @@ const WEB_I18N_BUILTIN = {
     "settings.ap.hint": "Si le setup AP est actif, connectez-vous et ouvrez <code>http://192.168.4.1</code>.",
     "settings.ota.heading": "Mise a jour firmware",
     "settings.ota.url": "URL OTA",
-    "settings.ota.url_placeholder": "https://github.com/.../release/betta86-ha-panel-v0.7.ota.bin",
+    "settings.ota.url_placeholder": "https://github.com/cptkirki/BETTA-HA-PANEL/releases/latest/download/...",
     "settings.ota.flash_url": "Flasher URL",
     "settings.ota.refresh": "Actualiser statut",
     "settings.ota.file": "Fichier OTA .bin",
@@ -1360,6 +1361,9 @@ const editor = {
   editorStarted: false,
   settings: null,
   appVersion: "",
+  appProject: "",
+  appScreenW: 0,
+  appScreenH: 0,
   haDiagnostics: { total: 0, listed: 0, updatedUnixMs: 0, names: [], dismissedSignature: "" },
   wifiScanItems: [],
   wifiScanHasRun: false,
@@ -1389,6 +1393,9 @@ const editor = {
     status: null,
     pollTimerId: null,
     uploadInProgress: false,
+    latestUrl: "",
+    autoFilledUrl: "",
+    latestUrlLoading: false,
   },
   languageCatalog: [],
   i18nLanguage: DEFAULT_UI_LANGUAGE,
@@ -1841,11 +1848,88 @@ async function loadAppVersion() {
   try {
     const payload = await apiGet("/api/version");
     editor.appVersion = typeof payload?.version === "string" ? payload.version : "";
+    editor.appProject = typeof payload?.project === "string" ? payload.project : "";
+    editor.appScreenW = Number(payload?.screen_w) || 0;
+    editor.appScreenH = Number(payload?.screen_h) || 0;
     applyCanvasGeometry(payload);
   } catch (_) {
     editor.appVersion = "";
+    editor.appProject = "";
+    editor.appScreenW = 0;
+    editor.appScreenH = 0;
   }
   renderAppVersion();
+  void refreshLatestOtaUrl();
+}
+
+function otaPanelVariant() {
+  const project = (editor.appProject || "").toLowerCase();
+  if (project.includes("10.1") || project.includes("panel10") || editor.appScreenW >= 1000) {
+    return "panel10";
+  }
+  return "panel4";
+}
+
+function otaCurrentVersionTag() {
+  const version = (editor.appVersion || "").trim();
+  return /^v\d+\.\d+\.\d+/.test(version) ? version : "";
+}
+
+function otaLatestFallbackUrl() {
+  const version = otaCurrentVersionTag();
+  if (!version) return "";
+  const variant = otaPanelVariant();
+  return `https://github.com/${OTA_RELEASE_REPO}/releases/latest/download/betta86-ha-panel-${version}-${variant}.ota.bin`;
+}
+
+function applyLatestOtaUrl(url) {
+  if (!url) return;
+  const previousAuto = editor.ota.autoFilledUrl || "";
+  editor.ota.latestUrl = url;
+  if (el.settingsOtaUrl) {
+    el.settingsOtaUrl.placeholder = url;
+    const current = el.settingsOtaUrl.value.trim();
+    if (!current || current === previousAuto) {
+      el.settingsOtaUrl.value = url;
+      editor.ota.autoFilledUrl = url;
+    }
+  }
+}
+
+async function refreshLatestOtaUrl() {
+  if (editor.ota.latestUrlLoading) return;
+
+  const fallback = otaLatestFallbackUrl();
+  if (fallback) {
+    applyLatestOtaUrl(fallback);
+  }
+
+  editor.ota.latestUrlLoading = true;
+  try {
+    const response = await fetch(`https://api.github.com/repos/${OTA_RELEASE_REPO}/releases/latest`, {
+      cache: "no-store",
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    if (!response.ok) return;
+    const payload = await response.json();
+    const assets = Array.isArray(payload?.assets) ? payload.assets : [];
+    const variant = otaPanelVariant();
+    const suffix = `-${variant}.ota.bin`;
+    const asset = assets.find((item) =>
+      typeof item?.name === "string" &&
+      item.name.startsWith("betta86-ha-panel-") &&
+      item.name.endsWith(suffix)
+    );
+    if (asset?.name) {
+      applyLatestOtaUrl(`https://github.com/${OTA_RELEASE_REPO}/releases/latest/download/${asset.name}`);
+    } else if (typeof asset?.browser_download_url === "string") {
+      applyLatestOtaUrl(asset.browser_download_url);
+    }
+  } catch (_) {
+    /* Keep the firmware-version fallback URL. */
+  } finally {
+    editor.ota.latestUrlLoading = false;
+  }
 }
 
 async function loadHaDiagnostics() {
@@ -2573,6 +2657,11 @@ function renderSettings() {
     el.scanWifiBtn.disabled = !scanSupported || editor.wifiScanInProgress;
   }
   renderOtaStatus(editor.ota.status);
+  if (editor.ota.latestUrl) {
+    applyLatestOtaUrl(editor.ota.latestUrl);
+  } else {
+    void refreshLatestOtaUrl();
+  }
   renderWifiScanResults(editor.wifiScanItems);
 }
 

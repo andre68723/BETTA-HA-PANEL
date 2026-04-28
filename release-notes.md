@@ -67,6 +67,61 @@ BETTA HA Panel v0.8.1 adds the first Roborock map tile, refines the media player
 - OTA images are app-only and must be installed through the panel updater, not flashed as full factory images.
 - Factory images remain intended for first install, recovery, or partition-layout resets at flash offset `0x0`.
 
+## v0.8.0
+
+BETTA HA Panel v0.8.0 introduced the dual-panel release line, added the first Media Player and Todo List widgets, and refined the web editor and Home Assistant diagnostics around larger dashboards.
+
+### Highlights
+
+- Added dedicated `panel4` and `panel10` firmware variants.
+- Added versioned factory and OTA binaries for both supported panel variants.
+- Added the Media Player widget with title/artist display, transport controls, volume control, and progress timing.
+- Added the Todo List widget for reading and completing Home Assistant todo entities directly on the panel.
+- Added the on-board Theme Editor for customizing dashboard look and feel from the web UI.
+- Improved web editor interaction with whole-tile row click targets and safer delete confirmation.
+- Updated editor canvas sizing so layouts preview against the selected panel variant.
+- Added missing-entity diagnostics so the editor can report layout entities that are not present in Home Assistant.
+- Hardened the WebSocket/TLS send path and initial entity sync behavior.
+- Moved larger Home Assistant/runtime buffers away from the HA client task stack to improve stability.
+
+### Dual Panel Support
+
+- `panel4` targets the Waveshare ESP32-P4-WIFI6-Touch-LCD-4B 4" panel.
+- `panel10` targets the Waveshare ESP32-P4 Module Nano with 10.1" DSI panel.
+- Both variants share the same editor, layout format, Home Assistant integration, and widget engine.
+- Release packaging can produce both variants through `tools/make_factory_bin.ps1 -Variant both`.
+
+### Widgets
+
+- Media Player tiles show media metadata, play/pause controls, volume, and progress position in one compact card.
+- Todo List tiles bring Home Assistant shopping/todo lists onto the panel with direct completion support.
+- Theme editing became available from the panel editor so visual changes no longer require firmware edits.
+
+### Web Editor And Diagnostics
+
+- Widget rows in the editor are easier to target on touch displays.
+- Delete buttons use clearer destructive styling and confirmation behavior.
+- The editor reports missing Home Assistant entities through a visible banner.
+- `/api/ha/diagnostics` exposes more detail for troubleshooting entity mismatch issues.
+
+### Packaging
+
+- Panel 4 factory image:
+  `release/betta86-ha-panel-v0.8.0-panel4.factory.bin`
+- Panel 4 OTA image:
+  `release/ota/betta86-ha-panel-v0.8.0-panel4.ota.bin`
+- Panel 10 factory image:
+  `release/betta86-ha-panel-v0.8.0-panel10.factory.bin`
+- Panel 10 OTA image:
+  `release/ota/betta86-ha-panel-v0.8.0-panel10.ota.bin`
+
+### Upgrade Notes
+
+- Existing layouts remain compatible.
+- Choose the firmware image that matches the physical panel variant.
+- Devices already on the OTA partition layout can update with the `.ota.bin` image for their panel variant.
+- Factory images remain intended for first install, recovery, or full reflash at offset `0x0`.
+
 ## v0.7.3
 
 BETTA HA Panel v0.7.3 finalizes the graph overhaul, improves weather forecast density, and hardens the web editor interaction model for touch and pointer-heavy layout work.

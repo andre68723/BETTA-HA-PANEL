@@ -31,6 +31,8 @@
 
 #define OTA_APP_DESC_OFFSET (sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t))
 #define OTA_HEADER_CHECK_LEN (OTA_APP_DESC_OFFSET + sizeof(esp_app_desc_t))
+#define OTA_URL_MAX_REDIRECTS 8
+#define TAG_API_OTA "api_ota"
 
 typedef enum {
     API_OTA_STATE_IDLE = 0,
@@ -278,6 +280,11 @@ static void ota_schedule_restart(void)
 static bool ota_url_is_https(const char *url)
 {
     return url != NULL && strncmp(url, "https://", 8) == 0;
+}
+
+static bool ota_http_status_is_redirect(int status)
+{
+    return status == 301 || status == 302 || status == 303 || status == 307 || status == 308;
 }
 
 static bool ota_copy_url_without_query(const char *src, char *dst, size_t dst_len)
@@ -611,6 +618,50 @@ typedef struct {
     char url[APP_OTA_URL_MAX_LEN];
 } ota_url_task_arg_t;
 
+static esp_err_t ota_http_open_follow_redirects(esp_http_client_handle_t client,
+                                                int64_t *out_content_length,
+                                                int *out_status)
+{
+    if (client == NULL || out_content_length == NULL || out_status == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    *out_content_length = 0;
+    *out_status = 0;
+
+    for (int redirects = 0; redirects <= OTA_URL_MAX_REDIRECTS; redirects++) {
+        esp_err_t err = esp_http_client_open(client, 0);
+        if (err != ESP_OK) {
+            return err;
+        }
+
+        int64_t content_length = esp_http_client_fetch_headers(client);
+        int status = esp_http_client_get_status_code(client);
+        *out_content_length = content_length;
+        *out_status = status;
+
+        if (status == 200) {
+            return ESP_OK;
+        }
+        if (!ota_http_status_is_redirect(status)) {
+            return ESP_ERR_INVALID_RESPONSE;
+        }
+        if (redirects >= OTA_URL_MAX_REDIRECTS) {
+            return ESP_ERR_HTTP_MAX_REDIRECT;
+        }
+
+        ESP_LOGI(TAG_API_OTA, "OTA URL redirect HTTP %d (%d/%d)",
+                 status, redirects + 1, OTA_URL_MAX_REDIRECTS);
+        err = esp_http_client_set_redirection(client);
+        esp_http_client_close(client);
+        if (err != ESP_OK) {
+            return err;
+        }
+    }
+
+    return ESP_ERR_HTTP_MAX_REDIRECT;
+}
+
 static void ota_url_task(void *arg)
 {
     ota_url_task_arg_t *task_arg = (ota_url_task_arg_t *)arg;
@@ -631,6 +682,7 @@ static void ota_url_task(void *arg)
         .buffer_size = APP_OTA_CHUNK_SIZE,
         .buffer_size_tx = 1024,
         .keep_alive_enable = false,
+        .max_redirection_count = OTA_URL_MAX_REDIRECTS,
     };
 #if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
     cfg.crt_bundle_attach = esp_crt_bundle_attach;
@@ -646,16 +698,23 @@ static void ota_url_task(void *arg)
     esp_http_client_set_header(client, "Accept", "application/octet-stream");
     esp_http_client_set_header(client, "User-Agent", "BETTA-HA-PANEL-OTA");
 
-    err = esp_http_client_open(client, 0);
+    int64_t content_length = 0;
+    int status = 0;
+    err = ota_http_open_follow_redirects(client, &content_length, &status);
     if (err != ESP_OK) {
-        ota_finish_status_error("Failed to open OTA URL");
+        if (status > 0) {
+            char msg[96];
+            snprintf(msg, sizeof(msg), "OTA URL returned HTTP %d", status);
+            ota_finish_status_error(msg);
+        } else {
+            ota_finish_status_error("Failed to open OTA URL");
+        }
         goto done;
     }
-
-    int64_t content_length = esp_http_client_fetch_headers(client);
-    int status = esp_http_client_get_status_code(client);
     if (status != 200) {
-        ota_finish_status_error("OTA URL did not return HTTP 200");
+        char msg[96];
+        snprintf(msg, sizeof(msg), "OTA URL returned HTTP %d", status);
+        ota_finish_status_error(msg);
         goto done;
     }
 
