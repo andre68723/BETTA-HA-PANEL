@@ -18,8 +18,8 @@ BETTA HA Panel ships as **two firmware variants**, one per supported device:
 
 | Variant   | Device                                                 | Resolution | Factory image                                                                     |
 |-----------|--------------------------------------------------------|------------|-----------------------------------------------------------------------------------|
-| `panel4`  | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")         | 720 × 720  | [betta86-ha-panel-v0.8.0-panel4.factory.bin](release/betta86-ha-panel-v0.8.0-panel4.factory.bin)   |
-| `panel10` | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel**   | 1280 × 800 | [betta86-ha-panel-v0.8.0-panel10.factory.bin](release/betta86-ha-panel-v0.8.0-panel10.factory.bin) |
+| `panel4`  | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")         | 720 × 720  | [betta86-ha-panel-v0.8.1-panel4.factory.bin](release/betta86-ha-panel-v0.8.1-panel4.factory.bin)   |
+| `panel10` | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel**   | 1280 × 800 | [betta86-ha-panel-v0.8.1-panel10.factory.bin](release/betta86-ha-panel-v0.8.1-panel10.factory.bin) |
 
 Both variants share the same dashboard engine, web editor, and Home Assistant integration. Pick the image that matches your board.
 
@@ -29,7 +29,7 @@ Both variants share the same dashboard engine, web editor, and Home Assistant in
 
 - **Live Home Assistant link** — WebSocket connection with REST fallback for forecasts and long-poll states.
 - **On-device editor** — BETTA Editor in the browser at `http://<panel-ip>`; drag-and-drop widgets, multi-page layouts, room-grouped entity picker.
-- **Widget library** — sensor, button, slider, graph, light, heating, weather, up to 5 day weather forecast, media player, todo list, energy dashboard, empty tile.
+- **Widget library** — sensor, button, slider, graph, light, heating, weather, up to 5 day weather forecast, media player, todo list, Roborock, energy dashboard, empty tile.
 - **Advanced light control** — brightness, color temperature, RGB — exposed only when Home Assistant reports the capability.
 - **Energy dashboard** — automatic grid / solar / battery / gas / water flow visualization driven by the Home Assistant energy model.
 - **Graphs** — line, smoothed line, or bar-chart modes; event-rate sampling up to 4096 points with progressive decimation.
@@ -61,15 +61,15 @@ Future updates install via OTA from the editor — no cable needed.
 
 ---
 
-## What's new in v0.8.0
+## What's new in v0.8.1
 
-- **Dual panel support** — first release with dedicated `panel4` and `panel10` firmware images.
-- **Media Player widget** — title / artist display, transport controls, volume, progress bar flanked by current and total time.
-- **Todo List widget** — read/complete Home Assistant todo entities directly on the panel.
-- **On Board Theme Editor** — Customize the look and feel of your dashboard.
-- **Web editor polish** — whole-tile row click targets, red-circle delete buttons with confirm dialogs, canvas auto-sizes to the selected panel variant.
-- **Missing-entity diagnostics** — the editor shows a banner when layout entities are absent in Home Assistant; details at `/api/ha/diagnostics`.
-- **Stability** — hardened WebSocket/TLS send path, robust watchdog for the initial entity sync, moved large buffers off the HA client task stack 
+- **Roborock widget** — live map tile with vacuum status, start/pause, dock, repeat count, and room-clean controls.
+- **Room controls on the map** — tap rooms directly on the Roborock map when using the HACS integration [RoborockCustomMap](https://github.com/Lash-L/RoborockCustomMap).
+- **Live robot marker** — shows the robot position while cleaning, returning, or paused without polling while docked.
+- **Todo List performance** — smoother shopping-list scrolling with larger touch targets and virtualized rows.
+- **Media Player polish** — improved progress handling around play/pause and external state changes.
+- **Theme-aligned tiles** — refreshed Media Player, Todo, and Roborock controls to better match the dashboard design system.
+- **Release images** — fresh `v0.8.1` factory and OTA binaries for both `panel4` and `panel10`.
 
 Full history: [release-notes.md](release-notes.md).
 

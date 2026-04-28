@@ -2,6 +2,71 @@
 
 # Release Notes
 
+## v0.8.1
+
+BETTA HA Panel v0.8.1 adds the first Roborock map tile, refines the media player and shopping-list experience, and ships fresh dual-panel factory and OTA images for both supported display variants.
+
+### Highlights
+
+- Added a dedicated Roborock tile with Home Assistant `vacuum.*` and optional `image.*` map entity support.
+- Added in-tile Roborock map rendering with room overlays and direct room selection on the map.
+- Added Roborock segment cleaning controls with repeat count selection, start/pause, dock, and clean-selected actions.
+- Added live Roborock robot-position overlay while cleaning, returning, or paused.
+- Improved Roborock map loading for Home Assistant image proxy PNGs, including palette/RGBA PNG handling and PSRAM-backed decode buffers.
+- Room controls on top of the map require the HACS integration `RoborockCustomMap` to provide the room metadata needed for the overlay.
+- Added Roborock widget support to the web editor, widget factory, layout validation, and Home Assistant entity picker flow.
+- Redesigned the Todo/Shopping List tile with larger touch targets and a card-like row layout.
+- Optimized Todo scrolling with row virtualization, deferred updates while scrolling, and lower background refresh pressure.
+- Refined Media Player progress handling around play/pause transitions and external state changes.
+- Updated Media Player and Todo visuals to better align with the tile theme system.
+- Added versioned `v0.8.1` factory and OTA binaries for `panel4` and `panel10`.
+
+### Roborock
+
+- The Roborock tile can use a `vacuum.*` entity for commands and status plus an `image.*` entity for the live map preview.
+- Room overlays and tap-to-select room controls require the HACS integration `RoborockCustomMap`: `https://github.com/Lash-L/RoborockCustomMap`.
+- Map layout adapts to tile shape: portrait tiles place the map above controls, while wide tiles place controls beside the map.
+- Room controls now live directly on top of the map instead of relying on a separate room list.
+- The map remains visible while periodic refreshes are in flight, avoiding the previous blank-map flicker.
+- Live robot-position polling is active only while it is useful (`cleaning`, `returning`, or `paused`) and stops when the robot is docked or charging.
+- The separate live-position marker is drawn below clickable room overlays so room selection remains easy.
+
+### Todo And Media
+
+- Todo rows use a smaller reusable object pool instead of rendering every item as a full LVGL object tree.
+- Todo updates are deferred during active scrolling to avoid intermittent frame drops.
+- Todo background fetch cadence was reduced to avoid unnecessary Home Assistant traffic.
+- Media Player progress now keeps the last reliable timestamp through pause/play transitions instead of briefly jumping back to `0:00`.
+- Media Player controls and slider styling were tuned to feel more consistent with the rest of the dashboard tiles.
+
+### Home Assistant And Performance
+
+- Home Assistant image attributes are compacted for map entities so Roborock image metadata can fit the device-side state cache.
+- PNG cover/map fetching can decode into LVGL-compatible buffers without requiring `LV_USE_LODEPNG`.
+- Large image decode and tile data allocations prefer PSRAM, reducing internal heap pressure.
+- Hidden Roborock and Todo tiles avoid high-frequency work while their page is not visible.
+- Entity discovery gating was adjusted so high-information pages do not starve web editor entity picker requests.
+
+### Packaging
+
+- Panel 4 factory image:
+  `release/betta86-ha-panel-v0.8.1-panel4.factory.bin`
+- Panel 4 OTA image:
+  `release/ota/betta86-ha-panel-v0.8.1-panel4.ota.bin`
+- Panel 10 factory image:
+  `release/betta86-ha-panel-v0.8.1-panel10.factory.bin`
+- Panel 10 OTA image:
+  `release/ota/betta86-ha-panel-v0.8.1-panel10.ota.bin`
+
+### Upgrade Notes
+
+- Existing layouts remain compatible.
+- Roborock tiles are additive and can be configured from the web editor using the Home Assistant entity picker.
+- For live maps, configure the tile with the Roborock vacuum entity and the matching Home Assistant map image entity.
+- For room overlays and direct room controls on the map, install and configure the HACS integration `RoborockCustomMap`: `https://github.com/Lash-L/RoborockCustomMap`.
+- OTA images are app-only and must be installed through the panel updater, not flashed as full factory images.
+- Factory images remain intended for first install, recovery, or partition-layout resets at flash offset `0x0`.
+
 ## v0.7.3
 
 BETTA HA Panel v0.7.3 finalizes the graph overhaul, improves weather forecast density, and hardens the web editor interaction model for touch and pointer-heavy layout work.
