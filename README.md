@@ -7,7 +7,7 @@ A runtime-configurable Home Assistant wall panel for ESP32-P4 touchscreen device
 
 <p float="left">
   <img width="32%" alt="Page settings" src="https://github.com/user-attachments/assets/9caf6e2b-6ea9-4b76-b404-1b58da822712" />
-  <img width="32%" alt="Media Player" src="https://github.com/user-attachments/assets/86b2c85b-b9b4-4368-bcbf-44b0256ca634" />
+  <img width="32%" alt="Media Player & Roborock" src="https://github.com/user-attachments/assets/c31df7b8-f7e7-461a-98af-80070eac0392" />
   <img width="32%" alt="Widget inspector" src="https://github.com/user-attachments/assets/97be77c3-0716-4641-994c-efe90c929953" />
 </p>
 ---
