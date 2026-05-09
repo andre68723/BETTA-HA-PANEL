@@ -18,9 +18,9 @@ BETTA HA Panel ships as **three firmware variants**, one per supported device:
 
 | Variant    | Device                                                  | Resolution | Factory image                                                                     |
 |------------|---------------------------------------------------------|------------|-----------------------------------------------------------------------------------|
-| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")          | 720 × 720  | [betta86-ha-panel-v0.8.1-panel4.factory.bin](release/betta86-ha-panel-v0.8.1-panel4.factory.bin)   |
-| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel**    | 1280 × 800 | [betta86-ha-panel-v0.8.1-panel10.factory.bin](release/betta86-ha-panel-v0.8.1-panel10.factory.bin) |
-| `panels3`  | Guition **ESP32-S3-4848S040** (4")                      | 480 × 480  | [betta86-ha-panel-v0.8.1-panels3.factory.bin](release/betta86-ha-panel-v0.8.1-panels3.factory.bin) |
+| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")          | 720 × 720  | [betta86-ha-panel-v0.8.2-panel4.factory.bin](release/betta86-ha-panel-v0.8.2-panel4.factory.bin)   |
+| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel**    | 1280 × 800 | [betta86-ha-panel-v0.8.2-panel10.factory.bin](release/betta86-ha-panel-v0.8.2-panel10.factory.bin) |
+| `panels3`  | Guition **ESP32-S3-4848S040** (4")                      | 480 × 480  | [betta86-ha-panel-v0.8.2-panels3.factory.bin](release/betta86-ha-panel-v0.8.2-panels3.factory.bin) |
 
 All variants share the same dashboard engine, web editor, and Home Assistant integration. Pick the image that matches your board.
 
@@ -62,15 +62,12 @@ Future updates install via OTA from the editor — no cable needed.
 
 ---
 
-## What's new in v0.8.1
+## What's new in v0.8.2
 
-- **Roborock widget** — live map tile with vacuum status, start/pause, dock, repeat count, and room-clean controls.
-- **Room controls on the map** — tap rooms directly on the Roborock map when using the HACS integration [RoborockCustomMap](https://github.com/Lash-L/RoborockCustomMap).
-- **Live robot marker** — shows the robot position while cleaning, returning, or paused without polling while docked.
-- **Todo List performance** — smoother shopping-list scrolling with larger touch targets and virtualized rows.
-- **Media Player polish** — improved progress handling around play/pause and external state changes.
-- **Theme-aligned tiles** — refreshed Media Player, Todo, and Roborock controls to better match the dashboard design system.
-- **Release images** — fresh `v0.8.1` factory and OTA binaries for both `panel4` and `panel10`.
+- **ESP32-S3 support** — new `panels3` variant for the Guition ESP32-S3-4848S040 (4.8" 480×480 RGB panel, 16 MB flash, 8 MB PSRAM).
+- **Three-variant release** — factory and OTA images now ship for `panel4`, `panel10`, and `panels3`.
+- **MDI weather icons on S3** — clean Material Design Icon weather display on the S3 panel.
+- **Release tooling** — `make_factory_bin.ps1` extended; `-Variant both` now packages all three variants in one run.
 
 Full history: [release-notes.md](release-notes.md).
 
