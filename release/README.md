@@ -1,6 +1,14 @@
 <!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk -->
 ## Getting Started
-- Download the latest factory image: [betta86-ha-panel-v0.8.0-panel4.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.8.0-panel4.factory.bin)
+
+Download the factory image for your hardware variant:
+
+| Variant | Hardware | Factory image |
+|---------|----------|---------------|
+| panel4  | Smart86 Box (4" panel, ESP32-P4) | [betta86-ha-panel-v0.8.2-panel4.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.8.2-panel4.factory.bin) |
+| panel10 | Smart86 Box (10.1" panel, ESP32-P4) | [betta86-ha-panel-v0.8.2-panel10.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.8.2-panel10.factory.bin) |
+| panels3 | Guition ESP32-S3-4848S040 (4.8" 480×480, ESP32-S3) | [betta86-ha-panel-v0.8.2-panels3.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.8.2-panels3.factory.bin) |
+
 - Flash it with esptool or with a web flasher of your choice, for example: https://espressif.github.io/esptool-js/
 - Use the outer USB-C port on the Smart86 Box for flashing.
 - Choose baud rate `115200`.
@@ -8,7 +16,7 @@
 - Connect to the correct COM port.
 - Set the flash address to `0x0`.
   <img width="411" height="236" alt="image" src="https://github.com/user-attachments/assets/151c0026-15cc-450d-af28-d5629c5ec5e5" />
-- Select the downloaded `.bin` file. The v0.7.1 factory image is about 4.8 MB and already includes the C6 network adapter firmware used for this release.
+- Select the downloaded `.bin` file. The factory image already includes all required firmware components (bootloader, partition table, app, and for P4 variants the C6 network adapter firmware).
 - Click `Program`.
   <img width="662" height="469" alt="image" src="https://github.com/user-attachments/assets/732007c8-9e7d-4411-8360-665553782b6c" />
 - Reboot the device by pressing the reset button or briefly cutting power.

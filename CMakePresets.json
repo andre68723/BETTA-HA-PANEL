@@ -23,6 +23,17 @@
                 "SDKCONFIG_DEFAULTS": "sdkconfig.defaults;sdkconfig.defaults.panel10",
                 "SDKCONFIG": "${sourceDir}/sdkconfig.panel10"
             }
+        },
+        {
+            "name": "panels3",
+            "displayName": "Panel S3 4\" 480x480 (Guition CYD 4848S040)",
+            "description": "Build for the Guition CYD ESP32-S3 4848S040 (RGB ST7701S, native Wi-Fi).",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build-panels3",
+            "cacheVariables": {
+                "SDKCONFIG_DEFAULTS": "sdkconfig.defaults.s3;sdkconfig.defaults.panels3",
+                "SDKCONFIG": "${sourceDir}/sdkconfig.panels3"
+            }
         }
     ]
 }

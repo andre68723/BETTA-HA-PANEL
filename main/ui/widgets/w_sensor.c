@@ -13,6 +13,7 @@
 
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/ui_i18n.h"
+#include "ui/ui_memory.h"
 #include "ui/theme/theme_default.h"
 
 #if LV_FONT_MONTSERRAT_24
@@ -307,7 +308,7 @@ esp_err_t w_sensor_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_set_style_text_font(age, SENSOR_META_FONT, LV_PART_MAIN);
     lv_obj_add_flag(age, LV_OBJ_FLAG_HIDDEN);
 
-    w_sensor_ctx_t *ctx = calloc(1, sizeof(w_sensor_ctx_t));
+    w_sensor_ctx_t *ctx = ui_calloc_prefer_psram(1, sizeof(w_sensor_ctx_t));
     if (ctx == NULL) {
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;

@@ -147,3 +147,30 @@ esp_err_t api_light_entities_get_handler(httpd_req_t *req)
     cJSON_free(payload);
     return err;
 }
+
+esp_err_t api_light_entities_delete_handler(httpd_req_t *req)
+{
+    char domain[APP_HA_DISCOVERY_DOMAIN_MAX_LEN] = "light";
+    char search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
+
+    int query_len = httpd_req_get_url_query_len(req);
+    if (query_len > 0) {
+        char *query = calloc((size_t)query_len + 1U, sizeof(char));
+        if (query == NULL) {
+            return httpd_resp_send_500(req);
+        }
+        if (httpd_req_get_url_query_str(req, query, query_len + 1) == ESP_OK) {
+            httpd_query_key_value(query, "domain", domain, sizeof(domain));
+            httpd_query_key_value(query, "search", search, sizeof(search));
+        }
+        free(query);
+    }
+
+    esp_err_t err = ha_client_cancel_domain_entities(domain, search);
+    if (err != ESP_OK) {
+        return httpd_resp_send_500(req);
+    }
+
+    set_json_headers(req);
+    return httpd_resp_sendstr(req, "{\"ok\":true}");
+}

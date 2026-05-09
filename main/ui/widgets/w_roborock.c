@@ -160,6 +160,7 @@ typedef struct w_rr_ctx {
     w_rr_cal_point_t calibration[W_RR_MAX_CAL_POINTS];
     size_t calibration_count;
 
+    bool visible;
     bool destroyed;
 } w_rr_ctx_t;
 
@@ -189,7 +190,7 @@ static void w_rr_format_coord(double value, char *buf, size_t buf_len)
 
 static bool w_rr_is_visible(const w_rr_ctx_t *ctx)
 {
-    return ctx != NULL && ctx->card != NULL && lv_obj_is_visible(ctx->card);
+    return ctx != NULL && ctx->visible && ctx->card != NULL && lv_obj_is_visible(ctx->card);
 }
 
 static void *w_rr_calloc(size_t count, size_t size)
@@ -863,7 +864,7 @@ static bool w_rr_map_can_refresh_now(w_rr_ctx_t *ctx, int64_t now_ms)
     if (ctx == NULL || ctx->card == NULL || ctx->popup_map_panel == NULL) {
         return false;
     }
-    if (!lv_obj_is_visible(ctx->card) || !lv_obj_is_visible(ctx->popup_map_panel)) {
+    if (!w_rr_is_visible(ctx) || !lv_obj_is_visible(ctx->popup_map_panel)) {
         return false;
     }
 
@@ -956,6 +957,110 @@ static void w_rr_room_overlay_event_cb(lv_event_t *event)
     w_rr_update_popup_clean_button(ctx);
 }
 
+static bool w_rr_use_room_list_fallback(const w_rr_ctx_t *ctx)
+{
+    return ctx != NULL && ctx->map_entity_id[0] == '\0';
+}
+
+static void w_rr_render_room_list_fallback(w_rr_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->popup_map_panel == NULL || ctx->popup_map_overlay == NULL) {
+        return;
+    }
+
+    lv_obj_clean(ctx->popup_map_overlay);
+    if (ctx->popup_map_img != NULL) {
+        lv_image_set_src(ctx->popup_map_img, NULL);
+        lv_obj_set_pos(ctx->popup_map_img, 0, 0);
+        lv_obj_set_size(ctx->popup_map_img, 1, 1);
+    }
+    if (ctx->popup_map_name_label != NULL) {
+        lv_obj_add_flag(ctx->popup_map_name_label, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    const char *empty_text = NULL;
+    if ((ctx->rooms_fetching || ctx->popup_room_request_pending) && ctx->room_count == 0) {
+        empty_text = ui_i18n_get("roborock.loading_rooms", "Loading rooms");
+    } else if (ctx->room_load_failed && ctx->room_count == 0) {
+        empty_text = ui_i18n_get("roborock.rooms_failed_hint", "The room list could not be refreshed.");
+    } else if (ctx->room_count == 0) {
+        empty_text = ui_i18n_get("roborock.no_rooms_hint", "No room metadata on the map yet.");
+    }
+    if (empty_text != NULL) {
+        w_rr_popup_show_map_placeholder(ctx, empty_text);
+        return;
+    }
+
+    if (ctx->popup_map_placeholder != NULL) {
+        lv_obj_add_flag(ctx->popup_map_placeholder, LV_OBJ_FLAG_HIDDEN);
+    }
+    lv_obj_set_style_bg_color(ctx->popup_map_panel, w_rr_surface_fill(190), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ctx->popup_map_panel, LV_OPA_COVER, LV_PART_MAIN);
+
+    lv_coord_t panel_w = lv_obj_get_width(ctx->popup_map_panel);
+    lv_coord_t panel_h = lv_obj_get_height(ctx->popup_map_panel);
+    if (panel_w <= 0) panel_w = 320;
+    if (panel_h <= 0) panel_h = 160;
+
+    lv_obj_set_pos(ctx->popup_map_overlay, 0, 0);
+    lv_obj_set_size(ctx->popup_map_overlay, panel_w, panel_h);
+    lv_obj_add_flag(ctx->popup_map_overlay, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scroll_dir(ctx->popup_map_overlay, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(ctx->popup_map_overlay, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_clear_flag(ctx->popup_map_overlay, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(ctx->popup_map_overlay);
+
+    lv_coord_t pad = 8;
+    lv_coord_t gap = 6;
+    lv_coord_t cols = panel_w >= 260 ? 2 : 1;
+    lv_coord_t btn_w = (panel_w - (pad * 2) - (gap * (cols - 1))) / cols;
+    if (btn_w < 92) {
+        cols = 1;
+        btn_w = panel_w - (pad * 2);
+    }
+    if (btn_w < 72) btn_w = 72;
+    lv_coord_t btn_h = panel_h >= 180 ? 36 : 32;
+
+    lv_color_t selected_bg =
+        lv_color_mix(lv_color_hex(APP_UI_COLOR_STATE_ON), lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 176);
+    lv_color_t selected_border = lv_color_mix(selected_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER), 150);
+    lv_color_t idle_bg = w_rr_surface_fill(218);
+    lv_color_t idle_border = lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER);
+
+    for (size_t i = 0; i < ctx->room_count; i++) {
+        w_rr_room_t *room = &ctx->rooms[i];
+        lv_coord_t col = (lv_coord_t)(i % (size_t)cols);
+        lv_coord_t row = (lv_coord_t)(i / (size_t)cols);
+        lv_coord_t x = pad + col * (btn_w + gap);
+        lv_coord_t y = pad + row * (btn_h + gap);
+
+        lv_obj_t *btn = lv_btn_create(ctx->popup_map_overlay);
+        lv_obj_set_pos(btn, x, y);
+        lv_obj_set_size(btn, btn_w, btn_h);
+        lv_obj_set_user_data(btn, (void *)(uintptr_t)(i + 1U));
+        lv_obj_add_event_cb(btn, w_rr_room_overlay_event_cb, LV_EVENT_CLICKED, ctx);
+        lv_obj_set_style_radius(btn, 10, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+        lv_obj_set_style_outline_width(btn, 0, LV_PART_MAIN);
+        lv_obj_set_style_border_width(btn, room->selected ? 2 : 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_border_color(btn, room->selected ? selected_border : idle_border, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_color(btn, room->selected ? selected_bg : idle_bg, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_color(btn, w_rr_pressed_fill(room->selected ? selected_bg : idle_bg), LV_PART_MAIN | LV_STATE_PRESSED);
+        lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
+
+        lv_obj_t *label = lv_label_create(btn);
+        lv_label_set_text(label, room->name[0] != '\0' ? room->name : room->segment_id);
+        lv_obj_set_width(label, btn_w - 12);
+        lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+        lv_obj_set_style_text_font(label, APP_FONT_TEXT_12, LV_PART_MAIN);
+        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_set_style_text_color(label,
+            room->selected ? w_rr_contrast_text(selected_bg) : lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
+        lv_obj_center(label);
+    }
+}
+
 static void w_rr_render_map_hotspots(w_rr_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->popup_map_overlay == NULL) {
@@ -963,6 +1068,13 @@ static void w_rr_render_map_hotspots(w_rr_ctx_t *ctx)
     }
 
     lv_obj_clean(ctx->popup_map_overlay);
+    if (w_rr_use_room_list_fallback(ctx)) {
+        w_rr_render_room_list_fallback(ctx);
+        return;
+    }
+    lv_obj_clear_flag(ctx->popup_map_overlay, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scroll_dir(ctx->popup_map_overlay, LV_DIR_NONE);
+    lv_obj_set_scrollbar_mode(ctx->popup_map_overlay, LV_SCROLLBAR_MODE_OFF);
     if (ctx->popup_map_dsc.data == NULL || ctx->calibration_count < 3) {
         lv_obj_add_flag(ctx->popup_map_overlay, LV_OBJ_FLAG_HIDDEN);
         return;
@@ -1092,6 +1204,11 @@ static void w_rr_layout_map_visual(w_rr_ctx_t *ctx)
         lv_obj_center(ctx->popup_map_placeholder);
     }
 
+    if (w_rr_use_room_list_fallback(ctx)) {
+        w_rr_render_room_list_fallback(ctx);
+        return;
+    }
+
     if (ctx->popup_map_img == NULL || ctx->popup_map_dsc.data == NULL ||
         ctx->popup_map_dsc.header.w == 0 || ctx->popup_map_dsc.header.h == 0) {
         if (ctx->popup_map_img != NULL) {
@@ -1179,7 +1296,7 @@ static void w_rr_request_popup_map(w_rr_ctx_t *ctx)
         if (ctx->map_entity_id[0] != '\0') {
             w_rr_popup_show_map_placeholder(ctx, ui_i18n_get("roborock.map_waiting", "Waiting for map"));
         } else {
-            w_rr_popup_show_map_placeholder(ctx, ui_i18n_get("roborock.map_missing", "No map entity configured"));
+            w_rr_render_room_list_fallback(ctx);
         }
         return;
     }
@@ -1533,7 +1650,17 @@ static void w_rr_request_rooms(w_rr_ctx_t *ctx)
     if (ctx == NULL || ctx->entity_id[0] == '\0') {
         return;
     }
+    if (!w_rr_is_visible(ctx)) {
+        ctx->popup_room_request_pending = true;
+        return;
+    }
     if (ctx->rooms_fetching) {
+        return;
+    }
+    int64_t now_ms = w_rr_now_ms();
+    int64_t retry_ms = ctx->room_load_failed ? W_RR_ROOM_RETRY_MS : 3000;
+    if (ctx->last_room_fetch_ms > 0 && (now_ms - ctx->last_room_fetch_ms) < retry_ms) {
+        ctx->popup_room_request_pending = true;
         return;
     }
     if (!ha_client_is_connected() || !ha_client_is_initial_sync_done()) {
@@ -1544,7 +1671,7 @@ static void w_rr_request_rooms(w_rr_ctx_t *ctx)
     ctx->rooms_fetching = true;
     ctx->popup_room_request_pending = false;
     ctx->room_load_failed = false;
-    ctx->last_room_fetch_ms = w_rr_now_ms();
+    ctx->last_room_fetch_ms = now_ms;
 
     ESP_LOGI(W_RR_TAG, "Requesting roborock.get_maps for %s", ctx->entity_id);
     esp_err_t err = ha_client_call_service_with_response(
@@ -2043,7 +2170,7 @@ static void w_rr_render_popup_rooms(w_rr_ctx_t *ctx)
         return;
     }
 
-    if (ctx->rooms_fetching && ctx->room_count == 0) {
+    if ((ctx->rooms_fetching || ctx->popup_room_request_pending) && ctx->room_count == 0) {
         lv_label_set_text(ctx->popup_selection_label, ui_i18n_get("roborock.loading_rooms", "Loading rooms"));
         lv_obj_set_style_text_color(ctx->popup_selection_label, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
         w_rr_render_map_hotspots(ctx);
@@ -2066,7 +2193,9 @@ static void w_rr_render_popup_rooms(w_rr_ctx_t *ctx)
     size_t selected = w_rr_selected_room_count(ctx);
     if (selected == 0) {
         snprintf(summary, sizeof(summary), "%s",
-            ui_i18n_get("roborock.tap_rooms_hint", "Tap rooms directly on the map to select them."));
+            w_rr_use_room_list_fallback(ctx)
+                ? ui_i18n_get("roborock.tap_room_list_hint", "Tap rooms to select them.")
+                : ui_i18n_get("roborock.tap_rooms_hint", "Tap rooms directly on the map to select them."));
     } else {
         size_t off = (size_t)snprintf(summary, sizeof(summary), "%u: ", (unsigned)selected);
         for (size_t i = 0; i < ctx->room_count && off + 2 < sizeof(summary); i++) {
@@ -2383,7 +2512,7 @@ static void w_rr_apply_visual(w_rr_ctx_t *ctx)
     if (ctx->popup_map_panel != NULL || ctx->popup_selection_label != NULL) {
         w_rr_refresh_popup_header(ctx);
         w_rr_refresh_popup_repeat_visual(ctx);
-        if (ctx->popup_map_request_pending && lv_obj_is_visible(ctx->card)) {
+        if (ctx->popup_map_request_pending && w_rr_is_visible(ctx)) {
             w_rr_request_popup_map(ctx);
         }
     }
@@ -2508,7 +2637,7 @@ static void w_rr_apply_secondary_state(w_rr_ctx_t *ctx, const ha_state_t *state)
         snprintf(ctx->map_url, sizeof(ctx->map_url), "%s", next_url);
         ctx->popup_map_request_pending = true;
         ctx->popup_map_failed = false;
-        if (ctx->popup_map_panel != NULL && lv_obj_is_visible(ctx->card)) {
+        if (ctx->popup_map_panel != NULL && w_rr_is_visible(ctx)) {
             w_rr_request_popup_map(ctx);
         }
     }
@@ -2761,6 +2890,7 @@ esp_err_t w_roborock_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;
     }
+    lv_timer_pause(ctx->tick_timer);
 
     ctx->popup_room_request_pending = true;
     ctx->popup_map_request_pending = true;
@@ -2806,5 +2936,44 @@ void w_roborock_mark_unavailable(ui_widget_instance_t *instance)
     ctx->battery_pct = -1;
     ctx->detail_text[0] = '\0';
     snprintf(ctx->state_text, sizeof(ctx->state_text), "%s", ui_i18n_get("common.unavailable", "Unavailable"));
+    w_rr_apply_visual(ctx);
+}
+
+void w_roborock_set_visible(ui_widget_instance_t *instance, bool visible)
+{
+    if (instance == NULL || instance->ctx == NULL) {
+        return;
+    }
+    w_rr_ctx_t *ctx = (w_rr_ctx_t *)instance->ctx;
+    if (ctx->destroyed) {
+        return;
+    }
+
+    ctx->visible = visible;
+    if (!visible) {
+        if (ctx->popup_map_request_inflight) {
+            ha_cover_fetcher_cancel(ctx);
+            ctx->popup_map_request_inflight = false;
+            ctx->popup_map_request_pending = true;
+        }
+        if (ctx->tick_timer != NULL) {
+            lv_timer_pause(ctx->tick_timer);
+        }
+        return;
+    }
+
+    if (ctx->tick_timer != NULL) {
+        lv_timer_resume(ctx->tick_timer);
+    }
+
+    w_rr_drain_pending_rooms(ctx);
+    w_rr_drain_pending_position(ctx);
+    if (ctx->popup_room_request_pending && !ctx->rooms_fetching) {
+        w_rr_request_rooms(ctx);
+    }
+    if (ctx->popup_map_panel != NULL && ctx->popup_map_request_pending &&
+        !ctx->popup_map_request_inflight) {
+        w_rr_request_popup_map(ctx);
+    }
     w_rr_apply_visual(ctx);
 }

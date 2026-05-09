@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+#
+# Manifest for the S3 4" 480x480 panel variant (Guition CYD 4848S040).
+# Selected automatically by the top-level CMakeLists.txt based on the active
+# SDKCONFIG_DEFAULTS overlay. Do NOT edit main/idf_component.yml directly --
+# it is regenerated from this file on every configure.
+#
+# Notes:
+# - No ESP-Hosted / ESP-Wifi-Remote: ESP32-S3 has native Wi-Fi.
+# - No Waveshare BSP: Guition uses RGB parallel ST7701S, driven by inline
+#   init in main/drivers/display_init_panels3.c (no upstream BSP package).
+# - GT911 touch via I2C (same as P4 panels) — same component.
+dependencies:
+  idf: ">=5.5"
+  lvgl/lvgl:
+    version: "^9"
+  espressif/esp_lvgl_port:
+    version: "*"
+  espressif/esp_lcd_touch:
+    version: "^1.2.0"
+    rules:
+      - if: "target in [esp32s3]"
+  espressif/esp_lcd_touch_gt911:
+    version: "1.2.0~2"
+    rules:
+      - if: "target in [esp32s3]"
+  joltwallet/littlefs:
+    version: "^1.20.2"
+  espressif/esp_websocket_client:
+    version: "*"
+  espressif/esp_lcd_st7701:
+    version: "^2.0.2"
+    rules:
+      - if: "target in [esp32s3]"
+  espressif/esp_lcd_panel_io_additions:
+    version: "*"
+    rules:
+      - if: "target in [esp32s3]"

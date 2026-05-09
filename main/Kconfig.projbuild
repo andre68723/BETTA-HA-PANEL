@@ -22,6 +22,13 @@ config APP_PANEL_VARIANT_10INCH_1280
     help
         10.1-inch 1280x800 panel variant.
 
+config APP_PANEL_VARIANT_S3_480
+    bool "4\" 480x480 (Guition CYD ESP32-S3 4848S040)"
+    help
+        Guition CYD ESP32-S3 4848S040 4-inch 480x480 RGB panel
+        with ST7701S controller and GT911 capacitive touch.
+        Native Wi-Fi (no ESP-Hosted/C6 coprocessor).
+
 endchoice
 
 endmenu

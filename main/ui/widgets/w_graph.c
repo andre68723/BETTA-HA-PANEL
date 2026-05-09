@@ -23,6 +23,7 @@
 
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/ui_i18n.h"
+#include "ui/ui_memory.h"
 #include "ui/theme/theme_default.h"
 
 #define GRAPH_POINTS_MIN 16
@@ -1435,7 +1436,7 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     lv_obj_set_style_size(chart, 5, 5, LV_PART_INDICATOR);
     lv_obj_set_style_line_width(chart, 2, LV_PART_ITEMS);
 
-    w_graph_ctx_t *ctx = calloc(1, sizeof(w_graph_ctx_t));
+    w_graph_ctx_t *ctx = ui_calloc_prefer_psram(1, sizeof(w_graph_ctx_t));
     if (ctx == NULL) {
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;

@@ -42,6 +42,7 @@
 #define W_TODO_SUMMARY_LEN 96
 #define W_TODO_REFRESH_PERIOD_MS 300000
 #define W_TODO_REFRESH_AFTER_UPDATE_MS 800
+#define W_TODO_RETRY_AFTER_FAILURE_MS 30000
 #define W_TODO_TICK_PERIOD_MS 1000
 #define W_TODO_ROW_H 58
 #define W_TODO_ROW_GAP 8
@@ -827,6 +828,7 @@ static void w_todo_drain_pending(w_todo_ctx_t *ctx)
         bool needs_render = !ctx->unavailable || ctx->display_item_count != 0;
         ctx->unavailable = true;
         ctx->display_item_count = 0;
+        ctx->next_fetch_unix_ms = ctx->last_fetch_unix_ms + W_TODO_RETRY_AFTER_FAILURE_MS;
         if (needs_render) {
             w_todo_render(ctx);
         }
@@ -974,7 +976,7 @@ static void w_todo_tick_cb(lv_timer_t *timer)
             (now - ctx->fetch_started_unix_ms) > 15000) {
             ctx->fetching = false;
             ctx->fetch_started_unix_ms = 0;
-            ctx->next_fetch_unix_ms = now;
+            ctx->next_fetch_unix_ms = now + W_TODO_RETRY_AFTER_FAILURE_MS;
         }
         return;
     }
@@ -984,7 +986,7 @@ static void w_todo_tick_cb(lv_timer_t *timer)
             (now - ctx->fetch_started_unix_ms) > 15000) {
             ctx->fetching = false;
             ctx->fetch_started_unix_ms = 0;
-            ctx->next_fetch_unix_ms = now + 2000;
+            ctx->next_fetch_unix_ms = now + W_TODO_RETRY_AFTER_FAILURE_MS;
         }
         return;
     }
@@ -1001,7 +1003,9 @@ static void w_todo_tick_cb(lv_timer_t *timer)
         (now - ctx->fetch_started_unix_ms) > 15000) {
         ctx->fetching = false;
         ctx->fetch_started_unix_ms = 0;
-        ctx->next_fetch_unix_ms = now + 2000;
+        ctx->next_fetch_unix_ms = now + W_TODO_RETRY_AFTER_FAILURE_MS;
+        ESP_LOGW(W_TODO_TAG, "get_items timed out for %s, retry in %d ms",
+            ctx->entity_id, W_TODO_RETRY_AFTER_FAILURE_MS);
     }
 }
 

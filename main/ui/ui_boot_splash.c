@@ -16,6 +16,7 @@
 
 #include "app_config.h"
 #include "drivers/display_init.h"
+#include "ui/fonts/app_text_fonts.h"
 #include "ui/ui_i18n.h"
 #include "util/log_tags.h"
 
@@ -38,6 +39,60 @@
 extern const lv_image_dsc_t SMART86OS_Betta;
 #endif
 
+#define SPLASH_ACCENT_HEX 0x38F2FF
+#define SPLASH_BG_SOLID_HEX 0x000000
+#define SPLASH_PROGRESS_BG_HEX 0x2A2F34
+#define SPLASH_TITLE_HEX 0xF4F7FA
+#define SPLASH_STATUS_HEX 0x8D98A5
+#define SPLASH_PROGRESS_STEP 5
+#define SPLASH_STATUS_LINE_LEN 64
+
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define SPLASH_STATUS_MAX_LINES 3
+#define SPLASH_STATUS_X_OFFSET_DEFAULT 0
+#define SPLASH_STATUS_WIDTH_DEFAULT 360
+#define SPLASH_STATUS_TEXT_ALIGN_DEFAULT LV_TEXT_ALIGN_CENTER
+#define SPLASH_BETTA_EMBLEM_W 250
+#define SPLASH_BETTA_EMBLEM_H 230
+#define SPLASH_BETTA_EMBLEM_TOP 42
+#define SPLASH_BETTA_IMAGE_SCALE 166
+#define SPLASH_HOUSE_EMBLEM_W 160
+#define SPLASH_HOUSE_EMBLEM_H 160
+#define SPLASH_HOUSE_EMBLEM_TOP 58
+#define SPLASH_HOUSE_IMAGE_SCALE 186
+#define SPLASH_FALLBACK_EMBLEM_W 300
+#define SPLASH_FALLBACK_EMBLEM_H 150
+#define SPLASH_FALLBACK_EMBLEM_TOP 70
+#define SPLASH_PROGRESS_W 280
+#define SPLASH_PROGRESS_H 8
+#define SPLASH_PROGRESS_GAP 18
+#define SPLASH_TITLE_GAP 12
+#define SPLASH_STATUS_GAP 10
+#define SPLASH_TITLE_W 420
+#else
+#define SPLASH_STATUS_MAX_LINES 5
+#define SPLASH_STATUS_X_OFFSET_DEFAULT 24
+#define SPLASH_STATUS_WIDTH_DEFAULT 400
+#define SPLASH_STATUS_TEXT_ALIGN_DEFAULT LV_TEXT_ALIGN_LEFT
+#define SPLASH_BETTA_EMBLEM_W 370
+#define SPLASH_BETTA_EMBLEM_H 340
+#define SPLASH_BETTA_EMBLEM_TOP 66
+#define SPLASH_BETTA_IMAGE_SCALE LV_SCALE_NONE
+#define SPLASH_HOUSE_EMBLEM_W 220
+#define SPLASH_HOUSE_EMBLEM_H 220
+#define SPLASH_HOUSE_EMBLEM_TOP 110
+#define SPLASH_HOUSE_IMAGE_SCALE LV_SCALE_NONE
+#define SPLASH_FALLBACK_EMBLEM_W 360
+#define SPLASH_FALLBACK_EMBLEM_H 220
+#define SPLASH_FALLBACK_EMBLEM_TOP 100
+#define SPLASH_PROGRESS_W 340
+#define SPLASH_PROGRESS_H 10
+#define SPLASH_PROGRESS_GAP 24
+#define SPLASH_TITLE_GAP 18
+#define SPLASH_STATUS_GAP 14
+#define SPLASH_TITLE_W 640
+#endif
+
 typedef struct {
     lv_obj_t *root;
     lv_obj_t *emblem;
@@ -48,24 +103,53 @@ typedef struct {
     uint8_t progress_value;
     uint8_t status_line_count;
     int64_t shown_at_ms;
-    char status_lines[5][64];
+    char status_lines[SPLASH_STATUS_MAX_LINES][SPLASH_STATUS_LINE_LEN];
 } boot_splash_state_t;
 
 static boot_splash_state_t s_splash = {0};
 static const int64_t BOOT_SPLASH_MIN_SHOW_MS = 1200;
-#define SPLASH_ACCENT_HEX 0x38F2FF
-#define SPLASH_BG_SOLID_HEX 0x000000
-#define SPLASH_PROGRESS_BG_HEX 0x2A2F34
-#define SPLASH_TITLE_HEX 0xF4F7FA
-#define SPLASH_STATUS_HEX 0x8D98A5
-#define SPLASH_PROGRESS_STEP 5
-#define SPLASH_STATUS_MAX_LINES 5
-#define SPLASH_STATUS_LINE_LEN 64
-#define SPLASH_STATUS_X_OFFSET_DEFAULT 24
-#define SPLASH_STATUS_WIDTH_DEFAULT 400
 static int16_t s_status_x_offset = SPLASH_STATUS_X_OFFSET_DEFAULT;
 static lv_coord_t s_status_width = SPLASH_STATUS_WIDTH_DEFAULT;
-static lv_text_align_t s_status_text_align = LV_TEXT_ALIGN_LEFT;
+static lv_text_align_t s_status_text_align = SPLASH_STATUS_TEXT_ALIGN_DEFAULT;
+
+static const lv_font_t *splash_title_font(void)
+{
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    return APP_FONT_DISPLAY_28;
+#elif LV_FONT_MONTSERRAT_48
+    return &lv_font_montserrat_48;
+#elif LV_FONT_MONTSERRAT_40
+    return &lv_font_montserrat_40;
+#elif LV_FONT_MONTSERRAT_34
+    return &lv_font_montserrat_34;
+#else
+    return APP_FONT_DISPLAY_34;
+#endif
+}
+
+static const lv_font_t *splash_status_font(void)
+{
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    return APP_FONT_TEXT_20;
+#elif LV_FONT_MONTSERRAT_24
+    return &lv_font_montserrat_24;
+#elif LV_FONT_MONTSERRAT_20
+    return &lv_font_montserrat_20;
+#else
+    return APP_FONT_TEXT_20;
+#endif
+}
+
+static const lv_font_t *splash_fallback_font(void)
+{
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    return APP_FONT_DISPLAY_34;
+#elif LV_FONT_MONTSERRAT_48
+    return &lv_font_montserrat_48;
+#else
+    return APP_FONT_DISPLAY_40;
+#endif
+}
 
 static const char *splash_app_version(void)
 {
@@ -111,7 +195,7 @@ static void splash_render_status_lines(void)
     lv_obj_set_width(s_splash.status, s_status_width);
     lv_obj_set_style_text_align(s_splash.status, s_status_text_align, LV_PART_MAIN);
     if (s_splash.title != NULL) {
-        lv_obj_align_to(s_splash.status, s_splash.title, LV_ALIGN_OUT_BOTTOM_MID, s_status_x_offset, 14);
+        lv_obj_align_to(s_splash.status, s_splash.title, LV_ALIGN_OUT_BOTTOM_MID, s_status_x_offset, SPLASH_STATUS_GAP);
     }
 }
 
@@ -183,26 +267,28 @@ static lv_obj_t *splash_create_emblem(lv_obj_t *parent)
     lv_obj_clear_flag(emblem, LV_OBJ_FLAG_SCROLLABLE);
 
 #if APP_HAVE_SMART86OS_BETTA_IMAGE
-    lv_obj_set_size(emblem, 370, 340);
-    lv_obj_align(emblem, LV_ALIGN_TOP_MID, 0, 66);
+    lv_obj_set_size(emblem, SPLASH_BETTA_EMBLEM_W, SPLASH_BETTA_EMBLEM_H);
+    lv_obj_align(emblem, LV_ALIGN_TOP_MID, 0, SPLASH_BETTA_EMBLEM_TOP);
     lv_obj_t *img = lv_image_create(emblem);
+    lv_obj_set_size(img, SPLASH_BETTA_EMBLEM_W, SPLASH_BETTA_EMBLEM_H);
     lv_image_set_src(img, &SMART86OS_Betta);
+    lv_image_set_scale(img, SPLASH_BETTA_IMAGE_SCALE);
     lv_obj_center(img);
 #elif APP_HAVE_SPLASH_HOUSE_IMAGE
-    lv_obj_set_size(emblem, 220, 220);
-    lv_obj_align(emblem, LV_ALIGN_TOP_MID, 0, 110);
+    lv_obj_set_size(emblem, SPLASH_HOUSE_EMBLEM_W, SPLASH_HOUSE_EMBLEM_H);
+    lv_obj_align(emblem, LV_ALIGN_TOP_MID, 0, SPLASH_HOUSE_EMBLEM_TOP);
     lv_obj_t *img = lv_image_create(emblem);
+    lv_obj_set_size(img, SPLASH_HOUSE_EMBLEM_W, SPLASH_HOUSE_EMBLEM_H);
     lv_image_set_src(img, &splash_house_image);
+    lv_image_set_scale(img, SPLASH_HOUSE_IMAGE_SCALE);
     lv_obj_center(img);
 #else
-    lv_obj_set_size(emblem, 360, 220);
-    lv_obj_align(emblem, LV_ALIGN_TOP_MID, 0, 100);
+    lv_obj_set_size(emblem, SPLASH_FALLBACK_EMBLEM_W, SPLASH_FALLBACK_EMBLEM_H);
+    lv_obj_align(emblem, LV_ALIGN_TOP_MID, 0, SPLASH_FALLBACK_EMBLEM_TOP);
     lv_obj_t *fallback = lv_label_create(emblem);
     lv_label_set_text(fallback, "BETTA86");
     lv_obj_set_style_text_color(fallback, lv_color_hex(SPLASH_ACCENT_HEX), LV_PART_MAIN);
-#if LV_FONT_MONTSERRAT_48
-    lv_obj_set_style_text_font(fallback, &lv_font_montserrat_48, LV_PART_MAIN);
-#endif
+    lv_obj_set_style_text_font(fallback, splash_fallback_font(), LV_PART_MAIN);
     lv_obj_center(fallback);
 #endif
 
@@ -240,8 +326,8 @@ esp_err_t ui_boot_splash_show(void)
     s_splash.emblem = splash_create_emblem(s_splash.root);
 
     s_splash.progress = lv_bar_create(s_splash.root);
-    lv_obj_set_size(s_splash.progress, 340, 10);
-    lv_obj_align_to(s_splash.progress, s_splash.emblem, LV_ALIGN_OUT_BOTTOM_MID, 0, 24);
+    lv_obj_set_size(s_splash.progress, SPLASH_PROGRESS_W, SPLASH_PROGRESS_H);
+    lv_obj_align_to(s_splash.progress, s_splash.emblem, LV_ALIGN_OUT_BOTTOM_MID, 0, SPLASH_PROGRESS_GAP);
     lv_bar_set_range(s_splash.progress, 0, 100);
     lv_bar_set_value(s_splash.progress, 20, LV_ANIM_OFF);
     lv_obj_set_style_radius(s_splash.progress, 0, LV_PART_MAIN);
@@ -257,29 +343,22 @@ esp_err_t ui_boot_splash_show(void)
     char title[64] = {0};
     snprintf(title, sizeof(title), "BETTA OS %s", splash_app_version());
     lv_label_set_text(s_splash.title, title);
+    lv_label_set_long_mode(s_splash.title, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(s_splash.title, SPLASH_TITLE_W);
     lv_obj_set_style_text_color(s_splash.title, lv_color_hex(SPLASH_TITLE_HEX), LV_PART_MAIN);
-#if LV_FONT_MONTSERRAT_48
-    lv_obj_set_style_text_font(s_splash.title, &lv_font_montserrat_48, LV_PART_MAIN);
-#elif LV_FONT_MONTSERRAT_40
-    lv_obj_set_style_text_font(s_splash.title, &lv_font_montserrat_40, LV_PART_MAIN);
-#elif LV_FONT_MONTSERRAT_34
-    lv_obj_set_style_text_font(s_splash.title, &lv_font_montserrat_34, LV_PART_MAIN);
-#endif
-    lv_obj_align_to(s_splash.title, s_splash.progress, LV_ALIGN_OUT_BOTTOM_MID, 0, 18);
+    lv_obj_set_style_text_font(s_splash.title, splash_title_font(), LV_PART_MAIN);
+    lv_obj_set_style_text_align(s_splash.title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_align_to(s_splash.title, s_splash.progress, LV_ALIGN_OUT_BOTTOM_MID, 0, SPLASH_TITLE_GAP);
 
     s_splash.status = lv_label_create(s_splash.root);
     s_status_x_offset = SPLASH_STATUS_X_OFFSET_DEFAULT;
     s_status_width = SPLASH_STATUS_WIDTH_DEFAULT;
-    s_status_text_align = LV_TEXT_ALIGN_LEFT;
+    s_status_text_align = SPLASH_STATUS_TEXT_ALIGN_DEFAULT;
     lv_obj_set_style_text_color(s_splash.status, lv_color_hex(SPLASH_STATUS_HEX), LV_PART_MAIN);
-#if LV_FONT_MONTSERRAT_24
-    lv_obj_set_style_text_font(s_splash.status, &lv_font_montserrat_24, LV_PART_MAIN);
-#elif LV_FONT_MONTSERRAT_20
-    lv_obj_set_style_text_font(s_splash.status, &lv_font_montserrat_20, LV_PART_MAIN);
-#endif
+    lv_obj_set_style_text_font(s_splash.status, splash_status_font(), LV_PART_MAIN);
     lv_obj_set_width(s_splash.status, s_status_width);
     lv_obj_set_style_text_align(s_splash.status, s_status_text_align, LV_PART_MAIN);
-    lv_obj_align_to(s_splash.status, s_splash.title, LV_ALIGN_OUT_BOTTOM_MID, s_status_x_offset, 14);
+    lv_obj_align_to(s_splash.status, s_splash.title, LV_ALIGN_OUT_BOTTOM_MID, s_status_x_offset, SPLASH_STATUS_GAP);
 
     s_splash.status_line_count = 0;
     splash_add_status_line(ui_i18n_get("boot.initializing_system", "Initializing system"));
@@ -287,7 +366,9 @@ esp_err_t ui_boot_splash_show(void)
     s_splash.timer = lv_timer_create(splash_timer_cb, 280, NULL);
     s_splash.shown_at_ms = splash_now_ms();
 
+    lv_refr_now(NULL);
     display_unlock();
+    display_note_activity();
     ESP_LOGI(TAG_UI, "Boot splash shown");
     return ESP_OK;
 }
@@ -320,10 +401,10 @@ void ui_boot_splash_set_title(const char *title_text)
     }
     lv_label_set_text(s_splash.title, title_text);
     if (s_splash.progress != NULL) {
-        lv_obj_align_to(s_splash.title, s_splash.progress, LV_ALIGN_OUT_BOTTOM_MID, 0, 18);
+        lv_obj_align_to(s_splash.title, s_splash.progress, LV_ALIGN_OUT_BOTTOM_MID, 0, SPLASH_TITLE_GAP);
     }
     if (s_splash.status != NULL) {
-        lv_obj_align_to(s_splash.status, s_splash.title, LV_ALIGN_OUT_BOTTOM_MID, s_status_x_offset, 14);
+        lv_obj_align_to(s_splash.status, s_splash.title, LV_ALIGN_OUT_BOTTOM_MID, s_status_x_offset, SPLASH_STATUS_GAP);
     }
     display_unlock();
 }
@@ -420,6 +501,9 @@ void ui_boot_splash_hide(void)
     }
     memset(&s_splash, 0, sizeof(s_splash));
 
+    lv_obj_invalidate(lv_scr_act());
+    lv_refr_now(NULL);
     display_unlock();
+    display_note_activity();
     ESP_LOGI(TAG_UI, "Boot splash hidden");
 }

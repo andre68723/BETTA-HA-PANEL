@@ -3,7 +3,7 @@
 
 # BETTA HA Panel
 
-A runtime-configurable Home Assistant wall panel for ESP32-P4 touchscreen devices. Build your dashboard directly on the device — no YAML edits, no firmware rebuilds.
+A runtime-configurable Home Assistant wall panel for ESP32-P4 and ESP32-S3 touchscreen devices. Build your dashboard directly on the device — no YAML edits, no firmware rebuilds.
 
 <p float="left">
   <img width="32%" alt="Page settings" src="https://github.com/user-attachments/assets/9caf6e2b-6ea9-4b76-b404-1b58da822712" />
@@ -14,14 +14,15 @@ A runtime-configurable Home Assistant wall panel for ESP32-P4 touchscreen device
 
 ## Supported hardware
 
-BETTA HA Panel ships as **two firmware variants**, one per supported device:
+BETTA HA Panel ships as **three firmware variants**, one per supported device:
 
-| Variant   | Device                                                 | Resolution | Factory image                                                                     |
-|-----------|--------------------------------------------------------|------------|-----------------------------------------------------------------------------------|
-| `panel4`  | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")         | 720 × 720  | [betta86-ha-panel-v0.8.1-panel4.factory.bin](release/betta86-ha-panel-v0.8.1-panel4.factory.bin)   |
-| `panel10` | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel**   | 1280 × 800 | [betta86-ha-panel-v0.8.1-panel10.factory.bin](release/betta86-ha-panel-v0.8.1-panel10.factory.bin) |
+| Variant    | Device                                                  | Resolution | Factory image                                                                     |
+|------------|---------------------------------------------------------|------------|-----------------------------------------------------------------------------------|
+| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")          | 720 × 720  | [betta86-ha-panel-v0.8.1-panel4.factory.bin](release/betta86-ha-panel-v0.8.1-panel4.factory.bin)   |
+| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel**    | 1280 × 800 | [betta86-ha-panel-v0.8.1-panel10.factory.bin](release/betta86-ha-panel-v0.8.1-panel10.factory.bin) |
+| `panels3`  | Guition **ESP32-S3-4848S040** (4")                      | 480 × 480  | [betta86-ha-panel-v0.8.1-panels3.factory.bin](release/betta86-ha-panel-v0.8.1-panels3.factory.bin) |
 
-Both variants share the same dashboard engine, web editor, and Home Assistant integration. Pick the image that matches your board.
+All variants share the same dashboard engine, web editor, and Home Assistant integration. Pick the image that matches your board.
 
 ---
 
@@ -81,8 +82,9 @@ Prerequisites: **ESP-IDF v5.5.2**, Python 3.11+, the Smart86 / Waveshare BSP com
 
 ```powershell
 # Pick a variant preset
-idf.py -B build-panel4  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.panel4"  build
-idf.py -B build-panel10 -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.panel10" build
+idf.py -B build-panel4   -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.panel4"                              build
+idf.py -B build-panel10  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.panel10"                             build
+idf.py -B build-panels3  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults.s3;sdkconfig.defaults.panels3" -DSDKCONFIG=sdkconfig.panels3  build
 
 # Package release images (factory + OTA) for one or both variants
 pwsh tools/make_factory_bin.ps1 -Variant both

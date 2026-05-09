@@ -17,6 +17,7 @@
 #include "ui/ui_bindings.h"
 #include "ui/fonts/mdi_font_registry.h"
 #include "ui/ui_i18n.h"
+#include "ui/ui_memory.h"
 #include "ui/theme/theme_default.h"
 
 #ifndef APP_HAVE_LIGHT_COLOR_BUTTON_IMAGES
@@ -56,8 +57,6 @@ typedef struct {
 } w_light_tile_ctx_t;
 
 #define ICON_CP_MDI_LIGHTBULB_ON 0xF06E8U
-#define LIGHT_COLOR_BUTTON_SIZE 42
-#define LIGHT_COLOR_BUTTON_ICON_BIAS_X -22
 /* The RGB band is linear red-to-violet, so it intentionally does not wrap back to red. */
 #define LIGHT_RGB_HUE_MIN 0
 #define LIGHT_RGB_HUE_MAX 285
@@ -96,16 +95,26 @@ typedef struct {
 
 static const light_tile_layout_t LIGHT_LAYOUT_COMPACT = {
     .card_pad = 12,
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    .title_bottom = -28,
+#else
     .title_bottom = -40,
+#endif
     .top_label_y = 0,
     .slider_side_margin = 14,
     .slider_height = 12,
     .slider_bottom = -10,
     .icon_top = 10,
-    .icon_gap = 6,
+    .icon_gap = 4,
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    .icon_bias_y = -2,
+    .title_font = APP_FONT_TEXT_14,
+    .top_font = APP_FONT_TEXT_14,
+#else
     .icon_bias_y = 0,
     .title_font = APP_FONT_TEXT_16,
     .top_font = APP_FONT_TEXT_16,
+#endif
 };
 
 static const light_tile_layout_t LIGHT_LAYOUT_S = {
@@ -149,6 +158,38 @@ static const light_tile_layout_t LIGHT_LAYOUT_L = {
     .title_font = APP_FONT_TEXT_18,
     .top_font = APP_FONT_TEXT_16,
 };
+
+static lv_coord_t light_color_button_size_for_class(light_tile_class_t tile_class)
+{
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    switch (tile_class) {
+        case LIGHT_TILE_CLASS_COMPACT:
+            return 36;
+        case LIGHT_TILE_CLASS_S:
+            return 38;
+        default:
+            return 42;
+    }
+#else
+    (void)tile_class;
+    return 42;
+#endif
+}
+
+static lv_coord_t light_slider_min_width_for_class(light_tile_class_t tile_class)
+{
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    return (tile_class == LIGHT_TILE_CLASS_COMPACT) ? 52 : 60;
+#else
+    (void)tile_class;
+    return 60;
+#endif
+}
+
+static lv_coord_t light_icon_bias_x_for_button_size(lv_coord_t button_size)
+{
+    return -(button_size / 2) - 1;
+}
 
 static bool light_font_has_icon(const lv_font_t *font)
 {
@@ -367,7 +408,7 @@ static const light_tile_layout_t *light_pick_layout(lv_obj_t *card, const w_ligh
     }
 }
 
-static void light_apply_layout(lv_obj_t *card, const light_tile_layout_t *layout)
+static void light_apply_layout(lv_obj_t *card, const w_light_tile_ctx_t *ctx, const light_tile_layout_t *layout)
 {
     if (card == NULL || layout == NULL) {
         return;
@@ -382,6 +423,11 @@ static void light_apply_layout(lv_obj_t *card, const light_tile_layout_t *layout
     if (card_w <= 0) {
         return;
     }
+
+    const light_tile_class_t tile_class = light_tile_class_from_dim(light_effective_min_dim(card, ctx));
+    const lv_coord_t slider_min_w = light_slider_min_width_for_class(tile_class);
+    const lv_coord_t color_button_size = light_color_button_size_for_class(tile_class);
+
     lv_obj_set_style_pad_all(card, layout->card_pad, LV_PART_MAIN);
 
     lv_coord_t content_w = card_w - (layout->card_pad * 2);
@@ -390,17 +436,17 @@ static void light_apply_layout(lv_obj_t *card, const light_tile_layout_t *layout
     }
 
     lv_coord_t slider_w = card_w - (layout->slider_side_margin * 2);
-    if (slider_w < 60) {
-        slider_w = 60;
+    if (slider_w < slider_min_w) {
+        slider_w = slider_min_w;
     }
 
     lv_obj_set_width(w.icon, content_w);
     lv_obj_set_width(w.title, content_w);
     lv_obj_set_width(w.slider, slider_w);
     lv_obj_set_height(w.slider, layout->slider_height);
-    lv_obj_set_size(w.color_button, LIGHT_COLOR_BUTTON_SIZE, LIGHT_COLOR_BUTTON_SIZE);
+    lv_obj_set_size(w.color_button, color_button_size, color_button_size);
     if (w.color_button_image != NULL) {
-        lv_obj_set_size(w.color_button_image, LIGHT_COLOR_BUTTON_SIZE, LIGHT_COLOR_BUTTON_SIZE);
+        lv_obj_set_size(w.color_button_image, color_button_size, color_button_size);
         lv_obj_center(w.color_button_image);
     }
 
@@ -480,7 +526,9 @@ static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bo
         return;
     }
     const light_tile_layout_t *layout = light_pick_layout(card, ctx);
-    light_apply_layout(card, layout);
+    const light_tile_class_t tile_class = light_tile_class_from_dim(light_effective_min_dim(card, ctx));
+    const lv_coord_t color_button_size = light_color_button_size_for_class(tile_class);
+    light_apply_layout(card, ctx, layout);
     const lv_coord_t min_dim = light_effective_min_dim(card, ctx);
     const lv_font_t *icon_font = light_icon_font_for_min_dim(min_dim);
 
@@ -521,7 +569,7 @@ static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bo
         const bool show_rgb_button = ctx != NULL && ctx->can_color;
 
         lv_obj_clear_flag(w.color_button, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_size(w.color_button, LIGHT_COLOR_BUTTON_SIZE, LIGHT_COLOR_BUTTON_SIZE);
+        lv_obj_set_size(w.color_button, color_button_size, color_button_size);
         lv_obj_set_style_radius(w.color_button, LV_RADIUS_CIRCLE, LV_PART_MAIN);
 #if APP_HAVE_LIGHT_COLOR_BUTTON_IMAGES
         lv_obj_set_style_bg_opa(w.color_button, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -531,7 +579,7 @@ static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bo
         if (w.color_button_image != NULL) {
             lv_obj_clear_flag(w.color_button_image, LV_OBJ_FLAG_HIDDEN);
             lv_image_set_src(w.color_button_image, show_rgb_button ? &RGB : &Temp);
-            lv_obj_set_size(w.color_button_image, LIGHT_COLOR_BUTTON_SIZE, LIGHT_COLOR_BUTTON_SIZE);
+            lv_obj_set_size(w.color_button_image, color_button_size, color_button_size);
             lv_image_set_inner_align(w.color_button_image, LV_IMAGE_ALIGN_CONTAIN);
             lv_obj_center(w.color_button_image);
         }
@@ -572,7 +620,8 @@ static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bo
     lv_label_set_text(w.icon, light_icon_text_for_font(icon_font));
     lv_label_set_text(w.state_label, light_translate_status(status_text != NULL ? status_text : (is_on ? "ON" : "OFF")));
     light_position_icon_between_state_and_title(
-        card, layout->icon_gap, layout->icon_bias_y, can_adjust_color ? LIGHT_COLOR_BUTTON_ICON_BIAS_X : 0);
+        card, layout->icon_gap, layout->icon_bias_y,
+        can_adjust_color ? light_icon_bias_x_for_button_size(color_button_size) : 0);
 }
 
 typedef enum {
@@ -1275,7 +1324,7 @@ static void w_light_tile_open_color_popup(w_light_tile_ctx_t *ctx)
         return;
     }
 
-    light_popup_ctx_t *popup = calloc(1, sizeof(*popup));
+    light_popup_ctx_t *popup = ui_calloc_prefer_psram(1, sizeof(*popup));
     if (popup == NULL) {
         return;
     }
@@ -1556,14 +1605,16 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     lv_obj_align(value_label, LV_ALIGN_TOP_RIGHT, 0, 2);
 
     lv_obj_t *color_button = lv_btn_create(card);
-    lv_obj_set_size(color_button, LIGHT_COLOR_BUTTON_SIZE, LIGHT_COLOR_BUTTON_SIZE);
+    lv_obj_set_size(color_button, light_color_button_size_for_class(light_tile_class_from_dim(configured_min_dim)),
+        light_color_button_size_for_class(light_tile_class_from_dim(configured_min_dim)));
     lv_obj_set_style_radius(color_button, LV_RADIUS_CIRCLE, LV_PART_MAIN);
     lv_obj_add_flag(color_button, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(color_button, LV_OBJ_FLAG_EVENT_BUBBLE);
     lv_obj_align(color_button, LV_ALIGN_TOP_RIGHT, 0, 30);
 
     lv_obj_t *color_button_image = lv_image_create(color_button);
-    lv_obj_set_size(color_button_image, LIGHT_COLOR_BUTTON_SIZE, LIGHT_COLOR_BUTTON_SIZE);
+    lv_coord_t create_button_size = light_color_button_size_for_class(light_tile_class_from_dim(configured_min_dim));
+    lv_obj_set_size(color_button_image, create_button_size, create_button_size);
     lv_obj_clear_flag(color_button_image, LV_OBJ_FLAG_CLICKABLE);
 #if APP_HAVE_LIGHT_COLOR_BUTTON_IMAGES
     lv_image_set_src(color_button_image, &Temp);
@@ -1573,7 +1624,7 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
 #endif
     lv_obj_center(color_button_image);
 
-    w_light_tile_ctx_t *ctx = calloc(1, sizeof(w_light_tile_ctx_t));
+    w_light_tile_ctx_t *ctx = ui_calloc_prefer_psram(1, sizeof(w_light_tile_ctx_t));
     if (ctx == NULL) {
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;

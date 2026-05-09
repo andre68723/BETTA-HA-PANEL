@@ -17,6 +17,7 @@
 #include "esp_timer.h"
 #include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -116,7 +117,11 @@ typedef enum {
  *       gate opens automatically (no cooldown is armed in that case,
  *       which is correct: no big payload was processed).
  */
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define HA_WS_HEAVY_MIN_GAP_MS 1200
+#else
 #define HA_WS_HEAVY_MIN_GAP_MS 400
+#endif
 
 typedef enum {
     HA_WS_SEND_LIGHT = 0,  /* small payload, never gated */
@@ -273,6 +278,7 @@ typedef struct {
     /* Central WS/TLS gate: earliest ms at which the next HEAVY send may
      * leave.  See HA_WS_HEAVY_MIN_GAP_MS doc block. */
     int64_t heavy_ws_gate_next_allowed_unix_ms;
+    int64_t aux_http_pressure_until_unix_ms;
     ha_energy_stat_ref_t energy_stat_refs[HA_ENERGY_STAT_REF_MAX];
     uint8_t energy_stat_ref_count;
     ha_energy_snapshot_t energy_staging;
@@ -292,6 +298,7 @@ typedef struct {
     char light_discovery_domain[APP_HA_DISCOVERY_DOMAIN_MAX_LEN];
     char light_discovery_search[APP_HA_DISCOVERY_SEARCH_MAX_LEN];
     uint32_t light_discovery_req_id;
+    uint32_t light_discovery_template_req_seq;
     int64_t light_discovery_started_unix_ms;
     int64_t light_discovery_updated_unix_ms;
     int64_t light_discovery_next_step_unix_ms;
@@ -337,6 +344,9 @@ static inline bool ha_client_ws_send_gate_ok_locked(ha_ws_send_class_t cls, int6
     if (ha_client_heavy_in_flight_locked()) {
         return false;
     }
+    if (now_ms < s_client.aux_http_pressure_until_unix_ms) {
+        return false;
+    }
     if (now_ms < s_client.heavy_ws_gate_next_allowed_unix_ms) {
         return false;
     }
@@ -347,10 +357,15 @@ static inline void ha_client_ws_send_gate_mark_heavy_done_locked(int64_t now_ms)
 {
     s_client.heavy_ws_gate_next_allowed_unix_ms = now_ms + HA_WS_HEAVY_MIN_GAP_MS;
 }
-/* Capacity matches the weather tile which shows up to 5 forecast days plus
- * today's summary row (6 items total).  If the tile ever grows to more days,
- * bump both this constant and WEATHER_3DAY_MAX_FORECAST in w_weather_tile.c. */
+/* Capacity matches the weather tile: both the P4 and the 480x480 S3 variant
+ * can render today's summary row plus up to 5 forecast days when the tile is
+ * tall enough; shorter tiles still reduce the visible row count dynamically
+ * in the widget renderer. */
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
 static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6;
+#else
+static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6;
+#endif
 static const int64_t HA_WS_RESTART_INTERVAL_MS = 12000;
 static const int64_t HA_WS_RESTART_INTERVAL_MAX_MS = 30000;
 static const int64_t HA_WS_RESTART_JITTER_MS = 1000;
@@ -391,7 +406,16 @@ static const TickType_t HA_CLIENT_TASK_DELAY_TICKS = pdMS_TO_TICKS(30);
  * todo lists push the tail of the state burst past that window and cause
  * TLS BAD_INPUT_DATA collisions with the first heavy send.  4 s gives
  * comfortable margin for typical 6-10 entity layouts. */
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+static const int64_t HA_WS_WEATHER_PRIORITY_GRACE_MS = 8000;
+#else
 static const int64_t HA_WS_WEATHER_PRIORITY_GRACE_MS = 4000;
+#endif
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+static const int64_t HA_WEATHER_FORECAST_LAYOUT_SETTLE_MS = 2500;
+#else
+static const int64_t HA_WEATHER_FORECAST_LAYOUT_SETTLE_MS = 0;
+#endif
 static const int HA_WS_TLS_ERR_BAD_INPUT_DATA = 0x7100;
 static const int64_t HA_WS_GET_STATES_MIN_SESSION_MS = 3000;
 static const int64_t HA_WS_GET_STATES_POST_SUBSCRIBE_DELAY_MS = 1200;
@@ -414,26 +438,57 @@ static const int64_t HA_WS_ENTITIES_SUBSCRIBE_STEP_DELAY_MS = 150;
  * latency (~100 ms per entity) and small enough that the user only sees
  * a brief "loading" flicker on a broken layout. */
 static const int64_t HA_WS_ENTITIES_SUBSCRIBE_COMPLETION_TIMEOUT_MS = 5000;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+static const int64_t HA_LIGHT_DISCOVERY_WS_STABLE_DELAY_MS = 30000;
+static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_STABLE_DELAY_MS = 8000;
+static const int64_t HA_LIGHT_DISCOVERY_PAGE_STEP_DELAY_MS = 1000;
+#else
 static const int64_t HA_LIGHT_DISCOVERY_WS_STABLE_DELAY_MS = 45000;
 static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_STABLE_DELAY_MS = 12000;
 static const int64_t HA_LIGHT_DISCOVERY_PAGE_STEP_DELAY_MS = 700;
+#endif
 static const int64_t HA_LIGHT_DISCOVERY_RETRY_DELAY_MS = 6000;
 static const int64_t HA_LIGHT_DISCOVERY_WAIT_LOG_INTERVAL_MS = 5000;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_FREE_BYTES = (96U * 1024U);
+static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_LARGEST_BYTES = (48U * 1024U);
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES = (48U * 1024U);
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES = (20U * 1024U);
+#else
 static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_FREE_BYTES = (180U * 1024U);
 static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_LARGEST_BYTES = (80U * 1024U);
 static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES = (120U * 1024U);
 static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES = (48U * 1024U);
+#endif
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_FALLBACK_CAP = 4096U;
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_MAX_BYTES = 4096U;
+static const int HA_LIGHT_DISCOVERY_HTTP_BUFFER_SIZE = 1024;
+static const int HA_LIGHT_DISCOVERY_HTTP_TX_BUFFER_SIZE = 768;
+static const bool HA_HTTP_KEEP_ALIVE = false;
+#else
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_FALLBACK_CAP = 8192U;
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_MAX_BYTES = 16384U;
+static const int HA_LIGHT_DISCOVERY_HTTP_BUFFER_SIZE = 2048;
+static const int HA_LIGHT_DISCOVERY_HTTP_TX_BUFFER_SIZE = 1024;
+static const bool HA_HTTP_KEEP_ALIVE = true;
+#endif
 /* User-priority escalation: when the user is actively waiting for an entity picker
  * result, the standard heap thresholds above can leave the request stuck for minutes
  * because periodic background work (todo.get_items, energy sync, ping) keeps internal
  * heap just below the template threshold. After this delay, relax the thresholds so
- * the queued discovery can run. Newer high-information pages keep more LVGL
- * objects alive, so a healthy panel can idle around 75-85 KiB internal heap
- * while still having enough PSRAM and contiguous internal space for the small
- * template-page request. */
+ * the queued discovery can run. The S3 480 panel has far less internal RAM than
+ * the P4 boards and can idle around 27-30 KiB internal free with a ~9 KiB largest
+ * block while still having enough PSRAM for the small template-page request. */
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_WAIT_ESCALATE_MS = 3000;
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_FREE_BYTES = (24U * 1024U);
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_LARGEST_BYTES = (8U * 1024U);
+#else
 static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_WAIT_ESCALATE_MS = 8000;
 static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_FREE_BYTES = (72U * 1024U);
 static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_LARGEST_BYTES = (40U * 1024U);
+#endif
 /* Internal heap on ESP32-P4 can be low in normal operation due to DMA/internal reservations.
    Tune thresholds to avoid permanent "protect" on healthy WS-only idle. */
 static const size_t HA_BG_HEAP_PRESSURE_BYTES = (12U * 1024U);
@@ -513,7 +568,11 @@ static bool ha_client_light_discovery_handle_result(uint32_t msg_id, cJSON *root
 static int ha_client_light_discovery_item_cmp(const void *lhs, const void *rhs);
 static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16_t page_size);
 static uint16_t ha_client_prepare_entities_resubscribe_locked(int64_t now_ms);
+#if defined(CONFIG_SPIRAM) && CONFIG_SPIRAM
+static const size_t HA_WS_RX_ASSEMBLY_BUF_SIZE = 131072U;
+#else
 static const size_t HA_WS_RX_ASSEMBLY_BUF_SIZE = 65536U;
+#endif
 static char *s_ws_rx_buf = NULL;
 static size_t s_ws_rx_buf_cap = 0;
 static int s_ws_rx_len = 0;
@@ -911,7 +970,7 @@ static void ha_client_queue_weather_priority_sync_from_layout(int64_t now_ms)
         queued_count++;
     }
 
-    int64_t ready_ms = now_ms;
+    int64_t ready_ms = now_ms + HA_WEATHER_FORECAST_LAYOUT_SETTLE_MS;
     if (s_client.ws_last_connected_unix_ms > 0) {
         int64_t grace_until = s_client.ws_last_connected_unix_ms + HA_WS_WEATHER_PRIORITY_GRACE_MS;
         if (ready_ms < grace_until) {
@@ -1235,23 +1294,30 @@ static void ha_client_handle_text_chunk(const ha_ws_event_t *event)
             ESP_LOGW(TAG_HA_CLIENT, "WS chunk payload missing (offset=%d len=%d), dropping message",
                 event->payload_offset, chunk_len);
         } else if (!s_ws_rx_overflow) {
-            int space = (int)s_ws_rx_buf_cap - 1 - s_ws_rx_len;
-            if (space < chunk_len) {
+            if (event->payload_offset > 0 && event->payload_offset != s_ws_rx_len) {
                 s_ws_rx_overflow = true;
-                ESP_LOGW(TAG_HA_CLIENT, "WS message too large for buffer (%d > %d), dropping fragmented message",
-                    s_ws_rx_len + chunk_len, (int)s_ws_rx_buf_cap - 1);
+                ESP_LOGW(TAG_HA_CLIENT,
+                         "WS chunk offset mismatch (offset=%d expected=%d len=%d total=%d), dropping message",
+                         event->payload_offset, s_ws_rx_len, chunk_len, event->payload_len);
             } else {
-                memcpy(&s_ws_rx_buf[s_ws_rx_len], event->data, (size_t)chunk_len);
-                s_ws_rx_len += chunk_len;
-                s_ws_rx_buf[s_ws_rx_len] = '\0';
+                int space = (int)s_ws_rx_buf_cap - 1 - s_ws_rx_len;
+                if (space < chunk_len) {
+                    s_ws_rx_overflow = true;
+                    ESP_LOGW(TAG_HA_CLIENT, "WS message too large for buffer (%d > %d), dropping fragmented message",
+                        s_ws_rx_len + chunk_len, (int)s_ws_rx_buf_cap - 1);
+                } else {
+                    memcpy(&s_ws_rx_buf[s_ws_rx_len], event->data, (size_t)chunk_len);
+                    s_ws_rx_len += chunk_len;
+                    s_ws_rx_buf[s_ws_rx_len] = '\0';
+                }
             }
         }
     }
 
     bool complete = false;
-    if (event->fin) {
-        complete = true;
-    } else if (event->payload_len > 0 && (event->payload_offset + chunk_len) >= event->payload_len) {
+    if (event->payload_len > 0) {
+        complete = ((event->payload_offset + chunk_len) >= event->payload_len);
+    } else if (event->fin) {
         complete = true;
     } else if (s_ws_rx_expected_len > 0 && (event->payload_offset + chunk_len) >= s_ws_rx_expected_len) {
         complete = true;
@@ -1590,6 +1656,7 @@ static bool ha_client_light_discovery_pending_contains_locked(const char *entity
 static void ha_client_light_discovery_add_pending_locked(const ha_light_discovery_pending_item_t *item)
 {
     if (item == NULL || item->id[0] == '\0' ||
+        s_client.light_discovery_pending_items == NULL ||
         !ha_client_entity_matches_domain(item->id, s_client.light_discovery_domain)) {
         return;
     }
@@ -3292,9 +3359,9 @@ static esp_err_t ha_client_ensure_http_client(const char *base_url, const char *
         .url = base_url,
         /* Background REST sync must never stall WS handling for many seconds. */
         .timeout_ms = 2500,
-        .keep_alive_enable = true,
-        .buffer_size = 2048,
-        .buffer_size_tx = 1024,
+        .keep_alive_enable = HA_HTTP_KEEP_ALIVE,
+        .buffer_size = HA_LIGHT_DISCOVERY_HTTP_BUFFER_SIZE,
+        .buffer_size_tx = HA_LIGHT_DISCOVERY_HTTP_TX_BUFFER_SIZE,
     };
 #if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
     if (strncmp(base_url, "https://", 8) == 0) {
@@ -3323,6 +3390,7 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
 
     char domain[APP_HA_DISCOVERY_DOMAIN_MAX_LEN] = {0};
     char search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
+    uint32_t template_req_seq = 0;
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
     safe_copy_cstr(domain, sizeof(domain), ha_client_discovery_domain_or_default(s_client.light_discovery_domain));
     safe_copy_cstr(s_client.light_discovery_domain, sizeof(s_client.light_discovery_domain), domain);
@@ -3330,6 +3398,10 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
     s_client.light_discovery_requested = false;
     s_client.light_discovery_inflight = true;
     s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_TEMPLATE;
+    template_req_seq = ++s_client.light_discovery_template_req_seq;
+    if (template_req_seq == 0) {
+        template_req_seq = ++s_client.light_discovery_template_req_seq;
+    }
     xSemaphoreGive(s_client.mutex);
 
     char base_url[256] = {0};
@@ -3416,6 +3488,9 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
     esp_http_client_set_header(s_client.http_client, "Authorization", auth_header);
     esp_http_client_set_header(s_client.http_client, "Accept", "text/plain");
     esp_http_client_set_header(s_client.http_client, "Content-Type", "application/json");
+    if (!HA_HTTP_KEEP_ALIVE) {
+        esp_http_client_set_header(s_client.http_client, "Connection", "close");
+    }
     if (host_header[0] != '\0') {
         esp_http_client_set_header(s_client.http_client, "Host", host_header);
     }
@@ -3446,8 +3521,15 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
         goto fail;
     }
 
-    size_t payload_cap = 8192;
-    if (content_length > 0 && content_length < 16384) {
+    size_t payload_cap = HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_FALLBACK_CAP;
+    if (content_length >= (int64_t)HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_MAX_BYTES) {
+        ESP_LOGW(TAG_HA_CLIENT, "Entity discovery page too large: %" PRId64 " bytes (max=%u)",
+            content_length, (unsigned)HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_MAX_BYTES);
+        esp_http_client_close(s_client.http_client);
+        err = ESP_ERR_INVALID_SIZE;
+        goto fail;
+    }
+    if (content_length > 0 && content_length < (int64_t)HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_MAX_BYTES) {
         payload_cap = (size_t)content_length + 1U;
     }
     char *payload = (char *)heap_caps_calloc(payload_cap, sizeof(char), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
@@ -3496,6 +3578,17 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
     uint16_t page_count = cJSON_IsArray(items) ? (uint16_t)cJSON_GetArraySize(items) : 0;
 
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    if (!s_client.light_discovery_inflight ||
+        s_client.light_discovery_template_req_seq != template_req_seq ||
+        s_client.light_discovery_phase != HA_LIGHT_DISCOVERY_PHASE_TEMPLATE ||
+        strncmp(s_client.light_discovery_domain, domain, sizeof(s_client.light_discovery_domain)) != 0 ||
+        strncmp(s_client.light_discovery_search, search, sizeof(s_client.light_discovery_search)) != 0) {
+        xSemaphoreGive(s_client.mutex);
+        cJSON_Delete(root);
+        ESP_LOGI(TAG_HA_CLIENT, "Entity discovery page ignored after cancel: domain=%s offset=%u",
+            domain, (unsigned)offset);
+        return ESP_OK;
+    }
     if (offset == 0) {
         ha_client_light_discovery_reset_pending_locked();
     }
@@ -3536,6 +3629,7 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
         s_client.light_discovery_requested = true;
         s_client.light_discovery_inflight = false;
         s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_TEMPLATE;
+        s_client.light_discovery_req_id = 0;
     }
     xSemaphoreGive(s_client.mutex);
     cJSON_Delete(root);
@@ -3546,9 +3640,16 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
 
 fail:
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-    s_client.light_discovery_inflight = false;
-    s_client.light_discovery_requested = true;
-    s_client.light_discovery_next_step_unix_ms = ha_client_now_ms() + HA_LIGHT_DISCOVERY_RETRY_DELAY_MS;
+    if (s_client.light_discovery_inflight &&
+        s_client.light_discovery_template_req_seq == template_req_seq &&
+        s_client.light_discovery_phase == HA_LIGHT_DISCOVERY_PHASE_TEMPLATE &&
+        strncmp(s_client.light_discovery_domain, domain, sizeof(s_client.light_discovery_domain)) == 0 &&
+        strncmp(s_client.light_discovery_search, search, sizeof(s_client.light_discovery_search)) == 0) {
+        s_client.light_discovery_inflight = false;
+        s_client.light_discovery_requested = true;
+        s_client.light_discovery_req_id = 0;
+        s_client.light_discovery_next_step_unix_ms = ha_client_now_ms() + HA_LIGHT_DISCOVERY_RETRY_DELAY_MS;
+    }
     xSemaphoreGive(s_client.mutex);
     ESP_LOGW(TAG_HA_CLIENT, "Entity discovery page failed: domain=%s err=%s", domain, esp_err_to_name(err));
     return err;
@@ -4421,7 +4522,11 @@ static esp_err_t ha_client_send_energy_prefs_ws(uint32_t *out_req_id)
     return err;
 }
 
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define HA_ENERGY_STATS_BATCH_SIZE 1U
+#else
 #define HA_ENERGY_STATS_BATCH_SIZE 2U
+#endif
 /* Inter-batch delay.  Purpose is to relieve pressure on the mbedTLS stack
  * on the ESP: each batch is a WSS request/response with a large JSON
  * payload, which spikes heap + the TLS record decoder.  Pausing between
@@ -4429,7 +4534,11 @@ static esp_err_t ha_client_send_energy_prefs_ws(uint32_t *out_req_id)
  * before the next roundtrip starts, avoiding -0x7100-class TLS errors.
  * 400 ms is a solid compromise vs the original 1000 ms: still gives mbedTLS
  * room to breathe while cutting ~2.4 s off a typical 4-batch sync. */
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define HA_ENERGY_STATS_BATCH_DELAY_MS 800U
+#else
 #define HA_ENERGY_STATS_BATCH_DELAY_MS 400U
+#endif
 
 static esp_err_t ha_client_send_energy_stats_ws(uint32_t *out_req_id)
 {
@@ -5015,7 +5124,7 @@ static bool ha_client_import_state_object(cJSON *state_obj)
     if (weather_missing_forecast && s_client.mutex != NULL) {
         bool scheduled_retry = false;
         int64_t now_ms = ha_client_now_ms();
-        int64_t ready_ms = now_ms;
+        int64_t ready_ms = now_ms + HA_WEATHER_FORECAST_LAYOUT_SETTLE_MS;
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
         bool allow_priority_sync = s_client.layout_needs_weather_forecast && !s_client.rest_enabled;
         if (allow_priority_sync && now_ms >= s_client.next_weather_forecast_retry_unix_ms) {
@@ -7400,6 +7509,7 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
     s_client.http_open_fail_streak = 0;
     s_client.http_open_window_start_unix_ms = ha_client_now_ms();
     s_client.http_open_cooldown_until_unix_ms = 0;
+    s_client.aux_http_pressure_until_unix_ms = 0;
     s_client.next_weather_forecast_retry_unix_ms = 0;
     s_client.layout_needs_weather_forecast = false;
     s_client.weather_ws_req_inflight = false;
@@ -7458,7 +7568,15 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
     }
 
     BaseType_t created = pdFAIL;
-#if CONFIG_FREERTOS_NUMBER_OF_CORES > 1
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480) && CONFIG_SPIRAM && CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM && CONFIG_FREERTOS_NUMBER_OF_CORES > 1
+    created = xTaskCreatePinnedToCoreWithCaps(
+        ha_client_task, "ha_client", APP_HA_TASK_STACK, NULL, APP_HA_TASK_PRIO, &s_client.task_handle, 0,
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#elif defined(CONFIG_APP_PANEL_VARIANT_S3_480) && CONFIG_SPIRAM && CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
+    created = xTaskCreateWithCaps(
+        ha_client_task, "ha_client", APP_HA_TASK_STACK, NULL, APP_HA_TASK_PRIO, &s_client.task_handle,
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#elif CONFIG_FREERTOS_NUMBER_OF_CORES > 1
     created = xTaskCreatePinnedToCore(
         ha_client_task, "ha_client", APP_HA_TASK_STACK, NULL, APP_HA_TASK_PRIO, &s_client.task_handle, 0);
 #else
@@ -7501,7 +7619,11 @@ void ha_client_stop(void)
         return;
     }
     if (s_client.task_handle != NULL) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480) && CONFIG_SPIRAM && CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
+        vTaskDeleteWithCaps(s_client.task_handle);
+#else
         vTaskDelete(s_client.task_handle);
+#endif
         s_client.task_handle = NULL;
     }
     ha_ws_stop();
@@ -7568,6 +7690,7 @@ void ha_client_stop(void)
     s_client.http_open_fail_streak = 0;
     s_client.http_open_window_start_unix_ms = 0;
     s_client.http_open_cooldown_until_unix_ms = 0;
+    s_client.aux_http_pressure_until_unix_ms = 0;
     s_client.next_weather_forecast_retry_unix_ms = 0;
     s_client.layout_needs_weather_forecast = false;
     s_client.weather_ws_req_inflight = false;
@@ -7878,6 +8001,28 @@ bool ha_client_get_http_context(ha_client_http_ctx_t *out)
     return out->base_url[0] != '\0';
 }
 
+void ha_client_set_aux_http_pressure(bool active, int64_t hold_ms)
+{
+    if (s_client.mutex == NULL) {
+        return;
+    }
+
+    int64_t now_ms = ha_client_now_ms();
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    if (active) {
+        if (hold_ms < 250) {
+            hold_ms = 250;
+        }
+        int64_t until_ms = now_ms + hold_ms;
+        if (until_ms > s_client.aux_http_pressure_until_unix_ms) {
+            s_client.aux_http_pressure_until_unix_ms = until_ms;
+        }
+    } else {
+        s_client.aux_http_pressure_until_unix_ms = 0;
+    }
+    xSemaphoreGive(s_client.mutex);
+}
+
 bool ha_client_heavy_gate_is_busy(void)
 {
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
@@ -7886,6 +8031,30 @@ bool ha_client_heavy_gate_is_busy(void)
                 (now_ms < s_client.heavy_ws_gate_next_allowed_unix_ms);
     xSemaphoreGive(s_client.mutex);
     return busy;
+}
+
+esp_err_t ha_client_cancel_domain_entities(const char *domain, const char *search)
+{
+    const char *checked_domain = ha_client_discovery_domain_or_default(domain);
+    char checked_search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
+    ha_client_discovery_normalize_search(search, checked_search, sizeof(checked_search));
+
+    if (s_client.mutex == NULL) {
+        return ESP_OK;
+    }
+
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    bool same_domain =
+        strncmp(s_client.light_discovery_domain, checked_domain, sizeof(s_client.light_discovery_domain)) == 0 &&
+        strncmp(s_client.light_discovery_search, checked_search, sizeof(s_client.light_discovery_search)) == 0;
+    bool pending = s_client.light_discovery_requested || s_client.light_discovery_inflight;
+    if (same_domain && pending) {
+        ESP_LOGI(TAG_HA_CLIENT, "Entity discovery cancelled: domain=%s search=\"%s\"",
+            s_client.light_discovery_domain, s_client.light_discovery_search);
+        ha_client_light_discovery_abort_locked();
+    }
+    xSemaphoreGive(s_client.mutex);
+    return ESP_OK;
 }
 
 esp_err_t ha_client_get_domain_entities_json(const char *domain, const char *search, bool refresh, char **out_json)

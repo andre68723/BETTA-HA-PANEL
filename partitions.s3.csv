@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+#
+# Partition table for the S3 4" 480x480 panel variant (Guition 4848S040, 16MB flash).
+# Layout:
+#   0x000000   nvs / otadata / phy_init  (header region, 36KB total below)
+#   0x020000   factory app                (4MB)
+#   0x420000   ota_0                      (4MB)
+#   0x820000   ota_1                      (4MB)
+#   0xC20000   storage (LittleFS)         (~3.8MB, fills remaining flash up to 16MB)
+#
+# Slot size 4MB instead of 9MB (P4 panels) due to the smaller flash. If the
+# app binary outgrows 4MB, trim Lottie/ThorVG/fonts in sdkconfig.defaults.s3
+# before enlarging the slots.
+# Name,   Type, SubType, Offset,    Size,      Flags
+nvs,      data, nvs,     0x9000,    24K,
+otadata,  data, ota,     0xf000,    8K,
+phy_init, data, phy,     0x11000,   4K,
+factory,  app,  factory, 0x20000,   0x400000,
+ota_0,    app,  ota_0,   0x420000,  0x400000,
+ota_1,    app,  ota_1,   0x820000,  0x400000,
+storage,  data, littlefs,0xC20000,  0x3E0000,

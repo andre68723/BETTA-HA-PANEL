@@ -118,11 +118,19 @@ esp_err_t http_server_start(void)
     }
     cfg.task_priority = http_task_prio;
     cfg.max_uri_handlers = 32;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    cfg.max_open_sockets = 4;
+#else
     cfg.max_open_sockets = 12;
+#endif
     cfg.lru_purge_enable = true;
     cfg.recv_wait_timeout = 10;
     cfg.send_wait_timeout = 10;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    cfg.backlog_conn = 4;
+#else
     cfg.backlog_conn = 8;
+#endif
 #if CONFIG_FREERTOS_NUMBER_OF_CORES > 1
     cfg.core_id = 1;
 #endif

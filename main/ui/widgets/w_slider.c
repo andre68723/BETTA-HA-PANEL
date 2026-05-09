@@ -15,6 +15,7 @@
 #include "ui/theme/theme_default.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_bindings.h"
+#include "ui/ui_memory.h"
 
 typedef enum {
     W_SLIDER_DIR_AUTO = 0,
@@ -565,7 +566,7 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_slider_set_value(slider, 0, LV_ANIM_OFF);
     lv_obj_clear_flag(slider, LV_OBJ_FLAG_EVENT_BUBBLE);
 
-    w_slider_ctx_t *ctx = calloc(1, sizeof(w_slider_ctx_t));
+    w_slider_ctx_t *ctx = ui_calloc_prefer_psram(1, sizeof(w_slider_ctx_t));
     if (ctx == NULL) {
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;

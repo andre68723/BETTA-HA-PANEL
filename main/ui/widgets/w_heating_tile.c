@@ -13,6 +13,7 @@
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/ui_bindings.h"
 #include "ui/ui_i18n.h"
+#include "ui/ui_memory.h"
 #include "ui/theme/theme_default.h"
 
 #define HEATING_ACTUAL_FONT APP_FONT_DISPLAY_38
@@ -625,7 +626,7 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_set_style_text_align(status_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(status_label, LV_ALIGN_BOTTOM_MID, 0, -12);
 
-    w_heating_tile_ctx_t *ctx = calloc(1, sizeof(w_heating_tile_ctx_t));
+    w_heating_tile_ctx_t *ctx = ui_calloc_prefer_psram(1, sizeof(w_heating_tile_ctx_t));
     if (ctx == NULL) {
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;

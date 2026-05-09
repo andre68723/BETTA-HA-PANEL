@@ -12,7 +12,11 @@
 #include <time.h>
 
 #include "cJSON.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
+#if !defined(CONFIG_APP_PANEL_VARIANT_S3_480) && defined(CONFIG_SPIRAM) && CONFIG_SPIRAM
+#include "esp_memory_utils.h"
+#endif
 
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/fonts/mdi_font_registry.h"
@@ -77,16 +81,26 @@
  * big temp -> meta -> forecast rows. */
 #define WEATHER_3DAY_SUBMETA_FONT APP_FONT_TEXT_22
 
-#define WEATHER_3DAY_ROWS 6
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
 #define WEATHER_3DAY_MAX_FORECAST 5
+#else
+#define WEATHER_3DAY_MAX_FORECAST 5
+#endif
+#define WEATHER_3DAY_ROWS (1 + WEATHER_3DAY_MAX_FORECAST)
 /* Fixed visual row metrics for the forecast list.  The visible row count
  * adapts to the tile height (see weather_3day_visible_rows), but the
  * per-row height / gap stay constant so the bar spacing matches what the
  * previous 4-row layout produced on the default tile size -- taller tiles
  * just add more days without squeezing existing rows. */
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define WEATHER_3DAY_ROW_HEIGHT 36
+#define WEATHER_3DAY_ROW_GAP 2
+#define WEATHER_3DAY_ROWS_TOP 108
+#else
 #define WEATHER_3DAY_ROW_HEIGHT 44
 #define WEATHER_3DAY_ROW_GAP 4
 #define WEATHER_3DAY_ROWS_TOP 150
+#endif
 #define WEATHER_3DAY_ROWS_BOTTOM_PAD 12
 #define WEATHER_3DAY_TRACK_BG 0x4A5D6D
 #define WEATHER_3DAY_FILL_COLD 0x4DA6FF
@@ -99,6 +113,36 @@
 #define WEATHER_3DAY_SCALE_MIX_C 16.0f
 #define WEATHER_3DAY_SCALE_WARM_C 22.0f
 #define WEATHER_3DAY_SCALE_MAX_C 30.0f
+
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+/* The S3 weather tile renders the icon into a ~56x60..68x68 box (3-day
+ * forecast header).  Capping the lottie buffer at 96x96 keeps the pixel-
+ * buffer allocation to ~36 KiB, which fits in internal RAM (see allocator
+ * below).  A minimum of 88 px is enforced because ThorVG's RLE rasterizer
+ * generates degenerate spans at smaller canvas sizes on this platform.
+ * In the 3-day forecast header the icon box is only 60-68 px – always
+ * too small to meet the minimum – so lottie is intentionally suppressed
+ * there and the static MDI icon is used instead.
+ * Buffer goes into internal RAM (not PSRAM): on the S3's octal PSRAM the
+ * ThorVG SW-rasterizer produces corrupted cell pointers (LoadProhibited
+ * crash) when the canvas target is PSRAM-backed. */
+#define WEATHER_LOTTIE_MAX_SIZE 96
+#define WEATHER_LOTTIE_MIN_SIZE 88
+/* Runtime guards: only allow lottie on S3 when the heap really has the
+ * headroom for the ThorVG canvas + parser working set, and when the tile is
+ * physically big enough to make the animation visible.
+ *
+ * Observed S3 baseline from logs:
+ *   int_free ~68-88 KiB, int_largest consistently 31744 bytes.
+ * The pixel buffer (96x96x4 = 36 KiB) goes to internal RAM, so we need
+ * enough free internal memory to absorb it plus ThorVG's parser overhead.
+ * Thresholds are set well below the observed low-water mark. */
+#define WEATHER_LOTTIE_S3_MIN_INTERNAL_FREE   (48U * 1024U)
+#define WEATHER_LOTTIE_S3_MIN_LARGEST_BLOCK   (16U * 1024U)
+#define WEATHER_LOTTIE_S3_MIN_TILE_DIM        200
+#else
+#define WEATHER_LOTTIE_MAX_SIZE 160
+#endif
 
 typedef struct {
     bool valid;
@@ -155,6 +199,7 @@ typedef struct {
     lv_obj_t *temp_label;
     lv_obj_t *meta_label;
     weather_3day_row_widgets_t rows[WEATHER_3DAY_ROWS];
+    weather_3day_row_t render_rows[WEATHER_3DAY_ROWS];
     lv_obj_t *lottie_icon;
     void *lottie_buf;
     size_t lottie_buf_size;
@@ -175,6 +220,17 @@ typedef struct {
 #if APP_UI_WEATHER_ICON_DEBUG
 static const char *TAG = "w_weather_tile";
 #endif
+
+static void *weather_calloc(size_t count, size_t size)
+{
+#if defined(CONFIG_SPIRAM) && CONFIG_SPIRAM
+    void *ptr = heap_caps_calloc(count, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (ptr != NULL) {
+        return ptr;
+    }
+#endif
+    return calloc(count, size);
+}
 
 #if APP_UI_WEATHER_LOTTIE_ENABLED
 typedef struct {
@@ -536,6 +592,41 @@ static const char *weather_effective_condition_key(const w_weather_tile_ctx_t *c
     return "";
 }
 
+static lv_coord_t weather_cap_lottie_size(lv_coord_t size)
+{
+    if (size > WEATHER_LOTTIE_MAX_SIZE) {
+        return WEATHER_LOTTIE_MAX_SIZE;
+    }
+    return size;
+}
+
+#if APP_UI_WEATHER_LOTTIE_ENABLED && defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+/* S3-only runtime guard: refuse lottie when the tile is too small or the
+ * internal heap is too tight to render ThorVG safely.  The MDI fallback
+ * keeps the tile readable in those cases. */
+static bool weather_lottie_s3_runtime_allowed(lv_obj_t *card)
+{
+    if (card != NULL) {
+        lv_coord_t w = lv_obj_get_width(card);
+        lv_coord_t h = lv_obj_get_height(card);
+        lv_coord_t min_dim = (w < h) ? w : h;
+        if (min_dim > 0 && min_dim < WEATHER_LOTTIE_S3_MIN_TILE_DIM) {
+            return false;
+        }
+    }
+
+    size_t free_internal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    if (free_internal < WEATHER_LOTTIE_S3_MIN_INTERNAL_FREE) {
+        return false;
+    }
+    size_t largest_internal = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    if (largest_internal < WEATHER_LOTTIE_S3_MIN_LARGEST_BLOCK) {
+        return false;
+    }
+    return true;
+}
+#endif
+
 #if APP_UI_WEATHER_LOTTIE_ENABLED
 static weather_lottie_src_t weather_pick_lottie_src(const char *key)
 {
@@ -634,29 +725,60 @@ static bool weather_has_lottie_for_key(const char *key)
 static lv_coord_t weather_pick_lottie_size(lv_obj_t *card, const w_weather_tile_ctx_t *ctx)
 {
     lv_coord_t min_dim = weather_effective_min_dim(card, ctx);
+    lv_coord_t size = 88;
     if (ctx != NULL && ctx->show_forecast) {
         if (min_dim >= 320) {
-            return 132;
+            size = 132;
+        } else if (min_dim >= 280) {
+            size = 122;
+        } else if (min_dim >= 240) {
+            size = 110;
+        } else {
+            size = 96;
         }
-        if (min_dim >= 280) {
-            return 122;
-        }
-        if (min_dim >= 240) {
-            return 110;
-        }
-        return 96;
+        return weather_cap_lottie_size(size);
     }
 
     if (min_dim >= 320) {
-        return 132;
+        size = 132;
+    } else if (min_dim >= 280) {
+        size = 118;
+    } else if (min_dim >= 240) {
+        size = 104;
     }
-    if (min_dim >= 280) {
-        return 118;
+    return weather_cap_lottie_size(size);
+}
+
+static void weather_lottie_free_buffer(w_weather_tile_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->lottie_buf == NULL) {
+        return;
     }
-    if (min_dim >= 240) {
-        return 104;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    /* Internal RAM allocation – always free via heap_caps_free. */
+    heap_caps_free(ctx->lottie_buf);
+#elif defined(CONFIG_SPIRAM) && CONFIG_SPIRAM
+    if (esp_ptr_external_ram(ctx->lottie_buf)) {
+        heap_caps_free(ctx->lottie_buf);
+    } else {
+        lv_free(ctx->lottie_buf);
     }
-    return 88;
+#else
+    lv_free(ctx->lottie_buf);
+#endif
+    ctx->lottie_buf = NULL;
+    ctx->lottie_buf_size = 0U;
+}
+
+static void weather_free_lottie(w_weather_tile_ctx_t *ctx)
+{
+    if (ctx == NULL) {
+        return;
+    }
+    weather_lottie_free_buffer(ctx);
+    ctx->lottie_size = 0;
+    ctx->last_lottie_src = NULL;
+    ctx->last_lottie_src_size = 0U;
 }
 
 static bool weather_prepare_lottie_buffer(w_weather_tile_ctx_t *ctx, lv_coord_t size)
@@ -677,15 +799,25 @@ static bool weather_prepare_lottie_buffer(w_weather_tile_ctx_t *ctx, lv_coord_t 
     }
 
     if (ctx->lottie_buf != NULL) {
-        lv_free(ctx->lottie_buf);
-        ctx->lottie_buf = NULL;
-        ctx->lottie_buf_size = 0U;
+        weather_lottie_free_buffer(ctx);
         ctx->lottie_size = 0;
         ctx->last_lottie_src = NULL;
         ctx->last_lottie_src_size = 0U;
     }
 
-    ctx->lottie_buf = lv_malloc(alloc_size);
+    /* On S3 the lottie pixel buffer must live in internal RAM: ThorVG's SW
+     * rasterizer corrupts its own cell-array pointers when the canvas target
+     * is backed by the S3's octal PSRAM, causing a LoadProhibited crash in
+     * _sweep().  Internal RAM allocations are DMA-coherent and safe. */
+    ctx->lottie_buf = NULL;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    ctx->lottie_buf = heap_caps_malloc(alloc_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+#elif defined(CONFIG_SPIRAM) && CONFIG_SPIRAM
+    ctx->lottie_buf = heap_caps_malloc(alloc_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#endif
+    if (ctx->lottie_buf == NULL) {
+        ctx->lottie_buf = lv_malloc(alloc_size);
+    }
     if (ctx->lottie_buf == NULL) {
         return false;
     }
@@ -719,7 +851,25 @@ static bool weather_show_lottie(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
         return false;
     }
 
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    if (!weather_lottie_s3_runtime_allowed(card)) {
+        /* Free any previously allocated buffer so we release the canvas
+         * back to PSRAM as soon as the heap pressure changes. */
+        weather_free_lottie(ctx);
+        weather_hide_lottie(ctx);
+        return false;
+    }
+#endif
+
     lv_coord_t lottie_size = (requested_size > 0) ? requested_size : weather_pick_lottie_size(card, ctx);
+#if defined(WEATHER_LOTTIE_MIN_SIZE)
+    if (lottie_size < WEATHER_LOTTIE_MIN_SIZE) {
+        /* Canvas too small: ThorVG's RLE rasterizer produces degenerate
+         * spans at sub-threshold sizes on this platform – refuse cleanly. */
+        weather_hide_lottie(ctx);
+        return false;
+    }
+#endif
     if (!weather_prepare_lottie_buffer(ctx, lottie_size)) {
         weather_hide_lottie(ctx);
         return false;
@@ -735,21 +885,6 @@ static bool weather_show_lottie(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     lv_obj_set_pos(ctx->lottie_icon, icon_x, icon_y);
     lv_obj_clear_flag(ctx->lottie_icon, LV_OBJ_FLAG_HIDDEN);
     return true;
-}
-
-static void weather_free_lottie(w_weather_tile_ctx_t *ctx)
-{
-    if (ctx == NULL) {
-        return;
-    }
-    if (ctx->lottie_buf != NULL) {
-        lv_free(ctx->lottie_buf);
-        ctx->lottie_buf = NULL;
-        ctx->lottie_buf_size = 0U;
-    }
-    ctx->lottie_size = 0;
-    ctx->last_lottie_src = NULL;
-    ctx->last_lottie_src_size = 0U;
 }
 #else
 static bool weather_has_lottie_for_key(const char *key)
@@ -1694,7 +1829,7 @@ static void weather_compute_3day_range(
     *out_max = max_temp;
 }
 
-static int weather_3day_visible_rows(lv_obj_t *card)
+static int weather_3day_visible_rows(lv_obj_t *card, lv_coord_t rows_top)
 {
     if (card == NULL) {
         return 2;
@@ -1703,7 +1838,9 @@ static int weather_3day_visible_rows(lv_obj_t *card)
     if (card_h <= 0) {
         card_h = lv_obj_get_style_height(card, LV_PART_MAIN);
     }
-    lv_coord_t rows_top = WEATHER_3DAY_ROWS_TOP;
+    if (rows_top < WEATHER_3DAY_ROWS_TOP) {
+        rows_top = WEATHER_3DAY_ROWS_TOP;
+    }
     lv_coord_t rows_bottom = card_h - WEATHER_3DAY_ROWS_BOTTOM_PAD;
     lv_coord_t available_h = rows_bottom - rows_top;
     if (available_h <= WEATHER_3DAY_ROW_HEIGHT) {
@@ -1721,7 +1858,7 @@ static int weather_3day_visible_rows(lv_obj_t *card)
     return fit;
 }
 
-static void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *ctx)
+static void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *ctx, lv_coord_t requested_rows_top)
 {
     if (card == NULL || ctx == NULL) {
         return;
@@ -1729,8 +1866,13 @@ static void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *c
 
     lv_coord_t card_w = lv_obj_get_width(card);
     lv_coord_t card_h = lv_obj_get_height(card);
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    lv_coord_t left = (card_w < 320) ? 12 : 14;
+    lv_coord_t right = left;
+#else
     lv_coord_t left = 16;
     lv_coord_t right = 16;
+#endif
     lv_coord_t content_w = card_w - left - right;
     if (content_w < 120) {
         content_w = 120;
@@ -1739,16 +1881,19 @@ static void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *c
     /* Fixed row metrics -- visible count adapts, spacing does not. */
     const lv_coord_t row_h = WEATHER_3DAY_ROW_HEIGHT;
     const lv_coord_t row_gap = WEATHER_3DAY_ROW_GAP;
-    const int visible = weather_3day_visible_rows(card);
-    lv_coord_t rows_top = WEATHER_3DAY_ROWS_TOP;
+    lv_coord_t rows_top = requested_rows_top;
+    if (rows_top < WEATHER_3DAY_ROWS_TOP) {
+        rows_top = WEATHER_3DAY_ROWS_TOP;
+    }
+    const int visible = weather_3day_visible_rows(card, rows_top);
     lv_coord_t rows_bottom = card_h - WEATHER_3DAY_ROWS_BOTTOM_PAD;
     lv_coord_t used_h = (lv_coord_t)(visible * row_h + (visible - 1) * row_gap);
     if (used_h > (rows_bottom - rows_top)) {
         /* Shouldn't happen because weather_3day_visible_rows sized to fit,
          * but guard anyway so we never overflow the card. */
         rows_top = rows_bottom - used_h;
-        if (rows_top < 118) {
-            rows_top = 118;
+        if (rows_top < WEATHER_3DAY_ROWS_TOP) {
+            rows_top = WEATHER_3DAY_ROWS_TOP;
         }
     }
 
@@ -1768,11 +1913,20 @@ static void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *c
         lv_obj_set_pos(row->container, left, y);
         lv_obj_set_size(row->container, content_w, row_h);
 
+    #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        const bool compact_width = content_w < 260;
+        lv_coord_t day_w = compact_width ? 42 : 46;
+        lv_coord_t icon_w = compact_width ? 22 : 24;
+        lv_coord_t low_w = compact_width ? 40 : 42;
+        lv_coord_t high_w = compact_width ? 40 : 42;
+        lv_coord_t gap = compact_width ? 2 : 3;
+    #else
         lv_coord_t day_w = 50;
         lv_coord_t icon_w = 28;
         lv_coord_t low_w = 46;
         lv_coord_t high_w = 46;
         lv_coord_t gap = 4;
+    #endif
         lv_coord_t bar_w = content_w - (day_w + icon_w + low_w + high_w + gap * 4);
         if (bar_w < 56) {
             day_w = 42;
@@ -1829,6 +1983,7 @@ static void weather_set_3day_row_values(weather_3day_row_widgets_t *widgets, con
     }
 
     if (row == NULL || !row->valid) {
+        lv_obj_add_flag(widgets->container, LV_OBJ_FLAG_HIDDEN);
         lv_label_set_text(widgets->day_label, "--");
         lv_label_set_text(widgets->low_label, "--");
         lv_label_set_text(widgets->high_label, "--");
@@ -2107,7 +2262,7 @@ static lv_coord_t weather_pick_lottie_size_main_adaptive(
     if (size < 40) {
         size = 40;
     }
-    return size;
+    return weather_cap_lottie_size(size);
 }
 
 static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values, bool available)
@@ -2119,15 +2274,68 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     lv_coord_t card_w = lv_obj_get_width(card);
     lv_coord_t icon_x = 20;
     lv_coord_t icon_y = 20;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    const bool compact_header = card_w < 340;
+    const lv_coord_t side_pad = 16;
+    const lv_coord_t meta_right_pad = compact_header ? 18 : 20;
+    const lv_coord_t header_right = card_w - meta_right_pad;
+    const lv_coord_t icon_box_w = compact_header ? 56 : 68;
+    const lv_coord_t icon_box_h = compact_header ? 60 : 68;
+    const lv_coord_t head_gap = compact_header ? 8 : 10;
+    const lv_coord_t rows_gap_from_header = compact_header ? 8 : 10;
+    icon_x = side_pad;
+    icon_y = compact_header ? 14 : 18;
+    const lv_coord_t temp_left_bound = icon_x + icon_box_w + head_gap;
+    lv_coord_t meta_w = compact_header ? 92 : 116;
+    lv_coord_t meta_x = header_right - meta_w;
+    lv_coord_t temp_available_w = meta_x - temp_left_bound - head_gap;
+    lv_coord_t temp_w = compact_header ? 144 : 170;
+    if (temp_w > temp_available_w) {
+        temp_w = temp_available_w;
+    }
+    if (temp_w < (compact_header ? 112 : 132)) {
+        temp_w = compact_header ? 112 : 132;
+        meta_x = temp_left_bound + temp_w + head_gap;
+        meta_w = header_right - meta_x;
+        temp_available_w = meta_x - temp_left_bound - head_gap;
+        if (temp_w > temp_available_w) {
+            temp_w = temp_available_w;
+        }
+    }
+    if (meta_w < 72) {
+        meta_w = 72;
+    }
+    lv_coord_t temp_x = (card_w - temp_w) / 2;
+    if (temp_x < temp_left_bound) {
+        temp_x = temp_left_bound;
+    }
+    if ((temp_x + temp_w) > (meta_x - head_gap)) {
+        temp_x = meta_x - head_gap - temp_w;
+    }
+    if (temp_x < temp_left_bound) {
+        temp_x = temp_left_bound;
+    }
+#endif
 
     lv_obj_set_style_text_font(ctx->temp_label, WEATHER_TEMP_FONT, LV_PART_MAIN);
     lv_obj_set_style_text_font(ctx->meta_label, WEATHER_3DAY_SUBMETA_FONT, LV_PART_MAIN);
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    lv_label_set_long_mode(ctx->temp_label, LV_LABEL_LONG_CLIP);
+    lv_label_set_long_mode(ctx->meta_label, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_align(ctx->temp_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_text_align(ctx->meta_label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    lv_obj_set_width(ctx->temp_label, temp_w);
+    lv_obj_set_width(ctx->meta_label, meta_w);
+    lv_obj_align(ctx->temp_label, LV_ALIGN_TOP_LEFT, temp_x, compact_header ? 38 : 44);
+    lv_obj_align(ctx->meta_label, LV_ALIGN_TOP_RIGHT, -meta_right_pad, compact_header ? 38 : 44);
+#else
     lv_obj_set_style_text_align(ctx->temp_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_align(ctx->meta_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_width(ctx->temp_label, card_w - 32);
     lv_obj_set_width(ctx->meta_label, card_w - 32);
     lv_obj_set_pos(ctx->temp_label, 16, 58);
     lv_obj_set_pos(ctx->meta_label, 16, 102);
+#endif
 
     for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
         weather_3day_row_widgets_t *row = &ctx->rows[i];
@@ -2171,19 +2379,38 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
         lv_obj_set_style_border_color(row->bar_marker, lv_color_hex(0x4E5D68), LV_PART_MAIN);
         lv_obj_set_style_radius(row->bar_marker, LV_RADIUS_CIRCLE, LV_PART_MAIN);
     }
-    weather_set_3day_rows_layout(card, ctx);
-
     if (!available || values == NULL) {
         lv_obj_clear_flag(ctx->condition_label, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_style_text_font(ctx->condition_label, WEATHER_3DAY_TEMP_FONT, LV_PART_MAIN);
         lv_obj_set_style_text_color(ctx->condition_label, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        lv_obj_set_style_text_align(ctx->condition_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_set_size(ctx->condition_label, icon_box_w, icon_box_h);
+        lv_obj_align(ctx->condition_label, LV_ALIGN_TOP_LEFT, icon_x, icon_y);
+#else
         lv_obj_set_style_text_align(ctx->condition_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
         lv_obj_set_size(ctx->condition_label, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-        lv_obj_set_pos(ctx->condition_label, icon_x, icon_y + 8);
+        lv_obj_align(ctx->condition_label, LV_ALIGN_TOP_LEFT, icon_x, icon_y + 8);
+#endif
         lv_label_set_text(ctx->condition_label, "--");
 
         lv_label_set_text(ctx->temp_label, "--");
         lv_label_set_text(ctx->meta_label, ui_i18n_get("weather.unavailable", "Unavailable"));
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        lv_obj_update_layout(card);
+        lv_coord_t header_bottom = icon_y + icon_box_h;
+        lv_coord_t temp_bottom = lv_obj_get_y(ctx->temp_label) + lv_obj_get_height(ctx->temp_label);
+        lv_coord_t meta_bottom = lv_obj_get_y(ctx->meta_label) + lv_obj_get_height(ctx->meta_label);
+        if (temp_bottom > header_bottom) {
+            header_bottom = temp_bottom;
+        }
+        if (meta_bottom > header_bottom) {
+            header_bottom = meta_bottom;
+        }
+        weather_set_3day_rows_layout(card, ctx, header_bottom + rows_gap_from_header);
+#else
+        weather_set_3day_rows_layout(card, ctx, WEATHER_3DAY_ROWS_TOP);
+#endif
         for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
             weather_set_3day_row_values(&ctx->rows[i], NULL, "C", 0.0f, 1.0f);
         }
@@ -2204,12 +2431,17 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
         if (weather_icon_utf8_from_codepoint(icon_cp, icon_utf8)) {
             icon_mode = true;
             lv_label_set_long_mode(ctx->condition_label, LV_LABEL_LONG_CLIP);
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+            lv_obj_set_size(ctx->condition_label, icon_box_w, icon_box_h);
+            lv_obj_set_style_text_align(ctx->condition_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+#else
             lv_obj_set_size(ctx->condition_label, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
             lv_obj_set_style_text_align(ctx->condition_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+#endif
             lv_obj_set_style_text_font(ctx->condition_label, icon_font, LV_PART_MAIN);
             lv_obj_set_style_text_color(ctx->condition_label, lv_color_hex(APP_UI_COLOR_WEATHER_ICON), LV_PART_MAIN);
             lv_obj_set_style_text_opa(ctx->condition_label, LV_OPA_COVER, LV_PART_MAIN);
-            lv_obj_set_pos(ctx->condition_label, icon_x, icon_y);
+            lv_obj_align(ctx->condition_label, LV_ALIGN_TOP_LEFT, icon_x, icon_y);
             lv_label_set_text(ctx->condition_label, icon_utf8);
             ctx->last_icon_cp = icon_cp;
             ctx->last_icon_font = icon_font;
@@ -2222,12 +2454,21 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
         lv_obj_set_style_text_align(ctx->condition_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
         lv_obj_set_style_text_font(ctx->condition_label, WEATHER_3DAY_META_FONT, LV_PART_MAIN);
         lv_obj_set_style_text_color(ctx->condition_label, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
-        lv_obj_set_pos(ctx->condition_label, icon_x, icon_y + 16);
+        lv_obj_align(ctx->condition_label, LV_ALIGN_TOP_LEFT, icon_x, icon_y + 16);
         lv_label_set_text(ctx->condition_label, display_condition);
     }
 
     const char *visual_condition_key = weather_effective_condition_key(ctx, values);
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    /* The forecast-header icon box is only 56-68 px on S3 – below the
+     * WEATHER_LOTTIE_MIN_SIZE threshold.  Always use the static MDI icon
+     * here to avoid ThorVG rendering at sub-minimum canvas size. */
+    weather_hide_lottie(ctx);
+    bool lottie_mode = false;
+    (void)visual_condition_key; /* still used below for condition_label */
+#else
     bool lottie_mode = weather_show_lottie(card, ctx, visual_condition_key, icon_x - 4, icon_y - 8, 0);
+#endif
     if (lottie_mode) {
         lv_obj_add_flag(ctx->condition_label, LV_OBJ_FLAG_HIDDEN);
     } else {
@@ -2244,13 +2485,46 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
 
     char meta_text[64] = {0};
     if (values->humidity >= 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        snprintf(meta_text, sizeof(meta_text), "%s\n%d%%", display_condition, values->humidity);
+#else
         snprintf(meta_text, sizeof(meta_text), "%s | %d%%", display_condition, values->humidity);
+#endif
     } else {
         snprintf(meta_text, sizeof(meta_text), "%s", display_condition);
     }
     lv_label_set_text(ctx->meta_label, meta_text);
 
-    weather_3day_row_t rows[WEATHER_3DAY_ROWS] = {0};
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    lv_obj_update_layout(card);
+    lv_coord_t header_bottom = icon_y + icon_box_h;
+    lv_coord_t temp_bottom = lv_obj_get_y(ctx->temp_label) + lv_obj_get_height(ctx->temp_label);
+    lv_coord_t meta_bottom = lv_obj_get_y(ctx->meta_label) + lv_obj_get_height(ctx->meta_label);
+    if (!lv_obj_has_flag(ctx->condition_label, LV_OBJ_FLAG_HIDDEN)) {
+        lv_coord_t condition_bottom = lv_obj_get_y(ctx->condition_label) + lv_obj_get_height(ctx->condition_label);
+        if (condition_bottom > header_bottom) {
+            header_bottom = condition_bottom;
+        }
+    }
+    if (ctx->lottie_icon != NULL && !lv_obj_has_flag(ctx->lottie_icon, LV_OBJ_FLAG_HIDDEN)) {
+        lv_coord_t lottie_bottom = lv_obj_get_y(ctx->lottie_icon) + lv_obj_get_height(ctx->lottie_icon);
+        if (lottie_bottom > header_bottom) {
+            header_bottom = lottie_bottom;
+        }
+    }
+    if (temp_bottom > header_bottom) {
+        header_bottom = temp_bottom;
+    }
+    if (meta_bottom > header_bottom) {
+        header_bottom = meta_bottom;
+    }
+    weather_set_3day_rows_layout(card, ctx, header_bottom + rows_gap_from_header);
+#else
+    weather_set_3day_rows_layout(card, ctx, WEATHER_3DAY_ROWS_TOP);
+#endif
+
+    weather_3day_row_t *rows = ctx->render_rows;
+    memset(rows, 0, sizeof(ctx->render_rows));
     weather_build_3day_rows(values, rows);
     float range_min = 0.0f;
     float range_max = 1.0f;
@@ -2366,6 +2640,13 @@ static void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weat
 
     const char *visual_condition_key = weather_effective_condition_key(ctx, values);
     bool lottie_candidate = weather_has_lottie_for_key(visual_condition_key);
+#if APP_UI_WEATHER_LOTTIE_ENABLED && defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    /* If the S3 runtime guard would refuse anyway, plan the layout for the
+     * static-icon fallback so we don't reserve a lottie slot we won't fill. */
+    if (lottie_candidate && !weather_lottie_s3_runtime_allowed(card)) {
+        lottie_candidate = false;
+    }
+#endif
     lv_coord_t lottie_size =
         lottie_candidate ? weather_pick_lottie_size_main_adaptive(card, ctx, temp_font, meta_font) : 0;
     bool visual_icon_mode = icon_mode || lottie_candidate;
@@ -2523,7 +2804,7 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_align(meta, LV_ALIGN_TOP_MID, 0, 124);
 #endif
 
-    w_weather_tile_ctx_t *ctx = calloc(1, sizeof(w_weather_tile_ctx_t));
+    w_weather_tile_ctx_t *ctx = weather_calloc(1, sizeof(w_weather_tile_ctx_t));
     if (ctx == NULL) {
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;
@@ -2630,12 +2911,18 @@ void w_weather_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t
      * until a new valid weather condition arrives. */
     weather_update_icon_cache_from_state(ctx, state->state);
 
-    weather_values_t values = {0};
-    weather_extract_values(state, ctx->show_forecast, &values);
-    if (ctx->last_condition_text[0] == '\0' && weather_has_alpha(values.condition)) {
-        weather_copy_text(ctx->last_condition_text, sizeof(ctx->last_condition_text), values.condition);
+    weather_values_t *values = weather_calloc(1, sizeof(*values));
+    if (values == NULL) {
+        weather_render(instance->obj, ctx, NULL, false);
+        return;
     }
-    weather_render(instance->obj, ctx, &values, true);
+
+    weather_extract_values(state, ctx->show_forecast, values);
+    if (ctx->last_condition_text[0] == '\0' && weather_has_alpha(values->condition)) {
+        weather_copy_text(ctx->last_condition_text, sizeof(ctx->last_condition_text), values->condition);
+    }
+    weather_render(instance->obj, ctx, values, true);
+    free(values);
 }
 
 void w_weather_tile_mark_unavailable(ui_widget_instance_t *instance)

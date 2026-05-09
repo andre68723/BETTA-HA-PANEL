@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+#
+# Panel variant overlay: 4" 480x480 (Guition CYD ESP32-S3 4848S040).
+# Apply together with sdkconfig.defaults.s3 via
+#   idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults.s3;sdkconfig.defaults.panels3" ...
+# or the CMake preset "panels3" (see CMakePresets.json).
+
+# --- Panel variant selector (drives app_config.h + display/touch init) ---
+CONFIG_APP_PANEL_VARIANT_S3_480=y
+# CONFIG_APP_PANEL_VARIANT_4INCH_720 is not set
+# CONFIG_APP_PANEL_VARIANT_10INCH_1280 is not set
+
+# --- Touch controller (GT911 capacitive on most CYD 4848S040 batches) ---
+CONFIG_ESP_LCD_TOUCH_MAX_POINTS=5

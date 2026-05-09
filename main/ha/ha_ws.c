@@ -7,11 +7,13 @@
 #include <string.h>
 
 #include "esp_crt_bundle.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "lwip/inet.h"
 #include "lwip/netdb.h"
 
+#include "app_config.h"
 #include "util/log_tags.h"
 #include "esp_websocket_client.h"
 #define HA_WS_HAS_ESP_WS_CLIENT 1
@@ -31,8 +33,13 @@ static char s_ws_headers[192] = {0};
 static char s_last_resolved_host[128] = {0};
 static char s_last_resolved_ip[64] = {0};
 
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define HA_WS_TASK_STACK 8192
+#define HA_WS_BUFFER_SIZE 8192
+#else
 #define HA_WS_TASK_STACK 12288
 #define HA_WS_BUFFER_SIZE 16384
+#endif
 #define HA_WS_CTRL_PING_INTERVAL_SEC 25
 #define HA_WS_CTRL_PINGPONG_TIMEOUT_SEC 15
 #define HA_WS_TCP_KEEPALIVE_IDLE_SEC 30
@@ -316,6 +323,10 @@ esp_err_t ha_ws_start(const ha_ws_config_t *cfg)
             ws_cfg.cert_common_name = s_tls_common_name;
         }
     }
+
+    ESP_LOGI(TAG_HA_WS, "Starting WebSocket (task_stack=%d, buffer=%d, int_largest=%u)",
+        HA_WS_TASK_STACK, HA_WS_BUFFER_SIZE,
+        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
 
     s_ws_client = esp_websocket_client_init(&ws_cfg);
     if (s_ws_client == NULL) {

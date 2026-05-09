@@ -3,11 +3,13 @@
  */
 #include "ha/ha_cover_fetcher.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -18,7 +20,23 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 
+#include "soc/soc_caps.h"
+
+#include "app_config.h"
+#include "miniz.h"
+
+/* JPEG backend selection ---------------------------------------------------
+ * - ESP32-P4 has a hardware JPEG codec. We use the IDF `driver/jpeg_decode`
+ *   API for fast zero-copy RGB565 output.
+ * - All other targets (e.g. ESP32-S3 / panels3) fall back to the ROM-resident
+ *   TJpgDec software decoder. It is single-threaded, runs at low priority on
+ *   core 1, and outputs RGB888 which we convert to RGB565 in the output
+ *   callback. Sufficient for ~1 cover/sec at typical HA sizes. */
+#if SOC_JPEG_DECODE_SUPPORTED
 #include "driver/jpeg_decode.h"
+#else
+#include "rom/tjpgd.h"
+#endif
 
 #include "ha/ha_client.h"
 
@@ -33,6 +51,28 @@
 #define COVER_GATE_POLL_MS 120
 #define COVER_MIN_W 16
 #define COVER_MIN_H 16
+#define COVER_HTTP_WAIT_LOG_MS 5000
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define COVER_HTTP_MIN_INTERNAL_FREE_BYTES (12U * 1024U)
+#define COVER_HTTP_MIN_INTERNAL_LARGEST_BYTES (8U * 1024U)
+#define COVER_HTTP_PRESSURE_HOLD_MS 2000
+#define COVER_HTTP_MAX_ATTEMPTS 6
+#define COVER_HTTP_RETRY_DELAY_MS 2500
+#define COVER_HTTP_BUFFER_SIZE 512
+#define COVER_HTTP_TX_BUFFER_SIZE 768
+#define COVER_HTTP_READ_CHUNK 512
+#define COVER_SINK_INITIAL_CAP (8U * 1024U)
+#else
+#define COVER_HTTP_MIN_INTERNAL_FREE_BYTES (14U * 1024U)
+#define COVER_HTTP_MIN_INTERNAL_LARGEST_BYTES (8U * 1024U)
+#define COVER_HTTP_PRESSURE_HOLD_MS 1000
+#define COVER_HTTP_MAX_ATTEMPTS 3
+#define COVER_HTTP_RETRY_DELAY_MS 1000
+#define COVER_HTTP_BUFFER_SIZE 1024
+#define COVER_HTTP_TX_BUFFER_SIZE 1024
+#define COVER_HTTP_READ_CHUNK 1024
+#define COVER_SINK_INITIAL_CAP (32U * 1024U)
+#endif
 
 typedef struct {
     char url[512];         /* proxy path or absolute URL */
@@ -51,7 +91,9 @@ typedef struct {
 static QueueHandle_t s_queue = NULL;
 static TaskHandle_t s_task = NULL;
 static SemaphoreHandle_t s_lock = NULL;
+#if SOC_JPEG_DECODE_SUPPORTED
 static jpeg_decoder_handle_t s_decoder = NULL;
+#endif
 static void *s_cancelled_user = NULL; /* serialised via s_lock with the worker */
 static cover_req_t s_inflight = {0};  /* guarded by s_lock                    */
 static bool s_inflight_valid = false;
@@ -66,6 +108,87 @@ typedef struct {
     size_t cap;
     bool truncated;
 } http_sink_t;
+
+typedef struct {
+    ha_client_http_ctx_t ctx;
+    char full_url[640];
+    char auth[600];
+} cover_http_work_t;
+
+static void *cover_heap_calloc(size_t count, size_t size)
+{
+#if defined(CONFIG_SPIRAM)
+    void *ptr = heap_caps_calloc(count, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (ptr != NULL) {
+        return ptr;
+    }
+#endif
+    return heap_caps_calloc(count, size, MALLOC_CAP_8BIT);
+}
+
+static bool cover_request_cancelled_locked(void *user)
+{
+    return (s_cancelled_user != NULL && s_cancelled_user == user);
+}
+
+static bool cover_wait_until_http_ready(void *user)
+{
+    int64_t last_log_ms = 0;
+    for (;;) {
+        ha_client_set_aux_http_pressure(true, COVER_HTTP_PRESSURE_HOLD_MS);
+        bool connected = ha_client_is_connected();
+        bool heavy_busy = ha_client_heavy_gate_is_busy();
+        size_t free_internal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+        size_t largest_internal = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+        bool heap_ok = (free_internal >= COVER_HTTP_MIN_INTERNAL_FREE_BYTES) &&
+                       (largest_internal >= COVER_HTTP_MIN_INTERNAL_LARGEST_BYTES);
+
+        if (connected && !heavy_busy && heap_ok) {
+            return true;
+        }
+
+        int64_t now_ms = esp_timer_get_time() / 1000;
+        if ((now_ms - last_log_ms) >= COVER_HTTP_WAIT_LOG_MS) {
+            last_log_ms = now_ms;
+            ESP_LOGI(TAG,
+                "Cover HTTP waiting: connected=%d heavy=%d free_internal=%u largest=%u",
+                connected ? 1 : 0,
+                heavy_busy ? 1 : 0,
+                (unsigned)free_internal,
+                (unsigned)largest_internal);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(COVER_GATE_POLL_MS));
+        xSemaphoreTake(s_lock, portMAX_DELAY);
+        bool cancel_now = cover_request_cancelled_locked(user);
+        xSemaphoreGive(s_lock);
+        if (cancel_now) {
+            ha_client_set_aux_http_pressure(false, 0);
+            return false;
+        }
+    }
+}
+
+static bool cover_delay_or_cancel(void *user, uint32_t delay_ms)
+{
+    uint32_t elapsed_ms = 0;
+    while (elapsed_ms < delay_ms) {
+        uint32_t step_ms = delay_ms - elapsed_ms;
+        if (step_ms > COVER_GATE_POLL_MS) {
+            step_ms = COVER_GATE_POLL_MS;
+        }
+        vTaskDelay(pdMS_TO_TICKS(step_ms));
+        elapsed_ms += step_ms;
+
+        xSemaphoreTake(s_lock, portMAX_DELAY);
+        bool cancel_now = cover_request_cancelled_locked(user);
+        xSemaphoreGive(s_lock);
+        if (cancel_now) {
+            return false;
+        }
+    }
+    return true;
+}
 
 static bool cover_is_png(const uint8_t *buf, size_t len)
 {
@@ -377,6 +500,34 @@ static void cover_scale_rgba8_row_to_rgb565a8(const uint8_t *src_row, uint32_t s
     }
 }
 
+typedef struct {
+    uint32_t src_w;
+    uint32_t src_h;
+    uint32_t out_w;
+    uint32_t out_h;
+    uint32_t color_stride;
+    uint32_t alpha_stride;
+    uint32_t next_dst_y;
+    uint32_t src_y;
+    uint32_t step_x;
+    uint32_t step_y;
+    uint32_t samples;
+    uint64_t r_acc;
+    uint64_t g_acc;
+    uint64_t b_acc;
+    uint8_t *line;
+    size_t line_size;
+    size_t line_len;
+    uint8_t *prev_row;
+    uint8_t *curr_row;
+    uint8_t *rgb565a8;
+    uint8_t *alpha_plane;
+    size_t rowbytes;
+    size_t expected_size;
+    size_t emitted;
+    bool failed;
+} cover_png_stream_ctx_t;
+
 static void cover_accumulate_dominant_rgba8_row(const uint8_t *row, uint32_t src_w, uint32_t src_y,
                                                 uint32_t step_x, uint32_t step_y,
                                                 uint64_t *r_acc, uint64_t *g_acc, uint64_t *b_acc,
@@ -411,6 +562,170 @@ static void cover_accumulate_dominant_rgba8_row(const uint8_t *row, uint32_t src
     }
 }
 
+static bool cover_png_process_streamed_row(cover_png_stream_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->line == NULL || ctx->curr_row == NULL || ctx->src_y >= ctx->src_h) {
+        return false;
+    }
+
+    if (!cover_unfilter_rgba8_row(ctx->curr_row, ctx->line + 1U,
+                                  ctx->src_y > 0 ? ctx->prev_row : NULL,
+                                  ctx->rowbytes, ctx->line[0])) {
+        ESP_LOGW(TAG, "png unsupported filter %u", ctx->line[0]);
+        return false;
+    }
+
+    cover_accumulate_dominant_rgba8_row(ctx->curr_row, ctx->src_w, ctx->src_y,
+                                        ctx->step_x, ctx->step_y,
+                                        &ctx->r_acc, &ctx->g_acc, &ctx->b_acc,
+                                        &ctx->samples);
+
+    while (ctx->next_dst_y < ctx->out_h &&
+           (uint32_t)(((uint64_t)ctx->next_dst_y * ctx->src_h) / ctx->out_h) == ctx->src_y) {
+        uint8_t *dst_color_row = ctx->rgb565a8 + ((size_t)ctx->next_dst_y * ctx->color_stride);
+        uint8_t *dst_alpha_row = ctx->alpha_plane + ((size_t)ctx->next_dst_y * ctx->alpha_stride);
+        cover_scale_rgba8_row_to_rgb565a8(ctx->curr_row, ctx->src_w, dst_color_row, dst_alpha_row, ctx->out_w);
+        ctx->next_dst_y++;
+    }
+
+    uint8_t *swap = ctx->prev_row;
+    ctx->prev_row = ctx->curr_row;
+    ctx->curr_row = swap;
+    ctx->src_y++;
+    ctx->line_len = 0;
+    return true;
+}
+
+static int cover_png_inflate_cb(const void *buf, int len, void *user)
+{
+    cover_png_stream_ctx_t *ctx = (cover_png_stream_ctx_t *)user;
+    if (ctx == NULL || buf == NULL || len < 0 || ctx->line == NULL) {
+        return 0;
+    }
+
+    const uint8_t *src = (const uint8_t *)buf;
+    size_t remaining = (size_t)len;
+    while (remaining > 0) {
+        if (ctx->emitted >= ctx->expected_size) {
+            ctx->failed = true;
+            return 0;
+        }
+
+        size_t line_space = ctx->line_size - ctx->line_len;
+        size_t expected_left = ctx->expected_size - ctx->emitted;
+        size_t take = remaining;
+        if (take > line_space) {
+            take = line_space;
+        }
+        if (take > expected_left) {
+            take = expected_left;
+        }
+        if (take == 0) {
+            ctx->failed = true;
+            return 0;
+        }
+
+        memcpy(ctx->line + ctx->line_len, src, take);
+        ctx->line_len += take;
+        ctx->emitted += take;
+        src += take;
+        remaining -= take;
+
+        if (ctx->line_len == ctx->line_size) {
+            if (!cover_png_process_streamed_row(ctx)) {
+                ctx->failed = true;
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
+static bool cover_png_inflate_stream_lowlevel(const uint8_t *idat, size_t idat_len,
+                                              cover_png_stream_ctx_t *stream,
+                                              size_t *consumed_out,
+                                              tinfl_status *status_out)
+{
+    if (idat == NULL || idat_len == 0 || stream == NULL) {
+        if (consumed_out != NULL) *consumed_out = 0;
+        if (status_out != NULL) *status_out = TINFL_STATUS_BAD_PARAM;
+        return false;
+    }
+
+    tinfl_decompressor *decomp = (tinfl_decompressor *)heap_caps_calloc(
+        1, sizeof(tinfl_decompressor), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    uint8_t *dict = (uint8_t *)heap_caps_malloc(
+        TINFL_LZ_DICT_SIZE, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (decomp == NULL) {
+        decomp = (tinfl_decompressor *)heap_caps_calloc(
+            1, sizeof(tinfl_decompressor), MALLOC_CAP_8BIT);
+    }
+    if (dict == NULL) {
+        dict = (uint8_t *)heap_caps_malloc(TINFL_LZ_DICT_SIZE, MALLOC_CAP_8BIT);
+    }
+    if (decomp == NULL || dict == NULL) {
+        ESP_LOGW(TAG, "png inflate alloc failed: decomp=%p dict=%p psram_free=%u psram_largest=%u",
+                 decomp, dict,
+                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT),
+                 (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+        heap_caps_free(decomp);
+        heap_caps_free(dict);
+        if (consumed_out != NULL) *consumed_out = 0;
+        if (status_out != NULL) *status_out = TINFL_STATUS_BAD_PARAM;
+        return false;
+    }
+
+    tinfl_init(decomp);
+    size_t in_ofs = 0;
+    size_t dict_ofs = 0;
+    tinfl_status status = TINFL_STATUS_FAILED;
+    bool ok = false;
+
+    for (;;) {
+        size_t in_size = idat_len - in_ofs;
+        size_t out_size = (size_t)TINFL_LZ_DICT_SIZE - dict_ofs;
+        status = tinfl_decompress(decomp,
+                                  idat + in_ofs,
+                                  &in_size,
+                                  dict,
+                                  dict + dict_ofs,
+                                  &out_size,
+                                  TINFL_FLAG_PARSE_ZLIB_HEADER);
+        in_ofs += in_size;
+
+        if (out_size > 0) {
+            if (!cover_png_inflate_cb(dict + dict_ofs, (int)out_size, stream)) {
+                status = TINFL_STATUS_FAILED;
+                break;
+            }
+            dict_ofs = (dict_ofs + out_size) & ((size_t)TINFL_LZ_DICT_SIZE - 1U);
+        }
+
+        if (status == TINFL_STATUS_DONE) {
+            ok = true;
+            break;
+        }
+        if (status < TINFL_STATUS_DONE) {
+            break;
+        }
+        if (status == TINFL_STATUS_NEEDS_MORE_INPUT && in_ofs >= idat_len) {
+            status = TINFL_STATUS_FAILED;
+            break;
+        }
+        if (in_size == 0 && out_size == 0) {
+            status = TINFL_STATUS_FAILED;
+            break;
+        }
+    }
+
+    if (consumed_out != NULL) *consumed_out = in_ofs;
+    if (status_out != NULL) *status_out = status;
+    heap_caps_free(decomp);
+    heap_caps_free(dict);
+    return ok;
+}
+
 static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
                                             uint32_t src_w, uint32_t src_h,
                                             int target_w, int target_h,
@@ -422,12 +737,11 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
 
     bool ok = false;
     uint8_t *idat = NULL;
-    uint8_t *scanlines = NULL;
     uint8_t *prev_row = NULL;
     uint8_t *curr_row = NULL;
+    uint8_t *line = NULL;
     uint8_t *rgb565a8 = NULL;
     size_t idat_len = 0;
-    size_t scanlines_size = 0;
     size_t rowbytes = (size_t)src_w * 4U;
     size_t expected_size = ((size_t)src_w * 4U + 1U) * src_h;
     uint32_t out_w = 0;
@@ -448,26 +762,20 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
         goto cleanup;
     }
 
-    LodePNGDecompressSettings zlib_settings = lodepng_default_decompress_settings;
-    unsigned err = lodepng_zlib_decompress(&scanlines, &scanlines_size, idat, idat_len, &zlib_settings);
-    if (err != 0 || scanlines == NULL) {
-        ESP_LOGW(TAG, "png zlib failed: %u (%s)", err, lodepng_error_text(err));
-        goto cleanup;
-    }
-    if (scanlines_size != expected_size) {
-        ESP_LOGW(TAG, "png scanline size mismatch: got=%u expected=%u",
-                 (unsigned)scanlines_size, (unsigned)expected_size);
-        goto cleanup;
-    }
-
+    line = heap_caps_malloc(rowbytes + 1U, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     prev_row = heap_caps_malloc(rowbytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     curr_row = heap_caps_malloc(rowbytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    if (prev_row == NULL || curr_row == NULL) {
-        ESP_LOGW(TAG, "png row alloc failed: %u bytes", (unsigned)rowbytes);
+    if (line == NULL || prev_row == NULL || curr_row == NULL) {
+        ESP_LOGW(TAG, "png row alloc failed: row=%u line=%u psram_free=%u psram_largest=%u",
+                 (unsigned)rowbytes,
+                 (unsigned)(rowbytes + 1U),
+                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT),
+                 (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
         goto cleanup;
     }
     memset(prev_row, 0, rowbytes);
     memset(curr_row, 0, rowbytes);
+    memset(line, 0, rowbytes + 1U);
 
     cover_pick_png_output_size(src_w, src_h, target_w, target_h, &out_w, &out_h);
     color_stride = lv_draw_buf_width_to_stride(out_w, LV_COLOR_FORMAT_RGB565A8);
@@ -481,35 +789,53 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
     memset(rgb565a8, 0, out_size);
 
     uint8_t *alpha_plane = rgb565a8 + ((size_t)color_stride * out_h);
-    uint32_t next_dst_y = 0;
-    for (uint32_t src_y = 0; src_y < src_h; src_y++) {
-        const uint8_t *scan = scanlines + ((rowbytes + 1U) * src_y);
-        if (!cover_unfilter_rgba8_row(curr_row, scan + 1U, src_y > 0 ? prev_row : NULL, rowbytes, scan[0])) {
-            ESP_LOGW(TAG, "png unsupported filter %u", scan[0]);
-            goto cleanup;
-        }
+    cover_png_stream_ctx_t stream = {
+        .src_w = src_w,
+        .src_h = src_h,
+        .out_w = out_w,
+        .out_h = out_h,
+        .color_stride = color_stride,
+        .alpha_stride = alpha_stride,
+        .step_x = step_x,
+        .step_y = step_y,
+        .line = line,
+        .line_size = rowbytes + 1U,
+        .prev_row = prev_row,
+        .curr_row = curr_row,
+        .rgb565a8 = rgb565a8,
+        .alpha_plane = alpha_plane,
+        .rowbytes = rowbytes,
+        .expected_size = expected_size,
+    };
 
-        cover_accumulate_dominant_rgba8_row(curr_row, src_w, src_y, step_x, step_y,
-                                            &r_acc, &g_acc, &b_acc, &samples);
+    ESP_LOGI(TAG, "png stream: src=%ux%u out=%ux%u idat=%u raw=%u",
+             (unsigned)src_w, (unsigned)src_h,
+             (unsigned)out_w, (unsigned)out_h,
+             (unsigned)idat_len, (unsigned)expected_size);
 
-        while (next_dst_y < out_h &&
-               (uint32_t)(((uint64_t)next_dst_y * src_h) / out_h) == src_y) {
-            uint8_t *dst_color_row = rgb565a8 + ((size_t)next_dst_y * color_stride);
-            uint8_t *dst_alpha_row = alpha_plane + ((size_t)next_dst_y * alpha_stride);
-            cover_scale_rgba8_row_to_rgb565a8(curr_row, src_w, dst_color_row, dst_alpha_row, out_w);
-            next_dst_y++;
-        }
-
-        uint8_t *swap = prev_row;
-        prev_row = curr_row;
-        curr_row = swap;
+    size_t consumed = 0;
+    tinfl_status inflate_status = TINFL_STATUS_FAILED;
+    bool inflate_ok = cover_png_inflate_stream_lowlevel(idat, idat_len, &stream,
+                                                        &consumed, &inflate_status);
+    if (!inflate_ok || stream.failed || stream.emitted != expected_size ||
+        stream.src_y != src_h || stream.line_len != 0) {
+        ESP_LOGW(TAG,
+                 "png zlib stream failed: ok=%d status=%d failed=%d consumed=%u/%u emitted=%u/%u row=%u/%u line=%u psram_free=%u psram_largest=%u",
+                 inflate_ok ? 1 : 0, (int)inflate_status, (int)stream.failed,
+                 (unsigned)consumed, (unsigned)idat_len,
+                 (unsigned)stream.emitted, (unsigned)expected_size,
+                 (unsigned)stream.src_y, (unsigned)src_h,
+                 (unsigned)stream.line_len,
+                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT),
+                 (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+        goto cleanup;
     }
 
-    while (next_dst_y < out_h) {
-        uint8_t *dst_color_row = rgb565a8 + ((size_t)next_dst_y * color_stride);
-        uint8_t *dst_alpha_row = alpha_plane + ((size_t)next_dst_y * alpha_stride);
-        cover_scale_rgba8_row_to_rgb565a8(prev_row, src_w, dst_color_row, dst_alpha_row, out_w);
-        next_dst_y++;
+    while (stream.next_dst_y < out_h) {
+        uint8_t *dst_color_row = rgb565a8 + ((size_t)stream.next_dst_y * color_stride);
+        uint8_t *dst_alpha_row = alpha_plane + ((size_t)stream.next_dst_y * alpha_stride);
+        cover_scale_rgba8_row_to_rgb565a8(stream.prev_row, src_w, dst_color_row, dst_alpha_row, out_w);
+        stream.next_dst_y++;
     }
 
     out->image.header.magic = LV_IMAGE_HEADER_MAGIC;
@@ -522,6 +848,10 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
     out->image.data = rgb565a8;
     out->source_w = src_w;
     out->source_h = src_h;
+    samples = stream.samples;
+    r_acc = stream.r_acc;
+    g_acc = stream.g_acc;
+    b_acc = stream.b_acc;
     out->dominant_rgb = samples > 0
                             ? ((((uint32_t)(r_acc / samples)) << 16) |
                                (((uint32_t)(g_acc / samples)) << 8) |
@@ -533,7 +863,7 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
 
 cleanup:
     cover_png_free_decoded(idat);
-    cover_png_free_decoded(scanlines);
+    cover_png_free_decoded(line);
     cover_png_free_decoded(prev_row);
     cover_png_free_decoded(curr_row);
     cover_png_free_decoded(rgb565a8);
@@ -621,97 +951,243 @@ static bool cover_decode_png(const uint8_t *png, size_t len, int target_w, int t
 #endif
 }
 
-static esp_err_t http_event_cb(esp_http_client_event_t *evt)
+static esp_err_t cover_sink_append(http_sink_t *sink, const uint8_t *data, size_t len)
 {
-    if (evt->event_id != HTTP_EVENT_ON_DATA || evt->data_len <= 0) return ESP_OK;
-    http_sink_t *sink = (http_sink_t *)evt->user_data;
-    if (sink == NULL || sink->truncated) return ESP_OK;
-
-    size_t needed = sink->len + evt->data_len;
-    if (needed > COVER_MAX_DOWNLOAD) {
-        sink->truncated = true;
+    if (sink == NULL || data == NULL || len == 0 || sink->truncated) {
         return ESP_OK;
     }
+
+    size_t needed = sink->len + len;
+    if (needed > COVER_MAX_DOWNLOAD) {
+        sink->truncated = true;
+        return ESP_ERR_INVALID_SIZE;
+    }
     if (needed > sink->cap) {
-        size_t new_cap = sink->cap ? sink->cap * 2 : 32 * 1024;
+        size_t new_cap = sink->cap ? sink->cap * 2 : COVER_SINK_INITIAL_CAP;
         while (new_cap < needed) new_cap *= 2;
         if (new_cap > COVER_MAX_DOWNLOAD) new_cap = COVER_MAX_DOWNLOAD;
         uint8_t *resized = heap_caps_realloc(sink->buf, new_cap, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
         if (resized == NULL) {
             sink->truncated = true;
-            return ESP_OK;
+            return ESP_ERR_NO_MEM;
         }
         sink->buf = resized;
         sink->cap = new_cap;
     }
-    memcpy(sink->buf + sink->len, evt->data, evt->data_len);
-    sink->len += evt->data_len;
+    memcpy(sink->buf + sink->len, data, len);
+    sink->len += len;
     return ESP_OK;
 }
 
-static bool cover_download(const char *url, http_sink_t *sink)
+static const char *cover_url_kind(const char *url)
 {
-    ha_client_http_ctx_t ctx = {0};
-    if (!ha_client_get_http_context(&ctx)) {
-        ESP_LOGW(TAG, "no HA http context yet");
-        return false;
+    if (url == NULL) {
+        return "unknown";
+    }
+    if (strstr(url, "media_player_proxy") != NULL) {
+        return "media";
+    }
+    if (strstr(url, "image_proxy") != NULL) {
+        return "image";
+    }
+    if (strstr(url, "camera_proxy") != NULL) {
+        return "camera";
+    }
+    return "cover";
+}
+
+static const char *cover_header_or_dash(esp_http_client_handle_t cli, const char *key)
+{
+    char *value = NULL;
+    if (esp_http_client_get_header(cli, key, &value) == ESP_OK && value != NULL && value[0] != '\0') {
+        return value;
+    }
+    return "-";
+}
+
+static esp_err_t cover_download(const char *url, http_sink_t *sink)
+{
+    cover_http_work_t *work = (cover_http_work_t *)cover_heap_calloc(1, sizeof(*work));
+    if (work == NULL) {
+        ESP_LOGW(TAG, "cover http work alloc failed");
+        return ESP_ERR_NO_MEM;
     }
 
-    char full_url[640];
-    if (strncmp(url, "http://", 7) == 0 || strncmp(url, "https://", 8) == 0) {
-        snprintf(full_url, sizeof(full_url), "%s", url);
-    } else if (url[0] == '/') {
-        snprintf(full_url, sizeof(full_url), "%s%s", ctx.base_url, url);
-    } else {
-        snprintf(full_url, sizeof(full_url), "%s/%s", ctx.base_url, url);
+    esp_err_t ret = ESP_FAIL;
+    uint8_t *read_buf = NULL;
+    if (!ha_client_get_http_context(&work->ctx)) {
+        ESP_LOGW(TAG, "no HA http context yet");
+        ret = ESP_ERR_INVALID_STATE;
+        goto cleanup;
     }
+
+    if (strncmp(url, "http://", 7) == 0 || strncmp(url, "https://", 8) == 0) {
+        snprintf(work->full_url, sizeof(work->full_url), "%s", url);
+    } else if (url[0] == '/') {
+        snprintf(work->full_url, sizeof(work->full_url), "%s%s", work->ctx.base_url, url);
+    } else {
+        snprintf(work->full_url, sizeof(work->full_url), "%s/%s", work->ctx.base_url, url);
+    }
+    const char *url_kind = cover_url_kind(work->full_url);
 
     esp_http_client_config_t cfg = {
-        .url = full_url,
+        .url = work->full_url,
         .method = HTTP_METHOD_GET,
-        .timeout_ms = 8000,
-        .buffer_size = 2048,
-        .buffer_size_tx = 1024,
-        .event_handler = http_event_cb,
-        .user_data = sink,
+        .timeout_ms = 15000,
+        .buffer_size = COVER_HTTP_BUFFER_SIZE,
+        .buffer_size_tx = COVER_HTTP_TX_BUFFER_SIZE,
+        .keep_alive_enable = false,
 #if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
         .crt_bundle_attach = esp_crt_bundle_attach,
 #endif
     };
-    if (ctx.cert_common_name[0] != '\0') cfg.common_name = ctx.cert_common_name;
+    if (work->ctx.cert_common_name[0] != '\0') cfg.common_name = work->ctx.cert_common_name;
 
     esp_http_client_handle_t cli = esp_http_client_init(&cfg);
-    if (cli == NULL) return false;
-
-    if (ctx.host_header[0] != '\0') {
-        esp_http_client_set_header(cli, "Host", ctx.host_header);
+    if (cli == NULL) {
+        ret = ESP_ERR_NO_MEM;
+        goto cleanup;
     }
+
+    if (work->ctx.host_header[0] != '\0') {
+        esp_http_client_set_header(cli, "Host", work->ctx.host_header);
+    }
+    esp_http_client_set_header(cli, "Connection", "close");
+    esp_http_client_set_header(cli, "Accept", "image/*");
     /* The HA media_player_proxy URLs already carry a ?token=... query; a Bearer
      * header is harmless but unnecessary and would bloat the request.  Only
      * attach it for URLs that don't include a token. */
-    if (strstr(full_url, "token=") == NULL && ctx.bearer_token[0] != '\0') {
-        char auth[600];
-        snprintf(auth, sizeof(auth), "Bearer %s", ctx.bearer_token);
-        esp_http_client_set_header(cli, "Authorization", auth);
+    if (strstr(work->full_url, "token=") == NULL && work->ctx.bearer_token[0] != '\0') {
+        snprintf(work->auth, sizeof(work->auth), "Bearer %s", work->ctx.bearer_token);
+        esp_http_client_set_header(cli, "Authorization", work->auth);
     }
 
-    esp_err_t err = esp_http_client_perform(cli);
-    int status = esp_http_client_get_status_code(cli);
-    esp_http_client_cleanup(cli);
+    esp_err_t err = esp_http_client_open(cli, 0);
     if (err != ESP_OK) {
-        ESP_LOGW(TAG, "http perform failed: %s", esp_err_to_name(err));
-        return false;
+        ESP_LOGW(TAG, "http open failed: %s errno=%d free_internal=%u largest=%u",
+            esp_err_to_name(err),
+            esp_http_client_get_errno(cli),
+            (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+            (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+        ret = err;
+        goto client_cleanup;
+    }
+
+    int64_t content_length = esp_http_client_fetch_headers(cli);
+    int status = esp_http_client_get_status_code(cli);
+    if (content_length < 0) {
+        ESP_LOGW(TAG, "http fetch headers failed: %" PRId64, content_length);
+        ret = ESP_ERR_HTTP_FETCH_HEADER;
+        goto client_close;
     }
     if (status != 200) {
         ESP_LOGW(TAG, "http status=%d for cover fetch", status);
-        return false;
+        ret = ESP_ERR_HTTP_BASE + status;
+        goto client_close;
     }
+    if (content_length > COVER_MAX_DOWNLOAD) {
+        ESP_LOGW(TAG, "cover content-length too large: %" PRId64, content_length);
+        ret = ESP_ERR_INVALID_SIZE;
+        goto client_close;
+    }
+
+    ESP_LOGI(TAG,
+        "Cover HTTP headers kind=%s status=%d len=%" PRId64 " type=%s transfer=%s encoding=%s conn=%s",
+        url_kind,
+        status,
+        content_length,
+        cover_header_or_dash(cli, "Content-Type"),
+        cover_header_or_dash(cli, "Transfer-Encoding"),
+        cover_header_or_dash(cli, "Content-Encoding"),
+        cover_header_or_dash(cli, "Connection"));
+
+    read_buf = (uint8_t *)heap_caps_malloc(COVER_HTTP_READ_CHUNK, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    if (read_buf == NULL) {
+        read_buf = (uint8_t *)heap_caps_malloc(COVER_HTTP_READ_CHUNK, MALLOC_CAP_8BIT);
+    }
+    if (read_buf == NULL) {
+        ESP_LOGW(TAG, "cover read buffer alloc failed (%u bytes)", (unsigned)COVER_HTTP_READ_CHUNK);
+        ret = ESP_ERR_NO_MEM;
+        goto client_close;
+    }
+
+    uint8_t zero_read_count = 0;
+    const bool known_length = (content_length > 0);
+    while (true) {
+        int read_len = esp_http_client_read(cli, (char *)read_buf, COVER_HTTP_READ_CHUNK);
+        if (read_len < 0) {
+            int tls_code = 0;
+            int tls_flags = 0;
+            esp_err_t tls_err = esp_http_client_get_and_clear_last_tls_error(cli, &tls_code, &tls_flags);
+            ESP_LOGW(TAG,
+                "http read failed: %d kind=%s status=%d got=%u/%" PRId64
+                " errno=%d tls_err=%s tls_code=0x%x tls_flags=0x%x complete=%d free_internal=%u largest=%u",
+                read_len,
+                url_kind,
+                status,
+                (unsigned)sink->len,
+                content_length,
+                esp_http_client_get_errno(cli),
+                esp_err_to_name(tls_err),
+                (unsigned)tls_code,
+                (unsigned)tls_flags,
+                esp_http_client_is_complete_data_received(cli) ? 1 : 0,
+                (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+            ret = (read_len == -ESP_ERR_HTTP_EAGAIN) ? ESP_ERR_HTTP_EAGAIN : ESP_FAIL;
+            goto client_close;
+        }
+        if (read_len == 0) {
+            if (esp_http_client_is_complete_data_received(cli) ||
+                (known_length && sink->len >= (size_t)content_length)) {
+                break;
+            }
+            zero_read_count++;
+            if (zero_read_count < 3) {
+                vTaskDelay(pdMS_TO_TICKS(20));
+                continue;
+            }
+            ESP_LOGW(TAG, "http incomplete data received, %u/%" PRId64 " bytes",
+                (unsigned)sink->len, content_length);
+            ret = ESP_ERR_HTTP_INCOMPLETE_DATA;
+            goto client_close;
+        }
+        zero_read_count = 0;
+        ret = cover_sink_append(sink, read_buf, (size_t)read_len);
+        if (ret != ESP_OK) {
+            goto client_close;
+        }
+    }
+
     if (sink->truncated) {
         ESP_LOGW(TAG, "cover exceeds %d bytes, truncated", COVER_MAX_DOWNLOAD);
-        return false;
+        ret = ESP_ERR_INVALID_SIZE;
+        goto client_close;
     }
-    if (sink->len < 64) return false;
-    return true;
+    ret = (sink->len >= 64) ? ESP_OK : ESP_ERR_INVALID_RESPONSE;
+
+client_close:
+    if (read_buf != NULL) {
+        heap_caps_free(read_buf);
+    }
+    esp_http_client_close(cli);
+client_cleanup:
+    esp_http_client_cleanup(cli);
+cleanup:
+    heap_caps_free(work);
+    return ret;
+}
+
+static bool cover_download_error_is_retryable(esp_err_t err)
+{
+    return err == ESP_ERR_HTTP_CONNECT ||
+           err == ESP_ERR_HTTP_FETCH_HEADER ||
+           err == ESP_ERR_HTTP_EAGAIN ||
+           err == ESP_ERR_HTTP_CONNECTION_CLOSED ||
+           err == ESP_ERR_HTTP_INCOMPLETE_DATA ||
+           err == ESP_ERR_TIMEOUT ||
+           err == ESP_ERR_NO_MEM ||
+           err == ESP_FAIL;
 }
 
 /* ---- Decode + dominant color ---- */
@@ -781,6 +1257,7 @@ static size_t cover_jpeg_sanitize(uint8_t *buf, size_t len)
     return wp;
 }
 
+#if SOC_JPEG_DECODE_SUPPORTED
 static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int target_h,
                           ha_cover_result_t *out)
 {
@@ -881,6 +1358,191 @@ static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int targe
     out->valid = true;
     return true;
 }
+#else /* !SOC_JPEG_DECODE_SUPPORTED — software path via ROM TJpgDec */
+
+/* TJpgDec session state. The decoder is created on demand for each cover
+ * because TJpgDec is not designed for reuse across images. */
+typedef struct {
+    /* Input */
+    const uint8_t *src;
+    size_t src_len;
+    size_t src_pos;
+    /* Output */
+    uint8_t *rgb565;       /* destination RGB565 buffer (LVGL native) */
+    uint32_t out_w;        /* output buffer width  in pixels */
+    uint32_t out_h;        /* output buffer height in pixels */
+    /* Stats for dominant-color computation */
+    uint32_t r_acc, g_acc, b_acc, n_acc;
+} cover_sw_ctx_t;
+
+static UINT cover_sw_in(JDEC *jd, BYTE *buf, UINT nb)
+{
+    cover_sw_ctx_t *ctx = (cover_sw_ctx_t *)jd->device;
+    size_t remain = ctx->src_len - ctx->src_pos;
+    if ((size_t)nb > remain) {
+        nb = (UINT)remain;
+    }
+    if (buf != NULL && nb > 0) {
+        memcpy(buf, ctx->src + ctx->src_pos, nb);
+    }
+    ctx->src_pos += nb;
+    return nb;
+}
+
+/* TJpgDec ROM build outputs RGB888 (3 bytes/pixel). We convert each row to
+ * RGB565 (LVGL native, little-endian) directly into the destination buffer. */
+static UINT cover_sw_out(JDEC *jd, void *bitmap, JRECT *rect)
+{
+    cover_sw_ctx_t *ctx = (cover_sw_ctx_t *)jd->device;
+    const uint8_t *src = (const uint8_t *)bitmap;
+    const uint32_t rect_w = (uint32_t)(rect->right - rect->left + 1);
+    const uint32_t rect_h = (uint32_t)(rect->bottom - rect->top + 1);
+
+    for (uint32_t row = 0; row < rect_h; ++row) {
+        const uint32_t y = (uint32_t)rect->top + row;
+        if (y >= ctx->out_h) {
+            break;
+        }
+        uint16_t *dst_row = (uint16_t *)(ctx->rgb565 + (size_t)y * ctx->out_w * 2);
+        const uint8_t *src_row = src + (size_t)row * rect_w * 3;
+        for (uint32_t col = 0; col < rect_w; ++col) {
+            const uint32_t x = (uint32_t)rect->left + col;
+            if (x >= ctx->out_w) {
+                break;
+            }
+            uint8_t r = src_row[col * 3 + 0];
+            uint8_t g = src_row[col * 3 + 1];
+            uint8_t b = src_row[col * 3 + 2];
+            dst_row[x] = (uint16_t)(((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
+            /* Sample every 8th pixel for the dominant-color histogram, with
+             * the same near-black/near-white skip the HW path uses. */
+            if (((x & 7U) == 0U) && ((y & 7U) == 0U)) {
+                int lum = (r >> 3) + ((g >> 2) >> 1) + (b >> 3);
+                if (lum >= 4 && lum <= 50) {
+                    ctx->r_acc += r;
+                    ctx->g_acc += g;
+                    ctx->b_acc += b;
+                    ctx->n_acc += 1;
+                }
+            }
+        }
+    }
+    return 1; /* continue */
+}
+
+static uint8_t cover_sw_pick_scale(uint32_t src_w, uint32_t src_h,
+                                    int target_w, int target_h)
+{
+    if (target_w <= 0 || target_h <= 0) return 0;
+    /* TJpgDec supports 0=1/1, 1=1/2, 2=1/4, 3=1/8 */
+    for (uint8_t s = 3; s > 0; --s) {
+        uint32_t sw = src_w >> s;
+        uint32_t sh = src_h >> s;
+        if (sw >= (uint32_t)target_w && sh >= (uint32_t)target_h) {
+            return s;
+        }
+    }
+    return 0;
+}
+
+static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int target_h,
+                          ha_cover_result_t *out)
+{
+    /* TJpgDec needs a scratch "pool" of ~3.5 KiB for its work tables. */
+    enum { TJPGD_POOL_SZ = 3800 };
+    void *pool = NULL;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480) && defined(CONFIG_SPIRAM) && CONFIG_SPIRAM
+    pool = heap_caps_malloc(TJPGD_POOL_SZ, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#endif
+    if (pool == NULL) {
+        pool = heap_caps_malloc(TJPGD_POOL_SZ, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+    }
+    if (pool == NULL) {
+        ESP_LOGW(TAG, "tjpgd pool alloc failed");
+        return false;
+    }
+
+    cover_sw_ctx_t ctx = {0};
+    ctx.src = jpg;
+    ctx.src_len = len;
+
+    JDEC jd;
+    JRESULT jr = jd_prepare(&jd, cover_sw_in, pool, TJPGD_POOL_SZ, &ctx);
+    if (jr != JDR_OK) {
+        ESP_LOGW(TAG, "tjpgd jd_prepare failed: %d", (int)jr);
+        heap_caps_free(pool);
+        return false;
+    }
+    if (jd.width == 0 || jd.height == 0) {
+        heap_caps_free(pool);
+        return false;
+    }
+
+    uint8_t scale = cover_sw_pick_scale(jd.width, jd.height, target_w, target_h);
+    uint32_t out_w = (uint32_t)jd.width >> scale;
+    uint32_t out_h = (uint32_t)jd.height >> scale;
+    if (out_w == 0 || out_h == 0) {
+        heap_caps_free(pool);
+        return false;
+    }
+
+    /* Hard cap ~4 MB RGB565 (≈1440x1440). */
+    const uint32_t MAX_PIXELS = 1440U * 1440U;
+    if ((uint32_t)out_w * out_h > MAX_PIXELS) {
+        ESP_LOGW(TAG, "jpeg %ux%u (scale 1/%u) exceeds decode cap, skipping",
+                 (unsigned)jd.width, (unsigned)jd.height, 1U << scale);
+        heap_caps_free(pool);
+        return false;
+    }
+
+    size_t rgb_size = (size_t)out_w * out_h * 2;
+    uint8_t *rgb = heap_caps_malloc(rgb_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (rgb == NULL) {
+        rgb = heap_caps_malloc(rgb_size, MALLOC_CAP_8BIT);
+    }
+    if (rgb == NULL) {
+        ESP_LOGW(TAG, "tjpgd alloc output %u failed", (unsigned)rgb_size);
+        heap_caps_free(pool);
+        return false;
+    }
+    ctx.rgb565 = rgb;
+    ctx.out_w = out_w;
+    ctx.out_h = out_h;
+
+    int64_t t0 = esp_timer_get_time();
+    jr = jd_decomp(&jd, cover_sw_out, scale);
+    heap_caps_free(pool);
+    if (jr != JDR_OK) {
+        ESP_LOGW(TAG, "tjpgd decode failed: %d", (int)jr);
+        heap_caps_free(rgb);
+        return false;
+    }
+    ESP_LOGD(TAG, "sw jpeg decoded %ux%u (scale 1/%u) in %lld ms",
+             (unsigned)out_w, (unsigned)out_h, 1U << scale,
+             (long long)((esp_timer_get_time() - t0) / 1000));
+
+    out->image.header.magic = LV_IMAGE_HEADER_MAGIC;
+    out->image.header.cf = LV_COLOR_FORMAT_RGB565;
+    out->image.header.flags = 0;
+    out->image.header.w = out_w;
+    out->image.header.h = out_h;
+    out->image.header.stride = out_w * 2;
+    out->image.data_size = (uint32_t)rgb_size;
+    out->image.data = rgb;
+    out->source_w = jd.width;
+    out->source_h = jd.height;
+
+    if (ctx.n_acc > 0) {
+        out->dominant_rgb = ((ctx.r_acc / ctx.n_acc) << 16) |
+                            ((ctx.g_acc / ctx.n_acc) << 8) |
+                            (ctx.b_acc / ctx.n_acc);
+    } else {
+        out->dominant_rgb = (0x4DU << 16) | (0xA3U << 8) | 0xFFU;
+    }
+    out->valid = true;
+    return true;
+}
+#endif /* SOC_JPEG_DECODE_SUPPORTED */
 
 /* ---- Worker task ---- */
 
@@ -906,30 +1568,81 @@ static void cover_task(void *arg)
             continue;
         }
 
-        /* 1) Wait for the heavy WS gate and WS liveness. Cover fetch is always
-         *    subordinate to the HA WS traffic. */
-        while (!ha_client_is_connected() || ha_client_heavy_gate_is_busy()) {
-            vTaskDelay(pdMS_TO_TICKS(COVER_GATE_POLL_MS));
+        /* 1) Wait for WS liveness, the heavy WS gate and a small internal
+         *    heap/socket reserve. Cover fetches are nice-to-have UI work. */
+        if (!cover_wait_until_http_ready(req.user)) {
             xSemaphoreTake(s_lock, portMAX_DELAY);
-            bool cancel_now = (s_cancelled_user != NULL && s_cancelled_user == req.user);
+            if (cover_request_cancelled_locked(req.user)) {
+                s_cancelled_user = NULL;
+            }
             xSemaphoreGive(s_lock);
-            if (cancel_now) break;
-        }
-
-        xSemaphoreTake(s_lock, portMAX_DELAY);
-        bool cancelled_now = (s_cancelled_user != NULL && s_cancelled_user == req.user);
-        if (cancelled_now) s_cancelled_user = NULL;
-        xSemaphoreGive(s_lock);
-        if (cancelled_now) {
             xSemaphoreTake(s_lock, portMAX_DELAY);
             s_inflight_valid = false;
             xSemaphoreGive(s_lock);
             continue;
         }
 
-        /* 2) Download */
+        /* 2) Download with a few delayed retries for transient socket/TLS
+         *    pressure. This avoids permanently losing the cover on one low
+         *    internal-heap moment. */
         http_sink_t sink = {0};
-        bool ok = cover_download(req.url, &sink);
+        esp_err_t download_err = ESP_FAIL;
+        bool ok = false;
+        bool cancelled_download = false;
+        for (uint8_t attempt = 0; attempt < COVER_HTTP_MAX_ATTEMPTS; attempt++) {
+            if (!cover_wait_until_http_ready(req.user)) {
+                xSemaphoreTake(s_lock, portMAX_DELAY);
+                if (cover_request_cancelled_locked(req.user)) {
+                    s_cancelled_user = NULL;
+                }
+                xSemaphoreGive(s_lock);
+                cancelled_download = true;
+                break;
+            }
+
+            download_err = cover_download(req.url, &sink);
+            ha_client_set_aux_http_pressure(false, 0);
+            if (download_err == ESP_OK) {
+                ok = true;
+                break;
+            }
+
+            if (sink.buf != NULL) {
+                heap_caps_free(sink.buf);
+                sink = (http_sink_t){0};
+            }
+            if (!cover_download_error_is_retryable(download_err) ||
+                attempt + 1 >= COVER_HTTP_MAX_ATTEMPTS) {
+                break;
+            }
+
+            uint32_t retry_ms = COVER_HTTP_RETRY_DELAY_MS * (uint32_t)(attempt + 1U);
+            ESP_LOGI(TAG,
+                "Cover HTTP retry %u/%u in %u ms after %s",
+                (unsigned)(attempt + 2U),
+                (unsigned)COVER_HTTP_MAX_ATTEMPTS,
+                (unsigned)retry_ms,
+                esp_err_to_name(download_err));
+            if (!cover_delay_or_cancel(req.user, retry_ms)) {
+                xSemaphoreTake(s_lock, portMAX_DELAY);
+                if (cover_request_cancelled_locked(req.user)) {
+                    s_cancelled_user = NULL;
+                }
+                xSemaphoreGive(s_lock);
+                cancelled_download = true;
+                break;
+            }
+        }
+        ha_client_set_aux_http_pressure(false, 0);
+        if (cancelled_download) {
+            if (sink.buf != NULL) {
+                heap_caps_free(sink.buf);
+            }
+            xSemaphoreTake(s_lock, portMAX_DELAY);
+            s_inflight_valid = false;
+            xSemaphoreGive(s_lock);
+            continue;
+        }
 
         /* 3) Decode + color */
         ha_cover_result_t result = {0};
@@ -956,7 +1669,7 @@ static void cover_task(void *arg)
         }
 
         if (req.cb != NULL) {
-            cover_dispatch_t *disp = calloc(1, sizeof(cover_dispatch_t));
+            cover_dispatch_t *disp = (cover_dispatch_t *)cover_heap_calloc(1, sizeof(cover_dispatch_t));
             if (disp == NULL) {
                 if (result.valid && result.image.data) heap_caps_free((void *)result.image.data);
                 continue;
@@ -966,7 +1679,7 @@ static void cover_task(void *arg)
             disp->user = req.user;
             if (lv_async_call(cover_dispatch_on_lvgl, disp) != LV_RESULT_OK) {
                 if (result.valid && result.image.data) heap_caps_free((void *)result.image.data);
-                free(disp);
+                heap_caps_free(disp);
             }
         } else if (result.valid && result.image.data) {
             heap_caps_free((void *)result.image.data);
@@ -990,11 +1703,13 @@ static void cover_dispatch_on_lvgl(void *data)
 
     if (!cancelled) {
         disp->cb(disp->user, &disp->result);
+    } else if (disp->result.valid && disp->result.image.data != NULL) {
+        heap_caps_free((void *)disp->result.image.data);
     }
     /* If the callback did not keep the buffer, it must have called
      * ha_cover_result_release() which frees it. We cannot free here without
      * double-free risk; the contract is: callback owns the buffer. */
-    free(disp);
+    heap_caps_free(disp);
 }
 
 /* ---- Public API ---- */
@@ -1006,6 +1721,7 @@ esp_err_t ha_cover_fetcher_init(void)
     s_queue = xQueueCreate(COVER_Q_DEPTH, sizeof(cover_req_t));
     if (s_lock == NULL || s_queue == NULL) return ESP_ERR_NO_MEM;
 
+#if SOC_JPEG_DECODE_SUPPORTED
     jpeg_decode_engine_cfg_t eng = {
         .intr_priority = 0,
         .timeout_ms = 2000,
@@ -1014,10 +1730,19 @@ esp_err_t ha_cover_fetcher_init(void)
         ESP_LOGE(TAG, "jpeg_new_decoder_engine failed");
         return ESP_FAIL;
     }
+#endif
 
     /* Low priority (below HA WS RX task). Run on core 1 to keep core 0
      * for the HA WS / LVGL path. */
-    BaseType_t ok = xTaskCreatePinnedToCore(cover_task, "ha_cover", 6 * 1024, NULL, 3, &s_task, 1);
+    BaseType_t ok;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480) && CONFIG_SPIRAM && CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
+    ok = xTaskCreatePinnedToCoreWithCaps(
+        cover_task, "ha_cover", APP_HA_COVER_TASK_STACK, NULL, APP_HA_COVER_TASK_PRIO, &s_task, 1,
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#else
+    ok = xTaskCreatePinnedToCore(
+        cover_task, "ha_cover", APP_HA_COVER_TASK_STACK, NULL, APP_HA_COVER_TASK_PRIO, &s_task, 1);
+#endif
     if (ok != pdPASS) return ESP_FAIL;
     return ESP_OK;
 }

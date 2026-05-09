@@ -1,0 +1,134 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+#
+# Base defaults for the ESP32-S3 panel variants.
+# Replaces the P4-centric sdkconfig.defaults: native Wi-Fi (no ESP-Hosted),
+# Octal PSRAM @80MHz instead of Hex@200MHz, no PPA hardware accelerator.
+#
+# Apply together with a panel-specific overlay, e.g.
+#   idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults.s3;sdkconfig.defaults.panels3" ...
+# or via the CMake preset "panels3" (see CMakePresets.json).
+
+# --- SoC target ---
+CONFIG_IDF_TARGET="esp32s3"
+
+# --- Core behavior defaults (mirrors sdkconfig.defaults common section) ---
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_FREERTOS_HZ=1000
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
+
+# --- Flash sizing (typical Guition CYD 4848S040: 16MB) ---
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+# --- Custom partition table (smaller OTA slots than P4 due to 16MB flash) ---
+# CONFIG_PARTITION_TABLE_SINGLE_APP is not set
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.s3.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions.s3.csv"
+
+# --- Native Wi-Fi (no ESP-Hosted) ---
+# ESP-Hosted is not pulled in for panels3, so its Kconfig symbols don't exist.
+# Native ESP32-S3 Wi-Fi + AP support is on by default.
+CONFIG_ESP_WIFI_SOFTAP_SUPPORT=y
+
+# S3 low-RAM profile: enough for HA WebSocket + HTTP setup UI, but much
+# lighter than the P4/C6-hosted defaults.
+CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=16
+CONFIG_LWIP_TCP_RECVMBOX_SIZE=16
+CONFIG_LWIP_UDP_RECVMBOX_SIZE=16
+CONFIG_LWIP_MAX_SOCKETS=16
+CONFIG_LWIP_TCP_MSS=1200
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=8192
+CONFIG_LWIP_TCP_WND_DEFAULT=8192
+CONFIG_LWIP_TCP_SACK_OUT=y
+
+# Native ESP32-S3 Wi-Fi buffers. 16 dynamic RX/TX buffers is still generous
+# for a single WebSocket client and prevents Wi-Fi from eating the heap before
+# the application tasks start.
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=8
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=16
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=16
+
+# --- PSRAM profile (Octal @80MHz; Guition 4848S040 ships with OPI 8MB) ---
+# Some CYD batches ship Quad PSRAM instead — if boot fails with Octal,
+# switch to CONFIG_SPIRAM_MODE_QUAD locally and re-flash.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y
+CONFIG_SPIRAM_RODATA=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_BOOT_INIT=y
+CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=1024
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=49152
+
+# --- LVGL allocator ---
+# CONFIG_LV_USE_BUILTIN_MALLOC is not set
+CONFIG_LV_USE_CLIB_MALLOC=y
+
+# --- mbedTLS tuning (matches P4 defaults; HA WS reuse) ---
+CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
+CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=16384
+CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=2048
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+# CONFIG_MBEDTLS_INTERNAL_MEM_ALLOC is not set
+CONFIG_MBEDTLS_DYNAMIC_FREE_CONFIG_DATA=y
+# CONFIG_MBEDTLS_SSL_KEEP_PEER_CERTIFICATE is not set
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+CONFIG_MBEDTLS_CLIENT_SSL_SESSION_TICKETS=y
+CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK=y
+
+# --- App defaults ---
+CONFIG_APP_WIFI_DISABLE_POWER_SAVE=y
+CONFIG_APP_HA_FETCH_INITIAL_STATES=y
+CONFIG_APP_HA_SUBSCRIBE_STATE_CHANGED=y
+CONFIG_APP_HA_PING_INTERVAL_MS=30000
+
+# --- LVGL features ---
+# Lottie/ThorVG is too heap-hungry and the Meteocons Lottie assets are too
+# complex to rasterize cleanly at the small icon sizes available on the S3
+# 480x480 panel (~96 px max).  Weather tiles use static MDI icons on panels3;
+# keep animated assets for P4 builds only.
+# CONFIG_LV_USE_VECTOR_GRAPHIC is not set
+# CONFIG_LV_USE_LOTTIE is not set
+# CONFIG_LV_USE_THORVG is not set
+# CONFIG_LV_USE_THORVG_INTERNAL is not set
+CONFIG_LV_USE_LODEPNG=y
+CONFIG_LV_USE_FLOAT=y
+CONFIG_LV_USE_MATRIX=y
+
+# --- RGB LCD driver (Phase 2: ST7701S parallel RGB panel) ---
+# Explicitly disable IRAM-safe ISR: the Kconfig default is =y on S3, but
+# esp_lvgl_port v2.7.x registers lvgl_port_flush_rgb_vsync_ready_callback
+# without IRAM_ATTR, causing an abort at runtime when =y.
+# We don't need it: no flash writes happen during display refresh.
+# CONFIG_LCD_RGB_ISR_IRAM_SAFE is not set
+# Restart the RGB GDMA stream at each VBlank. This keeps the ST7701S from
+# staying permanently offset if PSRAM bandwidth briefly starves the bounce
+# buffer, which otherwise shows up as faint vertical/shift artifacts.
+CONFIG_LCD_RGB_RESTART_IN_VSYNC=y
+
+# --- Display/LVGL profile (no PPA on S3, software path only) ---
+# PPA hardware accelerator does not exist on ESP32-S3.
+# CONFIG_LVGL_PORT_ENABLE_PPA is not set
+CONFIG_SPIRAM_XIP_FROM_PSRAM=y
+# BSP_DISPLAY_LVGL_* symbols come from the Waveshare BSP packages used by
+# panel4/panel10 — they don't exist on panels3 (no BSP). Tearing mitigation
+# is implemented inline in main/drivers/display_init_panels3.c (Phase 2).
+CONFIG_LV_DEF_REFR_PERIOD=33
+
+# --- Fonts (matches P4 defaults; can be trimmed in Phase 3 if size pressure) ---
+CONFIG_LV_FONT_MONTSERRAT_20=y
+CONFIG_LV_FONT_MONTSERRAT_22=y
+CONFIG_LV_FONT_MONTSERRAT_28=y
+CONFIG_LV_FONT_MONTSERRAT_34=y
+CONFIG_LV_FONT_FMT_TXT_LARGE=y
+CONFIG_LV_TXT_BREAK_CHARS=" ,.;:-_"
+CONFIG_LV_USE_SNAPSHOT=y
+
+# --- CPU frequency (S3 max is 240 MHz) ---
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=240

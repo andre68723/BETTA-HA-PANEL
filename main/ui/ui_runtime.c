@@ -23,6 +23,7 @@
 #include "net/wifi_mgr.h"
 #include "ui/fonts/mdi_font_registry.h"
 #include "ui/ui_energy_page.h"
+#include "ui/ui_memory.h"
 #include "ui/ui_pages.h"
 #include "ui/ui_widget_factory.h"
 #include "ui/theme/theme_default.h"
@@ -30,10 +31,12 @@
 
 #define UI_MODEL_RECONCILE_INTERVAL_MS 1000
 
-static ui_widget_instance_t s_widgets[APP_MAX_WIDGETS_TOTAL];
+static ui_widget_instance_t *s_widgets = NULL;
 static size_t s_widget_count = 0;
-static ui_energy_page_instance_t s_energy_pages[APP_MAX_PAGES];
+static ui_energy_page_instance_t *s_energy_pages = NULL;
 static size_t s_energy_page_count = 0;
+
+static void ui_runtime_update_widget_visibility(const char *page_id, bool refresh_visible_widgets);
 
 /* Invoked by ui_pages whenever the active page changes.
  * If the newly shown page is an energy dashboard, ask the HA client to
@@ -52,8 +55,10 @@ static void ui_runtime_on_page_shown(const char *page_id, uint16_t index)
             break;
         }
     }
+    ui_runtime_update_widget_visibility(page_id, true);
 }
 static TaskHandle_t s_ui_task = NULL;
+static ha_state_t s_state_scratch;
 static bool s_initialized = false;
 static int64_t s_last_topbar_refresh_ms = 0;
 static int64_t s_last_model_reconcile_ms = 0;
@@ -63,6 +68,29 @@ static bool s_pending_state_reconcile = false;
 static bool s_pending_topbar_refresh = false;
 static uint32_t s_deferred_event_count = 0;
 static int64_t s_deferred_event_log_ms = 0;
+
+static esp_err_t ui_runtime_alloc_buffers(void)
+{
+    if (s_widgets == NULL) {
+        s_widgets = ui_calloc_prefer_psram(APP_MAX_WIDGETS_TOTAL, sizeof(*s_widgets));
+        if (s_widgets == NULL) {
+            ESP_LOGE(TAG_UI, "Failed to allocate widget runtime buffer (%u slots)",
+                     (unsigned)APP_MAX_WIDGETS_TOTAL);
+            return ESP_ERR_NO_MEM;
+        }
+    }
+
+    if (s_energy_pages == NULL) {
+        s_energy_pages = ui_calloc_prefer_psram(APP_MAX_PAGES, sizeof(*s_energy_pages));
+        if (s_energy_pages == NULL) {
+            ESP_LOGE(TAG_UI, "Failed to allocate energy page runtime buffer (%u pages)", (unsigned)APP_MAX_PAGES);
+            return ESP_ERR_NO_MEM;
+        }
+    }
+
+    return ESP_OK;
+}
+
 typedef struct {
     bool valid;
     int minute;
@@ -101,55 +129,116 @@ static ui_widget_size_limits_t ui_runtime_widget_size_limits(const char *type)
     }
 
     if (strcmp(type, "sensor") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 90;
+        limits.min_h = 60;
+#else
         limits.min_w = 120;
         limits.min_h = 80;
+#endif
     } else if (strcmp(type, "button") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 82;
+        limits.min_h = 82;
+        limits.max_w = 320;
+        limits.max_h = 260;
+#else
         limits.min_w = 100;
         limits.min_h = 100;
         limits.max_w = 480;
         limits.max_h = 320;
+#endif
     } else if (strcmp(type, "slider") == 0) {
         limits.min_w = 100;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_h = 80;
+#else
         limits.min_h = 100;
+#endif
     } else if (strcmp(type, "graph") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 150;
+        limits.min_h = 100;
+#else
         limits.min_w = 220;
         limits.min_h = 140;
+#endif
     } else if (strcmp(type, "empty_tile") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 100;
+        limits.min_h = 70;
+#else
         limits.min_w = 120;
         limits.min_h = 80;
+#endif
     } else if (strcmp(type, "light_tile") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 140;
+        limits.min_h = 140;
+#else
         limits.min_w = 180;
         limits.min_h = 180;
+#endif
         limits.max_w = 480;
         limits.max_h = 480;
     } else if (strcmp(type, "heating_tile") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 150;
+        limits.min_h = 150;
+#else
         limits.min_w = 220;
         limits.min_h = 200;
+#endif
         limits.max_w = 480;
         limits.max_h = 480;
     } else if (strcmp(type, "weather_tile") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 160;
+        limits.min_h = 150;
+#else
         limits.min_w = 220;
         limits.min_h = 200;
+#endif
         limits.max_w = 480;
         limits.max_h = 480;
     } else if (strcmp(type, "weather_3day") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 300;
+        limits.min_h = 190;
+#else
         limits.min_w = 260;
         limits.min_h = 220;
+#endif
         limits.max_w = 640;
         limits.max_h = 480;
     } else if (strcmp(type, "todo_list") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 180;
+        limits.min_h = 160;
+#else
         limits.min_w = 220;
         limits.min_h = 200;
+#endif
         limits.max_w = 640;
         limits.max_h = 640;
     } else if (strcmp(type, "media_player") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 200;
+        limits.min_h = 170;
+#else
         limits.min_w = 260;
         limits.min_h = 220;
+#endif
         limits.max_w = APP_CONTENT_BOX_WIDTH;
         limits.max_h = APP_CONTENT_BOX_HEIGHT;
     } else if (strcmp(type, "roborock_tile") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 220;
+        limits.min_h = 190;
+#else
         limits.min_w = 240;
         limits.min_h = 220;
+#endif
         limits.max_w = APP_CONTENT_BOX_WIDTH;
         limits.max_h = APP_CONTENT_BOX_HEIGHT;
     }
@@ -281,8 +370,8 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
         return;
     }
 
-    ha_state_t state = {0};
-    bool found = ha_model_get_state(entity_id, &state);
+    memset(&s_state_scratch, 0, sizeof(s_state_scratch));
+    bool found = ha_model_get_state(entity_id, &s_state_scratch);
     for (size_t i = 0; i < s_widget_count; i++) {
         bool is_primary = (strncmp(entity_id, s_widgets[i].entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
         bool is_secondary = (s_widgets[i].secondary_entity_id[0] != '\0') &&
@@ -291,7 +380,7 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
             continue;
         }
         if (found) {
-            ui_widget_factory_apply_state(&s_widgets[i], &state);
+            ui_widget_factory_apply_state(&s_widgets[i], &s_state_scratch);
         } else if (is_primary && mark_unavailable_if_missing) {
             ui_widget_factory_mark_unavailable(&s_widgets[i]);
         }
@@ -299,7 +388,7 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
 
     if (found) {
         for (size_t i = 0; i < s_energy_page_count; i++) {
-            (void)ui_energy_page_apply_state(&s_energy_pages[i], &state);
+            (void)ui_energy_page_apply_state(&s_energy_pages[i], &s_state_scratch);
         }
     }
 }
@@ -307,6 +396,46 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
 static void ui_runtime_apply_entity_state(const char *entity_id)
 {
     ui_runtime_apply_entity_state_ex(entity_id, true);
+}
+
+static void ui_runtime_apply_widget_current_state(ui_widget_instance_t *widget, bool mark_unavailable_if_missing)
+{
+    if (widget == NULL) {
+        return;
+    }
+
+    if (widget->entity_id[0] != '\0') {
+        memset(&s_state_scratch, 0, sizeof(s_state_scratch));
+        bool found = ha_model_get_state(widget->entity_id, &s_state_scratch);
+        if (found) {
+            ui_widget_factory_apply_state(widget, &s_state_scratch);
+        } else if (mark_unavailable_if_missing) {
+            ui_widget_factory_mark_unavailable(widget);
+        }
+    }
+
+    if (widget->secondary_entity_id[0] != '\0' &&
+        strncmp(widget->secondary_entity_id, widget->entity_id, APP_MAX_ENTITY_ID_LEN) != 0) {
+        memset(&s_state_scratch, 0, sizeof(s_state_scratch));
+        if (ha_model_get_state(widget->secondary_entity_id, &s_state_scratch)) {
+            ui_widget_factory_apply_state(widget, &s_state_scratch);
+        }
+    }
+}
+
+static void ui_runtime_update_widget_visibility(const char *page_id, bool refresh_visible_widgets)
+{
+    if (page_id == NULL || page_id[0] == '\0') {
+        return;
+    }
+
+    for (size_t i = 0; i < s_widget_count; i++) {
+        bool visible = (strncmp(s_widgets[i].page_id, page_id, APP_MAX_PAGE_ID_LEN) == 0);
+        ui_widget_factory_set_visible(&s_widgets[i], visible);
+        if (visible && refresh_visible_widgets) {
+            ui_runtime_apply_widget_current_state(&s_widgets[i], false);
+        }
+    }
 }
 
 static void ui_runtime_apply_all_states(void)
@@ -501,7 +630,7 @@ static bool ui_runtime_is_background_widget_type(const char *type)
 
 esp_err_t ui_runtime_load_layout(const char *layout_json)
 {
-    if (!s_initialized || layout_json == NULL) {
+    if (!s_initialized || layout_json == NULL || s_widgets == NULL || s_energy_pages == NULL) {
         return ESP_ERR_INVALID_STATE;
     }
 
@@ -522,9 +651,9 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
 
     s_topbar_cache.valid = false;
     ui_pages_reset();
-    memset(s_widgets, 0, sizeof(s_widgets));
+    memset(s_widgets, 0, APP_MAX_WIDGETS_TOTAL * sizeof(*s_widgets));
     s_widget_count = 0;
-    memset(s_energy_pages, 0, sizeof(s_energy_pages));
+    memset(s_energy_pages, 0, APP_MAX_PAGES * sizeof(*s_energy_pages));
     s_energy_page_count = 0;
 
     int page_count = cJSON_GetArraySize(pages);
@@ -584,6 +713,8 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
                 }
                 esp_err_t err = ui_widget_factory_create(&def, page_container, &s_widgets[s_widget_count]);
                 if (err == ESP_OK) {
+                    snprintf(s_widgets[s_widget_count].page_id, sizeof(s_widgets[s_widget_count].page_id),
+                             "%s", page_id->valuestring);
                     s_widget_count++;
                 }
             }
@@ -738,6 +869,11 @@ static void ui_runtime_task(void *arg)
 
 esp_err_t ui_runtime_init(void)
 {
+    esp_err_t err = ui_runtime_alloc_buffers();
+    if (err != ESP_OK) {
+        return err;
+    }
+
     if (!display_lock(0)) {
         return ESP_ERR_TIMEOUT;
     }

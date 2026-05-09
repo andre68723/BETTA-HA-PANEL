@@ -10,6 +10,11 @@ if(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
         "drivers/display_init_panel10.c"
         "drivers/touch_init_panel10.c"
     )
+elseif(CONFIG_APP_PANEL_VARIANT_S3_480)
+    set(PANEL_DRIVER_SRCS
+        "drivers/display_init_panels3.c"
+        "drivers/touch_init_panels3.c"
+    )
 else()
     set(PANEL_DRIVER_SRCS
         "drivers/display_init_panel4.c"
@@ -90,11 +95,13 @@ idf_component_register(
         esp_netif
         esp_event
         esp_wifi
-        esp_wifi_remote
-        esp_hosted
+        esp_driver_gpio
+        esp_driver_i2c
+        esp_driver_ledc
         esp_websocket_client
         esp_http_client
         esp_http_server
+        esp_rom
         esp_timer
         app_update
         esp_app_format
@@ -106,7 +113,24 @@ idf_component_register(
         esp_driver_jpeg
 )
 
+# ESP-Hosted (P4 + C6 coprocessor) is only used by panel4 / panel10.
+# panels3 (ESP32-S3) has native Wi-Fi and must not pull in the hosted stack.
+if(NOT CONFIG_APP_PANEL_VARIANT_S3_480)
+    idf_component_optional_requires(PRIVATE esp_wifi_remote esp_hosted)
+endif()
+
+# panels3 has no upstream ESP-BSP package: provide a minimal local shim of
+# `bsp/display.h` so files including it (e.g. api_settings.c, api_ota.c)
+# compile. The corresponding stub implementations live in
+# drivers/display_init_panels3.c.
+if(CONFIG_APP_PANEL_VARIANT_S3_480)
+    target_include_directories(${COMPONENT_LIB} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/drivers/panels3_bsp_shim"
+    )
+endif()
+
 set(APP_HAVE_HOSTED_C6_FW_IMAGE 0)
+if(NOT CONFIG_APP_PANEL_VARIANT_S3_480)
 set(HOSTED_C6_FW_BIN "")
 set(HOSTED_C6_FW_EMBED_DIR "${CMAKE_CURRENT_BINARY_DIR}/hosted_c6_fw")
 set(HOSTED_C6_FW_BIN_RELEASE_GENERIC "${CMAKE_SOURCE_DIR}/release/network_adapter_esp32c6.bin")
@@ -161,6 +185,7 @@ else()
         "No ESP-Hosted C6 firmware image found in release/. "
         "Runtime C6 auto-update will be skipped until a release image is provided.")
 endif()
+endif() # NOT CONFIG_APP_PANEL_VARIANT_S3_480
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_HAVE_HOSTED_C6_FW_IMAGE=${APP_HAVE_HOSTED_C6_FW_IMAGE})
 
@@ -363,7 +388,8 @@ target_compile_definitions(
         APP_HAVE_MDI_ARROWS_FONT_20=${APP_HAVE_MDI_ARROWS_FONT_20})
 
 set(APP_UI_WEATHER_LOTTIE_ASSETS 0)
-if(CONFIG_LV_USE_LOTTIE)
+set(APP_UI_BETTA_LOTTIE_ASSET 0)
+if(CONFIG_LV_USE_LOTTIE AND NOT CONFIG_APP_PANEL_VARIANT_S3_480)
     set(APP_UI_WEATHER_LOTTIE_ASSETS 1)
     set(WEATHER_LOTTIE_DIR "${CMAKE_CURRENT_LIST_DIR}/ui/weather_icons/fill/lottie")
     set(WEATHER_LOTTIE_EMBEDS
@@ -399,11 +425,30 @@ if(CONFIG_LV_USE_LOTTIE)
             message(WARNING "Missing weather lottie asset: ${WEATHER_LOTTIE_SRC_FILE}")
         endif()
     endforeach()
+
+    # Easter-egg betta fish lottie (shown after 7 taps on the nav-bar home button).
+    set(BETTA_LOTTIE_SRC_FILE "${CMAKE_CURRENT_LIST_DIR}/ui/assets/betta.json")
+    set(BETTA_LOTTIE_EMBED_FILE "${CMAKE_CURRENT_BINARY_DIR}/betta.json")
+    if(EXISTS "${BETTA_LOTTIE_SRC_FILE}")
+        configure_file("${BETTA_LOTTIE_SRC_FILE}" "${BETTA_LOTTIE_EMBED_FILE}" COPYONLY)
+        target_add_binary_data(${COMPONENT_LIB} "${BETTA_LOTTIE_EMBED_FILE}" TEXT)
+        set(APP_UI_BETTA_LOTTIE_ASSET 1)
+    else()
+        message(WARNING "Missing betta lottie asset: ${BETTA_LOTTIE_SRC_FILE}")
+    endif()
 endif()
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_UI_WEATHER_LOTTIE_ASSETS=${APP_UI_WEATHER_LOTTIE_ASSETS})
+target_compile_definitions(${COMPONENT_LIB} PRIVATE APP_UI_BETTA_LOTTIE_ASSET=${APP_UI_BETTA_LOTTIE_ASSET})
 
 # Keep strict warnings in project code, but silence an upstream ThorVG warning in lvgl.
 if(TARGET __idf_lvgl__lvgl)
     target_compile_options(__idf_lvgl__lvgl PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wno-type-limits>)
+endif()
+
+# Xtensa GCC can ICE in the ESP-IDF RGB LCD driver on the S3/panels3 build
+# during register allocation. Keep the workaround scoped to that upstream
+# component and this panel variant.
+if(CONFIG_APP_PANEL_VARIANT_S3_480 AND TARGET __idf_esp_lcd)
+    target_compile_options(__idf_esp_lcd PRIVATE -O1)
 endif()

@@ -56,11 +56,16 @@ typedef struct {
     int resume_guard_pos_s;    /* local resume anchor while HA catches up */
     int64_t resume_guard_until_ms;
     lv_timer_t *tick_timer;
+    bool visible;
     /* Cover art */
     lv_obj_t *cover_img;
     lv_image_dsc_t cover_dsc;        /* data pointer owned by us, may be NULL */
     char cover_url[512];             /* last entity_picture we requested */
+    char pending_cover_url[512];
+    bool cover_request_deferred;
     bool cover_request_inflight;
+    uint8_t cover_fail_count;
+    int64_t cover_retry_after_ms;
     uint32_t cover_dominant_rgb;     /* 0 when no cover tint is applied */
 } w_mp_ctx_t;
 
@@ -74,6 +79,31 @@ static int clampi(int v, int lo, int hi)
 static int64_t mp_now_ms(void)
 {
     return esp_timer_get_time() / 1000;
+}
+
+static void *mp_calloc(size_t count, size_t size)
+{
+#if defined(CONFIG_SPIRAM) && CONFIG_SPIRAM
+    void *ptr = heap_caps_calloc(count, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (ptr != NULL) {
+        return ptr;
+    }
+#endif
+    return heap_caps_calloc(count, size, MALLOC_CAP_8BIT);
+}
+
+static bool mp_is_visible(const w_mp_ctx_t *ctx)
+{
+    return ctx != NULL && ctx->visible && ctx->card != NULL && lv_obj_is_visible(ctx->card);
+}
+
+static void mp_defer_cover_request(w_mp_ctx_t *ctx, const char *url)
+{
+    if (ctx == NULL || url == NULL || url[0] == '\0') {
+        return;
+    }
+    snprintf(ctx->pending_cover_url, sizeof(ctx->pending_cover_url), "%s", url);
+    ctx->cover_request_deferred = true;
 }
 
 static bool mp_is_hex_digit(char c)
@@ -492,7 +522,7 @@ static void mp_volume_event_cb(lv_event_t *event)
         }
         ha_cover_fetcher_cancel(ctx);
         mp_release_cover(ctx);
-        free(ctx);
+        heap_caps_free(ctx);
         return;
     }
     if (ctx->volume_suppress || ctx->unavailable) return;
@@ -568,12 +598,26 @@ static void mp_cover_show_placeholder(w_mp_ctx_t *ctx)
     lv_obj_set_style_bg_opa(ctx->cover_img, LV_OPA_COVER, LV_PART_MAIN);
 }
 
+static void mp_note_cover_failure(w_mp_ctx_t *ctx)
+{
+    if (ctx == NULL) return;
+    if (ctx->cover_fail_count < 6) {
+        ctx->cover_fail_count++;
+    }
+    int64_t backoff_ms = 5000LL * (int64_t)ctx->cover_fail_count;
+    if (backoff_ms > 60000LL) {
+        backoff_ms = 60000LL;
+    }
+    ctx->cover_retry_after_ms = mp_now_ms() + backoff_ms;
+}
+
 static void mp_cover_cb(void *user, const ha_cover_result_t *result)
 {
     w_mp_ctx_t *ctx = (w_mp_ctx_t *)user;
     if (ctx == NULL) return;
     ctx->cover_request_inflight = false;
     if (result == NULL || !result->valid) {
+        mp_note_cover_failure(ctx);
         mp_cover_show_placeholder(ctx);
         ctx->cover_dominant_rgb = 0;
         mp_apply_visual(ctx);
@@ -583,6 +627,8 @@ static void mp_cover_cb(void *user, const ha_cover_result_t *result)
     mp_release_cover(ctx);
     ctx->cover_dsc = result->image;
     ctx->cover_dominant_rgb = result->dominant_rgb;
+    ctx->cover_fail_count = 0;
+    ctx->cover_retry_after_ms = 0;
 
     if (ctx->cover_img != NULL) {
         lv_image_set_src(ctx->cover_img, &ctx->cover_dsc);
@@ -604,16 +650,35 @@ static void mp_cover_cb(void *user, const ha_cover_result_t *result)
 static void mp_request_cover(w_mp_ctx_t *ctx, const char *url)
 {
     if (ctx == NULL || url == NULL || url[0] == '\0') return;
-    if (strncmp(ctx->cover_url, url, sizeof(ctx->cover_url)) == 0) {
-        /* Same URL already fetched/in progress; nothing to do. */
+    if (!mp_is_visible(ctx)) {
+        mp_defer_cover_request(ctx, url);
         return;
     }
+
+    bool same_url = (strncmp(ctx->cover_url, url, sizeof(ctx->cover_url)) == 0);
+    int64_t now_ms = mp_now_ms();
+    if (same_url && (ctx->cover_request_inflight || ctx->cover_dsc.data != NULL ||
+            now_ms < ctx->cover_retry_after_ms)) {
+        /* Same URL already fetched/in progress, or a failed fetch is still
+         * backing off. The next state tick may retry after the backoff. */
+        return;
+    }
+    if (!same_url) {
+        ctx->cover_fail_count = 0;
+        ctx->cover_retry_after_ms = 0;
+    }
+    ctx->cover_request_deferred = false;
+    ctx->pending_cover_url[0] = '\0';
     snprintf(ctx->cover_url, sizeof(ctx->cover_url), "%s", url);
     lv_coord_t tgt = ctx->cover_img ? lv_obj_get_width(ctx->cover_img) : 96;
     if (tgt < 48) tgt = 48;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    if (tgt > 128) tgt = 128;
+#endif
     ctx->cover_request_inflight = true;
     if (ha_cover_fetcher_request(url, tgt, tgt, mp_cover_cb, ctx) != ESP_OK) {
         ctx->cover_request_inflight = false;
+        mp_note_cover_failure(ctx);
     }
 }
 
@@ -637,7 +702,7 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 #endif
     lv_obj_set_style_pad_all(card, 14, LV_PART_MAIN);
 
-    w_mp_ctx_t *ctx = calloc(1, sizeof(w_mp_ctx_t));
+    w_mp_ctx_t *ctx = (w_mp_ctx_t *)mp_calloc(1, sizeof(w_mp_ctx_t));
     if (ctx == NULL) {
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;
@@ -662,7 +727,7 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
      *  - portrait/square (default): cover centred at the top taking all
      *    remaining vertical space; text centred below; progress + controls +
      *    volume stacked at the bottom. */
-    const bool landscape = (content_w >= content_h * 3 / 2);
+    bool landscape = (content_w >= content_h * 3 / 2 && content_w >= 260 && content_h >= 130);
 
     const bool has_widget_title = (def->title[0] != '\0');
     const lv_coord_t widget_title_h = has_widget_title ? 22 : 0;
@@ -683,16 +748,28 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 
     if (landscape) {
         cover_size = content_h;
+        const lv_coord_t min_col_w = 170;
+        if (content_w - cover_size - 14 < min_col_w) {
+            lv_coord_t reduced_cover = content_w - min_col_w - 14;
+            if (reduced_cover >= 72 && reduced_cover < cover_size) {
+                cover_size = reduced_cover;
+            }
+        }
         cover_x = 0;
         cover_y = 0;
         col_x = cover_size + 14;
         col_w = content_w - col_x;
         col_y_top = 0;
-    } else {
+        if (col_w < 160) {
+            landscape = false;
+        }
+    }
+
+    if (!landscape) {
         /* Height available for the cover in portrait mode after reserving
          * the text + controls stack below it. */
         const lv_coord_t stack_h = now_title_h + now_artist_h + progress_row_h +
-                                   controls_row_h + volume_row_h + 18 /* gaps */;
+                                   controls_row_h + volume_row_h + 42 /* gaps */;
         lv_coord_t avail_h = content_h - widget_title_h - stack_h;
         if (avail_h < 72) avail_h = 72;
         cover_size = avail_h < content_w ? avail_h : content_w;
@@ -736,26 +813,23 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_set_style_text_font(now_title, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_set_style_text_align(now_title, text_align, LV_PART_MAIN);
     lv_label_set_long_mode(now_title, LV_LABEL_LONG_DOT);
+    lv_obj_set_height(now_title, now_title_h);
     ctx->now_title = now_title;
 
     lv_obj_t *now_artist = lv_label_create(card);
     lv_label_set_text(now_artist, "");
     lv_obj_set_style_text_font(now_artist, APP_FONT_TEXT_16, LV_PART_MAIN);
     lv_label_set_long_mode(now_artist, LV_LABEL_LONG_DOT);
+    lv_obj_set_height(now_artist, now_artist_h);
     ctx->now_artist = now_artist;
 
     if (landscape) {
-        /* Keep title + artist side-by-side on one line so a long title
-         * cannot drop down into the progress bar on short landscape
-         * widgets. Title gets ~60% of the column, artist the remaining
-         * right-aligned slice. */
-        const lv_coord_t title_w = (col_w * 6) / 10;
-        const lv_coord_t artist_w = col_w - title_w - 10;
-        lv_obj_set_width(now_title, title_w);
+        lv_obj_set_width(now_title, col_w);
         lv_obj_align(now_title, LV_ALIGN_TOP_LEFT, col_x, y);
-        lv_obj_set_width(now_artist, artist_w);
-        lv_obj_set_style_text_align(now_artist, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
-        lv_obj_align(now_artist, LV_ALIGN_TOP_LEFT, col_x + title_w + 10, y + 4);
+        y += now_title_h;
+        lv_obj_set_width(now_artist, col_w);
+        lv_obj_set_style_text_align(now_artist, text_align, LV_PART_MAIN);
+        lv_obj_align(now_artist, LV_ALIGN_TOP_LEFT, col_x, y);
     } else {
         lv_obj_set_width(now_title, col_w);
         lv_obj_align(now_title, LV_ALIGN_TOP_LEFT, col_x, y);
@@ -789,7 +863,11 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->btn_prev = mp_create_icon_button(card, LV_SYMBOL_PREV, ctx, mp_prev_clicked, &ctx->btn_prev_label);
     ctx->btn_play = mp_create_icon_button(card, LV_SYMBOL_PLAY, ctx, mp_play_clicked, &ctx->btn_play_label);
     ctx->btn_next = mp_create_icon_button(card, LV_SYMBOL_NEXT, ctx, mp_next_clicked, &ctx->btn_next_label);
-    lv_obj_set_size(ctx->btn_play, 64, 64);
+    const lv_coord_t play_size = (landscape && col_w < 190) ? 56 : 64;
+    const lv_coord_t side_size = (landscape && col_w < 190) ? 48 : 54;
+    lv_obj_set_size(ctx->btn_prev, side_size, side_size);
+    lv_obj_set_size(ctx->btn_play, play_size, play_size);
+    lv_obj_set_size(ctx->btn_next, side_size, side_size);
 
     /* Volume slider + icon */
     lv_obj_t *vol_icon = lv_label_create(card);
@@ -818,8 +896,8 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     const lv_coord_t prog_y = ctrl_y - progress_row_h;
 
     /* Progress row: [ m:ss ][=====bar=====][ m:ss ]. Times flank the bar. */
-    const lv_coord_t time_label_w = 50;
-    const lv_coord_t time_gap = 6;
+    const lv_coord_t time_label_w = col_w < 190 ? 38 : 50;
+    const lv_coord_t time_gap = col_w < 190 ? 4 : 6;
     const lv_coord_t bar_w = col_w - 2 * (time_label_w + time_gap);
     const lv_coord_t bar_x = col_x + time_label_w + time_gap;
     lv_obj_set_width(pos_label, time_label_w);
@@ -831,13 +909,21 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 
     /* Controls: centered within the active column. */
     const lv_coord_t col_mid_dx = col_x + col_w / 2 - content_w / 2;
-    lv_obj_align(ctx->btn_prev, LV_ALIGN_TOP_MID, col_mid_dx - 80, ctrl_y + 4);
+    lv_coord_t control_offset = 80;
+    lv_coord_t max_control_offset = (col_w - side_size) / 2;
+    if (control_offset > max_control_offset) {
+        control_offset = max_control_offset;
+    }
+    if (control_offset < 52) {
+        control_offset = 52;
+    }
+    lv_obj_align(ctx->btn_prev, LV_ALIGN_TOP_MID, col_mid_dx - control_offset, ctrl_y + 4);
     lv_obj_align(ctx->btn_play, LV_ALIGN_TOP_MID, col_mid_dx,       ctrl_y);
-    lv_obj_align(ctx->btn_next, LV_ALIGN_TOP_MID, col_mid_dx + 80, ctrl_y + 4);
+    lv_obj_align(ctx->btn_next, LV_ALIGN_TOP_MID, col_mid_dx + control_offset, ctrl_y + 4);
 
     lv_obj_align(vol_icon, LV_ALIGN_TOP_LEFT, col_x, vol_y + 2);
     lv_obj_set_pos(vol_slider, col_x + 28, vol_y + 7);
-    lv_obj_set_size(vol_slider, col_w - 28, 12);
+    lv_obj_set_size(vol_slider, col_w > 44 ? col_w - 28 : 16, 12);
 
     ctx->tick_timer = lv_timer_create(mp_tick_cb, 1000, ctx);
     if (ctx->tick_timer) {
@@ -937,9 +1023,11 @@ void w_media_player_apply_state(ui_widget_instance_t *instance, const ha_state_t
 
         if (pic_url != NULL) {
             mp_request_cover(ctx, pic_url);
-        } else if (ctx->cover_url[0] != '\0') {
+        } else if (ctx->cover_url[0] != '\0' || ctx->cover_request_deferred) {
             /* Source stopped providing a cover – clear cached state. */
             ctx->cover_url[0] = '\0';
+            ctx->pending_cover_url[0] = '\0';
+            ctx->cover_request_deferred = false;
             ctx->cover_dominant_rgb = 0;
             mp_release_cover(ctx);
             mp_cover_show_placeholder(ctx);
@@ -1003,7 +1091,7 @@ void w_media_player_apply_state(ui_widget_instance_t *instance, const ha_state_t
     }
 
     if (ctx->tick_timer) {
-        if (ctx->is_playing && ctx->duration_s > 0) {
+        if (mp_is_visible(ctx) && ctx->is_playing && ctx->duration_s > 0) {
             lv_timer_resume(ctx->tick_timer);
         } else {
             lv_timer_pause(ctx->tick_timer);
@@ -1011,6 +1099,42 @@ void w_media_player_apply_state(ui_widget_instance_t *instance, const ha_state_t
     }
 
     mp_apply_visual(ctx);
+}
+
+void w_media_player_set_visible(ui_widget_instance_t *instance, bool visible)
+{
+    if (instance == NULL || instance->ctx == NULL) {
+        return;
+    }
+    w_mp_ctx_t *ctx = (w_mp_ctx_t *)instance->ctx;
+    ctx->visible = visible;
+
+    if (!visible) {
+        if (ctx->cover_request_inflight) {
+            ha_cover_fetcher_cancel(ctx);
+            ctx->cover_request_inflight = false;
+        }
+        if (ctx->tick_timer) {
+            lv_timer_pause(ctx->tick_timer);
+        }
+        return;
+    }
+
+    if (ctx->tick_timer) {
+        if (mp_is_visible(ctx) && ctx->is_playing && ctx->duration_s > 0) {
+            lv_timer_resume(ctx->tick_timer);
+        } else {
+            lv_timer_pause(ctx->tick_timer);
+        }
+    }
+
+    if (ctx->cover_request_deferred && ctx->pending_cover_url[0] != '\0') {
+        char url[sizeof(ctx->pending_cover_url)] = {0};
+        snprintf(url, sizeof(url), "%s", ctx->pending_cover_url);
+        ctx->cover_request_deferred = false;
+        ctx->pending_cover_url[0] = '\0';
+        mp_request_cover(ctx, url);
+    }
 }
 
 void w_media_player_mark_unavailable(ui_widget_instance_t *instance)

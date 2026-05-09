@@ -33,6 +33,11 @@ const ENERGY_PREVIEW_COLORS = {
   battery: "#26a69a",
   idle: "#435566",
 };
+
+function isCompactCanvas() {
+  return CANVAS_WIDTH <= 480 || CANVAS_HEIGHT <= 380;
+}
+
 const ENERGY_ENTITY_KEYS = [
   "home_power_entity_id",
   "solar_power_entity_id",
@@ -1296,6 +1301,7 @@ const WEB_I18N_BUILTIN = {
 };
 
 function widgetSizeLimits(type) {
+  const compact = isCompactCanvas();
   const fallback = {
     minW: MIN_WIDGET_SIZE,
     minH: MIN_WIDGET_SIZE,
@@ -1305,29 +1311,53 @@ function widgetSizeLimits(type) {
 
   switch (type) {
     case "sensor":
-      return { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+      return compact
+        ? { minW: 90, minH: 60, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT }
+        : { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "button":
-      return { minW: 100, minH: 100, maxW: 480, maxH: 320 };
+      return compact
+        ? { minW: 82, minH: 82, maxW: 320, maxH: 260 }
+        : { minW: 100, minH: 100, maxW: 480, maxH: 320 };
     case "slider":
-      return { minW: 100, minH: 100, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+      return compact
+        ? { minW: 100, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT }
+        : { minW: 100, minH: 100, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "graph":
-      return { minW: 220, minH: 140, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+      return compact
+        ? { minW: 150, minH: 100, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT }
+        : { minW: 220, minH: 140, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "empty_tile":
-      return { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+      return compact
+        ? { minW: 100, minH: 70, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT }
+        : { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "light_tile":
-      return { minW: 180, minH: 180, maxW: 480, maxH: 480 };
+      return compact
+        ? { minW: 140, minH: 140, maxW: 480, maxH: 480 }
+        : { minW: 180, minH: 180, maxW: 480, maxH: 480 };
     case "heating_tile":
-      return { minW: 220, minH: 200, maxW: 480, maxH: 480 };
+      return compact
+        ? { minW: 150, minH: 150, maxW: 480, maxH: 480 }
+        : { minW: 220, minH: 200, maxW: 480, maxH: 480 };
     case "weather_tile":
-      return { minW: 220, minH: 200, maxW: 480, maxH: 480 };
+      return compact
+        ? { minW: 160, minH: 150, maxW: 480, maxH: 480 }
+        : { minW: 220, minH: 200, maxW: 480, maxH: 480 };
     case "weather_3day":
-      return { minW: 260, minH: 220, maxW: 640, maxH: 480 };
+      return compact
+        ? { minW: 280, minH: 180, maxW: 640, maxH: 480 }
+        : { minW: 260, minH: 220, maxW: 640, maxH: 480 };
     case "todo_list":
-      return { minW: 220, minH: 200, maxW: 640, maxH: 640 };
+      return compact
+        ? { minW: 180, minH: 160, maxW: 640, maxH: 640 }
+        : { minW: 220, minH: 200, maxW: 640, maxH: 640 };
     case "media_player":
-      return { minW: 260, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+      return compact
+        ? { minW: 200, minH: 170, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT }
+        : { minW: 260, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "roborock_tile":
-      return { minW: 240, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+      return compact
+        ? { minW: 220, minH: 190, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT }
+        : { minW: 240, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     default:
       return fallback;
   }
@@ -3709,6 +3739,15 @@ function clearLightEntityPickerSearchDebounce() {
   }
 }
 
+function cancelLightEntityPickerRequest() {
+  const config = entityPickerConfig();
+  const params = new URLSearchParams();
+  params.set("domain", config.domain);
+  const search = entityPickerSearchValue();
+  if (search) params.set("search", search);
+  fetch(`/api/ha/light_entities?${params.toString()}`, { method: "DELETE", cache: "no-store" }).catch(() => {});
+}
+
 function entityPickerConfig(widgetType = editor.lightPicker.widgetType) {
   const normalizedWidgetType = ENTITY_PICKER_CONFIGS[widgetType] ? widgetType : "light_tile";
   return {
@@ -3993,6 +4032,8 @@ function openLightEntityPicker(widgetType = "light_tile") {
 function closeLightEntityPicker() {
   clearLightEntityPickerPoll();
   clearLightEntityPickerSearchDebounce();
+  editor.lightPicker.requestSeq += 1;
+  cancelLightEntityPickerRequest();
   editor.lightPicker.loading = false;
   if (el.lightEntityPickerOverlay) {
     el.lightEntityPickerOverlay.classList.add("hidden");
@@ -4644,6 +4685,7 @@ function energyPreviewFlowMarkup(id, visible, path, dot) {
 }
 
 function renderEnergyCanvasPreview(page) {
+  const compact = isCompactCanvas();
   const energy = page.energy || {};
   const source = energy.source === ENERGY_SOURCE_MANUAL ? ENERGY_SOURCE_MANUAL : ENERGY_SOURCE_HA;
   const isManual = source === ENERGY_SOURCE_MANUAL;
@@ -4696,7 +4738,17 @@ function renderEnergyCanvasPreview(page) {
   const gasValue = snapshot ? energyPreviewFormatValue(snapshot.gas_value, snapshot.gas_unit) : "--";
   const waterValue = snapshot ? energyPreviewFormatValue(snapshot.water_value, snapshot.water_unit) : "--";
   const homeRingStyle = energyPreviewHomeRingStyle(snapshotFlows);
-  const flows = [
+  const flows = (compact ? [
+    energyPreviewFlowMarkup("low-carbon", nodes.lowCarbon && nodes.grid, "M76 126 V162", [76, 150]),
+    energyPreviewFlowMarkup("solar-return", nodes.solar && nodes.grid, "M225 125 V169 A24 24 0 0 1 201 193 H119", [174, 193]),
+    energyPreviewFlowMarkup("solar", nodes.solar && nodes.home, "M255 125 V169 A24 24 0 0 0 279 193 H356", [318, 193]),
+    energyPreviewFlowMarkup("battery-in", nodes.solar && nodes.battery, "M240 125 V247", [240, 186]),
+    energyPreviewFlowMarkup("grid", nodes.grid && nodes.home, "M119 205 H356", [238, 205]),
+    energyPreviewFlowMarkup("battery-out", nodes.battery && nodes.home, "M255 247 V241 A24 24 0 0 0 279 217 H356", [310, 217]),
+    energyPreviewFlowMarkup("return", nodes.grid && nodes.battery, "M119 217 H201 A24 24 0 0 1 225 241 V247", [176, 217]),
+    energyPreviewFlowMarkup("gas", nodes.gas && nodes.home, "M404 125 V157", [404, 145]),
+    energyPreviewFlowMarkup("water", nodes.water && nodes.home, "M404 247 V253", [404, 250]),
+  ] : [
     energyPreviewFlowMarkup("low-carbon", nodes.lowCarbon && nodes.grid, "M96 190 V282", [96, 254]),
     energyPreviewFlowMarkup("solar-return", nodes.solar && nodes.grid, "M312 190 V286 A40 40 0 0 1 272 326 H150", [250, 326]),
     energyPreviewFlowMarkup("solar", nodes.solar && nodes.home, "M312 190 V286 A40 40 0 0 0 352 326 H522", [402, 326]),
@@ -4706,7 +4758,7 @@ function renderEnergyCanvasPreview(page) {
     energyPreviewFlowMarkup("return", nodes.grid && nodes.battery, "M150 368 H272 A40 40 0 0 1 312 408 V452", [216, 368]),
     energyPreviewFlowMarkup("gas", nodes.gas && nodes.home, "M528 190 V282", [528, 254]),
     energyPreviewFlowMarkup("water", nodes.water && nodes.home, "M528 452 V402", [528, 426]),
-  ].join("");
+  ]).join("");
   const nodeMarkup = [
     nodes.lowCarbon ? energyPreviewNodeMarkup("low-carbon", "LC", "-- kWh") : "",
     nodes.solar ? energyPreviewNodeMarkup("solar", "PV", solarValue) : "",
@@ -4726,14 +4778,15 @@ function renderEnergyCanvasPreview(page) {
     nodes.water ? energyPreviewLabelMarkup("water", t("layout.energy.water"), autoLabel) : "",
   ].join("");
   const node = document.createElement("div");
-  node.className = "energy-page-preview";
+  node.className = compact ? "energy-page-preview compact" : "energy-page-preview";
+  const viewBox = compact ? "0 0 480 360" : "0 0 720 600";
   node.innerHTML = `
     <div class="energy-preview-card">
       <div class="energy-preview-heading">
         <strong>${escapeHtml(t("layout.energy.preview_title"))}</strong>
         <span>${escapeHtml(headerBadge)}</span>
       </div>
-      <svg class="energy-preview-flow" viewBox="0 0 720 600" aria-hidden="true">
+      <svg class="energy-preview-flow" viewBox="${viewBox}" aria-hidden="true">
         ${flows}
       </svg>
       ${nodeMarkup}
@@ -4782,15 +4835,20 @@ function renderCanvas() {
     let extraHint = "";
     if (widget.type === "weather_3day") {
       /* Mirrors the firmware layout in w_weather_tile.c:
-       *   ROWS_TOP=150, BOTTOM_PAD=12, ROW_HEIGHT=44, ROW_GAP=4
+       *   compact/panels3: ROWS_TOP=108, BOTTOM_PAD=12, ROW_HEIGHT=36, ROW_GAP=2
+       *   default:         ROWS_TOP=150, BOTTOM_PAD=12, ROW_HEIGHT=44, ROW_GAP=4
        *   visible rows = clamp(floor((h-162+4)/48), 2, 6)
        *   forecast days = visible rows - 1 (the "Now" row).
        * Keep these constants in sync when the tile layout changes. */
       const h = Number(widget.rect && widget.rect.h) || 0;
-      const avail = h - 150 - 12;
+      const compactForecast = isCompactCanvas();
+      const rowsTop = compactForecast ? 108 : 150;
+      const rowHeight = compactForecast ? 36 : 44;
+      const rowGap = compactForecast ? 2 : 4;
+      const avail = h - rowsTop - 12;
       let rows = 2;
-      if (avail > 44) {
-        rows = Math.floor((avail + 4) / 48);
+      if (avail > rowHeight) {
+        rows = Math.floor((avail + rowGap) / (rowHeight + rowGap));
       }
       if (rows < 2) rows = 2;
       if (rows > 6) rows = 6;
@@ -5130,15 +5188,32 @@ function addWidget(type, options = {}) {
   const id = createWidgetIdForPage(page, type);
   const entityId = typeof options.entityId === "string" ? options.entityId : pickDefaultEntityForWidgetType(type, sliderDomain);
   const secondaryEntityId = type === "heating_tile" ? pickDefaultEntityForWidgetType("sensor") : "";
-  const defaultW =
-    type === "weather_3day" ? 360
+  const compact = isCompactCanvas();
+  const defaultW = compact
+    ? type === "weather_3day" ? 420
+      : type === "todo_list" ? 300
+      : type === "media_player" ? 300
+      : type === "roborock_tile" ? 460
+      : type === "weather_tile" ? 220
+      : (type === "light_tile" || type === "empty_tile") ? 140
+      : type === "heating_tile" ? 150
+      : 180
+    : type === "weather_3day" ? 360
       : type === "todo_list" ? 360
       : type === "media_player" ? 360
       : type === "roborock_tile" ? 360
       : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 300
       : 220;
-  const defaultH =
-    type === "weather_3day" ? 260
+  const defaultH = compact
+    ? type === "weather_3day" ? 240
+      : type === "todo_list" ? 220
+      : type === "media_player" ? 220
+      : type === "roborock_tile" ? 300
+      : type === "weather_tile" ? 180
+      : (type === "light_tile" || type === "empty_tile") ? 140
+      : type === "heating_tile" ? 150
+      : 110
+    : type === "weather_3day" ? 260
       : type === "todo_list" ? 360
       : type === "media_player" ? 280
       : type === "roborock_tile" ? 300

@@ -15,6 +15,12 @@
 #  define APP_SCREEN_HEIGHT      800
 #  define APP_CONTENT_BOX_WIDTH  1280
 #  define APP_CONTENT_BOX_HEIGHT 680
+#elif defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#  define APP_NAME               "betta-ha-panel-s3"
+#  define APP_SCREEN_WIDTH       480
+#  define APP_SCREEN_HEIGHT      480
+#  define APP_CONTENT_BOX_WIDTH  480
+#  define APP_CONTENT_BOX_HEIGHT 360
 #else /* CONFIG_APP_PANEL_VARIANT_4INCH_720 (default) */
 #  define APP_NAME               "betta-ha-panel"
 #  define APP_SCREEN_WIDTH       720
@@ -33,7 +39,11 @@
 #define APP_DISPLAY_DIM_BRIGHTNESS_PERCENT 10
 #define APP_DISPLAY_DIM_TIMEOUT_MS (3 * 60 * 1000)
 
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define APP_EVENT_QUEUE_LENGTH 64
+#else
 #define APP_EVENT_QUEUE_LENGTH 96
+#endif
 #define APP_EVENT_QUEUE_WAIT_MS 50
 
 #define APP_LAYOUT_PATH "/littlefs/layout.json"
@@ -82,9 +92,9 @@
 
 #define APP_HA_MAX_ENTITIES 256
 #define APP_HA_MAX_STATES 256
-/* Must fit weather entity attributes incl. the compact forecast array (up
- * to HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6 entries, ~70-90 bytes each)
- * plus temperature/humidity/units.  1024 leaves comfortable headroom. */
+/* Must fit weather entity attributes incl. the compact forecast array
+ * plus temperature/humidity/units.  The S3 variant keeps fewer forecast
+ * rows, but 1024 leaves comfortable headroom for both panel classes. */
 #define APP_HA_ATTRS_MAX_LEN 1024
 #define APP_HA_LIGHT_DISCOVERY_MAX_ITEMS 256
 #define APP_HA_LIGHT_DISCOVERY_MAX_AREAS 96
@@ -96,11 +106,25 @@
 #define APP_HA_LIGHT_DISCOVERY_REGISTRY_ENABLED 0
 /* Default discovery path: HA renders compact light pages server-side; the panel fetches them one by one. */
 #define APP_HA_LIGHT_DISCOVERY_TEMPLATE_ENABLED 1
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define APP_HA_LIGHT_DISCOVERY_PAGE_SIZE 16
+#else
 #define APP_HA_LIGHT_DISCOVERY_PAGE_SIZE 24
+#endif
 
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define APP_HA_QUEUE_LENGTH 48
+#else
 #define APP_HA_QUEUE_LENGTH 96
+#endif
 #define APP_HA_TASK_STACK 12288
 #define APP_HA_TASK_PRIO 8
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define APP_HA_COVER_TASK_STACK 20480
+#else
+#define APP_HA_COVER_TASK_STACK 8192
+#endif
+#define APP_HA_COVER_TASK_PRIO 3
 
 /* Keep pre-language behavior for light commands (explicit no-fade). */
 #define APP_HA_LIGHT_USE_TRANSITION_ZERO 1
@@ -117,10 +141,18 @@
 #define APP_UI_TASK_STACK 24576
 #define APP_UI_TASK_PRIO 4
 
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define APP_LVGL_TASK_STACK 16384
+#else
 #define APP_LVGL_TASK_STACK 24576
+#endif
 
 #define APP_HTTP_PORT 80
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+#define APP_HTTP_TASK_STACK 8192
+#else
 #define APP_HTTP_TASK_STACK 12288
+#endif
 
 #define APP_OTA_URL_MAX_LEN 512
 #define APP_OTA_JSON_MAX_LEN 768

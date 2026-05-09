@@ -2,7 +2,7 @@ param(
     [string]$BuildDir = "",
     [string]$OutFile = "",
     [string]$OtaOutFile = "",
-    [ValidateSet("panel4", "panel10", "both", "auto")]
+    [ValidateSet("panel4", "panel10", "panels3", "both", "auto")]
     [string]$Variant = "auto"
 )
 
@@ -79,7 +79,8 @@ function Move-ExistingFactoryImagesToArchive {
     param(
         [string]$OutDir,
         [string]$ArchiveDir,
-        [string]$TempOutPath
+        [string]$TempOutPath,
+        [string]$VariantSuffix = ""
     )
 
     if (-not (Test-Path $ArchiveDir)) {
@@ -87,9 +88,10 @@ function Move-ExistingFactoryImagesToArchive {
     }
 
     $tempFullPath = [System.IO.Path]::GetFullPath($TempOutPath)
+    $variantPattern = if ([string]::IsNullOrWhiteSpace($VariantSuffix)) { "betta86-ha-panel*.factory*.bin" } else { "betta86-ha-panel*-$VariantSuffix.factory*.bin" }
     $factoryImages = Get-ChildItem -LiteralPath $OutDir -File -Filter "*.bin" |
         Where-Object {
-            $_.Name -like "betta86-ha-panel*.factory*.bin" -and
+            $_.Name -like $variantPattern -and
             [System.IO.Path]::GetFullPath($_.FullName) -ne $tempFullPath
         }
 
@@ -106,7 +108,8 @@ function Move-ExistingOtaImagesToArchive {
     param(
         [string]$OutDir,
         [string]$ArchiveDir,
-        [string]$TempOutPath
+        [string]$TempOutPath,
+        [string]$VariantSuffix = ""
     )
 
     if (-not (Test-Path $ArchiveDir)) {
@@ -114,9 +117,10 @@ function Move-ExistingOtaImagesToArchive {
     }
 
     $tempFullPath = [System.IO.Path]::GetFullPath($TempOutPath)
+    $variantPattern = if ([string]::IsNullOrWhiteSpace($VariantSuffix)) { "betta86-ha-panel*.ota*.bin" } else { "betta86-ha-panel*-$VariantSuffix.ota*.bin" }
     $otaImages = Get-ChildItem -LiteralPath $OutDir -File -Filter "*.bin" |
         Where-Object {
-            $_.Name -like "betta86-ha-panel*.ota*.bin" -and
+            $_.Name -like $variantPattern -and
             [System.IO.Path]::GetFullPath($_.FullName) -ne $tempFullPath
         }
 
@@ -459,7 +463,7 @@ function Invoke-VariantBuild {
         throw "merge_bin failed with exit code $LASTEXITCODE"
     }
 
-    Move-ExistingFactoryImagesToArchive -OutDir $outDir -ArchiveDir $archiveDir -TempOutPath $tempOutPath
+    Move-ExistingFactoryImagesToArchive -OutDir $outDir -ArchiveDir $archiveDir -TempOutPath $tempOutPath -VariantSuffix $VariantSuffix
     Move-Item -LiteralPath $tempOutPath -Destination $outPath -Force
 
     $otaTempOutPath = Join-Path $otaOutDir ".$([System.IO.Path]::GetFileName($otaOutPath)).tmp"
@@ -467,7 +471,7 @@ function Invoke-VariantBuild {
         Remove-Item -LiteralPath $otaTempOutPath -Force
     }
     Copy-Item -LiteralPath $appImagePath -Destination $otaTempOutPath -Force
-    Move-ExistingOtaImagesToArchive -OutDir $otaOutDir -ArchiveDir $otaArchiveDir -TempOutPath $otaTempOutPath
+    Move-ExistingOtaImagesToArchive -OutDir $otaOutDir -ArchiveDir $otaArchiveDir -TempOutPath $otaTempOutPath -VariantSuffix $VariantSuffix
     Move-Item -LiteralPath $otaTempOutPath -Destination $otaOutPath -Force
 
     Write-Host ""
@@ -487,14 +491,15 @@ function Invoke-VariantBuild {
 # --- Decide which variants to build ----------------------------------------
 # Known variants and their expected build directories / filename suffixes.
 $variantMap = @{
-    "panel4"  = [PSCustomObject]@{ BuildDir = "build-panel4";  Suffix = "panel4"  }
-    "panel10" = [PSCustomObject]@{ BuildDir = "build-panel10"; Suffix = "panel10" }
+    "panel4"   = [PSCustomObject]@{ BuildDir = "build-panel4";   Suffix = "panel4"   }
+    "panel10"  = [PSCustomObject]@{ BuildDir = "build-panel10";  Suffix = "panel10"  }
+    "panels3"  = [PSCustomObject]@{ BuildDir = "build-panels3";  Suffix = "panels3"  }
 }
 
 $variantsToBuild = @()
 
 if ($Variant -eq "both") {
-    foreach ($v in @("panel4", "panel10")) {
+    foreach ($v in @("panel4", "panel10", "panels3")) {
         $info = $variantMap[$v]
         $path = Join-Path $repoRoot $info.BuildDir
         if (-not (Test-Path $path)) {
@@ -502,7 +507,7 @@ if ($Variant -eq "both") {
         }
         $variantsToBuild += [PSCustomObject]@{ Name = $v; BuildDir = $path; Suffix = $info.Suffix }
     }
-} elseif ($Variant -eq "panel4" -or $Variant -eq "panel10") {
+} elseif ($Variant -eq "panel4" -or $Variant -eq "panel10" -or $Variant -eq "panels3") {
     $info = $variantMap[$Variant]
     $buildRoot = if ([string]::IsNullOrWhiteSpace($BuildDir)) { (Join-Path $repoRoot $info.BuildDir) } else { $BuildDir }
     $variantsToBuild += [PSCustomObject]@{ Name = $Variant; BuildDir = $buildRoot; Suffix = $info.Suffix }
@@ -511,7 +516,7 @@ if ($Variant -eq "both") {
     if (-not [string]::IsNullOrWhiteSpace($BuildDir)) {
         $variantsToBuild += [PSCustomObject]@{ Name = "custom"; BuildDir = $BuildDir; Suffix = "" }
     } else {
-        foreach ($v in @("panel4", "panel10")) {
+        foreach ($v in @("panel4", "panel10", "panels3")) {
             $info = $variantMap[$v]
             $path = Join-Path $repoRoot $info.BuildDir
             if (Test-Path $path) {
@@ -522,7 +527,7 @@ if ($Variant -eq "both") {
             # Last-ditch fallback to the historical default.
             $legacy = Join-Path $repoRoot "build"
             if (-not (Test-Path $legacy)) {
-                throw "No build directory found. Expected one of: build-panel4/, build-panel10/, build/. Run ``idf.py -B build-panel4 build`` (or similar) first."
+                throw "No build directory found. Expected one of: build-panel4/, build-panel10/, build-panels3/, build/. Run ``idf.py -B build-panel4 build`` (or similar) first."
             }
             $variantsToBuild += [PSCustomObject]@{ Name = "legacy"; BuildDir = $legacy; Suffix = "" }
         }

@@ -36,6 +36,7 @@ typedef struct {
 
 typedef struct {
     char id[APP_MAX_WIDGET_ID_LEN];
+    char page_id[APP_MAX_PAGE_ID_LEN];
     char type[16];
     char title[APP_MAX_NAME_LEN];
     char entity_id[APP_MAX_ENTITY_ID_LEN];
@@ -51,6 +52,7 @@ typedef struct {
     int graph_bar_bucket_min;
     char style_variant[APP_MAX_UI_OPTION_LEN];
     char arc_opening[APP_MAX_UI_OPTION_LEN];
+    bool visible;
     void *ctx;
     lv_obj_t *obj;
 } ui_widget_instance_t;
@@ -58,3 +60,4 @@ typedef struct {
 esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance);
+void ui_widget_factory_set_visible(ui_widget_instance_t *instance, bool visible);

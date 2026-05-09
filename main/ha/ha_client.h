@@ -51,6 +51,7 @@ void ha_client_cancel_pending_responses_for_user(void *user);
 esp_err_t ha_client_notify_layout_updated(void);
 esp_err_t ha_client_request_energy_refresh(void);
 esp_err_t ha_client_get_domain_entities_json(const char *domain, const char *search, bool refresh, char **out_json);
+esp_err_t ha_client_cancel_domain_entities(const char *domain, const char *search);
 
 /* HTTP-context snapshot used by auxiliary consumers (e.g. cover-art fetcher).
  * All fields are NUL-terminated. Returns false if the HA client is not yet
@@ -63,6 +64,12 @@ typedef struct {
 } ha_client_http_ctx_t;
 
 bool ha_client_get_http_context(ha_client_http_ctx_t *out);
+
+/* Auxiliary HTTP users such as cover-art fetching need a short quiet window
+ * where heavy HA WebSocket work does not immediately consume the same TLS /
+ * internal-heap headroom.  This signal is intentionally not part of
+ * ha_client_heavy_gate_is_busy() so the auxiliary user does not block itself. */
+void ha_client_set_aux_http_pressure(bool active, int64_t hold_ms);
 
 /* True while a "heavy" HA WS/TLS request (energy stats, weather forecast,
  * light discovery, call-with-response, etc.) is either in flight or still

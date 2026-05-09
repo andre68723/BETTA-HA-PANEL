@@ -123,55 +123,116 @@ static widget_size_limits_t widget_size_limits_for_type(const char *type)
     }
 
     if (strcmp(type, "sensor") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 90;
+        limits.min_h = 60;
+#else
         limits.min_w = 120;
         limits.min_h = 80;
+#endif
     } else if (strcmp(type, "button") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 82;
+        limits.min_h = 82;
+        limits.max_w = 320;
+        limits.max_h = 260;
+#else
         limits.min_w = 100;
         limits.min_h = 100;
         limits.max_w = 480;
         limits.max_h = 320;
+#endif
     } else if (strcmp(type, "slider") == 0) {
         limits.min_w = 100;
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_h = 80;
+#else
         limits.min_h = 100;
+#endif
     } else if (strcmp(type, "graph") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 150;
+        limits.min_h = 100;
+#else
         limits.min_w = 220;
         limits.min_h = 140;
+#endif
     } else if (strcmp(type, "empty_tile") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 100;
+        limits.min_h = 70;
+#else
         limits.min_w = 120;
         limits.min_h = 80;
+#endif
     } else if (strcmp(type, "light_tile") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 140;
+        limits.min_h = 140;
+#else
         limits.min_w = 180;
         limits.min_h = 180;
+#endif
         limits.max_w = 480;
         limits.max_h = 480;
     } else if (strcmp(type, "heating_tile") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 150;
+        limits.min_h = 150;
+#else
         limits.min_w = 220;
         limits.min_h = 200;
+#endif
         limits.max_w = 480;
         limits.max_h = 480;
     } else if (strcmp(type, "weather_tile") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 160;
+        limits.min_h = 150;
+#else
         limits.min_w = 220;
         limits.min_h = 200;
+#endif
         limits.max_w = 480;
         limits.max_h = 480;
     } else if (strcmp(type, "weather_3day") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 280;
+        limits.min_h = 180;
+#else
         limits.min_w = 260;
         limits.min_h = 220;
+#endif
         limits.max_w = 640;
         limits.max_h = 480;
     } else if (strcmp(type, "todo_list") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 180;
+        limits.min_h = 160;
+#else
         limits.min_w = 220;
         limits.min_h = 200;
+#endif
         limits.max_w = 640;
         limits.max_h = 640;
     } else if (strcmp(type, "media_player") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 200;
+        limits.min_h = 170;
+#else
         limits.min_w = 260;
         limits.min_h = 220;
+#endif
         limits.max_w = APP_CONTENT_BOX_WIDTH;
         limits.max_h = APP_CONTENT_BOX_HEIGHT;
     } else if (strcmp(type, "roborock_tile") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 220;
+        limits.min_h = 190;
+#else
         limits.min_w = 240;
         limits.min_h = 220;
+#endif
         limits.max_w = APP_CONTENT_BOX_WIDTH;
         limits.max_h = APP_CONTENT_BOX_HEIGHT;
     }

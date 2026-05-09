@@ -43,6 +43,20 @@ static lv_obj_t *s_nav_extra_buttons[APP_MAX_PAGES - 1] = {0};
 static lv_obj_t *s_nav_extra_labels[APP_MAX_PAGES - 1] = {0};
 static uint16_t s_nav_extra_page_index[APP_MAX_PAGES - 1] = {0};
 
+/* ---- Easter egg: 7 taps on the home nav button reveal a swimming Betta. */
+#if LV_USE_LOTTIE && APP_UI_BETTA_LOTTIE_ASSET
+extern const uint8_t betta_lottie_start[] asm("_binary_betta_json_start");
+extern const uint8_t betta_lottie_end[]   asm("_binary_betta_json_end");
+#define UI_BETTA_TAP_TARGET    7U
+#define UI_BETTA_TAP_WINDOW_MS 2500U
+
+static lv_obj_t *s_betta_overlay = NULL;
+static lv_obj_t *s_betta_lottie  = NULL;
+static void     *s_betta_buf     = NULL;
+static uint8_t   s_betta_taps    = 0;
+static uint32_t  s_betta_last_ms = 0;
+#endif
+
 #define TOPBAR_TIME_FONT APP_FONT_TEXT_34
 
 #define TOPBAR_DATE_FONT APP_FONT_TEXT_22
@@ -205,6 +219,80 @@ static void ui_pages_style_topbar_chip(lv_obj_t *obj)
     lv_obj_set_style_text_font(obj, TOPBAR_ICON_FONT, LV_PART_MAIN);
 }
 
+#if LV_USE_LOTTIE && APP_UI_BETTA_LOTTIE_ASSET
+static void ui_pages_betta_hide(void);
+
+static void ui_pages_betta_dismiss_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_pages_betta_hide();
+}
+
+static void ui_pages_betta_show(void)
+{
+    if (s_betta_overlay != NULL) {
+        return;
+    }
+    lv_obj_t *screen = lv_scr_act();
+    if (screen == NULL) {
+        return;
+    }
+
+    lv_coord_t side = APP_SCREEN_HEIGHT < APP_SCREEN_WIDTH ? APP_SCREEN_HEIGHT : APP_SCREEN_WIDTH;
+    side -= 120;
+    /* ThorVG renders the lottie on the CPU. Pixel cost scales quadratically;
+     * the weather tiles run smoothly at ~130 px, so keep the betta close to that
+     * even though the screen is much larger. */
+    if (side > 220) {
+        side = 220;
+    }
+    if (side < 160) {
+        side = 160;
+    }
+
+    size_t buf_bytes = (size_t)side * (size_t)side * 4U + (size_t)LV_DRAW_BUF_ALIGN;
+    s_betta_buf = lv_malloc(buf_bytes);
+    if (s_betta_buf == NULL) {
+        return;
+    }
+    memset(s_betta_buf, 0, buf_bytes);
+
+    s_betta_overlay = lv_obj_create(screen);
+    lv_obj_remove_style_all(s_betta_overlay);
+    lv_obj_set_size(s_betta_overlay, APP_SCREEN_WIDTH, APP_SCREEN_HEIGHT);
+    lv_obj_set_pos(s_betta_overlay, 0, 0);
+    lv_obj_clear_flag(s_betta_overlay, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(s_betta_overlay, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(s_betta_overlay, LV_OPA_70, LV_PART_MAIN);
+    lv_obj_add_flag(s_betta_overlay, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(s_betta_overlay, ui_pages_betta_dismiss_cb, LV_EVENT_CLICKED, NULL);
+
+    s_betta_lottie = lv_lottie_create(s_betta_overlay);
+    lv_lottie_set_buffer(s_betta_lottie, side, side, s_betta_buf);
+    lv_lottie_set_src_data(s_betta_lottie, betta_lottie_start,
+                           (size_t)(betta_lottie_end - betta_lottie_start));
+    lv_obj_set_size(s_betta_lottie, side, side);
+    lv_obj_center(s_betta_lottie);
+
+    lv_obj_move_foreground(s_betta_overlay);
+}
+
+static void ui_pages_betta_hide(void)
+{
+    if (s_betta_overlay != NULL) {
+        lv_obj_del(s_betta_overlay);
+        s_betta_overlay = NULL;
+        s_betta_lottie  = NULL;
+    }
+    if (s_betta_buf != NULL) {
+        lv_free(s_betta_buf);
+        s_betta_buf = NULL;
+    }
+    s_betta_taps    = 0U;
+    s_betta_last_ms = 0U;
+}
+#endif
+
 static void ui_nav_home_button_event_cb(lv_event_t *event)
 {
     if (lv_event_get_code(event) != LV_EVENT_CLICKED) {
@@ -214,6 +302,19 @@ static void ui_nav_home_button_event_cb(lv_event_t *event)
         return;
     }
     ui_pages_show_index(0);
+#if LV_USE_LOTTIE && APP_UI_BETTA_LOTTIE_ASSET
+    /* Easter egg: count taps on the home button. */
+    uint32_t now = lv_tick_get();
+    if (s_betta_last_ms != 0U && (now - s_betta_last_ms) > UI_BETTA_TAP_WINDOW_MS) {
+        s_betta_taps = 0U;
+    }
+    s_betta_last_ms = now;
+    s_betta_taps++;
+    if (s_betta_taps >= UI_BETTA_TAP_TARGET) {
+        s_betta_taps = 0U;
+        ui_pages_betta_show();
+    }
+#endif
 }
 
 static void ui_nav_extra_button_event_cb(lv_event_t *event)
@@ -352,6 +453,19 @@ void ui_pages_init(void)
     memset(s_nav_extra_buttons, 0, sizeof(s_nav_extra_buttons));
     memset(s_nav_extra_labels, 0, sizeof(s_nav_extra_labels));
     memset(s_nav_extra_page_index, 0, sizeof(s_nav_extra_page_index));
+
+#if LV_USE_LOTTIE && APP_UI_BETTA_LOTTIE_ASSET
+    /* Screen will be cleaned below; the overlay is owned by the active screen.
+     * Drop our handles and free the lottie render buffer to avoid a leak. */
+    s_betta_overlay = NULL;
+    s_betta_lottie  = NULL;
+    if (s_betta_buf != NULL) {
+        lv_free(s_betta_buf);
+        s_betta_buf = NULL;
+    }
+    s_betta_taps    = 0U;
+    s_betta_last_ms = 0U;
+#endif
 
     lv_obj_t *screen = lv_scr_act();
     lv_obj_clean(screen);

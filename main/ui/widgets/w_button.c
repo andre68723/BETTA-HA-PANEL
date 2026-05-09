@@ -12,6 +12,7 @@
 #include "ui/theme/theme_default.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_bindings.h"
+#include "ui/ui_memory.h"
 
 typedef enum {
     W_BUTTON_MODE_AUTO = 0,
@@ -298,6 +299,28 @@ static void button_calc_action_area(lv_obj_t *card, w_button_ctx_t *ctx, lv_coor
     *out_area_h = area_h;
 }
 
+static bool button_card_is_compact(lv_obj_t *card)
+{
+    if (card == NULL) {
+        return false;
+    }
+
+    lv_coord_t card_w = lv_obj_get_width(card);
+    lv_coord_t card_h = lv_obj_get_height(card);
+    if (card_w <= 0) {
+        card_w = lv_obj_get_style_width(card, LV_PART_MAIN);
+    }
+    if (card_h <= 0) {
+        card_h = lv_obj_get_style_height(card, LV_PART_MAIN);
+    }
+
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    return card_w <= 130 || card_h <= 130;
+#else
+    return card_w <= 120 || card_h <= 120;
+#endif
+}
+
 static void button_set_switch_checked(w_button_ctx_t *ctx, bool checked)
 {
     if (ctx == NULL || ctx->action_switch == NULL) {
@@ -326,25 +349,26 @@ static void button_layout_switch(lv_obj_t *card, w_button_ctx_t *ctx)
 
     lv_obj_update_layout(card);
 
+        const bool compact = button_card_is_compact(card);
     const lv_coord_t side_inset =
 #if APP_UI_TILE_LAYOUT_TUNED
-        2;
+        compact ? 0 : 2;
 #else
         0;
 #endif
     const lv_coord_t top_gap =
 #if APP_UI_TILE_LAYOUT_TUNED
-        10;
+        compact ? 8 : 10;
 #else
         8;
 #endif
     const lv_coord_t bottom_gap =
 #if APP_UI_TILE_LAYOUT_TUNED
-        12;
+        compact ? 9 : 12;
 #else
         10;
 #endif
-    const lv_coord_t min_height = 34;
+        const lv_coord_t min_height = compact ? 30 : 34;
 
     lv_coord_t content_w = 24;
     lv_coord_t top = 0;
@@ -396,19 +420,20 @@ static void button_layout_icon(lv_obj_t *card, w_button_ctx_t *ctx)
 
     lv_obj_update_layout(card);
 
+        const bool compact = button_card_is_compact(card);
     const lv_coord_t top_gap_base =
 #if APP_UI_TILE_LAYOUT_TUNED
-        14;
+        compact ? 10 : 14;
 #else
         12;
 #endif
     const lv_coord_t bottom_gap_base =
 #if APP_UI_TILE_LAYOUT_TUNED
-        16;
+        compact ? 12 : 16;
 #else
         14;
 #endif
-    const lv_coord_t min_height = 30;
+        const lv_coord_t min_height = compact ? 26 : 30;
 
     lv_coord_t top_gap = button_label_visible(ctx->state_label) ? top_gap_base : 4;
     lv_coord_t bottom_gap = button_label_visible(ctx->title_label) ? bottom_gap_base : 4;
@@ -676,7 +701,7 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_label_set_text(action_icon, "");
     lv_obj_add_flag(action_icon, LV_OBJ_FLAG_HIDDEN);
 
-    w_button_ctx_t *ctx = calloc(1, sizeof(w_button_ctx_t));
+    w_button_ctx_t *ctx = ui_calloc_prefer_psram(1, sizeof(w_button_ctx_t));
     if (ctx == NULL) {
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;

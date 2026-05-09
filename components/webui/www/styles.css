@@ -848,6 +848,116 @@ textarea {
   top: 566px;
 }
 
+.energy-page-preview.compact .energy-preview-heading {
+  display: none;
+}
+
+.energy-page-preview.compact .energy-preview-flow path.flow {
+  stroke-width: 2px;
+}
+
+.energy-page-preview.compact .energy-preview-node {
+  width: 86px;
+  height: 86px;
+  margin: -43px 0 0 -43px;
+  border-width: 2px;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.energy-page-preview.compact .energy-preview-node strong {
+  font-size: 13px;
+}
+
+.energy-page-preview.compact .energy-preview-node span {
+  font-size: 12px;
+}
+
+.energy-page-preview.compact .energy-preview-node.low-carbon {
+  left: 76px;
+  top: 82px;
+}
+
+.energy-page-preview.compact .energy-preview-node.solar {
+  left: 240px;
+  top: 82px;
+}
+
+.energy-page-preview.compact .energy-preview-node.gas {
+  left: 404px;
+  top: 82px;
+}
+
+.energy-page-preview.compact .energy-preview-node.grid {
+  left: 76px;
+  top: 205px;
+}
+
+.energy-page-preview.compact .energy-preview-node.home {
+  left: 404px;
+  top: 205px;
+  width: 96px;
+  height: 96px;
+  margin: -48px 0 0 -48px;
+}
+
+.energy-page-preview.compact .energy-preview-node.battery {
+  left: 240px;
+  top: 290px;
+}
+
+.energy-page-preview.compact .energy-preview-node.water {
+  left: 404px;
+  top: 290px;
+}
+
+.energy-page-preview.compact .energy-preview-label {
+  width: 118px;
+  margin-left: -59px;
+  font-size: 11px;
+}
+
+.energy-page-preview.compact .energy-preview-label small {
+  display: none;
+  margin-top: 2px;
+  font-size: 9px;
+}
+
+.energy-page-preview.compact .energy-preview-label.low-carbon {
+  left: 76px;
+  top: 17px;
+}
+
+.energy-page-preview.compact .energy-preview-label.solar {
+  left: 240px;
+  top: 17px;
+}
+
+.energy-page-preview.compact .energy-preview-label.gas {
+  left: 404px;
+  top: 17px;
+}
+
+.energy-page-preview.compact .energy-preview-label.grid {
+  left: 76px;
+  top: 254px;
+}
+
+.energy-page-preview.compact .energy-preview-label.home {
+  left: 404px;
+  top: 260px;
+}
+
+.energy-page-preview.compact .energy-preview-label.battery {
+  left: 240px;
+  top: 339px;
+}
+
+.energy-page-preview.compact .energy-preview-label.water {
+  left: 404px;
+  top: 339px;
+}
+
 aside.actions-panel {
   position: sticky;
   top: 18px;
