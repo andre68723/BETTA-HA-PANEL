@@ -2,6 +2,40 @@
 
 # Release Notes
 
+## v0.8.2
+
+BETTA HA Panel v0.8.2 adds a third supported hardware variant — the Guition ESP32-S3-4848S040 — and ships factory and OTA images for all three panel variants.
+
+### Highlights
+
+- Added ESP32-S3 panel variant (`panels3`) for the Guition ESP32-S3-4848S040 (4.8" 480×480 ST7701S RGB display, GT911 touch, 16 MB flash, 8 MB octal PSRAM).
+- MDI-based weather icons on S3 — Lottie/ThorVG animations are not used on S3 because the Meteocons vector assets exceed what the SW rasterizer can handle at embedded canvas sizes.
+- Extended `make_factory_bin.ps1` — `panels3` is now a named variant; `-Variant both` packages all three variants in a single run without variants archiving each other's images.
+- Three-variant release — factory and OTA binaries for `panel4`, `panel10`, and `panels3`.
+
+### ESP32-S3 Variant (panels3)
+
+- Target board: Guition ESP32-S3-4848S040 — ESP32-S3, 480×480 ST7701S RGB panel, GT911 capacitive touch.
+- New display init (`display_init_panels3.c`) and touch init (`touch_init_panels3.c`) with a lightweight BSP shim.
+- Separate partition table (`partitions.s3.csv`) with 4 MB OTA app slots suited to the 16 MB flash layout.
+- S3-specific sdkconfig defaults (`sdkconfig.defaults.s3`, `sdkconfig.defaults.panels3`) disable ThorVG and Lottie; MDI icon font is used for all weather conditions.
+- Build command: `idf.py -B build-panels3 -DSDKCONFIG_DEFAULTS="sdkconfig.defaults.s3;sdkconfig.defaults.panels3" -DSDKCONFIG=sdkconfig.panels3 build`
+
+### Packaging
+
+- Panel 4 factory image:
+  `release/betta86-ha-panel-v0.8.2-panel4.factory.bin`
+- Panel 4 OTA image:
+  `release/ota/betta86-ha-panel-v0.8.2-panel4.ota.bin`
+- Panel 10 factory image:
+  `release/betta86-ha-panel-v0.8.2-panel10.factory.bin`
+- Panel 10 OTA image:
+  `release/ota/betta86-ha-panel-v0.8.2-panel10.ota.bin`
+- Panel S3 factory image:
+  `release/betta86-ha-panel-v0.8.2-panels3.factory.bin`
+- Panel S3 OTA image:
+  `release/ota/betta86-ha-panel-v0.8.2-panels3.ota.bin`
+
 ## v0.8.1
 
 BETTA HA Panel v0.8.1 adds the first Roborock map tile, refines the media player and shopping-list experience, and ships fresh dual-panel factory and OTA images for both supported display variants.
