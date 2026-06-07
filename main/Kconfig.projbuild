@@ -29,6 +29,15 @@ config APP_PANEL_VARIANT_S3_480
         with ST7701S controller and GT911 capacitive touch.
         Native Wi-Fi (no ESP-Hosted/C6 coprocessor).
 
+config APP_PANEL_VARIANT_10INCH_JC
+    bool "10.1\" 800x1280 (Guition JC8012P4A1, ESP32-P4)"
+    help
+        Guition JC8012P4A1 10.1-inch 800x1280 MIPI-DSI panel.
+        Display: JD9365 controller, 2-lane MIPI-DSI.
+        Touch: GSL3680 (Silead) I2C capacitive.
+        Wi-Fi: ESP-Hosted (ESP32-P4 host + ESP32-C6 coprocessor, same as panel4/panel10).
+        Native portrait 800x1280; LVGL rotation 270deg yields landscape 1280x800.
+
 endchoice
 
 endmenu

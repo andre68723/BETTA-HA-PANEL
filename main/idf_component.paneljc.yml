@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+#
+# Manifest for the Guition JC8012P4A1 variant (ESP32-P4 + JD9365 MIPI-DSI).
+# Selected automatically by the top-level CMakeLists.txt based on the active
+# SDKCONFIG_DEFAULTS overlay. Do NOT edit main/idf_component.yml directly --
+# it is regenerated from this file on every configure.
+#
+# Touch driver (GSL3680 / Silead) is vendored in main/drivers/gsl3680/ because
+# no published ESP component exists for this controller; it is added directly
+# to idf_component_register(SRCS ...) in main/CMakeLists.txt.
+dependencies:
+  idf: ">=5.5"
+  espressif/esp_wifi_remote:
+    version: "*"
+    rules:
+      - if: "target in [esp32p4]"
+  lvgl/lvgl:
+    version: "^9"
+  espressif/esp_lvgl_port:
+    version: "^2.6.2"
+  espressif/esp_lcd_jd9365:
+    version: "^1.0.0"
+  espressif/esp_lcd_touch:
+    version: "^1.2.0"
+  joltwallet/littlefs:
+    version: "^1.20.2"
+  espressif/esp_hosted:
+    version: "2.11.7"
+    rules:
+      - if: "target in [esp32p4]"
+  espressif/esp_websocket_client:
+    version: "*"

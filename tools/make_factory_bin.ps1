@@ -2,7 +2,7 @@ param(
     [string]$BuildDir = "",
     [string]$OutFile = "",
     [string]$OtaOutFile = "",
-    [ValidateSet("panel4", "panel10", "panels3", "both", "auto")]
+    [ValidateSet("panel4", "panel10", "panels3", "paneljc", "both", "auto")]
     [string]$Variant = "auto"
 )
 
@@ -494,12 +494,13 @@ $variantMap = @{
     "panel4"   = [PSCustomObject]@{ BuildDir = "build-panel4";   Suffix = "panel4"   }
     "panel10"  = [PSCustomObject]@{ BuildDir = "build-panel10";  Suffix = "panel10"  }
     "panels3"  = [PSCustomObject]@{ BuildDir = "build-panels3";  Suffix = "panels3"  }
+    "paneljc"  = [PSCustomObject]@{ BuildDir = "build-paneljc";  Suffix = "paneljc"  }
 }
 
 $variantsToBuild = @()
 
 if ($Variant -eq "both") {
-    foreach ($v in @("panel4", "panel10", "panels3")) {
+    foreach ($v in @("panel4", "panel10", "panels3", "paneljc")) {
         $info = $variantMap[$v]
         $path = Join-Path $repoRoot $info.BuildDir
         if (-not (Test-Path $path)) {
@@ -507,7 +508,7 @@ if ($Variant -eq "both") {
         }
         $variantsToBuild += [PSCustomObject]@{ Name = $v; BuildDir = $path; Suffix = $info.Suffix }
     }
-} elseif ($Variant -eq "panel4" -or $Variant -eq "panel10" -or $Variant -eq "panels3") {
+} elseif ($Variant -eq "panel4" -or $Variant -eq "panel10" -or $Variant -eq "panels3" -or $Variant -eq "paneljc") {
     $info = $variantMap[$Variant]
     $buildRoot = if ([string]::IsNullOrWhiteSpace($BuildDir)) { (Join-Path $repoRoot $info.BuildDir) } else { $BuildDir }
     $variantsToBuild += [PSCustomObject]@{ Name = $Variant; BuildDir = $buildRoot; Suffix = $info.Suffix }
@@ -516,7 +517,7 @@ if ($Variant -eq "both") {
     if (-not [string]::IsNullOrWhiteSpace($BuildDir)) {
         $variantsToBuild += [PSCustomObject]@{ Name = "custom"; BuildDir = $BuildDir; Suffix = "" }
     } else {
-        foreach ($v in @("panel4", "panel10", "panels3")) {
+        foreach ($v in @("panel4", "panel10", "panels3", "paneljc")) {
             $info = $variantMap[$v]
             $path = Join-Path $repoRoot $info.BuildDir
             if (Test-Path $path) {
@@ -527,7 +528,7 @@ if ($Variant -eq "both") {
             # Last-ditch fallback to the historical default.
             $legacy = Join-Path $repoRoot "build"
             if (-not (Test-Path $legacy)) {
-                throw "No build directory found. Expected one of: build-panel4/, build-panel10/, build-panels3/, build/. Run ``idf.py -B build-panel4 build`` (or similar) first."
+                throw "No build directory found. Expected one of: build-panel4/, build-panel10/, build-panels3/, build-paneljc/, build/. Run ``idf.py -B build-panel4 build`` (or similar) first."
             }
             $variantsToBuild += [PSCustomObject]@{ Name = "legacy"; BuildDir = $legacy; Suffix = "" }
         }
@@ -570,4 +571,3 @@ Write-Host "Flash example (factory image to offset 0x0):"
 foreach ($r in $results) {
     Write-Host "  python -m esptool --chip $($r.Chip) -p COM3 --before default_reset --after hard_reset write_flash 0x0 `"$($r.FactoryPath)`""
 }
-

@@ -2,6 +2,12 @@
 
 # Release Notes
 
+## Unreleased
+
+- Added source-build support for the Guition JC8012P4A1 (`paneljc`) ESP32-P4 + ESP32-C6 panel with JD9365 MIPI-DSI display, GSL3680 touch, 16 MB flash layout, and bundled ESP-Hosted C6 firmware update support.
+- Added `paneljc` build/release packaging support and variant-aware web updater URLs so the editor targets `betta86-ha-panel-<version>-paneljc.ota.bin`.
+- Updated supported-hardware and build-from-source documentation for the fourth hardware variant.
+
 ## v0.8.2
 
 BETTA HA Panel v0.8.2 adds a third supported hardware variant — the Guition ESP32-S3-4848S040 — and ships factory and OTA images for all three panel variants.

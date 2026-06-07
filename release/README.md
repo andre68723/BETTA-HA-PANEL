@@ -8,6 +8,7 @@ Download the factory image for your hardware variant:
 | panel4  | Smart86 Box (4" panel, ESP32-P4) | [betta86-ha-panel-v0.8.2-panel4.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.8.2-panel4.factory.bin) |
 | panel10 | Smart86 Box (10.1" panel, ESP32-P4) | [betta86-ha-panel-v0.8.2-panel10.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.8.2-panel10.factory.bin) |
 | panels3 | Guition ESP32-S3-4848S040 (4.8" 480×480, ESP32-S3) | [betta86-ha-panel-v0.8.2-panels3.factory.bin](https://github.com/cptkirki/BETTA-HA-PANEL/blob/main/release/betta86-ha-panel-v0.8.2-panels3.factory.bin) |
+| paneljc | Guition JC8012P4A1 (10.1" 1280×800, ESP32-P4 + ESP32-C6) | Build from source for now |
 
 - Flash it with esptool or with a web flasher of your choice, for example: https://espressif.github.io/esptool-js/
 - Use the outer USB-C port on the Smart86 Box for flashing.

@@ -1894,6 +1894,12 @@ async function loadAppVersion() {
 
 function otaPanelVariant() {
   const project = (editor.appProject || "").toLowerCase();
+  if (project.includes("paneljc") || project.includes("panel-jc") || project.includes("jc8012")) {
+    return "paneljc";
+  }
+  if (project.includes("s3") || editor.appScreenW === 480) {
+    return "panels3";
+  }
   if (project.includes("10.1") || project.includes("panel10") || editor.appScreenW >= 1000) {
     return "panel10";
   }
@@ -1902,7 +1908,8 @@ function otaPanelVariant() {
 
 function otaCurrentVersionTag() {
   const version = (editor.appVersion || "").trim();
-  return /^v\d+\.\d+\.\d+/.test(version) ? version : "";
+  const match = version.match(/^v\d+\.\d+\.\d+/);
+  return match ? match[0] : "";
 }
 
 function otaLatestFallbackUrl() {

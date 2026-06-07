@@ -14,13 +14,14 @@ A runtime-configurable Home Assistant wall panel for ESP32-P4 and ESP32-S3 touch
 
 ## Supported hardware
 
-BETTA HA Panel ships as **three firmware variants**, one per supported device:
+BETTA HA Panel ships as **four firmware variants**, one per supported device:
 
 | Variant    | Device                                                  | Resolution | Factory image                                                                     |
 |------------|---------------------------------------------------------|------------|-----------------------------------------------------------------------------------|
 | `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")          | 720 × 720  | [betta86-ha-panel-v0.8.2-panel4.factory.bin](release/betta86-ha-panel-v0.8.2-panel4.factory.bin)   |
 | `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel**    | 1280 × 800 | [betta86-ha-panel-v0.8.2-panel10.factory.bin](release/betta86-ha-panel-v0.8.2-panel10.factory.bin) |
 | `panels3`  | Guition **ESP32-S3-4848S040** (4")                      | 480 × 480  | [betta86-ha-panel-v0.8.2-panels3.factory.bin](release/betta86-ha-panel-v0.8.2-panels3.factory.bin) |
+| `paneljc`  | Guition **JC8012P4A1** ESP32-P4 + ESP32-C6 (10.1")      | 1280 × 800 | Build from source for now |
 
 All variants share the same dashboard engine, web editor, and Home Assistant integration. Pick the image that matches your board.
 
@@ -65,9 +66,10 @@ Future updates install via OTA from the editor — no cable needed.
 ## What's new in v0.8.2
 
 - **ESP32-S3 support** — new `panels3` variant for the Guition ESP32-S3-4848S040 (4.8" 480×480 RGB panel, 16 MB flash, 8 MB PSRAM).
-- **Three-variant release** — factory and OTA images now ship for `panel4`, `panel10`, and `panels3`.
+- **Guition JC8012P4A1 support** — source build support for the ESP32-P4 + ESP32-C6 10.1" panel with JD9365 MIPI-DSI display and GSL3680 touch.
+- **Four-variant builds** — build presets now cover `panel4`, `panel10`, `panels3`, and `paneljc`.
 - **MDI weather icons on S3** — clean Material Design Icon weather display on the S3 panel.
-- **Release tooling** — `make_factory_bin.ps1` extended; `-Variant both` now packages all three variants in one run.
+- **Release tooling** — `make_factory_bin.ps1` extended; `-Variant both` now packages all four variants in one run.
 
 Full history: [release-notes.md](release-notes.md).
 
@@ -75,15 +77,43 @@ Full history: [release-notes.md](release-notes.md).
 
 ## Building from source
 
-Prerequisites: **ESP-IDF v5.5.2**, Python 3.11+, the Smart86 / Waveshare BSP components (pulled automatically via the component manager).
+Prerequisites: **ESP-IDF v5.5.2**, Python 3.11+, and PowerShell if you want to package release images. The ESP-IDF component manager fetches project dependencies automatically on the first build.
 
-```powershell
-# Pick a variant preset
-idf.py -B build-panel4   -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.panel4"                              build
-idf.py -B build-panel10  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.panel10"                             build
-idf.py -B build-panels3  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults.s3;sdkconfig.defaults.panels3" -DSDKCONFIG=sdkconfig.panels3  build
+Install ESP-IDF if needed:
 
-# Package release images (factory + OTA) for one or both variants
+```bash
+mkdir -p ~/esp
+cd ~/esp
+git clone --branch v5.5.2 --depth 1 --recursive https://github.com/espressif/esp-idf.git esp-idf-v5.5.2
+cd esp-idf-v5.5.2
+./install.sh esp32p4,esp32s3
+```
+
+Activate ESP-IDF in each new terminal:
+
+```bash
+source ~/esp/esp-idf-v5.5.2/export.sh
+```
+
+Build with the CMake presets:
+
+```bash
+idf.py --preset panel4   build
+idf.py --preset panel10  build
+idf.py --preset panels3  build
+idf.py --preset paneljc  build
+```
+
+Flash a connected device:
+
+```bash
+idf.py -B build-paneljc flash monitor
+```
+
+Package factory and OTA images after building:
+
+```bash
+pwsh tools/make_factory_bin.ps1 -Variant paneljc
 pwsh tools/make_factory_bin.ps1 -Variant both
 ```
 

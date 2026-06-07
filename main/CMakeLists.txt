@@ -15,6 +15,14 @@ elseif(CONFIG_APP_PANEL_VARIANT_S3_480)
         "drivers/display_init_panels3.c"
         "drivers/touch_init_panels3.c"
     )
+elseif(CONFIG_APP_PANEL_VARIANT_10INCH_JC)
+    set(PANEL_DRIVER_SRCS
+        "drivers/display_init_paneljc.c"
+        "drivers/touch_init_paneljc.c"
+        # GSL3680 (Silead) touch driver + algorithm — vendored: no published component
+        "drivers/gsl3680/esp_lcd_gsl3680.c"
+        "drivers/gsl3680/gsl_point_id.c"
+    )
 else()
     set(PANEL_DRIVER_SRCS
         "drivers/display_init_panel4.c"
@@ -113,19 +121,25 @@ idf_component_register(
         esp_driver_jpeg
 )
 
-# ESP-Hosted (P4 + C6 coprocessor) is only used by panel4 / panel10.
+# ESP-Hosted (P4 + C6 coprocessor) is used by the ESP32-P4 variants.
 # panels3 (ESP32-S3) has native Wi-Fi and must not pull in the hosted stack.
 if(NOT CONFIG_APP_PANEL_VARIANT_S3_480)
     idf_component_optional_requires(PRIVATE esp_wifi_remote esp_hosted)
 endif()
 
-# panels3 has no upstream ESP-BSP package: provide a minimal local shim of
-# `bsp/display.h` so files including it (e.g. api_settings.c, api_ota.c)
-# compile. The corresponding stub implementations live in
-# drivers/display_init_panels3.c.
+# panels3 / paneljc have no upstream ESP-BSP package: provide a minimal local
+# shim of `bsp/display.h` so files including it (e.g. api_settings.c,
+# api_ota.c) compile. Stub implementations live in the respective
+# display_init_panels3.c / display_init_paneljc.c files.
 if(CONFIG_APP_PANEL_VARIANT_S3_480)
     target_include_directories(${COMPONENT_LIB} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/drivers/panels3_bsp_shim"
+    )
+elseif(CONFIG_APP_PANEL_VARIANT_10INCH_JC)
+    target_include_directories(${COMPONENT_LIB} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/drivers/paneljc_bsp_shim"
+        # Vendored GSL3680 headers (esp_lcd_gsl3680.h, gsl_point_id.h)
+        "${CMAKE_CURRENT_SOURCE_DIR}/drivers/gsl3680"
     )
 endif()
 

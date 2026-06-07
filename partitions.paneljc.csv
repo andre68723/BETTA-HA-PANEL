@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+#
+# Partition table for the Guition JC8012P4A1 ESP32-P4 panel.
+# The board reports 16MB flash over esptool; keep all partitions within 0x1000000.
+# Name,   Type, SubType, Offset,    Size,      Flags
+nvs,      data, nvs,     0x9000,    24K,
+otadata,  data, ota,     0xf000,    8K,
+phy_init, data, phy,     0x11000,   4K,
+factory,  app,  factory, 0x20000,   0x500000,
+ota_0,    app,  ota_0,   0x520000,  0x500000,
+ota_1,    app,  ota_1,   0xA20000,  0x500000,
+storage,  data, littlefs,0xF20000,  0x0E0000,

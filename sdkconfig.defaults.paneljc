@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+#
+# Panel variant overlay: Guition JC8012P4A1 (ESP32-P4 + JD9365 MIPI-DSI 800x1280).
+# Apply together with the common sdkconfig.defaults via
+#   idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.paneljc" ...
+# or the CMake preset "paneljc" (see CMakePresets.json).
+#
+# Wi-Fi: ESP-Hosted (P4 host + C6 coprocessor over SDIO) — shared with panel4/panel10.
+# Display: JD9365, 2-lane MIPI-DSI, 800x1280 native portrait.
+#   LVGL rotation 270° yields 1280x800 landscape (same content box as panel10).
+# Touch: GSL3680 (Silead), I2C, vendored driver.
+
+# --- Panel variant selector (drives app_config.h + display/touch init) ---
+CONFIG_APP_PANEL_VARIANT_10INCH_JC=y
+# CONFIG_APP_PANEL_VARIANT_4INCH_720 is not set
+# CONFIG_APP_PANEL_VARIANT_10INCH_1280 is not set
+
+# --- Flash sizing and partitions ---
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+# CONFIG_ESPTOOLPY_FLASHSIZE_32MB is not set
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.paneljc.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions.paneljc.csv"
+
+# --- Touch ---
+CONFIG_ESP_LCD_TOUCH_MAX_POINTS=5
+
+# --- JC8012P4A1 stability tuning ---
+# Guition JC8012P4A1 boards in the wild are still commonly ESP32-P4 rev v1.x
+# engineering samples. ESP-IDF treats P4 rev <3 and rev >=3 images as mutually
+# exclusive, so build this variant for the v1.x silicon family.
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+CONFIG_ESP32P4_REV_MIN_100=y
+# CONFIG_ESP32P4_REV_MIN_300 is not set
+# CONFIG_ESP32P4_REV_MIN_301 is not set
+
+# The GSL3680 firmware upload and native OTA preparation can block long enough
+# to trip the default 10s task watchdog on this panel.
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=60
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+# Match the known-good ESPHome JC8012P4A1 SDIO profile.
+CONFIG_ESP_HOSTED_SDIO_CLOCK_FREQ_KHZ=20000
+# ESP-Hosted static mempool can exhaust internal DMA memory before display init.
+# CONFIG_ESP_HOSTED_USE_MEMPOOL is not set
+# Avoid long native OTA flash preparation stalls before upload progress starts.
+# CONFIG_SPI_FLASH_YIELD_DURING_ERASE is not set
+
+# --- Image support ---
+CONFIG_LV_USE_LODEPNG=y
+
+# The production firmware does not call LVGL examples; keeping them enabled
+# compiles hundreds of unused sources and slows paneljc builds noticeably.
+# CONFIG_LV_BUILD_EXAMPLES is not set

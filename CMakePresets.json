@@ -1,6 +1,6 @@
 {
     "version": 3,
-    "cmakeMinimumRequired": { "major": 3, "subMajor": 21, "patch": 0 },
+    "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
     "configurePresets": [
         {
             "name": "panel4",
@@ -33,6 +33,18 @@
             "cacheVariables": {
                 "SDKCONFIG_DEFAULTS": "sdkconfig.defaults.s3;sdkconfig.defaults.panels3",
                 "SDKCONFIG": "${sourceDir}/sdkconfig.panels3"
+            }
+        },
+        {
+            "name": "paneljc",
+            "displayName": "Panel JC 10.1\" 800x1280 (Guition JC8012P4A1)",
+            "description": "Build for the Guition JC8012P4A1 (ESP32-P4 + JD9365 MIPI-DSI, GSL3680 touch, ESP-Hosted C6 Wi-Fi).",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build-paneljc",
+            "cacheVariables": {
+                "IDF_TARGET": "esp32p4",
+                "SDKCONFIG_DEFAULTS": "sdkconfig.defaults;sdkconfig.defaults.paneljc",
+                "SDKCONFIG": "${sourceDir}/sdkconfig.paneljc"
             }
         }
     ]
