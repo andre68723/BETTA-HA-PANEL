@@ -34,20 +34,27 @@
  *   callback. Sufficient for ~1 cover/sec at typical HA sizes. */
 #if SOC_JPEG_DECODE_SUPPORTED
 #include "driver/jpeg_decode.h"
+#define STBI_ONLY_JPEG
+#define STBI_NO_STDIO
+#define STBI_NO_LINEAR
+#define STBI_NO_HDR
+#define STBI_NO_THREAD_LOCALS
+#define STBIDEF static
+#define STBI_MALLOC(sz) heap_caps_malloc((sz), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)
+#define STBI_REALLOC(p, sz) heap_caps_realloc((p), (sz), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)
+#define STBI_FREE(p) heap_caps_free(p)
+#define STB_IMAGE_IMPLEMENTATION
+#include "../../managed_components/lvgl__lvgl/src/libs/gltf/stb_image/stb_image.h"
 #else
 #include "rom/tjpgd.h"
 #endif
 
 #include "ha/ha_client.h"
 
-#if LV_USE_LODEPNG
-#include "../../managed_components/lvgl__lvgl/src/libs/lodepng/lodepng.h"
-#endif
-
 #define TAG "ha_cover"
 
 #define COVER_Q_DEPTH 4
-#define COVER_MAX_DOWNLOAD 1024 * 1024  /* 1 MiB upper bound per cover JPG */
+#define COVER_MAX_DOWNLOAD 1024 * 1024  /* 1 MiB upper bound per cover image */
 #define COVER_GATE_POLL_MS 120
 #define COVER_MIN_W 16
 #define COVER_MIN_H 16
@@ -196,6 +203,15 @@ static bool cover_is_png(const uint8_t *buf, size_t len)
     return buf != NULL && len >= sizeof(magic) && memcmp(buf, magic, sizeof(magic)) == 0;
 }
 
+static const char *cover_guess_format(const uint8_t *buf, size_t len)
+{
+    if (cover_is_png(buf, len)) return "png";
+    if (buf != NULL && len >= 2 && buf[0] == 0xFF && buf[1] == 0xD8) return "jpeg";
+    if (buf != NULL && len >= 12 && memcmp(buf, "RIFF", 4) == 0 && memcmp(buf + 8, "WEBP", 4) == 0) return "webp";
+    if (buf != NULL && len >= 6 && (memcmp(buf, "GIF87a", 6) == 0 || memcmp(buf, "GIF89a", 6) == 0)) return "gif";
+    return "unknown";
+}
+
 static uint32_t cover_png_read_be32(const uint8_t *buf)
 {
     return ((uint32_t)buf[0] << 24) | ((uint32_t)buf[1] << 16) |
@@ -287,6 +303,55 @@ static bool cover_png_collect_idat(const uint8_t *png, size_t len, uint8_t **out
     return true;
 }
 
+static bool cover_png_read_palette(const uint8_t *png, size_t len,
+                                   uint8_t *palette_rgb, uint8_t *palette_alpha,
+                                   uint32_t *out_entries)
+{
+    if (png == NULL || palette_rgb == NULL || palette_alpha == NULL ||
+        out_entries == NULL || !cover_is_png(png, len)) {
+        return false;
+    }
+
+    memset(palette_rgb, 0, 256U * 3U);
+    memset(palette_alpha, 0xFF, 256U);
+    *out_entries = 0;
+
+    size_t pos = 8;
+    while (pos + 12 <= len) {
+        uint32_t chunk_len = cover_png_read_be32(png + pos);
+        size_t chunk_total = (size_t)chunk_len + 12U;
+        if (pos + chunk_total > len || pos + chunk_total < pos) {
+            return false;
+        }
+
+        const uint8_t *chunk_type = png + pos + 4;
+        const uint8_t *chunk_data = png + pos + 8;
+        if (memcmp(chunk_type, "PLTE", 4) == 0) {
+            if (chunk_len == 0 || (chunk_len % 3U) != 0) {
+                return false;
+            }
+            uint32_t entries = chunk_len / 3U;
+            if (entries > 256U) {
+                entries = 256U;
+            }
+            memcpy(palette_rgb, chunk_data, (size_t)entries * 3U);
+            *out_entries = entries;
+        } else if (memcmp(chunk_type, "tRNS", 4) == 0) {
+            uint32_t entries = chunk_len;
+            if (entries > 256U) {
+                entries = 256U;
+            }
+            memcpy(palette_alpha, chunk_data, entries);
+        } else if (memcmp(chunk_type, "IDAT", 4) == 0 || memcmp(chunk_type, "IEND", 4) == 0) {
+            break;
+        }
+
+        pos += chunk_total;
+    }
+
+    return *out_entries > 0;
+}
+
 static void cover_pick_png_output_size(uint32_t src_w, uint32_t src_h,
                                        int target_w, int target_h,
                                        uint32_t *out_w, uint32_t *out_h)
@@ -326,94 +391,17 @@ static void cover_pick_png_output_size(uint32_t src_w, uint32_t src_h,
     *out_h = dst_h > 0 ? dst_h : 1;
 }
 
-static bool cover_rgb24_is_transparent_bg(uint8_t red, uint8_t green, uint8_t blue)
+static uint32_t cover_png_source_bpp_for_type(uint8_t color_type)
+{
+    if (color_type == 3U) return 1U; /* indexed color, 8-bit palette index */
+    if (color_type == 2U) return 3U; /* RGB8 */
+    if (color_type == 6U) return 4U; /* RGBA8 */
+    return 0;
+}
+
+static bool cover_png_is_transparent_bg(uint8_t red, uint8_t green, uint8_t blue)
 {
     return red <= 2U && green <= 2U && blue <= 2U;
-}
-
-static void cover_scale_rgb24_to_rgb565a8_nearest(const uint8_t *src_rgb,
-                                                  uint32_t src_w, uint32_t src_h,
-                                                  uint8_t *dst_color, uint8_t *dst_alpha,
-                                                  uint32_t dst_w, uint32_t dst_h,
-                                                  uint32_t color_stride, uint32_t alpha_stride)
-{
-    if (src_rgb == NULL || dst_color == NULL || dst_alpha == NULL ||
-        src_w == 0 || src_h == 0 || dst_w == 0 || dst_h == 0) {
-        return;
-    }
-
-    for (uint32_t y = 0; y < dst_h; y++) {
-        uint32_t src_y = (uint32_t)(((uint64_t)y * src_h) / dst_h);
-        if (src_y >= src_h) {
-            src_y = src_h - 1U;
-        }
-        const uint8_t *src_row = src_rgb + ((size_t)src_y * src_w * 3U);
-        uint8_t *dst_color_row = dst_color + ((size_t)y * color_stride);
-        uint8_t *dst_alpha_row = dst_alpha + ((size_t)y * alpha_stride);
-        for (uint32_t x = 0; x < dst_w; x++) {
-            uint32_t src_x = (uint32_t)(((uint64_t)x * src_w) / dst_w);
-            if (src_x >= src_w) {
-                src_x = src_w - 1U;
-            }
-            const uint8_t *px = src_row + (src_x * 3U);
-            uint8_t red = px[0];
-            uint8_t green = px[1];
-            uint8_t blue = px[2];
-            uint16_t rgb565 = (uint16_t)(((uint16_t)(red & 0xF8U) << 8) |
-                                         ((uint16_t)(green & 0xFCU) << 3) |
-                                         ((uint16_t)blue >> 3));
-
-            dst_color_row[x * 2U] = (uint8_t)(rgb565 & 0xFFU);
-            dst_color_row[x * 2U + 1U] = (uint8_t)(rgb565 >> 8);
-            dst_alpha_row[x] = cover_rgb24_is_transparent_bg(red, green, blue) ? 0U : 0xFFU;
-        }
-    }
-}
-
-static uint32_t cover_dominant_from_rgb24(const uint8_t *buf, uint32_t w, uint32_t h)
-{
-    if (buf == NULL || w == 0 || h == 0) {
-        return 0;
-    }
-
-    uint64_t r_acc = 0;
-    uint64_t g_acc = 0;
-    uint64_t b_acc = 0;
-    uint32_t samples = 0;
-    uint32_t step_x = w > 96 ? w / 48U : 2U;
-    uint32_t step_y = h > 96 ? h / 48U : 2U;
-    if (step_x == 0) step_x = 1;
-    if (step_y == 0) step_y = 1;
-
-    for (uint32_t y = 0; y < h; y += step_y) {
-        for (uint32_t x = 0; x < w; x += step_x) {
-            const uint8_t *px = buf + (((size_t)y * w + x) * 3U);
-            uint8_t red = px[0];
-            uint8_t green = px[1];
-            uint8_t blue = px[2];
-            if (cover_rgb24_is_transparent_bg(red, green, blue)) {
-                continue;
-            }
-
-            uint16_t lum = (uint16_t)red + (uint16_t)green + (uint16_t)blue;
-            if (lum < 18 || lum > 720) {
-                continue;
-            }
-
-            r_acc += red;
-            g_acc += green;
-            b_acc += blue;
-            samples++;
-        }
-    }
-
-    if (samples == 0) {
-        return 0;
-    }
-
-    return (((uint32_t)(r_acc / samples)) << 16) |
-           (((uint32_t)(g_acc / samples)) << 8) |
-           ((uint32_t)(b_acc / samples));
 }
 
 static uint8_t cover_png_paeth(uint8_t a, uint8_t b, uint8_t c)
@@ -431,13 +419,16 @@ static uint8_t cover_png_paeth(uint8_t a, uint8_t b, uint8_t c)
     return c;
 }
 
-static bool cover_unfilter_rgba8_row(uint8_t *dst, const uint8_t *src, const uint8_t *prev, size_t rowbytes, uint8_t filter)
+static bool cover_unfilter_png_row(uint8_t *dst, const uint8_t *src, const uint8_t *prev,
+                                   size_t rowbytes, uint8_t filter, size_t bytewidth)
 {
     if (dst == NULL || src == NULL || rowbytes == 0) {
         return false;
     }
+    if (bytewidth == 0) {
+        return false;
+    }
 
-    const size_t bytewidth = 4U;
     switch (filter) {
         case 0:
             memcpy(dst, src, rowbytes);
@@ -474,11 +465,18 @@ static bool cover_unfilter_rgba8_row(uint8_t *dst, const uint8_t *src, const uin
     }
 }
 
-static void cover_scale_rgba8_row_to_rgb565a8(const uint8_t *src_row, uint32_t src_w,
-                                              uint8_t *dst_color_row, uint8_t *dst_alpha_row,
-                                              uint32_t dst_w)
+static void cover_scale_png_row_to_rgb565a8(const uint8_t *src_row, uint32_t src_w, uint32_t source_bpp,
+                                            const uint8_t *palette_rgb, const uint8_t *palette_alpha,
+                                            uint32_t palette_entries,
+                                            uint8_t *dst_color_row, uint8_t *dst_alpha_row,
+                                            uint32_t dst_w)
 {
-    if (src_row == NULL || dst_color_row == NULL || dst_alpha_row == NULL || src_w == 0 || dst_w == 0) {
+    if (src_row == NULL || dst_color_row == NULL || dst_alpha_row == NULL ||
+        src_w == 0 || dst_w == 0 ||
+        (source_bpp != 1U && source_bpp != 3U && source_bpp != 4U)) {
+        return;
+    }
+    if (source_bpp == 1U && (palette_rgb == NULL || palette_alpha == NULL || palette_entries == 0)) {
         return;
     }
 
@@ -487,22 +485,44 @@ static void cover_scale_rgba8_row_to_rgb565a8(const uint8_t *src_row, uint32_t s
         if (src_x >= src_w) {
             src_x = src_w - 1U;
         }
-        const uint8_t *px = src_row + ((size_t)src_x * 4U);
-        uint8_t red = px[0];
-        uint8_t green = px[1];
-        uint8_t blue = px[2];
+        const uint8_t *px = src_row + ((size_t)src_x * source_bpp);
+        uint8_t red = 0;
+        uint8_t green = 0;
+        uint8_t blue = 0;
+        uint8_t alpha = 0;
+        if (source_bpp == 1U) {
+            uint8_t index = px[0];
+            if (index < palette_entries) {
+                const uint8_t *pal = palette_rgb + ((size_t)index * 3U);
+                red = pal[0];
+                green = pal[1];
+                blue = pal[2];
+                alpha = palette_alpha[index];
+            }
+        } else {
+            red = px[0];
+            green = px[1];
+            blue = px[2];
+            alpha = source_bpp == 4U
+                        ? px[3]
+                        : (cover_png_is_transparent_bg(red, green, blue) ? 0U : 0xFFU);
+        }
         uint16_t rgb565 = (uint16_t)(((uint16_t)(red & 0xF8U) << 8) |
                                      ((uint16_t)(green & 0xFCU) << 3) |
                                      ((uint16_t)blue >> 3));
         dst_color_row[x * 2U] = (uint8_t)(rgb565 & 0xFFU);
         dst_color_row[x * 2U + 1U] = (uint8_t)(rgb565 >> 8);
-        dst_alpha_row[x] = px[3];
+        dst_alpha_row[x] = alpha;
     }
 }
 
 typedef struct {
     uint32_t src_w;
     uint32_t src_h;
+    uint32_t source_bpp;
+    const uint8_t *palette_rgb;
+    const uint8_t *palette_alpha;
+    uint32_t palette_entries;
     uint32_t out_w;
     uint32_t out_h;
     uint32_t color_stride;
@@ -528,12 +548,19 @@ typedef struct {
     bool failed;
 } cover_png_stream_ctx_t;
 
-static void cover_accumulate_dominant_rgba8_row(const uint8_t *row, uint32_t src_w, uint32_t src_y,
-                                                uint32_t step_x, uint32_t step_y,
-                                                uint64_t *r_acc, uint64_t *g_acc, uint64_t *b_acc,
-                                                uint32_t *samples)
+static void cover_accumulate_dominant_png_row(const uint8_t *row, uint32_t src_w, uint32_t src_y,
+                                              uint32_t source_bpp,
+                                              const uint8_t *palette_rgb, const uint8_t *palette_alpha,
+                                              uint32_t palette_entries,
+                                              uint32_t step_x, uint32_t step_y,
+                                              uint64_t *r_acc, uint64_t *g_acc, uint64_t *b_acc,
+                                              uint32_t *samples)
 {
-    if (row == NULL || src_w == 0 || r_acc == NULL || g_acc == NULL || b_acc == NULL || samples == NULL) {
+    if (row == NULL || src_w == 0 || (source_bpp != 1U && source_bpp != 3U && source_bpp != 4U) ||
+        r_acc == NULL || g_acc == NULL || b_acc == NULL || samples == NULL) {
+        return;
+    }
+    if (source_bpp == 1U && (palette_rgb == NULL || palette_alpha == NULL || palette_entries == 0)) {
         return;
     }
     if (step_y == 0 || (src_y % step_y) != 0) {
@@ -541,11 +568,29 @@ static void cover_accumulate_dominant_rgba8_row(const uint8_t *row, uint32_t src
     }
 
     for (uint32_t x = 0; x < src_w; x += step_x) {
-        const uint8_t *px = row + ((size_t)x * 4U);
-        uint8_t red = px[0];
-        uint8_t green = px[1];
-        uint8_t blue = px[2];
-        uint8_t alpha = px[3];
+        const uint8_t *px = row + ((size_t)x * source_bpp);
+        uint8_t red = 0;
+        uint8_t green = 0;
+        uint8_t blue = 0;
+        uint8_t alpha = 0;
+        if (source_bpp == 1U) {
+            uint8_t index = px[0];
+            if (index >= palette_entries) {
+                continue;
+            }
+            const uint8_t *pal = palette_rgb + ((size_t)index * 3U);
+            red = pal[0];
+            green = pal[1];
+            blue = pal[2];
+            alpha = palette_alpha[index];
+        } else {
+            red = px[0];
+            green = px[1];
+            blue = px[2];
+            alpha = source_bpp == 4U
+                        ? px[3]
+                        : (cover_png_is_transparent_bg(red, green, blue) ? 0U : 0xFFU);
+        }
         if (alpha < 24U) {
             continue;
         }
@@ -564,27 +609,33 @@ static void cover_accumulate_dominant_rgba8_row(const uint8_t *row, uint32_t src
 
 static bool cover_png_process_streamed_row(cover_png_stream_ctx_t *ctx)
 {
-    if (ctx == NULL || ctx->line == NULL || ctx->curr_row == NULL || ctx->src_y >= ctx->src_h) {
+    if (ctx == NULL || ctx->line == NULL || ctx->curr_row == NULL ||
+        ctx->src_y >= ctx->src_h ||
+        (ctx->source_bpp != 1U && ctx->source_bpp != 3U && ctx->source_bpp != 4U)) {
         return false;
     }
 
-    if (!cover_unfilter_rgba8_row(ctx->curr_row, ctx->line + 1U,
-                                  ctx->src_y > 0 ? ctx->prev_row : NULL,
-                                  ctx->rowbytes, ctx->line[0])) {
+    if (!cover_unfilter_png_row(ctx->curr_row, ctx->line + 1U,
+                                ctx->src_y > 0 ? ctx->prev_row : NULL,
+                                ctx->rowbytes, ctx->line[0], ctx->source_bpp)) {
         ESP_LOGW(TAG, "png unsupported filter %u", ctx->line[0]);
         return false;
     }
 
-    cover_accumulate_dominant_rgba8_row(ctx->curr_row, ctx->src_w, ctx->src_y,
-                                        ctx->step_x, ctx->step_y,
-                                        &ctx->r_acc, &ctx->g_acc, &ctx->b_acc,
-                                        &ctx->samples);
+    cover_accumulate_dominant_png_row(ctx->curr_row, ctx->src_w, ctx->src_y,
+                                      ctx->source_bpp, ctx->palette_rgb, ctx->palette_alpha,
+                                      ctx->palette_entries, ctx->step_x, ctx->step_y,
+                                      &ctx->r_acc, &ctx->g_acc, &ctx->b_acc,
+                                      &ctx->samples);
 
     while (ctx->next_dst_y < ctx->out_h &&
            (uint32_t)(((uint64_t)ctx->next_dst_y * ctx->src_h) / ctx->out_h) == ctx->src_y) {
         uint8_t *dst_color_row = ctx->rgb565a8 + ((size_t)ctx->next_dst_y * ctx->color_stride);
         uint8_t *dst_alpha_row = ctx->alpha_plane + ((size_t)ctx->next_dst_y * ctx->alpha_stride);
-        cover_scale_rgba8_row_to_rgb565a8(ctx->curr_row, ctx->src_w, dst_color_row, dst_alpha_row, ctx->out_w);
+        cover_scale_png_row_to_rgb565a8(ctx->curr_row, ctx->src_w, ctx->source_bpp,
+                                        ctx->palette_rgb, ctx->palette_alpha,
+                                        ctx->palette_entries,
+                                        dst_color_row, dst_alpha_row, ctx->out_w);
         ctx->next_dst_y++;
     }
 
@@ -726,12 +777,19 @@ static bool cover_png_inflate_stream_lowlevel(const uint8_t *idat, size_t idat_l
     return ok;
 }
 
-static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
-                                            uint32_t src_w, uint32_t src_h,
-                                            int target_w, int target_h,
-                                            ha_cover_result_t *out)
+static bool cover_decode_png_streamed(const uint8_t *png, size_t len,
+                                      uint32_t src_w, uint32_t src_h,
+                                      uint32_t source_bpp,
+                                      const uint8_t *palette_rgb, const uint8_t *palette_alpha,
+                                      uint32_t palette_entries,
+                                      int target_w, int target_h,
+                                      ha_cover_result_t *out)
 {
-    if (png == NULL || len == 0 || src_w == 0 || src_h == 0 || out == NULL) {
+    if (png == NULL || len == 0 || src_w == 0 || src_h == 0 ||
+        (source_bpp != 1U && source_bpp != 3U && source_bpp != 4U) || out == NULL) {
+        return false;
+    }
+    if (source_bpp == 1U && (palette_rgb == NULL || palette_alpha == NULL || palette_entries == 0)) {
         return false;
     }
 
@@ -742,8 +800,14 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
     uint8_t *line = NULL;
     uint8_t *rgb565a8 = NULL;
     size_t idat_len = 0;
-    size_t rowbytes = (size_t)src_w * 4U;
-    size_t expected_size = ((size_t)src_w * 4U + 1U) * src_h;
+    if ((size_t)src_w > (SIZE_MAX - 1U) / source_bpp ||
+        ((size_t)src_w * source_bpp + 1U) > SIZE_MAX / (size_t)src_h) {
+        ESP_LOGW(TAG, "png stream size overflow");
+        goto cleanup;
+    }
+
+    size_t rowbytes = (size_t)src_w * source_bpp;
+    size_t expected_size = (rowbytes + 1U) * src_h;
     uint32_t out_w = 0;
     uint32_t out_h = 0;
     uint32_t color_stride = 0;
@@ -780,7 +844,14 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
     cover_pick_png_output_size(src_w, src_h, target_w, target_h, &out_w, &out_h);
     color_stride = lv_draw_buf_width_to_stride(out_w, LV_COLOR_FORMAT_RGB565A8);
     alpha_stride = color_stride / 2U;
-    size_t out_size = (size_t)color_stride * out_h + (size_t)alpha_stride * out_h;
+    if (out_w == 0 || out_h == 0 || color_stride == 0 || alpha_stride == 0 ||
+        (size_t)color_stride > SIZE_MAX / (size_t)out_h ||
+        (size_t)alpha_stride > SIZE_MAX / (size_t)out_h ||
+        ((size_t)color_stride * (size_t)out_h) > SIZE_MAX - ((size_t)alpha_stride * (size_t)out_h)) {
+        ESP_LOGW(TAG, "png output size overflow");
+        goto cleanup;
+    }
+    size_t out_size = (size_t)color_stride * (size_t)out_h + (size_t)alpha_stride * (size_t)out_h;
     rgb565a8 = heap_caps_malloc(out_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (rgb565a8 == NULL) {
         ESP_LOGW(TAG, "png alloc %u bytes failed", (unsigned)out_size);
@@ -792,6 +863,10 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
     cover_png_stream_ctx_t stream = {
         .src_w = src_w,
         .src_h = src_h,
+        .source_bpp = source_bpp,
+        .palette_rgb = palette_rgb,
+        .palette_alpha = palette_alpha,
+        .palette_entries = palette_entries,
         .out_w = out_w,
         .out_h = out_h,
         .color_stride = color_stride,
@@ -808,8 +883,9 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
         .expected_size = expected_size,
     };
 
-    ESP_LOGI(TAG, "png stream: src=%ux%u out=%ux%u idat=%u raw=%u",
+    ESP_LOGI(TAG, "png stream: src=%ux%u bpp=%u palette=%u out=%ux%u idat=%u raw=%u",
              (unsigned)src_w, (unsigned)src_h,
+             (unsigned)source_bpp, (unsigned)palette_entries,
              (unsigned)out_w, (unsigned)out_h,
              (unsigned)idat_len, (unsigned)expected_size);
 
@@ -834,7 +910,9 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
     while (stream.next_dst_y < out_h) {
         uint8_t *dst_color_row = rgb565a8 + ((size_t)stream.next_dst_y * color_stride);
         uint8_t *dst_alpha_row = alpha_plane + ((size_t)stream.next_dst_y * alpha_stride);
-        cover_scale_rgba8_row_to_rgb565a8(stream.prev_row, src_w, dst_color_row, dst_alpha_row, out_w);
+        cover_scale_png_row_to_rgb565a8(stream.prev_row, src_w, source_bpp,
+                                        palette_rgb, palette_alpha, palette_entries,
+                                        dst_color_row, dst_alpha_row, out_w);
         stream.next_dst_y++;
     }
 
@@ -873,15 +951,6 @@ cleanup:
 static bool cover_decode_png(const uint8_t *png, size_t len, int target_w, int target_h,
                              ha_cover_result_t *out)
 {
-#if !LV_USE_LODEPNG
-    LV_UNUSED(png);
-    LV_UNUSED(len);
-    LV_UNUSED(target_w);
-    LV_UNUSED(target_h);
-    LV_UNUSED(out);
-    ESP_LOGW(TAG, "png fetched but LV_USE_LODEPNG is disabled");
-    return false;
-#else
     if (png == NULL || len == 0 || out == NULL) {
         return false;
     }
@@ -896,59 +965,30 @@ static bool cover_decode_png(const uint8_t *png, size_t len, int target_w, int t
         return false;
     }
 
-    /* Roborock maps currently arrive as non-interlaced RGBA8 PNGs. Decode them
-     * through a scanline path so we never materialize the full RGBA image in RAM. */
-    if (bit_depth == 8U && color_type == 6U && interlace == 0U) {
-        return cover_decode_png_rgba8_streamed(png, len, src_w, src_h, target_w, target_h, out);
-    }
-
-    uint8_t *decoded = NULL;
-    unsigned decoded_w = 0;
-    unsigned decoded_h = 0;
-    unsigned err = lodepng_decode24(&decoded, &decoded_w, &decoded_h, png, len);
-    if (err != 0 || decoded == NULL || decoded_w == 0 || decoded_h == 0) {
-        if (decoded != NULL) {
-            cover_png_free_decoded(decoded);
+    uint32_t source_bpp = cover_png_source_bpp_for_type(color_type);
+    if (bit_depth == 8U && interlace == 0U && source_bpp > 0) {
+        uint8_t palette_rgb[256U * 3U];
+        uint8_t palette_alpha[256U];
+        uint32_t palette_entries = 0;
+        const uint8_t *palette_rgb_ptr = NULL;
+        const uint8_t *palette_alpha_ptr = NULL;
+        if (color_type == 3U) {
+            if (!cover_png_read_palette(png, len, palette_rgb, palette_alpha, &palette_entries)) {
+                ESP_LOGW(TAG, "png palette parse failed");
+                return false;
+            }
+            palette_rgb_ptr = palette_rgb;
+            palette_alpha_ptr = palette_alpha;
         }
-        ESP_LOGW(TAG, "png decode failed: %u (%s)", err, lodepng_error_text(err));
-        return false;
+        return cover_decode_png_streamed(png, len, src_w, src_h, source_bpp,
+                                         palette_rgb_ptr, palette_alpha_ptr, palette_entries,
+                                         target_w, target_h, out);
     }
 
-    uint32_t out_w = 0;
-    uint32_t out_h = 0;
-    cover_pick_png_output_size(decoded_w, decoded_h, target_w, target_h, &out_w, &out_h);
-    uint32_t color_stride = lv_draw_buf_width_to_stride(out_w, LV_COLOR_FORMAT_RGB565A8);
-    uint32_t alpha_stride = color_stride / 2U;
-    size_t out_size = (size_t)color_stride * out_h + (size_t)alpha_stride * out_h;
-    uint8_t *rgb565a8 = heap_caps_malloc(out_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    if (rgb565a8 == NULL) {
-        cover_png_free_decoded(decoded);
-        ESP_LOGW(TAG, "png alloc %u bytes failed", (unsigned)out_size);
-        return false;
-    }
-    memset(rgb565a8, 0, out_size);
-
-    uint8_t *alpha_plane = rgb565a8 + ((size_t)color_stride * out_h);
-    cover_scale_rgb24_to_rgb565a8_nearest(decoded, decoded_w, decoded_h,
-                                          rgb565a8, alpha_plane,
-                                          out_w, out_h,
-                                          color_stride, alpha_stride);
-
-    out->image.header.magic = LV_IMAGE_HEADER_MAGIC;
-    out->image.header.cf = LV_COLOR_FORMAT_RGB565A8;
-    out->image.header.flags = 0;
-    out->image.header.w = out_w;
-    out->image.header.h = out_h;
-    out->image.header.stride = color_stride;
-    out->image.data_size = out_size;
-    out->image.data = rgb565a8;
-    out->source_w = decoded_w;
-    out->source_h = decoded_h;
-    out->dominant_rgb = cover_dominant_from_rgb24(decoded, decoded_w, decoded_h);
-    cover_png_free_decoded(decoded);
-    out->valid = true;
-    return true;
-#endif
+    ESP_LOGW(TAG, "unsupported png cover format: %ux%u depth=%u type=%u interlace=%u",
+             (unsigned)src_w, (unsigned)src_h,
+             (unsigned)bit_depth, (unsigned)color_type, (unsigned)interlace);
+    return false;
 }
 
 static esp_err_t cover_sink_append(http_sink_t *sink, const uint8_t *data, size_t len)
@@ -1192,6 +1232,96 @@ static bool cover_download_error_is_retryable(esp_err_t err)
 
 /* ---- Decode + dominant color ---- */
 
+static bool cover_jpeg_find_sof(const uint8_t *buf, size_t len,
+                                uint8_t *marker_out, uint16_t *width_out,
+                                uint16_t *height_out, uint8_t *components_out)
+{
+    if (buf == NULL || len < 4 || buf[0] != 0xFF || buf[1] != 0xD8) {
+        return false;
+    }
+
+    size_t pos = 2;
+    while (pos + 1 < len) {
+        while (pos < len && buf[pos] != 0xFF) {
+            pos++;
+        }
+        while (pos < len && buf[pos] == 0xFF) {
+            pos++;
+        }
+        if (pos >= len) {
+            break;
+        }
+
+        uint8_t marker = buf[pos++];
+        if (marker == 0xD9 || marker == 0xDA) {
+            break;
+        }
+        if ((marker >= 0xD0 && marker <= 0xD7) || marker == 0x01) {
+            continue;
+        }
+        if (pos + 2 > len) {
+            break;
+        }
+
+        uint16_t seg_len = ((uint16_t)buf[pos] << 8) | buf[pos + 1];
+        if (seg_len < 2 || pos + seg_len > len) {
+            break;
+        }
+
+        bool is_sof = (marker >= 0xC0 && marker <= 0xCF &&
+                       marker != 0xC4 && marker != 0xC8 && marker != 0xCC);
+        if (is_sof) {
+            if (seg_len < 8) {
+                return false;
+            }
+            if (marker_out != NULL) *marker_out = marker;
+            if (height_out != NULL) *height_out = ((uint16_t)buf[pos + 3] << 8) | buf[pos + 4];
+            if (width_out != NULL) *width_out = ((uint16_t)buf[pos + 5] << 8) | buf[pos + 6];
+            if (components_out != NULL) *components_out = buf[pos + 7];
+            return true;
+        }
+
+        pos += seg_len;
+    }
+
+    return false;
+}
+
+static const char *cover_jpeg_sof_name(uint8_t marker)
+{
+    switch (marker) {
+        case 0xC0: return "SOF0 baseline";
+        case 0xC1: return "SOF1 extended sequential";
+        case 0xC2: return "SOF2 progressive";
+        case 0xC3: return "SOF3 lossless";
+        case 0xC5: return "SOF5 differential sequential";
+        case 0xC6: return "SOF6 differential progressive";
+        case 0xC7: return "SOF7 differential lossless";
+        case 0xC9: return "SOF9 arithmetic sequential";
+        case 0xCA: return "SOF10 arithmetic progressive";
+        case 0xCB: return "SOF11 arithmetic lossless";
+        case 0xCD: return "SOF13 arithmetic differential sequential";
+        case 0xCE: return "SOF14 arithmetic differential progressive";
+        case 0xCF: return "SOF15 arithmetic differential lossless";
+        default: return "SOF unknown";
+    }
+}
+
+static void cover_log_jpeg_sof(const uint8_t *buf, size_t len)
+{
+    uint8_t marker = 0;
+    uint16_t width = 0;
+    uint16_t height = 0;
+    uint8_t components = 0;
+    if (cover_jpeg_find_sof(buf, len, &marker, &width, &height, &components)) {
+        ESP_LOGI(TAG, "jpeg SOF marker: 0x%02x (%s) %ux%u components=%u",
+                 (unsigned)marker, cover_jpeg_sof_name(marker),
+                 (unsigned)width, (unsigned)height, (unsigned)components);
+    } else {
+        ESP_LOGW(TAG, "jpeg SOF marker not found");
+    }
+}
+
 /* Pick sample_method that yields an output no larger than max(target_w,target_h)*1.5
  * while still keeping enough pixels for color analysis. Hardware supports 1/1, 1/2,
  * 1/4 and 1/8 scales through jpeg_down_sampling_type_t; we rely on it implicitly by
@@ -1266,7 +1396,14 @@ static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int targe
         ESP_LOGW(TAG, "jpeg header parse failed");
         return false;
     }
-    if (pic.width == 0 || pic.height == 0) return false;
+    ESP_LOGD(TAG, "jpeg info: src=%ux%u sample=%u",
+             (unsigned)pic.width, (unsigned)pic.height,
+             (unsigned)pic.sample_method);
+    if (pic.width == 0 || pic.height == 0) {
+        ESP_LOGW(TAG, "jpeg header has zero dimensions");
+        cover_log_jpeg_sof(jpg, len);
+        return false;
+    }
 
     /* Decoder output dimensions must be a multiple of 16. The HW decoder does
      * not downscale: the output always has the source resolution (rounded up
@@ -1355,6 +1492,114 @@ static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int targe
         r8 = 0x4D; g8 = 0xA3; b8 = 0xFF;
     }
     out->dominant_rgb = (r8 << 16) | (g8 << 8) | b8;
+    out->valid = true;
+    return true;
+}
+
+static bool cover_decode_stb_jpeg(const uint8_t *jpg, size_t len, int target_w, int target_h,
+                                  ha_cover_result_t *out)
+{
+    if (jpg == NULL || out == NULL || len == 0 || len > INT32_MAX) {
+        return false;
+    }
+
+    int info_w = 0;
+    int info_h = 0;
+    int info_comp = 0;
+    if (!stbi_info_from_memory(jpg, (int)len, &info_w, &info_h, &info_comp)) {
+        ESP_LOGW(TAG, "stb jpeg info failed: %s", stbi_failure_reason());
+        return false;
+    }
+    if (info_w <= 0 || info_h <= 0) {
+        ESP_LOGW(TAG, "stb jpeg invalid dimensions: %dx%d", info_w, info_h);
+        return false;
+    }
+
+    const uint32_t MAX_PIXELS = 1440U * 1440U;
+    if ((uint32_t)info_w * (uint32_t)info_h > MAX_PIXELS) {
+        ESP_LOGW(TAG, "stb jpeg %dx%d exceeds decode cap, skipping", info_w, info_h);
+        return false;
+    }
+
+    int src_w = 0;
+    int src_h = 0;
+    int src_comp = 0;
+    int64_t t0 = esp_timer_get_time();
+    uint8_t *rgb24 = stbi_load_from_memory(jpg, (int)len, &src_w, &src_h, &src_comp, 3);
+    if (rgb24 == NULL) {
+        ESP_LOGW(TAG, "stb jpeg decode failed: %s", stbi_failure_reason());
+        return false;
+    }
+    if (src_w <= 0 || src_h <= 0) {
+        ESP_LOGW(TAG, "stb jpeg decoded invalid dimensions: %dx%d", src_w, src_h);
+        stbi_image_free(rgb24);
+        return false;
+    }
+
+    uint32_t out_w = 0;
+    uint32_t out_h = 0;
+    cover_pick_png_output_size((uint32_t)src_w, (uint32_t)src_h, target_w, target_h, &out_w, &out_h);
+    if (out_w == 0 || out_h == 0) {
+        stbi_image_free(rgb24);
+        return false;
+    }
+
+    size_t rgb_size = (size_t)out_w * out_h * 2U;
+    uint8_t *rgb565 = (uint8_t *)heap_caps_malloc(rgb_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (rgb565 == NULL) {
+        rgb565 = (uint8_t *)heap_caps_malloc(rgb_size, MALLOC_CAP_8BIT);
+    }
+    if (rgb565 == NULL) {
+        ESP_LOGW(TAG, "stb jpeg alloc output %u failed", (unsigned)rgb_size);
+        stbi_image_free(rgb24);
+        return false;
+    }
+
+    uint32_t r_acc = 0;
+    uint32_t g_acc = 0;
+    uint32_t b_acc = 0;
+    uint32_t n_acc = 0;
+    uint16_t *dst = (uint16_t *)rgb565;
+    for (uint32_t y = 0; y < out_h; y++) {
+        uint32_t sy = (uint32_t)(((uint64_t)y * (uint32_t)src_h) / out_h);
+        const uint8_t *src_row = rgb24 + (size_t)sy * (uint32_t)src_w * 3U;
+        for (uint32_t x = 0; x < out_w; x++) {
+            uint32_t sx = (uint32_t)(((uint64_t)x * (uint32_t)src_w) / out_w);
+            const uint8_t *px = src_row + (size_t)sx * 3U;
+            uint8_t r = px[0];
+            uint8_t g = px[1];
+            uint8_t b = px[2];
+            dst[(size_t)y * out_w + x] = (uint16_t)(((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
+            if (((x & 7U) == 0U) && ((y & 7U) == 0U)) {
+                int lum = (r >> 3) + ((g >> 2) >> 1) + (b >> 3);
+                if (lum >= 4 && lum <= 50) {
+                    r_acc += r;
+                    g_acc += g;
+                    b_acc += b;
+                    n_acc++;
+                }
+            }
+        }
+    }
+    stbi_image_free(rgb24);
+
+    ESP_LOGI(TAG, "stb jpeg decoded %dx%d comp=%d -> %ux%u in %lld ms",
+             src_w, src_h, src_comp, (unsigned)out_w, (unsigned)out_h,
+             (long long)((esp_timer_get_time() - t0) / 1000));
+
+    out->image.header.magic = LV_IMAGE_HEADER_MAGIC;
+    out->image.header.cf = LV_COLOR_FORMAT_RGB565;
+    out->image.header.flags = 0;
+    out->image.header.w = out_w;
+    out->image.header.h = out_h;
+    out->image.header.stride = out_w * 2U;
+    out->image.data_size = (uint32_t)rgb_size;
+    out->image.data = rgb565;
+    out->source_w = (uint32_t)src_w;
+    out->source_h = (uint32_t)src_h;
+    out->dominant_rgb = n_acc > 0
+        ? (((r_acc / n_acc) << 16) | ((g_acc / n_acc) << 8) | (b_acc / n_acc))
+        : ((0x4DU << 16) | (0xA3U << 8) | 0xFFU);
     out->valid = true;
     return true;
 }
@@ -1647,11 +1892,49 @@ static void cover_task(void *arg)
         /* 3) Decode + color */
         ha_cover_result_t result = {0};
         if (ok) {
+            const char *format = cover_guess_format(sink.buf, sink.len);
+            ESP_LOGD(TAG, "cover decode start: format=%s len=%u magic=%02x %02x %02x %02x",
+                     format, (unsigned)sink.len,
+                     sink.len > 0 ? sink.buf[0] : 0,
+                     sink.len > 1 ? sink.buf[1] : 0,
+                     sink.len > 2 ? sink.buf[2] : 0,
+                     sink.len > 3 ? sink.buf[3] : 0);
             if (cover_is_png(sink.buf, sink.len)) {
                 ok = cover_decode_png(sink.buf, sink.len, req.target_w, req.target_h, &result);
-            } else {
-                sink.len = cover_jpeg_sanitize(sink.buf, sink.len);
+            } else if (sink.len >= 2 && sink.buf[0] == 0xFF && sink.buf[1] == 0xD8) {
                 ok = cover_decode(sink.buf, sink.len, req.target_w, req.target_h, &result);
+                if (!ok) {
+                    size_t original_len = sink.len;
+                    size_t sanitized_len = cover_jpeg_sanitize(sink.buf, original_len);
+                    if (sanitized_len != original_len) {
+                        ESP_LOGI(TAG, "retrying sanitized jpeg: len=%u -> %u",
+                                 (unsigned)original_len, (unsigned)sanitized_len);
+                        ok = cover_decode(sink.buf, sanitized_len, req.target_w, req.target_h, &result);
+                        sink.len = sanitized_len;
+                    }
+                }
+#if SOC_JPEG_DECODE_SUPPORTED
+                if (!ok) {
+                    ESP_LOGI(TAG, "retrying jpeg with software decoder");
+                    ok = cover_decode_stb_jpeg(sink.buf, sink.len, req.target_w, req.target_h, &result);
+                }
+#endif
+            } else {
+                ESP_LOGW(TAG, "unsupported cover image format: %s len=%u", format, (unsigned)sink.len);
+                ok = false;
+            }
+            if (ok && result.valid && result.image.data != NULL) {
+                ESP_LOGD(TAG, "cover decode ok: cf=%u out=%ux%u stride=%u size=%u src=%ux%u dominant=%06x",
+                         (unsigned)result.image.header.cf,
+                         (unsigned)result.image.header.w,
+                         (unsigned)result.image.header.h,
+                         (unsigned)result.image.header.stride,
+                         (unsigned)result.image.data_size,
+                         (unsigned)result.source_w,
+                         (unsigned)result.source_h,
+                         (unsigned)(result.dominant_rgb & 0xFFFFFFU));
+            } else {
+                ESP_LOGW(TAG, "cover decode failed: format=%s len=%u", format, (unsigned)sink.len);
             }
         }
         if (sink.buf) heap_caps_free(sink.buf);

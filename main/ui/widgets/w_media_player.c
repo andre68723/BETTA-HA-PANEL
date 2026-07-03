@@ -617,6 +617,7 @@ static void mp_cover_cb(void *user, const ha_cover_result_t *result)
     if (ctx == NULL) return;
     ctx->cover_request_inflight = false;
     if (result == NULL || !result->valid) {
+        ESP_LOGW(W_MP_TAG, "cover result invalid for %s", ctx->entity_id);
         mp_note_cover_failure(ctx);
         mp_cover_show_placeholder(ctx);
         ctx->cover_dominant_rgb = 0;
@@ -629,6 +630,14 @@ static void mp_cover_cb(void *user, const ha_cover_result_t *result)
     ctx->cover_dominant_rgb = result->dominant_rgb;
     ctx->cover_fail_count = 0;
     ctx->cover_retry_after_ms = 0;
+    ESP_LOGD(W_MP_TAG, "cover result applied for %s: cf=%u out=%ux%u stride=%u size=%u dominant=%06x",
+             ctx->entity_id,
+             (unsigned)ctx->cover_dsc.header.cf,
+             (unsigned)ctx->cover_dsc.header.w,
+             (unsigned)ctx->cover_dsc.header.h,
+             (unsigned)ctx->cover_dsc.header.stride,
+             (unsigned)ctx->cover_dsc.data_size,
+             (unsigned)(ctx->cover_dominant_rgb & 0xFFFFFFU));
 
     if (ctx->cover_img != NULL) {
         lv_image_set_src(ctx->cover_img, &ctx->cover_dsc);
