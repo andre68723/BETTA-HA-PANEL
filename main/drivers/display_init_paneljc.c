@@ -9,7 +9,7 @@
  *   LCD Reset: GPIO27
  *   MIPI LDO:  channel 3 → VDD_MIPI_DPHY @ 2500 mV
  *
- * Native orientation is portrait (800×1280).  LVGL rotation 270° gives
+ * Native orientation is portrait (800×1280).  LVGL rotation 90° gives
  * landscape 1280×800, matching the panel10 content-box dimensions.
  *
  * Touch (GSL3680, I2C SDA=7 SCL=8 RST=22 INT=21): see touch_init_paneljc.c
@@ -445,7 +445,7 @@ static esp_err_t panel_create(void)
 static esp_err_t lvgl_display_add(void)
 {
     /* hres/vres are the native panel dimensions (portrait 800×1280).
-     * lv_display_set_rotation(ROTATION_270) below rotates LVGL's logical
+     * lv_display_set_rotation(ROTATION_90) below rotates LVGL's logical
      * canvas to 1280×800 landscape, matching APP_SCREEN_WIDTH/HEIGHT. */
     const uint32_t buf_pixels = PANELJC_PANEL_H_RES * PANELJC_PANEL_V_RES;
     lvgl_port_display_cfg_t disp_cfg = {
@@ -503,10 +503,10 @@ static esp_err_t lvgl_display_add(void)
         return ESP_FAIL;
     }
 
-    /* Rotate to landscape with the USB connector / board orientation at the bottom. */
+    /* Rotate to landscape with the USB connector / board orientation at the top. */
     if (lvgl_port_lock(2000)) {
         lv_display_set_antialiasing(s_lv_display, APP_LVGL_ANTIALIASING != 0);
-        lv_display_set_rotation(s_lv_display, LV_DISPLAY_ROTATION_270);
+        lv_display_set_rotation(s_lv_display, LV_DISPLAY_ROTATION_90);
         lvgl_port_unlock();
     } else {
         ESP_LOGE(TAG_DISPLAY, "LVGL lock timeout during rotation setup");
@@ -542,7 +542,7 @@ esp_err_t display_init(void)
 
     s_display_ready = true;
     ESP_LOGI(TAG_DISPLAY,
-        "Display init OK — JD9365 MIPI-DSI %dx%d portrait → LVGL 1280×800 landscape (rot=270), "
+        "Display init OK — JD9365 MIPI-DSI %dx%d portrait → LVGL 1280×800 landscape (rot=90), "
         "LEDC backlight GPIO%d",
         PANELJC_PANEL_H_RES, PANELJC_PANEL_V_RES, (int)PANELJC_BL_GPIO);
 

@@ -22,7 +22,7 @@
 #  define APP_CONTENT_BOX_WIDTH  480
 #  define APP_CONTENT_BOX_HEIGHT 360
 #elif defined(CONFIG_APP_PANEL_VARIANT_10INCH_JC)
-/* Guition JC8012P4A1: native portrait 800×1280, LVGL rotation 270° → landscape */
+/* Guition JC8012P4A1: native portrait 800×1280, LVGL rotation 90° → landscape */
 #  define APP_NAME               "betta-ha-panel-jc"
 #  define APP_SCREEN_WIDTH       1280
 #  define APP_SCREEN_HEIGHT      800

@@ -36,7 +36,7 @@ config APP_PANEL_VARIANT_10INCH_JC
         Display: JD9365 controller, 2-lane MIPI-DSI.
         Touch: GSL3680 (Silead) I2C capacitive.
         Wi-Fi: ESP-Hosted (ESP32-P4 host + ESP32-C6 coprocessor, same as panel4/panel10).
-        Native portrait 800x1280; LVGL rotation 270deg yields landscape 1280x800.
+        Native portrait 800x1280; LVGL rotation 90deg yields landscape 1280x800.
 
 endchoice
 

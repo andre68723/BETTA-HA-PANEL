@@ -15,7 +15,7 @@
  *   https://github.com/sukesh-ak/JC8012P4A1-GUITION-ESP32-P4_ESP32-C6
  *
  * Coordinate orientation: x_max=800, y_max=1280 (native portrait panel).
- * LVGL rotation 270° (set in display_init_paneljc.c) transforms touch
+ * LVGL rotation 90° (set in display_init_paneljc.c) transforms touch
  * coordinates to landscape 1280×800 automatically via lvgl_port.
  */
 #include "drivers/touch_init.h"
@@ -132,9 +132,9 @@ static esp_err_t touch_create_gsl3680(esp_lcd_touch_handle_t *out_touch)
             .reset     = 0,
             .interrupt = 0,
         },
-        /* The GSL3680 algorithm reports native portrait coordinates. With the
-         * display at LVGL rotation 270°, Y must be mirrored before LVGL maps
-         * the point into the logical 1280x800 landscape canvas. */
+        /* The GSL3680 algorithm reports native portrait coordinates. Y must be
+         * mirrored before LVGL maps the point into the logical 1280x800
+         * landscape canvas. */
         .flags = {
             .swap_xy  = 0,
             .mirror_x = 0,
