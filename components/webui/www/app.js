@@ -23,6 +23,16 @@ const GRAPH_DISPLAY_MODES = ["line", "line_smooth_points", "line_smooth", "bars"
 const DEFAULT_GRAPH_DISPLAY_MODE = "line";
 const GRAPH_BAR_BUCKET_MIN_OPTIONS = [5, 10, 15, 30];
 const DEFAULT_GRAPH_BAR_BUCKET_MIN = 15;
+const SOLAR_FORECAST_BAR_ORIENTATIONS = ["horizontal", "vertical"];
+const DEFAULT_SOLAR_FORECAST_BAR_ORIENTATION = "horizontal";
+const DEFAULT_SOLCAST_ENTITIES = {
+  remaining: "sensor.solcast_pv_forecast_prognose_verbleibende_leistung_heute",
+  today: "sensor.solcast_pv_forecast_prognose_heute",
+  tomorrow: "sensor.solcast_pv_forecast_prognose_morgen",
+  day3: "sensor.solcast_pv_forecast_prognose_tag_3",
+  day4: "sensor.solcast_pv_forecast_prognose_tag_4",
+  day5: "sensor.solcast_pv_forecast_prognose_tag_5",
+};
 const ENERGY_PAGE_TYPE = "energy_dashboard";
 const ENERGY_SOURCE_HA = "ha_energy";
 const ENERGY_SOURCE_MANUAL = "manual_live";
@@ -125,6 +135,19 @@ const ENTITY_PICKER_CONFIGS = {
     blankFallback: "Blank Weather Forecast Tile",
     widgetFallback: "Weather Forecast tile",
     itemsFallback: "weather entities",
+  },
+  solar_forecast: {
+    domain: "sensor",
+    titleKey: "entity_picker.title_solar_forecast",
+    blankKey: "entity_picker.blank_solar_forecast",
+    widgetKey: "entity_picker.widget_solar_forecast",
+    itemsKey: "entity_picker.items_sensor",
+    titleFallback: "Choose Solar Forecast",
+    blankFallback: "Blank Solar Forecast Tile",
+    widgetFallback: "Solar Forecast tile",
+    itemsFallback: "sensors",
+    minSearch: 2,
+    liveSearch: false,
   },
   todo_list: {
     domain: "todo",
@@ -266,6 +289,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_heating_tile": "+ Heating Tile",
     "layout.widgets.add_weather_tile": "+ Weather",
     "layout.widgets.add_weather_3day": "+ Weather Forecast",
+    "layout.widgets.add_solar_forecast": "+ Solar Forecast",
     "layout.widgets.add_todo": "+ Todo List",
     "layout.widgets.add_media_player": "+ Media Player",
     "layout.widgets.add_roborock": "+ Roborock",
@@ -277,6 +301,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.title_light": "Choose Light",
     "entity_picker.title_switch": "Choose Switch",
     "entity_picker.title_weather": "Choose Weather",
+    "entity_picker.title_solar_forecast": "Choose Solar Forecast",
     "entity_picker.title_climate": "Choose Heating",
     "entity_picker.title_roborock": "Choose Roborock",
     "entity_picker.refresh": "Refresh",
@@ -291,6 +316,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_button": "Blank Button Tile",
     "entity_picker.blank_weather": "Blank Weather Tile",
     "entity_picker.blank_weather_3day": "Blank Weather Forecast Tile",
+    "entity_picker.blank_solar_forecast": "Blank Solar Forecast Tile",
     "entity_picker.blank_graph": "Blank Graph Tile",
     "entity_picker.blank_heating": "Blank Heating Tile",
     "entity_picker.blank_roborock": "Blank Roborock Tile",
@@ -321,12 +347,21 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.widget_button": "Button tile",
     "entity_picker.widget_weather": "Weather tile",
     "entity_picker.widget_weather_3day": "Weather Forecast tile",
+    "entity_picker.widget_solar_forecast": "Solar Forecast tile",
     "entity_picker.widget_graph": "Graph tile",
     "entity_picker.widget_heating": "Heating tile",
     "entity_picker.widget_roborock": "Roborock tile",
     "layout.inspector.heading": "Inspector",
     "layout.inspector.title": "Title",
     "layout.inspector.entity": "Entity",
+    "layout.inspector.solar_remaining_entity": "Remaining today (sensor)",
+    "layout.inspector.solar_today": "Today forecast",
+    "layout.inspector.solar_tomorrow": "Tomorrow forecast",
+    "layout.inspector.solar_day_3": "Day 3 forecast",
+    "layout.inspector.solar_day_4": "Day 4 forecast",
+    "layout.inspector.solar_day_5": "Day 5 forecast",
+    "layout.inspector.solar_bar_max": "Bar max (kWh)",
+    "layout.inspector.solar_bar_orientation": "Bar orientation",
     "layout.inspector.secondary_entity": "Actual entity (sensor)",
     "layout.inspector.secondary_entity_roborock": "Map entity (image, optional)",
     "layout.inspector.button_mode": "Button mode",
@@ -343,6 +378,8 @@ const WEB_I18N_BUILTIN = {
     "layout.option.graph_display_mode.line_smooth_points": "Smooth line with points",
     "layout.option.graph_display_mode.line_smooth": "Smooth line",
     "layout.option.graph_display_mode.bars": "Bars",
+    "layout.option.solar_bar_orientation.horizontal": "Horizontal",
+    "layout.option.solar_bar_orientation.vertical": "Vertical",
     "layout.inspector.apply": "Apply",
     "layout.option.button_mode.auto": "auto (default switch)",
     "layout.option.button_mode.play_pause": "play/pause (media_player)",
@@ -593,6 +630,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_heating_tile": "+ Heating Tile",
     "layout.widgets.add_weather_tile": "+ Weather",
     "layout.widgets.add_weather_3day": "+ Wetter Vorhersage",
+    "layout.widgets.add_solar_forecast": "+ Solar Forecast",
     "layout.widgets.add_todo": "+ Todo Liste",
     "layout.widgets.add_media_player": "+ Media Player",
     "layout.widgets.add_roborock": "+ Roborock",
@@ -604,6 +642,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.title_light": "Licht auswaehlen",
     "entity_picker.title_switch": "Schalter auswaehlen",
     "entity_picker.title_weather": "Wetter auswaehlen",
+    "entity_picker.title_solar_forecast": "Solar Forecast auswaehlen",
     "entity_picker.title_climate": "Heizung auswaehlen",
     "entity_picker.title_roborock": "Roborock auswaehlen",
     "entity_picker.refresh": "Aktualisieren",
@@ -618,6 +657,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_button": "Leere Button-Kachel",
     "entity_picker.blank_weather": "Leere Wetterkachel",
     "entity_picker.blank_weather_3day": "Leere Wetter-Vorhersage-Kachel",
+    "entity_picker.blank_solar_forecast": "Leere Solar-Forecast-Kachel",
     "entity_picker.blank_graph": "Leere Graph-Kachel",
     "entity_picker.blank_heating": "Leere Heizungskachel",
     "entity_picker.blank_roborock": "Leere Roborock-Kachel",
@@ -648,12 +688,21 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.widget_button": "Button-Kachel",
     "entity_picker.widget_weather": "Wetterkachel",
     "entity_picker.widget_weather_3day": "Wetter-Vorhersage-Kachel",
+    "entity_picker.widget_solar_forecast": "Solar-Forecast-Kachel",
     "entity_picker.widget_graph": "Graph-Kachel",
     "entity_picker.widget_heating": "Heizungskachel",
     "entity_picker.widget_roborock": "Roborock-Kachel",
     "layout.inspector.heading": "Inspektor",
     "layout.inspector.title": "Titel",
     "layout.inspector.entity": "Entitaet",
+    "layout.inspector.solar_remaining_entity": "Verbleibend heute (Sensor)",
+    "layout.inspector.solar_today": "Prognose heute",
+    "layout.inspector.solar_tomorrow": "Prognose morgen",
+    "layout.inspector.solar_day_3": "Prognose Tag 3",
+    "layout.inspector.solar_day_4": "Prognose Tag 4",
+    "layout.inspector.solar_day_5": "Prognose Tag 5",
+    "layout.inspector.solar_bar_max": "Balken Maximum (kWh)",
+    "layout.inspector.solar_bar_orientation": "Balken-Ausrichtung",
     "layout.inspector.secondary_entity": "Ist-Entitaet (Sensor)",
     "layout.inspector.secondary_entity_roborock": "Karten-Entitaet (image, optional)",
     "layout.inspector.button_mode": "Button Modus",
@@ -670,6 +719,8 @@ const WEB_I18N_BUILTIN = {
     "layout.option.graph_display_mode.line_smooth_points": "Glatte Linie mit Punkten",
     "layout.option.graph_display_mode.line_smooth": "Glatte Linie",
     "layout.option.graph_display_mode.bars": "Balken",
+    "layout.option.solar_bar_orientation.horizontal": "Horizontal",
+    "layout.option.solar_bar_orientation.vertical": "Vertikal",
     "layout.inspector.apply": "Uebernehmen",
     "layout.option.button_mode.auto": "auto (Default switch)",
     "layout.option.button_mode.play_pause": "play/pause (media_player)",
@@ -1346,6 +1397,10 @@ function widgetSizeLimits(type) {
       return compact
         ? { minW: 280, minH: 180, maxW: 640, maxH: 480 }
         : { minW: 260, minH: 220, maxW: 640, maxH: 480 };
+    case "solar_forecast":
+      return compact
+        ? { minW: 280, minH: 180, maxW: 640, maxH: 480 }
+        : { minW: 260, minH: 220, maxW: 640, maxH: 480 };
     case "todo_list":
       return compact
         ? { minW: 180, minH: 160, maxW: 640, maxH: 640 }
@@ -1511,6 +1566,7 @@ const el = {
   addHeatingTileBtn: document.getElementById("addHeatingTileBtn"),
   addWeatherTileBtn: document.getElementById("addWeatherTileBtn"),
   addWeather3DayBtn: document.getElementById("addWeather3DayBtn"),
+  addSolarForecastBtn: document.getElementById("addSolarForecastBtn"),
   addTodoListBtn: document.getElementById("addTodoListBtn"),
   addMediaPlayerBtn: document.getElementById("addMediaPlayerBtn"),
   addRoborockTileBtn: document.getElementById("addRoborockTileBtn"),
@@ -1528,6 +1584,22 @@ const el = {
   fSecondaryEntityWrap: document.getElementById("fSecondaryEntityWrap"),
   fSecondaryEntityLabel: document.getElementById("fSecondaryEntityLabel"),
   fSecondaryEntity: document.getElementById("fSecondaryEntity"),
+  solarForecastFields: document.getElementById("solarForecastFields"),
+  solarForecastStyleOptions: document.getElementById("solarForecastStyleOptions"),
+  fSolarForecastTodayLabel: document.getElementById("fSolarForecastTodayLabel"),
+  fSolarForecastToday: document.getElementById("fSolarForecastToday"),
+  fSolarForecastTomorrowLabel: document.getElementById("fSolarForecastTomorrowLabel"),
+  fSolarForecastTomorrow: document.getElementById("fSolarForecastTomorrow"),
+  fSolarForecastDay3Label: document.getElementById("fSolarForecastDay3Label"),
+  fSolarForecastDay3: document.getElementById("fSolarForecastDay3"),
+  fSolarForecastDay4Label: document.getElementById("fSolarForecastDay4Label"),
+  fSolarForecastDay4: document.getElementById("fSolarForecastDay4"),
+  fSolarForecastDay5Label: document.getElementById("fSolarForecastDay5Label"),
+  fSolarForecastDay5: document.getElementById("fSolarForecastDay5"),
+  fSolarForecastBarMaxLabel: document.getElementById("fSolarForecastBarMaxLabel"),
+  fSolarForecastBarMax: document.getElementById("fSolarForecastBarMax"),
+  fSolarForecastBarOrientationLabel: document.getElementById("fSolarForecastBarOrientationLabel"),
+  fSolarForecastBarOrientation: document.getElementById("fSolarForecastBarOrientation"),
   buttonOptions: document.getElementById("buttonOptions"),
   fButtonMode: document.getElementById("fButtonMode"),
   fSliderEntityDomain: document.getElementById("fSliderEntityDomain"),
@@ -1706,6 +1778,10 @@ function normalizeGraphBarBucketMin(value) {
   return DEFAULT_GRAPH_BAR_BUCKET_MIN;
 }
 
+function normalizeSolarForecastBarOrientation(value) {
+  return SOLAR_FORECAST_BAR_ORIENTATIONS.includes(value) ? value : DEFAULT_SOLAR_FORECAST_BAR_ORIENTATION;
+}
+
 function normalizeLayoutWidgets(layout) {
   if (!layout || !Array.isArray(layout.pages)) return;
   for (const page of layout.pages) {
@@ -1741,6 +1817,22 @@ function normalizeLayoutWidgets(layout) {
         } else {
           delete widget.graph_point_count;
         }
+      }
+      if (widget.type === "solar_forecast") {
+        widget.entity_id = widget.entity_id || DEFAULT_SOLCAST_ENTITIES.remaining;
+        widget.forecast_today_entity_id = widget.forecast_today_entity_id || DEFAULT_SOLCAST_ENTITIES.today;
+        widget.forecast_tomorrow_entity_id = widget.forecast_tomorrow_entity_id || DEFAULT_SOLCAST_ENTITIES.tomorrow;
+        widget.forecast_day_3_entity_id = widget.forecast_day_3_entity_id || DEFAULT_SOLCAST_ENTITIES.day3;
+        widget.forecast_day_4_entity_id = widget.forecast_day_4_entity_id || DEFAULT_SOLCAST_ENTITIES.day4;
+        widget.forecast_day_5_entity_id = widget.forecast_day_5_entity_id || DEFAULT_SOLCAST_ENTITIES.day5;
+        widget.solar_forecast_bar_orientation = normalizeSolarForecastBarOrientation(widget.solar_forecast_bar_orientation);
+        const barMax = Number(widget.solar_forecast_bar_max_kwh);
+        if (Number.isFinite(barMax) && barMax > 0) {
+          widget.solar_forecast_bar_max_kwh = barMax;
+        } else {
+          delete widget.solar_forecast_bar_max_kwh;
+        }
+        delete widget.secondary_entity_id;
       }
     }
   }
@@ -2183,6 +2275,7 @@ function applyWebTranslations() {
   setTextById("addHeatingTileBtn", "layout.widgets.add_heating_tile");
   setTextById("addWeatherTileBtn", "layout.widgets.add_weather_tile");
   setTextById("addWeather3DayBtn", "layout.widgets.add_weather_3day");
+  setTextById("addSolarForecastBtn", "layout.widgets.add_solar_forecast");
   setTextById("addTodoListBtn", "layout.widgets.add_todo");
   setTextById("addMediaPlayerBtn", "layout.widgets.add_media_player");
   setTextById("addRoborockTileBtn", "layout.widgets.add_roborock");
@@ -2197,6 +2290,13 @@ function applyWebTranslations() {
   setTextById("fTitleLabel", "layout.inspector.title");
   setTextById("fEntityLabel", "layout.inspector.entity");
   setTextById("fSecondaryEntityLabel", "layout.inspector.secondary_entity");
+  setTextById("fSolarForecastTodayLabel", "layout.inspector.solar_today");
+  setTextById("fSolarForecastTomorrowLabel", "layout.inspector.solar_tomorrow");
+  setTextById("fSolarForecastDay3Label", "layout.inspector.solar_day_3");
+  setTextById("fSolarForecastDay4Label", "layout.inspector.solar_day_4");
+  setTextById("fSolarForecastDay5Label", "layout.inspector.solar_day_5");
+  setTextById("fSolarForecastBarMaxLabel", "layout.inspector.solar_bar_max");
+  setTextById("fSolarForecastBarOrientationLabel", "layout.inspector.solar_bar_orientation");
   setTextById("fButtonModeLabel", "layout.inspector.button_mode");
   setTextById("fButtonAccentColorLabel", "layout.inspector.button_accent_color");
   setTextById("fSliderEntityDomainLabel", "layout.inspector.slider_entity_domain");
@@ -2211,6 +2311,8 @@ function applyWebTranslations() {
   setSelectOptionText(el.fGraphDisplayMode, "line_smooth_points", "layout.option.graph_display_mode.line_smooth_points");
   setSelectOptionText(el.fGraphDisplayMode, "line_smooth", "layout.option.graph_display_mode.line_smooth");
   setSelectOptionText(el.fGraphDisplayMode, "bars", "layout.option.graph_display_mode.bars");
+  setSelectOptionText(el.fSolarForecastBarOrientation, "horizontal", "layout.option.solar_bar_orientation.horizontal");
+  setSelectOptionText(el.fSolarForecastBarOrientation, "vertical", "layout.option.solar_bar_orientation.vertical");
   setTextById("applyInspectorBtn", "layout.inspector.apply");
   setSelectOptionText(el.fButtonMode, "auto", "layout.option.button_mode.auto");
   setSelectOptionText(el.fButtonMode, "play_pause", "layout.option.button_mode.play_pause");
@@ -3379,7 +3481,7 @@ function allowedEntityDomainsForWidgetType(
   buttonMode = DEFAULT_BUTTON_MODE,
 ) {
   if (type === "empty_tile") return [];
-  if (type === "sensor" || type === "graph") return ["sensor"];
+  if (type === "sensor" || type === "graph" || type === "solar_forecast") return ["sensor"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     return buttonModeRequiresMediaPlayer(normalizedMode) ? ["media_player"] : ["switch", "media_player"];
@@ -4176,8 +4278,8 @@ function renderEntityOptions() {
 
   setEntityOptionsList(
     el.sensorEntityOptions,
-    secondaryConfig.domain
-      ? listEntitiesByDomain(secondaryConfig.domain).slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS)
+    (secondaryConfig.domain || inspectorType === "solar_forecast")
+      ? listEntitiesByDomain(inspectorType === "solar_forecast" ? "sensor" : secondaryConfig.domain).slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS)
       : [],
   );
   if (el.energyEntityOptions) {
@@ -4185,6 +4287,10 @@ function renderEntityOptions() {
   }
 
   if (el.fSecondaryEntityLabel) {
+    const primaryLabelKey = inspectorType === "solar_forecast"
+      ? "layout.inspector.solar_remaining_entity"
+      : "layout.inspector.entity";
+    setTextById("fEntityLabel", primaryLabelKey);
     el.fSecondaryEntityLabel.textContent = t(secondaryConfig.labelKey, {}, secondaryConfig.labelFallback);
   }
 
@@ -4569,6 +4675,71 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function solarPreviewValue(entityId) {
+  const raw = editor.states.get(entityId) ?? "";
+  const parsed = Number(String(raw).replace(",", "."));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function solarPreviewFormatValue(value, includeUnit = true) {
+  if (value === null) return "--";
+  const formatted = value >= 100 ? value.toFixed(0) : value.toFixed(1);
+  return includeUnit ? `${formatted} kWh` : formatted;
+}
+
+function solarPreviewRows(widget) {
+  const rows = [
+    { label: "Rest", entityId: widget.entity_id },
+    { label: "Heute", entityId: widget.forecast_today_entity_id },
+    { label: "Morgen", entityId: widget.forecast_tomorrow_entity_id },
+    { label: "Tag 3", entityId: widget.forecast_day_3_entity_id },
+    { label: "Tag 4", entityId: widget.forecast_day_4_entity_id },
+    { label: "Tag 5", entityId: widget.forecast_day_5_entity_id },
+  ];
+  const values = rows.map((row) => solarPreviewValue(row.entityId));
+  const configuredMax = Number(widget.solar_forecast_bar_max_kwh);
+  const maxValue = Number.isFinite(configuredMax) && configuredMax > 0
+    ? configuredMax
+    : Math.max(1, ...values.filter((value) => value !== null));
+  return rows.map((row, index) => {
+    const value = values[index];
+    const percent = value === null ? 0 : clamp(Math.round((value * 100) / maxValue), 0, 100);
+    return { ...row, value, percent };
+  });
+}
+
+function solarPreviewMarkup(widget) {
+  const orientation = normalizeSolarForecastBarOrientation(widget.solar_forecast_bar_orientation);
+  const rows = solarPreviewRows(widget);
+  const rowMarkup = rows.map((row) => {
+    const widthStyle = `width:${row.percent}%`;
+    const heightStyle = `height:${row.percent}%`;
+    if (orientation === "vertical") {
+      return `
+        <div class="solar-preview-col">
+          <div class="solar-preview-vbar"><i style="${heightStyle}"></i></div>
+          <strong>${escapeHtml(row.label)}</strong>
+          <span>${escapeHtml(solarPreviewFormatValue(row.value, false))}</span>
+        </div>
+      `;
+    }
+    return `
+      <div class="solar-preview-row">
+        <strong>${escapeHtml(row.label)}</strong>
+        <div class="solar-preview-hbar"><i style="${widthStyle}"></i></div>
+        <span>${escapeHtml(solarPreviewFormatValue(row.value))}</span>
+      </div>
+    `;
+  }).join("");
+  return `
+    <div class="solar-preview ${orientation}">
+      <div class="solar-preview-title">${escapeHtml(widget.title || "Solar Forecast")}</div>
+      <div class="solar-preview-body">${rowMarkup}</div>
+    </div>
+    <div class="resize-handle"></div>
+  `;
+}
+
 function energyPreviewSensorCount(count) {
   return t(count === 1 ? "layout.energy.sensor_count_one" : "layout.energy.sensor_count_many", { count });
 }
@@ -4862,13 +5033,17 @@ function renderCanvas() {
       const days = rows - 1;
       extraHint = `<div class="w-hint">forecast days ${days}/5</div>`;
     }
-    box.innerHTML = `
-      <div class="w-type">${widget.type}</div>
-      <div class="w-title">${previewTitle}</div>
-      <div class="w-state">${previewState}</div>
-      ${extraHint}
-      <div class="resize-handle"></div>
-    `;
+    if (widget.type === "solar_forecast") {
+      box.innerHTML = solarPreviewMarkup(widget);
+    } else {
+      box.innerHTML = `
+        <div class="w-type">${widget.type}</div>
+        <div class="w-title">${previewTitle}</div>
+        <div class="w-state">${previewState}</div>
+        ${extraHint}
+        <div class="resize-handle"></div>
+      `;
+    }
     geometryStyle(box, widget.rect);
     attachDragAndResize(box, widget);
     el.canvas.appendChild(box);
@@ -4940,6 +5115,25 @@ function renderInspector() {
     if (el.fHeatingArcOpeningWrap) {
       el.fHeatingArcOpeningWrap.classList.add("hidden");
     }
+    if (el.solarForecastFields) {
+      el.solarForecastFields.classList.add("hidden");
+    }
+    if (el.solarForecastStyleOptions) {
+      el.solarForecastStyleOptions.classList.add("hidden");
+    }
+    if (el.fSolarForecastBarOrientation) {
+      el.fSolarForecastBarOrientation.value = DEFAULT_SOLAR_FORECAST_BAR_ORIENTATION;
+    }
+    for (const input of [
+      el.fSolarForecastToday,
+      el.fSolarForecastTomorrow,
+      el.fSolarForecastDay3,
+      el.fSolarForecastDay4,
+      el.fSolarForecastDay5,
+      el.fSolarForecastBarMax,
+    ]) {
+      if (input) input.value = "";
+    }
     renderEntityOptions();
     return;
   }
@@ -4947,6 +5141,15 @@ function renderInspector() {
   el.fType.value = widget.type;
   el.fEntity.value = widget.entity_id || "";
   el.fSecondaryEntity.value = widget.secondary_entity_id || "";
+  if (el.fSolarForecastToday) el.fSolarForecastToday.value = widget.forecast_today_entity_id || "";
+  if (el.fSolarForecastTomorrow) el.fSolarForecastTomorrow.value = widget.forecast_tomorrow_entity_id || "";
+  if (el.fSolarForecastDay3) el.fSolarForecastDay3.value = widget.forecast_day_3_entity_id || "";
+  if (el.fSolarForecastDay4) el.fSolarForecastDay4.value = widget.forecast_day_4_entity_id || "";
+  if (el.fSolarForecastDay5) el.fSolarForecastDay5.value = widget.forecast_day_5_entity_id || "";
+  if (el.fSolarForecastBarMax) el.fSolarForecastBarMax.value = widget.solar_forecast_bar_max_kwh > 0 ? String(widget.solar_forecast_bar_max_kwh) : "";
+  if (el.fSolarForecastBarOrientation) {
+    el.fSolarForecastBarOrientation.value = normalizeSolarForecastBarOrientation(widget.solar_forecast_bar_orientation);
+  }
   el.fX.value = widget.rect.x;
   el.fY.value = widget.rect.y;
   el.fW.value = widget.rect.w;
@@ -4956,6 +5159,7 @@ function renderInspector() {
   const isSlider = widget.type === "slider";
   const isGraph = widget.type === "graph";
   const isHeating = widget.type === "heating_tile";
+  const isSolarForecast = widget.type === "solar_forecast";
   if (el.buttonOptions) {
     el.buttonOptions.classList.toggle("hidden", !isButton);
   }
@@ -4967,6 +5171,12 @@ function renderInspector() {
   }
   if (el.heatingOptions) {
     el.heatingOptions.classList.toggle("hidden", !isHeating);
+  }
+  if (el.solarForecastFields) {
+    el.solarForecastFields.classList.toggle("hidden", !isSolarForecast);
+  }
+  if (el.solarForecastStyleOptions) {
+    el.solarForecastStyleOptions.classList.toggle("hidden", !isSolarForecast);
   }
   if (isButton) {
     const accent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
@@ -5193,11 +5403,16 @@ function addWidget(type, options = {}) {
   }
   const sliderDomain = DEFAULT_SLIDER_ENTITY_DOMAIN;
   const id = createWidgetIdForPage(page, type);
-  const entityId = typeof options.entityId === "string" ? options.entityId : pickDefaultEntityForWidgetType(type, sliderDomain);
+  const entityId = typeof options.entityId === "string"
+    ? options.entityId
+    : type === "solar_forecast"
+      ? DEFAULT_SOLCAST_ENTITIES.remaining
+      : pickDefaultEntityForWidgetType(type, sliderDomain);
   const secondaryEntityId = type === "heating_tile" ? pickDefaultEntityForWidgetType("sensor") : "";
   const compact = isCompactCanvas();
   const defaultW = compact
     ? type === "weather_3day" ? 420
+      : type === "solar_forecast" ? 420
       : type === "todo_list" ? 300
       : type === "media_player" ? 300
       : type === "roborock_tile" ? 460
@@ -5206,6 +5421,7 @@ function addWidget(type, options = {}) {
       : type === "heating_tile" ? 150
       : 180
     : type === "weather_3day" ? 360
+      : type === "solar_forecast" ? 460
       : type === "todo_list" ? 360
       : type === "media_player" ? 360
       : type === "roborock_tile" ? 360
@@ -5213,6 +5429,7 @@ function addWidget(type, options = {}) {
       : 220;
   const defaultH = compact
     ? type === "weather_3day" ? 240
+      : type === "solar_forecast" ? 240
       : type === "todo_list" ? 220
       : type === "media_player" ? 220
       : type === "roborock_tile" ? 300
@@ -5221,6 +5438,7 @@ function addWidget(type, options = {}) {
       : type === "heating_tile" ? 150
       : 110
     : type === "weather_3day" ? 260
+      : type === "solar_forecast" ? 250
       : type === "todo_list" ? 360
       : type === "media_player" ? 280
       : type === "roborock_tile" ? 300
@@ -5248,6 +5466,15 @@ function addWidget(type, options = {}) {
   if (type === "graph") {
     widget.graph_line_color = DEFAULT_GRAPH_LINE_COLOR;
     widget.graph_time_window_min = DEFAULT_GRAPH_TIME_WINDOW_MIN;
+  }
+  if (type === "solar_forecast") {
+    widget.title = "Solar Forecast";
+    widget.forecast_today_entity_id = DEFAULT_SOLCAST_ENTITIES.today;
+    widget.forecast_tomorrow_entity_id = DEFAULT_SOLCAST_ENTITIES.tomorrow;
+    widget.forecast_day_3_entity_id = DEFAULT_SOLCAST_ENTITIES.day3;
+    widget.forecast_day_4_entity_id = DEFAULT_SOLCAST_ENTITIES.day4;
+    widget.forecast_day_5_entity_id = DEFAULT_SOLCAST_ENTITIES.day5;
+    widget.solar_forecast_bar_orientation = DEFAULT_SOLAR_FORECAST_BAR_ORIENTATION;
   }
 
   page.widgets.push(widget);
@@ -5306,6 +5533,29 @@ function applyInspector(options = {}) {
   widget.title = el.fTitle.value.trim();
   if (primaryEntityValid) {
     widget.entity_id = nextEntityId;
+  }
+  if (widgetType === "solar_forecast") {
+    widget.forecast_today_entity_id = el.fSolarForecastToday?.value.trim() || DEFAULT_SOLCAST_ENTITIES.today;
+    widget.forecast_tomorrow_entity_id = el.fSolarForecastTomorrow?.value.trim() || DEFAULT_SOLCAST_ENTITIES.tomorrow;
+    widget.forecast_day_3_entity_id = el.fSolarForecastDay3?.value.trim() || DEFAULT_SOLCAST_ENTITIES.day3;
+    widget.forecast_day_4_entity_id = el.fSolarForecastDay4?.value.trim() || DEFAULT_SOLCAST_ENTITIES.day4;
+    widget.forecast_day_5_entity_id = el.fSolarForecastDay5?.value.trim() || DEFAULT_SOLCAST_ENTITIES.day5;
+    widget.solar_forecast_bar_orientation = normalizeSolarForecastBarOrientation(el.fSolarForecastBarOrientation?.value);
+    const barMax = Number(el.fSolarForecastBarMax?.value);
+    if (Number.isFinite(barMax) && barMax > 0) {
+      widget.solar_forecast_bar_max_kwh = barMax;
+    } else {
+      delete widget.solar_forecast_bar_max_kwh;
+    }
+    delete widget.secondary_entity_id;
+  } else {
+    delete widget.forecast_today_entity_id;
+    delete widget.forecast_tomorrow_entity_id;
+    delete widget.forecast_day_3_entity_id;
+    delete widget.forecast_day_4_entity_id;
+    delete widget.forecast_day_5_entity_id;
+    delete widget.solar_forecast_bar_max_kwh;
+    delete widget.solar_forecast_bar_orientation;
   }
   if (secondaryConfig.enabled) {
     const typedSecondaryEntityId = el.fSecondaryEntity.value.trim();
@@ -5497,6 +5747,9 @@ function bindUi() {
   el.addHeatingTileBtn.onclick = () => openLightEntityPicker("heating_tile");
   el.addWeatherTileBtn.onclick = () => openLightEntityPicker("weather_tile");
   el.addWeather3DayBtn.onclick = () => openLightEntityPicker("weather_3day");
+  if (el.addSolarForecastBtn) {
+    el.addSolarForecastBtn.onclick = () => addWidget("solar_forecast");
+  }
   if (el.addTodoListBtn) {
     el.addTodoListBtn.onclick = () => openLightEntityPicker("todo_list");
   }
@@ -5758,6 +6011,13 @@ function bindUi() {
   bindInspectorAutoApply(el.fGraphBarBucketMin, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fHeatingStyleVariant, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fHeatingArcOpening, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fSolarForecastToday, ["change", "blur"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSolarForecastTomorrow, ["change", "blur"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSolarForecastDay3, ["change", "blur"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSolarForecastDay4, ["change", "blur"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSolarForecastDay5, ["change", "blur"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSolarForecastBarMax, ["change", "blur"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSolarForecastBarOrientation, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fX, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fY, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fW, ["change"], { refreshInspector: true, softEntityValidation: true });

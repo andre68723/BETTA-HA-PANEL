@@ -38,6 +38,10 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 void w_weather_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_weather_tile_mark_unavailable(ui_widget_instance_t *instance);
 
+esp_err_t w_solar_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
+void w_solar_forecast_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
+void w_solar_forecast_mark_unavailable(ui_widget_instance_t *instance);
+
 esp_err_t w_todo_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void w_todo_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_todo_mark_unavailable(ui_widget_instance_t *instance);
@@ -64,6 +68,13 @@ esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent,
     snprintf(out_instance->title, sizeof(out_instance->title), "%s", def->title);
     snprintf(out_instance->entity_id, sizeof(out_instance->entity_id), "%s", def->entity_id);
     snprintf(out_instance->secondary_entity_id, sizeof(out_instance->secondary_entity_id), "%s", def->secondary_entity_id);
+    snprintf(out_instance->forecast_today_entity_id, sizeof(out_instance->forecast_today_entity_id), "%s", def->forecast_today_entity_id);
+    snprintf(out_instance->forecast_tomorrow_entity_id, sizeof(out_instance->forecast_tomorrow_entity_id), "%s", def->forecast_tomorrow_entity_id);
+    snprintf(out_instance->forecast_day_3_entity_id, sizeof(out_instance->forecast_day_3_entity_id), "%s", def->forecast_day_3_entity_id);
+    snprintf(out_instance->forecast_day_4_entity_id, sizeof(out_instance->forecast_day_4_entity_id), "%s", def->forecast_day_4_entity_id);
+    snprintf(out_instance->forecast_day_5_entity_id, sizeof(out_instance->forecast_day_5_entity_id), "%s", def->forecast_day_5_entity_id);
+    out_instance->solar_forecast_bar_max_kwh = def->solar_forecast_bar_max_kwh;
+    snprintf(out_instance->solar_forecast_bar_orientation, sizeof(out_instance->solar_forecast_bar_orientation), "%s", def->solar_forecast_bar_orientation);
     snprintf(out_instance->slider_direction, sizeof(out_instance->slider_direction), "%s", def->slider_direction);
     snprintf(out_instance->slider_accent_color, sizeof(out_instance->slider_accent_color), "%s", def->slider_accent_color);
     snprintf(out_instance->button_accent_color, sizeof(out_instance->button_accent_color), "%s", def->button_accent_color);
@@ -101,6 +112,9 @@ esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent,
     if (strcmp(def->type, "weather_tile") == 0 || strcmp(def->type, "weather_3day") == 0) {
         return w_weather_tile_create(def, parent, out_instance);
     }
+    if (strcmp(def->type, "solar_forecast") == 0) {
+        return w_solar_forecast_create(def, parent, out_instance);
+    }
     if (strcmp(def->type, "todo_list") == 0) {
         return w_todo_create(def, parent, out_instance);
     }
@@ -134,6 +148,8 @@ void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_stat
         w_heating_tile_apply_state(instance, state);
     } else if (strcmp(instance->type, "weather_tile") == 0 || strcmp(instance->type, "weather_3day") == 0) {
         w_weather_tile_apply_state(instance, state);
+    } else if (strcmp(instance->type, "solar_forecast") == 0) {
+        w_solar_forecast_apply_state(instance, state);
     } else if (strcmp(instance->type, "todo_list") == 0) {
         w_todo_apply_state(instance, state);
     } else if (strcmp(instance->type, "media_player") == 0) {
@@ -164,6 +180,8 @@ void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance)
         w_heating_tile_mark_unavailable(instance);
     } else if (strcmp(instance->type, "weather_tile") == 0 || strcmp(instance->type, "weather_3day") == 0) {
         w_weather_tile_mark_unavailable(instance);
+    } else if (strcmp(instance->type, "solar_forecast") == 0) {
+        w_solar_forecast_mark_unavailable(instance);
     } else if (strcmp(instance->type, "todo_list") == 0) {
         w_todo_mark_unavailable(instance);
     } else if (strcmp(instance->type, "media_player") == 0) {

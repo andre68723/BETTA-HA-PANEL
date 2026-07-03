@@ -78,6 +78,7 @@ idf_component_register(
         "ui/widgets/w_light_tile.c"
         "ui/widgets/w_heating_tile.c"
         "ui/widgets/w_weather_tile.c"
+        "ui/widgets/w_solar_forecast.c"
         "ui/widgets/w_todo.c"
         "ui/widgets/w_media_player.c"
         "ui/widgets/w_roborock.c"

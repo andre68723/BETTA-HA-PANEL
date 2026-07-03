@@ -17,6 +17,13 @@ typedef struct {
     char title[APP_MAX_NAME_LEN];
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char secondary_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_today_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_tomorrow_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_day_3_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_day_4_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_day_5_entity_id[APP_MAX_ENTITY_ID_LEN];
+    float solar_forecast_bar_max_kwh;
+    char solar_forecast_bar_orientation[APP_MAX_UI_OPTION_LEN];
     char slider_direction[APP_MAX_UI_OPTION_LEN];
     char slider_accent_color[APP_MAX_COLOR_STR_LEN];
     char button_accent_color[APP_MAX_COLOR_STR_LEN];
@@ -41,6 +48,13 @@ typedef struct {
     char title[APP_MAX_NAME_LEN];
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char secondary_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_today_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_tomorrow_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_day_3_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_day_4_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_day_5_entity_id[APP_MAX_ENTITY_ID_LEN];
+    float solar_forecast_bar_max_kwh;
+    char solar_forecast_bar_orientation[APP_MAX_UI_OPTION_LEN];
     char slider_direction[APP_MAX_UI_OPTION_LEN];
     char slider_accent_color[APP_MAX_COLOR_STR_LEN];
     char button_accent_color[APP_MAX_COLOR_STR_LEN];

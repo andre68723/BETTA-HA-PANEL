@@ -3804,6 +3804,11 @@ static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_c
                 }
                 ha_client_collect_entity_id(widget, "entity_id", entity_ids, &count, max_count);
                 ha_client_collect_entity_id(widget, "secondary_entity_id", entity_ids, &count, max_count);
+                ha_client_collect_entity_id(widget, "forecast_today_entity_id", entity_ids, &count, max_count);
+                ha_client_collect_entity_id(widget, "forecast_tomorrow_entity_id", entity_ids, &count, max_count);
+                ha_client_collect_entity_id(widget, "forecast_day_3_entity_id", entity_ids, &count, max_count);
+                ha_client_collect_entity_id(widget, "forecast_day_4_entity_id", entity_ids, &count, max_count);
+                ha_client_collect_entity_id(widget, "forecast_day_5_entity_id", entity_ids, &count, max_count);
             }
         }
     }

@@ -211,6 +211,16 @@ static ui_widget_size_limits_t ui_runtime_widget_size_limits(const char *type)
 #endif
         limits.max_w = 640;
         limits.max_h = 480;
+    } else if (strcmp(type, "solar_forecast") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 280;
+        limits.min_h = 180;
+#else
+        limits.min_w = 260;
+        limits.min_h = 220;
+#endif
+        limits.max_w = 640;
+        limits.max_h = 480;
     } else if (strcmp(type, "todo_list") == 0) {
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
         limits.min_w = 180;
@@ -376,7 +386,18 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
         bool is_primary = (strncmp(entity_id, s_widgets[i].entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
         bool is_secondary = (s_widgets[i].secondary_entity_id[0] != '\0') &&
                             (strncmp(entity_id, s_widgets[i].secondary_entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
-        if (!is_primary && !is_secondary) {
+        bool is_forecast_today = (s_widgets[i].forecast_today_entity_id[0] != '\0') &&
+                                 (strncmp(entity_id, s_widgets[i].forecast_today_entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
+        bool is_forecast_tomorrow = (s_widgets[i].forecast_tomorrow_entity_id[0] != '\0') &&
+                                    (strncmp(entity_id, s_widgets[i].forecast_tomorrow_entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
+        bool is_forecast_day_3 = (s_widgets[i].forecast_day_3_entity_id[0] != '\0') &&
+                                 (strncmp(entity_id, s_widgets[i].forecast_day_3_entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
+        bool is_forecast_day_4 = (s_widgets[i].forecast_day_4_entity_id[0] != '\0') &&
+                                 (strncmp(entity_id, s_widgets[i].forecast_day_4_entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
+        bool is_forecast_day_5 = (s_widgets[i].forecast_day_5_entity_id[0] != '\0') &&
+                                 (strncmp(entity_id, s_widgets[i].forecast_day_5_entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
+        if (!is_primary && !is_secondary && !is_forecast_today && !is_forecast_tomorrow &&
+            !is_forecast_day_3 && !is_forecast_day_4 && !is_forecast_day_5) {
             continue;
         }
         if (found) {
@@ -421,6 +442,26 @@ static void ui_runtime_apply_widget_current_state(ui_widget_instance_t *widget, 
             ui_widget_factory_apply_state(widget, &s_state_scratch);
         }
     }
+
+    const char *forecast_entity_ids[] = {
+        widget->forecast_today_entity_id,
+        widget->forecast_tomorrow_entity_id,
+        widget->forecast_day_3_entity_id,
+        widget->forecast_day_4_entity_id,
+        widget->forecast_day_5_entity_id,
+    };
+    for (size_t i = 0; i < sizeof(forecast_entity_ids) / sizeof(forecast_entity_ids[0]); i++) {
+        const char *forecast_entity_id = forecast_entity_ids[i];
+        if (forecast_entity_id[0] == '\0' ||
+            strncmp(forecast_entity_id, widget->entity_id, APP_MAX_ENTITY_ID_LEN) == 0 ||
+            strncmp(forecast_entity_id, widget->secondary_entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
+            continue;
+        }
+        memset(&s_state_scratch, 0, sizeof(s_state_scratch));
+        if (ha_model_get_state(forecast_entity_id, &s_state_scratch)) {
+            ui_widget_factory_apply_state(widget, &s_state_scratch);
+        }
+    }
 }
 
 static void ui_runtime_update_widget_visibility(const char *page_id, bool refresh_visible_widgets)
@@ -446,6 +487,21 @@ static void ui_runtime_apply_all_states(void)
             strncmp(s_widgets[i].secondary_entity_id, s_widgets[i].entity_id, APP_MAX_ENTITY_ID_LEN) != 0) {
             ui_runtime_apply_entity_state(s_widgets[i].secondary_entity_id);
         }
+        if (s_widgets[i].forecast_today_entity_id[0] != '\0') {
+            ui_runtime_apply_entity_state(s_widgets[i].forecast_today_entity_id);
+        }
+        if (s_widgets[i].forecast_tomorrow_entity_id[0] != '\0') {
+            ui_runtime_apply_entity_state(s_widgets[i].forecast_tomorrow_entity_id);
+        }
+        if (s_widgets[i].forecast_day_3_entity_id[0] != '\0') {
+            ui_runtime_apply_entity_state(s_widgets[i].forecast_day_3_entity_id);
+        }
+        if (s_widgets[i].forecast_day_4_entity_id[0] != '\0') {
+            ui_runtime_apply_entity_state(s_widgets[i].forecast_day_4_entity_id);
+        }
+        if (s_widgets[i].forecast_day_5_entity_id[0] != '\0') {
+            ui_runtime_apply_entity_state(s_widgets[i].forecast_day_5_entity_id);
+        }
     }
     for (size_t i = 0; i < s_energy_page_count; i++) {
         ui_energy_page_apply_all_states(&s_energy_pages[i]);
@@ -460,6 +516,21 @@ static void ui_runtime_apply_all_states_preserve_missing(void)
             strncmp(s_widgets[i].secondary_entity_id, s_widgets[i].entity_id, APP_MAX_ENTITY_ID_LEN) != 0) {
             ui_runtime_apply_entity_state_ex(s_widgets[i].secondary_entity_id, false);
         }
+        if (s_widgets[i].forecast_today_entity_id[0] != '\0') {
+            ui_runtime_apply_entity_state_ex(s_widgets[i].forecast_today_entity_id, false);
+        }
+        if (s_widgets[i].forecast_tomorrow_entity_id[0] != '\0') {
+            ui_runtime_apply_entity_state_ex(s_widgets[i].forecast_tomorrow_entity_id, false);
+        }
+        if (s_widgets[i].forecast_day_3_entity_id[0] != '\0') {
+            ui_runtime_apply_entity_state_ex(s_widgets[i].forecast_day_3_entity_id, false);
+        }
+        if (s_widgets[i].forecast_day_4_entity_id[0] != '\0') {
+            ui_runtime_apply_entity_state_ex(s_widgets[i].forecast_day_4_entity_id, false);
+        }
+        if (s_widgets[i].forecast_day_5_entity_id[0] != '\0') {
+            ui_runtime_apply_entity_state_ex(s_widgets[i].forecast_day_5_entity_id, false);
+        }
     }
     for (size_t i = 0; i < s_energy_page_count; i++) {
         ui_energy_page_apply_all_states(&s_energy_pages[i]);
@@ -473,6 +544,13 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     cJSON *title = cJSON_GetObjectItemCaseSensitive(widget_json, "title");
     cJSON *entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "entity_id");
     cJSON *secondary_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "secondary_entity_id");
+    cJSON *forecast_today_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_today_entity_id");
+    cJSON *forecast_tomorrow_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_tomorrow_entity_id");
+    cJSON *forecast_day_3_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_day_3_entity_id");
+    cJSON *forecast_day_4_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_day_4_entity_id");
+    cJSON *forecast_day_5_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_day_5_entity_id");
+    cJSON *solar_forecast_bar_max_kwh = cJSON_GetObjectItemCaseSensitive(widget_json, "solar_forecast_bar_max_kwh");
+    cJSON *solar_forecast_bar_orientation = cJSON_GetObjectItemCaseSensitive(widget_json, "solar_forecast_bar_orientation");
     cJSON *slider_direction = cJSON_GetObjectItemCaseSensitive(widget_json, "slider_direction");
     cJSON *slider_accent_color = cJSON_GetObjectItemCaseSensitive(widget_json, "slider_accent_color");
     cJSON *button_accent_color = cJSON_GetObjectItemCaseSensitive(widget_json, "button_accent_color");
@@ -511,6 +589,28 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     }
     if (cJSON_IsString(secondary_entity_id) && secondary_entity_id->valuestring != NULL) {
         snprintf(out->secondary_entity_id, sizeof(out->secondary_entity_id), "%s", secondary_entity_id->valuestring);
+    }
+    if (cJSON_IsString(forecast_today_entity_id) && forecast_today_entity_id->valuestring != NULL) {
+        snprintf(out->forecast_today_entity_id, sizeof(out->forecast_today_entity_id), "%s", forecast_today_entity_id->valuestring);
+    }
+    if (cJSON_IsString(forecast_tomorrow_entity_id) && forecast_tomorrow_entity_id->valuestring != NULL) {
+        snprintf(out->forecast_tomorrow_entity_id, sizeof(out->forecast_tomorrow_entity_id), "%s", forecast_tomorrow_entity_id->valuestring);
+    }
+    if (cJSON_IsString(forecast_day_3_entity_id) && forecast_day_3_entity_id->valuestring != NULL) {
+        snprintf(out->forecast_day_3_entity_id, sizeof(out->forecast_day_3_entity_id), "%s", forecast_day_3_entity_id->valuestring);
+    }
+    if (cJSON_IsString(forecast_day_4_entity_id) && forecast_day_4_entity_id->valuestring != NULL) {
+        snprintf(out->forecast_day_4_entity_id, sizeof(out->forecast_day_4_entity_id), "%s", forecast_day_4_entity_id->valuestring);
+    }
+    if (cJSON_IsString(forecast_day_5_entity_id) && forecast_day_5_entity_id->valuestring != NULL) {
+        snprintf(out->forecast_day_5_entity_id, sizeof(out->forecast_day_5_entity_id), "%s", forecast_day_5_entity_id->valuestring);
+    }
+    if (cJSON_IsNumber(solar_forecast_bar_max_kwh)) {
+        out->solar_forecast_bar_max_kwh = (float)solar_forecast_bar_max_kwh->valuedouble;
+    }
+    if (cJSON_IsString(solar_forecast_bar_orientation) && solar_forecast_bar_orientation->valuestring != NULL) {
+        snprintf(out->solar_forecast_bar_orientation, sizeof(out->solar_forecast_bar_orientation), "%s",
+            solar_forecast_bar_orientation->valuestring);
     }
     if (cJSON_IsString(slider_direction) && slider_direction->valuestring != NULL) {
         snprintf(out->slider_direction, sizeof(out->slider_direction), "%s", slider_direction->valuestring);

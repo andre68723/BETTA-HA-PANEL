@@ -27,6 +27,24 @@ static const char *const GRAPH_DISPLAY_MODES[] = {
 
 static const int GRAPH_BAR_BUCKET_MIN_ALLOWED[] = {5, 10, 15, 30};
 
+static const char *const SOLAR_FORECAST_BAR_ORIENTATIONS[] = {
+    "horizontal",
+    "vertical",
+};
+
+static bool is_valid_solar_forecast_bar_orientation(const char *value)
+{
+    if (value == NULL) {
+        return false;
+    }
+    for (size_t i = 0; i < sizeof(SOLAR_FORECAST_BAR_ORIENTATIONS) / sizeof(SOLAR_FORECAST_BAR_ORIENTATIONS[0]); i++) {
+        if (strcmp(value, SOLAR_FORECAST_BAR_ORIENTATIONS[i]) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static bool str_in_list(const char *value, const void *list, size_t entry_size, size_t list_len)
 {
     if (value == NULL || list == NULL || entry_size == 0) {
@@ -90,7 +108,7 @@ static bool is_supported_widget_type(const char *type)
     return (strcmp(type, "sensor") == 0) || (strcmp(type, "button") == 0) || (strcmp(type, "slider") == 0) ||
            (strcmp(type, "graph") == 0) || (strcmp(type, "empty_tile") == 0) || (strcmp(type, "light_tile") == 0) ||
            (strcmp(type, "heating_tile") == 0) || (strcmp(type, "weather_tile") == 0) ||
-           (strcmp(type, "weather_3day") == 0) || (strcmp(type, "todo_list") == 0) ||
+           (strcmp(type, "weather_3day") == 0) || (strcmp(type, "solar_forecast") == 0) || (strcmp(type, "todo_list") == 0) ||
            (strcmp(type, "media_player") == 0) || (strcmp(type, "roborock_tile") == 0);
 }
 
@@ -205,6 +223,16 @@ static widget_size_limits_t widget_size_limits_for_type(const char *type)
 #endif
         limits.max_w = 640;
         limits.max_h = 480;
+    } else if (strcmp(type, "solar_forecast") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 280;
+        limits.min_h = 180;
+#else
+        limits.min_w = 260;
+        limits.min_h = 220;
+#endif
+        limits.max_w = 640;
+        limits.max_h = 480;
     } else if (strcmp(type, "todo_list") == 0) {
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
         limits.min_w = 180;
@@ -254,6 +282,9 @@ static const char *required_domain_for_widget_type(const char *type)
     if (strcmp(type, "sensor") == 0) {
         return "sensor";
     }
+    if (strcmp(type, "solar_forecast") == 0) {
+        return "sensor";
+    }
     if (strcmp(type, "light_tile") == 0) {
         return "light";
     }
@@ -283,6 +314,9 @@ static bool widget_entity_domain_valid(const char *type, const char *entity_id)
 
     if (strcmp(type, "sensor") == 0) {
         return entity_in_domain(entity_id, "sensor") || entity_in_domain(entity_id, "binary_sensor");
+    }
+    if (strcmp(type, "solar_forecast") == 0) {
+        return entity_in_domain(entity_id, "sensor");
     }
     if (strcmp(type, "button") == 0) {
         return entity_in_domain(entity_id, "switch") || entity_in_domain(entity_id, "media_player");
@@ -474,6 +508,13 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
     cJSON *type = cJSON_GetObjectItemCaseSensitive(widget, "type");
     cJSON *entity_id = cJSON_GetObjectItemCaseSensitive(widget, "entity_id");
     cJSON *secondary_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "secondary_entity_id");
+    cJSON *forecast_today_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_today_entity_id");
+    cJSON *forecast_tomorrow_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_tomorrow_entity_id");
+    cJSON *forecast_day_3_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_day_3_entity_id");
+    cJSON *forecast_day_4_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_day_4_entity_id");
+    cJSON *forecast_day_5_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_day_5_entity_id");
+    cJSON *solar_forecast_bar_max_kwh = cJSON_GetObjectItemCaseSensitive(widget, "solar_forecast_bar_max_kwh");
+    cJSON *solar_forecast_bar_orientation = cJSON_GetObjectItemCaseSensitive(widget, "solar_forecast_bar_orientation");
     cJSON *slider_direction = cJSON_GetObjectItemCaseSensitive(widget, "slider_direction");
     cJSON *slider_accent_color = cJSON_GetObjectItemCaseSensitive(widget, "slider_accent_color");
     cJSON *button_accent_color = cJSON_GetObjectItemCaseSensitive(widget, "button_accent_color");
@@ -579,6 +620,48 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
                     cJSON_IsString(id) ? id->valuestring : "?");
                 layout_validation_add(result, msg);
             }
+        }
+    }
+
+    if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "solar_forecast") == 0) {
+        const cJSON *forecast_entities[] = {
+            forecast_today_entity_id,
+            forecast_tomorrow_entity_id,
+            forecast_day_3_entity_id,
+            forecast_day_4_entity_id,
+            forecast_day_5_entity_id,
+        };
+        const char *forecast_keys[] = {
+            "forecast_today_entity_id",
+            "forecast_tomorrow_entity_id",
+            "forecast_day_3_entity_id",
+            "forecast_day_4_entity_id",
+            "forecast_day_5_entity_id",
+        };
+        for (size_t i = 0; i < sizeof(forecast_entities) / sizeof(forecast_entities[0]); i++) {
+            const cJSON *item = forecast_entities[i];
+            if (cJSON_IsString(item) && item->valuestring != NULL && item->valuestring[0] != '\0') {
+                if (!is_valid_entity_id(item->valuestring) || !entity_in_domain(item->valuestring, "sensor")) {
+                    snprintf(msg, sizeof(msg), "widget %s: %s must be sensor.*",
+                        cJSON_IsString(id) ? id->valuestring : "?", forecast_keys[i]);
+                    layout_validation_add(result, msg);
+                }
+            }
+        }
+        if (solar_forecast_bar_max_kwh != NULL &&
+            (!cJSON_IsNumber(solar_forecast_bar_max_kwh) ||
+             solar_forecast_bar_max_kwh->valuedouble < 0.0 ||
+             solar_forecast_bar_max_kwh->valuedouble > 100000.0)) {
+            snprintf(msg, sizeof(msg), "widget %s: solar_forecast_bar_max_kwh must be a positive number",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+        if (solar_forecast_bar_orientation != NULL &&
+            (!cJSON_IsString(solar_forecast_bar_orientation) || solar_forecast_bar_orientation->valuestring == NULL ||
+             !is_valid_solar_forecast_bar_orientation(solar_forecast_bar_orientation->valuestring))) {
+            snprintf(msg, sizeof(msg), "widget %s: solar_forecast_bar_orientation must be horizontal|vertical",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
         }
     }
 

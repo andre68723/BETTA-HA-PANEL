@@ -172,6 +172,7 @@
                     <div class="dropdown-group-label">Info</div>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addWeatherTileBtn">Weather</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addWeather3DayBtn">Weather Forecast</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addSolarForecastBtn">Solar Forecast</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addEmptyTileBtn">Empty Tile</button>
                   </div>
                 </div>
@@ -192,6 +193,7 @@
               <button id="addHeatingTileBtn" type="button">+ Heating Tile</button>
               <button id="addWeatherTileBtn" type="button">+ Weather</button>
               <button id="addWeather3DayBtn" type="button">+ Weather Forecast</button>
+              <button id="addSolarForecastBtn" type="button">+ Solar Forecast</button>
               <button id="addTodoListBtn" type="button">+ Todo List</button>
               <button id="addMediaPlayerBtn" type="button">+ Media Player</button>
               <button id="addRoborockTileBtn" type="button">+ Roborock</button>
@@ -224,6 +226,7 @@
                     <option value="heating_tile">heating_tile</option>
                     <option value="weather_tile">weather_tile</option>
                     <option value="weather_3day">weather_3day</option>
+                    <option value="solar_forecast">solar_forecast</option>
                     <option value="todo_list">todo_list</option>
                     <option value="media_player">media_player</option>
                     <option value="roborock_tile">roborock_tile</option>
@@ -236,6 +239,26 @@
                     <input id="fSecondaryEntity" type="text" list="sensorEntityOptions" />
                     <datalist id="sensorEntityOptions"></datalist>
                   </label>
+                  <div id="solarForecastFields" class="hidden">
+                    <label><span id="fSolarForecastTodayLabel">Today forecast</span>
+                      <input id="fSolarForecastToday" type="text" list="sensorEntityOptions" />
+                    </label>
+                    <label><span id="fSolarForecastTomorrowLabel">Tomorrow forecast</span>
+                      <input id="fSolarForecastTomorrow" type="text" list="sensorEntityOptions" />
+                    </label>
+                    <label><span id="fSolarForecastDay3Label">Day 3 forecast</span>
+                      <input id="fSolarForecastDay3" type="text" list="sensorEntityOptions" />
+                    </label>
+                    <label><span id="fSolarForecastDay4Label">Day 4 forecast</span>
+                      <input id="fSolarForecastDay4" type="text" list="sensorEntityOptions" />
+                    </label>
+                    <label><span id="fSolarForecastDay5Label">Day 5 forecast</span>
+                      <input id="fSolarForecastDay5" type="text" list="sensorEntityOptions" />
+                    </label>
+                    <label><span id="fSolarForecastBarMaxLabel">Bar max (kWh)</span>
+                      <input id="fSolarForecastBarMax" type="number" min="0" step="0.1" placeholder="auto" />
+                    </label>
+                  </div>
                 </div>
               </details>
 
@@ -304,6 +327,14 @@
                     </label>
                     <label id="fGraphPointCountWrap"><span id="fGraphPointCountLabel">Render points (empty = auto)</span>
                       <input id="fGraphPointCount" type="number" min="16" max="64" step="1" placeholder="auto" />
+                    </label>
+                  </div>
+                  <div id="solarForecastStyleOptions" class="slider-options hidden">
+                    <label><span id="fSolarForecastBarOrientationLabel">Bar orientation</span>
+                      <select id="fSolarForecastBarOrientation">
+                        <option value="horizontal">Horizontal</option>
+                        <option value="vertical">Vertical</option>
+                      </select>
                     </label>
                   </div>
                   <div id="heatingOptions" class="slider-options hidden">

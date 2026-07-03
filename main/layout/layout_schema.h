@@ -17,6 +17,7 @@ typedef enum {
     LAYOUT_WIDGET_HEATING_TILE,
     LAYOUT_WIDGET_WEATHER_TILE,
     LAYOUT_WIDGET_WEATHER_3DAY,
+    LAYOUT_WIDGET_SOLAR_FORECAST,
 } layout_widget_type_t;
 
 typedef struct {

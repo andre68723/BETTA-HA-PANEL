@@ -583,6 +583,125 @@ textarea {
   font-style: italic;
 }
 
+.solar-preview {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+}
+
+.solar-preview-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solar-preview-body {
+  min-height: 0;
+}
+
+.solar-preview.horizontal .solar-preview-body {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+}
+
+.solar-preview-row {
+  display: grid;
+  grid-template-columns: minmax(38px, 0.8fr) minmax(54px, 3fr) minmax(64px, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  color: #dce7f2;
+  font-size: 12px;
+}
+
+.solar-preview-row strong,
+.solar-preview-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solar-preview-row span {
+  color: #f1f5f9;
+  font-weight: 700;
+  text-align: right;
+}
+
+.solar-preview-hbar,
+.solar-preview-vbar {
+  overflow: hidden;
+  background: rgba(218, 218, 218, 0.9);
+}
+
+.solar-preview-hbar {
+  height: 10px;
+  border-radius: 999px;
+}
+
+.solar-preview-hbar i,
+.solar-preview-vbar i {
+  display: block;
+  background: linear-gradient(90deg, #ffd500 0%, #22d164 100%);
+  border-radius: inherit;
+}
+
+.solar-preview-hbar i {
+  height: 100%;
+}
+
+.solar-preview.vertical .solar-preview-body {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  align-items: stretch;
+}
+
+.solar-preview-col {
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  gap: 4px;
+  min-width: 0;
+  color: #dce7f2;
+  font-size: 10px;
+  text-align: center;
+}
+
+.solar-preview-col span,
+.solar-preview-col strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solar-preview-col span {
+  color: #f1f5f9;
+  font-weight: 700;
+}
+
+.solar-preview-vbar {
+  align-self: stretch;
+  justify-self: center;
+  width: min(42px, 64%);
+  min-height: 42px;
+  border-radius: 999px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.solar-preview-vbar i {
+  width: 100%;
+  background: linear-gradient(0deg, #ffd500 0%, #22d164 100%);
+}
+
 .resize-handle {
   position: absolute;
   right: 0;
