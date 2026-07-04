@@ -718,11 +718,14 @@ textarea {
   inset: 0;
   overflow: hidden;
   background: #111923;
+  display: grid;
+  place-items: center;
 }
 
 .energy-preview-card {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  width: var(--energy-preview-width, 720px);
+  height: var(--energy-preview-height, 600px);
   overflow: hidden;
   border-radius: 8px;
   background: #1d1f24;
@@ -749,7 +752,10 @@ textarea {
 
 .energy-preview-flow {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
   shape-rendering: geometricPrecision;
 }

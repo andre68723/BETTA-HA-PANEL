@@ -4957,7 +4957,11 @@ function renderEnergyCanvasPreview(page) {
   ].join("");
   const node = document.createElement("div");
   node.className = compact ? "energy-page-preview compact" : "energy-page-preview";
-  const viewBox = compact ? "0 0 480 360" : "0 0 720 600";
+  const previewWidth = CANVAS_WIDTH;
+  const previewHeight = CANVAS_HEIGHT;
+  node.style.setProperty("--energy-preview-width", `${previewWidth}px`);
+  node.style.setProperty("--energy-preview-height", `${previewHeight}px`);
+  const viewBox = `0 0 ${previewWidth} ${previewHeight}`;
   node.innerHTML = `
     <div class="energy-preview-card">
       <div class="energy-preview-heading">
