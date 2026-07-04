@@ -199,6 +199,9 @@ const ENTITY_PICKER_CONFIGS = {
 const SETTINGS_NAV_ITEMS = [
   { sectionId: "settingsWifiSection", headingId: "settingsWifiHeading", labelKey: "settings.wifi.heading" },
   { sectionId: "settingsHaSection", headingId: "settingsHaHeading", labelKey: "settings.ha.heading" },
+  { sectionId: "settingsWeatherSection", headingId: "settingsWeatherHeading", labelKey: "settings.weather.heading" },
+  { sectionId: "settingsStocksSection", headingId: "settingsStocksHeading", labelKey: "settings.stocks.heading" },
+  { sectionId: "settingsHardwareSection", headingId: "settingsHardwareHeading", labelKey: "settings.hardware.heading" },
   { sectionId: "settingsTimeSection", headingId: "settingsTimeHeading", labelKey: "settings.time.heading" },
   { sectionId: "settingsUiSection", headingId: "settingsUiHeading", labelKey: "settings.ui.heading" },
   { sectionId: "settingsThemeSection", headingId: "settingsThemeHeading", labelKey: "settings.theme.heading" },
@@ -465,6 +468,20 @@ const WEB_I18N_BUILTIN = {
     "settings.ha.token": "Long-lived Access Token",
     "settings.ha.token_placeholder": "Leave empty to keep the stored token",
     "settings.ha.rest_fallback": "Enable HA REST fallback (Default: Off, WS-only preferred)",
+    "settings.weather.heading": "Weather",
+    "settings.weather.topbar_enabled": "Show weather in top bar",
+    "settings.weather.entity": "Weather entity",
+    "settings.weather.info": "Uses a Home Assistant weather entity, for example weather.home.",
+    "settings.stocks.heading": "Stocks",
+    "settings.stocks.entity_1": "Stock sensor 1",
+    "settings.stocks.entity_2": "Stock sensor 2",
+    "settings.stocks.entity_3": "Stock sensor 3",
+    "settings.stocks.info": "Shows up to 3 Home Assistant sensor values in the top bar. 4 inch panels show only the first value.",
+    "settings.hardware.heading": "Hardware",
+    "settings.hardware.active_brightness": "Normal brightness",
+    "settings.hardware.dim_brightness": "Reduced brightness",
+    "settings.hardware.dim_timeout": "Reduce after (seconds)",
+    "settings.hardware.info": "Brightness values are 10% to 100%. The timeout controls when reduced brightness becomes active.",
     "settings.time.heading": "Time",
     "settings.time.ntp_server": "NTP Server",
     "settings.time.timezone": "Timezone (POSIX TZ)",
@@ -806,6 +823,20 @@ const WEB_I18N_BUILTIN = {
     "settings.ha.token": "Long-lived Access Token",
     "settings.ha.token_placeholder": "Leer lassen, um vorhandenen Token zu behalten",
     "settings.ha.rest_fallback": "HA REST Fallback aktivieren (Standard: Aus, WS bevorzugt)",
+    "settings.weather.heading": "Wetter",
+    "settings.weather.topbar_enabled": "Wetter in der Statuszeile anzeigen",
+    "settings.weather.entity": "Wetter-Entitaet",
+    "settings.weather.info": "Nutzt eine Home Assistant Wetter-Entitaet, zum Beispiel weather.home.",
+    "settings.stocks.heading": "Stocks",
+    "settings.stocks.entity_1": "Stock-Sensor 1",
+    "settings.stocks.entity_2": "Stock-Sensor 2",
+    "settings.stocks.entity_3": "Stock-Sensor 3",
+    "settings.stocks.info": "Zeigt bis zu 3 Home Assistant Sensorwerte in der Statuszeile. 4 Zoll Panels zeigen nur den ersten Wert.",
+    "settings.hardware.heading": "Hardware",
+    "settings.hardware.active_brightness": "Normale Helligkeit",
+    "settings.hardware.dim_brightness": "Reduzierte Helligkeit",
+    "settings.hardware.dim_timeout": "Reduzieren nach (Sekunden)",
+    "settings.hardware.info": "Helligkeit von 10% bis 100%. Der Timeout steuert, wann die reduzierte Helligkeit aktiv wird.",
     "settings.time.heading": "Zeit",
     "settings.time.ntp_server": "NTP Server",
     "settings.time.timezone": "Zeitzone (POSIX TZ)",
@@ -1028,6 +1059,20 @@ const WEB_I18N_BUILTIN = {
     "settings.ha.token": "Token de acceso de larga duracion",
     "settings.ha.token_placeholder": "Dejar vacio para conservar el token guardado",
     "settings.ha.rest_fallback": "Activar fallback REST de HA (por defecto: off, se prefiere WS)",
+    "settings.weather.heading": "Tiempo",
+    "settings.weather.topbar_enabled": "Mostrar tiempo en la barra superior",
+    "settings.weather.entity": "Entidad de tiempo",
+    "settings.weather.info": "Usa una entidad weather de Home Assistant, por ejemplo weather.home.",
+    "settings.stocks.heading": "Acciones",
+    "settings.stocks.entity_1": "Sensor de accion 1",
+    "settings.stocks.entity_2": "Sensor de accion 2",
+    "settings.stocks.entity_3": "Sensor de accion 3",
+    "settings.stocks.info": "Muestra hasta 3 sensores de Home Assistant en la barra superior. Paneles de 4 pulgadas muestran solo el primer valor.",
+    "settings.hardware.heading": "Hardware",
+    "settings.hardware.active_brightness": "Brillo normal",
+    "settings.hardware.dim_brightness": "Brillo reducido",
+    "settings.hardware.dim_timeout": "Reducir despues de (segundos)",
+    "settings.hardware.info": "Los valores de brillo son 10% a 100%. El timeout controla cuando se activa el brillo reducido.",
     "settings.time.heading": "Hora",
     "settings.time.ntp_server": "Servidor NTP",
     "settings.time.timezone": "Zona horaria (POSIX TZ)",
@@ -1246,6 +1291,20 @@ const WEB_I18N_BUILTIN = {
     "settings.ha.token": "Jeton d'acces longue duree",
     "settings.ha.token_placeholder": "Laisser vide pour garder le token stocke",
     "settings.ha.rest_fallback": "Activer le fallback REST HA (defaut: off, WS prefere)",
+    "settings.weather.heading": "Meteo",
+    "settings.weather.topbar_enabled": "Afficher la meteo dans la barre superieure",
+    "settings.weather.entity": "Entite meteo",
+    "settings.weather.info": "Utilise une entite weather de Home Assistant, par exemple weather.home.",
+    "settings.stocks.heading": "Actions",
+    "settings.stocks.entity_1": "Capteur action 1",
+    "settings.stocks.entity_2": "Capteur action 2",
+    "settings.stocks.entity_3": "Capteur action 3",
+    "settings.stocks.info": "Affiche jusqu'a 3 capteurs Home Assistant dans la barre superieure. Les panneaux 4 pouces affichent seulement la premiere valeur.",
+    "settings.hardware.heading": "Hardware",
+    "settings.hardware.active_brightness": "Luminosite normale",
+    "settings.hardware.dim_brightness": "Luminosite reduite",
+    "settings.hardware.dim_timeout": "Reduire apres (secondes)",
+    "settings.hardware.info": "Les valeurs de luminosite vont de 10% a 100%. Le timeout controle quand la luminosite reduite devient active.",
     "settings.time.heading": "Temps",
     "settings.time.ntp_server": "Serveur NTP",
     "settings.time.timezone": "Fuseau horaire (POSIX TZ)",
@@ -1639,6 +1698,18 @@ const el = {
   settingsHaUrl: document.getElementById("settingsHaUrl"),
   settingsHaToken: document.getElementById("settingsHaToken"),
   settingsHaRestEnabled: document.getElementById("settingsHaRestEnabled"),
+  settingsTopbarWeatherEnabled: document.getElementById("settingsTopbarWeatherEnabled"),
+  settingsTopbarWeatherEntity: document.getElementById("settingsTopbarWeatherEntity"),
+  settingsWeatherEntityOptions: document.getElementById("settingsWeatherEntityOptions"),
+  settingsStockEntity1: document.getElementById("settingsStockEntity1"),
+  settingsStockEntity2: document.getElementById("settingsStockEntity2"),
+  settingsStockEntity3: document.getElementById("settingsStockEntity3"),
+  settingsStockEntityOptions: document.getElementById("settingsStockEntityOptions"),
+  settingsHardwareActiveBrightness: document.getElementById("settingsHardwareActiveBrightness"),
+  settingsHardwareActiveBrightnessValue: document.getElementById("settingsHardwareActiveBrightnessValue"),
+  settingsHardwareDimBrightness: document.getElementById("settingsHardwareDimBrightness"),
+  settingsHardwareDimBrightnessValue: document.getElementById("settingsHardwareDimBrightnessValue"),
+  settingsHardwareDimTimeout: document.getElementById("settingsHardwareDimTimeout"),
   settingsNtpServer: document.getElementById("settingsNtpServer"),
   settingsTimezone: document.getElementById("settingsTimezone"),
   settingsLanguage: document.getElementById("settingsLanguage"),
@@ -1650,6 +1721,9 @@ const el = {
   settingsTranslationInfo: document.getElementById("settingsTranslationInfo"),
   settingsWifiInfo: document.getElementById("settingsWifiInfo"),
   settingsHaInfo: document.getElementById("settingsHaInfo"),
+  settingsWeatherInfo: document.getElementById("settingsWeatherInfo"),
+  settingsStocksInfo: document.getElementById("settingsStocksInfo"),
+  settingsHardwareInfo: document.getElementById("settingsHardwareInfo"),
   settingsTimeInfo: document.getElementById("settingsTimeInfo"),
   settingsUiInfo: document.getElementById("settingsUiInfo"),
   settingsApInfo: document.getElementById("settingsApInfo"),
@@ -1702,6 +1776,14 @@ const entityAutocomplete = {
     requestSeq: 0,
   },
   secondary: {
+    timerId: null,
+    requestSeq: 0,
+  },
+  settingsWeather: {
+    timerId: null,
+    requestSeq: 0,
+  },
+  settingsStocks: {
     timerId: null,
     requestSeq: 0,
   },
@@ -2366,6 +2448,20 @@ function applyWebTranslations() {
   setPlaceholderById("settingsHaToken", "settings.ha.token_placeholder");
   setTextById("settingsHaRestEnabledLabel", "settings.ha.rest_fallback");
 
+  setTextById("settingsWeatherHeading", "settings.weather.heading");
+  setTextById("settingsTopbarWeatherEnabledLabel", "settings.weather.topbar_enabled");
+  setTextById("settingsTopbarWeatherEntityLabel", "settings.weather.entity");
+
+  setTextById("settingsStocksHeading", "settings.stocks.heading");
+  setTextById("settingsStockEntity1Label", "settings.stocks.entity_1");
+  setTextById("settingsStockEntity2Label", "settings.stocks.entity_2");
+  setTextById("settingsStockEntity3Label", "settings.stocks.entity_3");
+
+  setTextById("settingsHardwareHeading", "settings.hardware.heading");
+  setTextById("settingsHardwareActiveBrightnessLabel", "settings.hardware.active_brightness");
+  setTextById("settingsHardwareDimBrightnessLabel", "settings.hardware.dim_brightness");
+  setTextById("settingsHardwareDimTimeoutLabel", "settings.hardware.dim_timeout");
+
   setTextById("settingsTimeHeading", "settings.time.heading");
   setTextById("settingsNtpServerLabel", "settings.time.ntp_server");
   setTextById("settingsTimezoneLabel", "settings.time.timezone");
@@ -2712,6 +2808,17 @@ function toggleSection(sectionKey) {
   setSectionCollapsed(sectionKey, !editor.sectionCollapsed[sectionKey]);
 }
 
+function setPercentSlider(input, output, value) {
+  const percent = clamp(Number(value), 10, 100);
+  if (input) {
+    input.value = String(percent);
+  }
+  if (output) {
+    output.textContent = `${percent}%`;
+  }
+  return percent;
+}
+
 function applySectionCollapseState() {
   setSectionCollapsed("pages", editor.sectionCollapsed.pages);
   setSectionCollapsed("widgets", editor.sectionCollapsed.widgets);
@@ -2722,6 +2829,9 @@ function renderSettings() {
   const settings = editor.settings || {};
   const wifi = settings.wifi || {};
   const ha = settings.ha || {};
+  const weather = settings.weather || {};
+  const stocks = settings.stocks || {};
+  const hardware = settings.hardware || {};
   const time = settings.time || {};
   const ui = settings.ui || {};
   const scanSupported = wifi.scan_supported !== false;
@@ -2739,6 +2849,29 @@ function renderSettings() {
   el.settingsHaToken.value = "";
   if (el.settingsHaRestEnabled) {
     el.settingsHaRestEnabled.checked = ha.rest_enabled === true;
+  }
+  if (el.settingsTopbarWeatherEnabled) {
+    el.settingsTopbarWeatherEnabled.checked = weather.topbar_enabled === true;
+  }
+  if (el.settingsTopbarWeatherEntity) {
+    el.settingsTopbarWeatherEntity.value = weather.entity_id || "";
+  }
+  const stockEntityIds = Array.isArray(stocks.entity_ids) ? stocks.entity_ids : [];
+  if (el.settingsStockEntity1) el.settingsStockEntity1.value = stockEntityIds[0] || "";
+  if (el.settingsStockEntity2) el.settingsStockEntity2.value = stockEntityIds[1] || "";
+  if (el.settingsStockEntity3) el.settingsStockEntity3.value = stockEntityIds[2] || "";
+  setPercentSlider(
+    el.settingsHardwareActiveBrightness,
+    el.settingsHardwareActiveBrightnessValue,
+    hardware.active_brightness ?? 100,
+  );
+  setPercentSlider(
+    el.settingsHardwareDimBrightness,
+    el.settingsHardwareDimBrightnessValue,
+    hardware.dim_brightness ?? 10,
+  );
+  if (el.settingsHardwareDimTimeout) {
+    el.settingsHardwareDimTimeout.value = String(clamp(Number(hardware.dim_timeout_seconds ?? 180), 5, 3600));
   }
   el.settingsNtpServer.value = time.ntp_server || "";
   el.settingsTimezone.value = time.timezone || "";
@@ -2772,6 +2905,15 @@ function renderSettings() {
     `${t("settings.info.rest_fallback")}: ${ha.rest_enabled ? t("common.yes") : t("common.no")}`,
   ].join(" | ");
 
+  if (el.settingsWeatherInfo) {
+    el.settingsWeatherInfo.textContent = t("settings.weather.info");
+  }
+  if (el.settingsStocksInfo) {
+    el.settingsStocksInfo.textContent = t("settings.stocks.info");
+  }
+  if (el.settingsHardwareInfo) {
+    el.settingsHardwareInfo.textContent = t("settings.hardware.info");
+  }
   el.settingsTimeInfo.textContent = t("settings.time.info");
   if (el.settingsUiInfo) {
     el.settingsUiInfo.textContent = t("settings.ui.info");
@@ -3327,6 +3469,16 @@ async function saveSettings() {
   const haUrl = el.settingsHaUrl.value.trim();
   const haToken = el.settingsHaToken.value.trim();
   const haRestEnabled = Boolean(el.settingsHaRestEnabled?.checked);
+  const weatherTopbarEnabled = Boolean(el.settingsTopbarWeatherEnabled?.checked);
+  const weatherEntity = el.settingsTopbarWeatherEntity?.value.trim() || "";
+  const stockEntityIds = [
+    el.settingsStockEntity1?.value.trim() || "",
+    el.settingsStockEntity2?.value.trim() || "",
+    el.settingsStockEntity3?.value.trim() || "",
+  ];
+  const hardwareActiveBrightness = clamp(Number(el.settingsHardwareActiveBrightness?.value || 100), 10, 100);
+  const hardwareDimBrightness = clamp(Number(el.settingsHardwareDimBrightness?.value || 10), 10, 100);
+  const hardwareDimTimeout = clamp(Number(el.settingsHardwareDimTimeout?.value || 180), 5, 3600);
   const ntpServer = el.settingsNtpServer.value.trim();
   const timezone = el.settingsTimezone.value.trim();
   const language = normalizeUiLanguage(el.settingsLanguage?.value);
@@ -3353,6 +3505,18 @@ async function saveSettings() {
     ha: {
       ws_url: haUrl,
       rest_enabled: haRestEnabled,
+    },
+    weather: {
+      topbar_enabled: weatherTopbarEnabled,
+      entity_id: weatherEntity || null,
+    },
+    stocks: {
+      entity_ids: stockEntityIds,
+    },
+    hardware: {
+      active_brightness: hardwareActiveBrightness,
+      dim_brightness: hardwareDimBrightness,
+      dim_timeout_seconds: hardwareDimTimeout,
     },
     time: {
       ntp_server: ntpServer,
@@ -3748,6 +3912,95 @@ function scheduleEntityAutocomplete(kind, immediate = false) {
 
     try {
       const remoteResults = await fetchEntitySuggestions(domain, search, ENTITY_AUTOCOMPLETE_MAX_ITEMS);
+      if (requestSeq !== state.requestSeq) return;
+      if (remoteResults.length > 0) {
+        setEntityOptionsList(options, remoteResults);
+      }
+    } catch (_) {
+      // Keep local fallback options.
+    }
+  };
+
+  if (immediate) {
+    void run();
+    return;
+  }
+
+  state.timerId = window.setTimeout(() => {
+    state.timerId = null;
+    void run();
+  }, ENTITY_AUTOCOMPLETE_DEBOUNCE_MS);
+}
+
+function scheduleSettingsWeatherAutocomplete(immediate = false) {
+  const input = el.settingsTopbarWeatherEntity;
+  const options = el.settingsWeatherEntityOptions;
+  const state = entityAutocomplete.settingsWeather;
+  if (!input || !options || !state) return;
+
+  if (state.timerId !== null) {
+    window.clearTimeout(state.timerId);
+    state.timerId = null;
+  }
+
+  const run = async () => {
+    const requestSeq = ++state.requestSeq;
+    const { search } = parseEntitySearchInput(input.value || "", "weather");
+    const localResults = filterLocalEntitySuggestions(
+      listEntitiesByDomain("weather"),
+      "weather",
+      search,
+      ENTITY_AUTOCOMPLETE_MAX_ITEMS,
+    );
+    setEntityOptionsList(options, localResults);
+
+    if (search.length < 2) return;
+    try {
+      const remoteResults = await fetchEntitySuggestions("weather", search, ENTITY_AUTOCOMPLETE_MAX_ITEMS);
+      if (requestSeq !== state.requestSeq) return;
+      if (remoteResults.length > 0) {
+        setEntityOptionsList(options, remoteResults);
+      }
+    } catch (_) {
+      // Keep local fallback options.
+    }
+  };
+
+  if (immediate) {
+    void run();
+    return;
+  }
+
+  state.timerId = window.setTimeout(() => {
+    state.timerId = null;
+    void run();
+  }, ENTITY_AUTOCOMPLETE_DEBOUNCE_MS);
+}
+
+function scheduleSettingsStockAutocomplete(input, immediate = false) {
+  const options = el.settingsStockEntityOptions;
+  const state = entityAutocomplete.settingsStocks;
+  if (!input || !options || !state) return;
+
+  if (state.timerId !== null) {
+    window.clearTimeout(state.timerId);
+    state.timerId = null;
+  }
+
+  const run = async () => {
+    const requestSeq = ++state.requestSeq;
+    const { search } = parseEntitySearchInput(input.value || "", "sensor");
+    const localResults = filterLocalEntitySuggestions(
+      listEntitiesByDomain("sensor"),
+      "sensor",
+      search,
+      ENTITY_AUTOCOMPLETE_MAX_ITEMS,
+    );
+    setEntityOptionsList(options, localResults);
+
+    if (search.length < 2) return;
+    try {
+      const remoteResults = await fetchEntitySuggestions("sensor", search, ENTITY_AUTOCOMPLETE_MAX_ITEMS);
       if (requestSeq !== state.requestSeq) return;
       if (remoteResults.length > 0) {
         setEntityOptionsList(options, remoteResults);
@@ -4284,6 +4537,18 @@ function renderEntityOptions() {
   );
   if (el.energyEntityOptions) {
     setEntityOptionsList(el.energyEntityOptions, listEntitiesByDomain("sensor").slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS));
+  }
+  if (el.settingsWeatherEntityOptions) {
+    setEntityOptionsList(
+      el.settingsWeatherEntityOptions,
+      listEntitiesByDomain("weather").slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS),
+    );
+  }
+  if (el.settingsStockEntityOptions) {
+    setEntityOptionsList(
+      el.settingsStockEntityOptions,
+      listEntitiesByDomain("sensor").slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS),
+    );
   }
 
   if (el.fSecondaryEntityLabel) {
@@ -6073,6 +6338,33 @@ function bindUi() {
         .replace(/[^0-9A-F:-]/g, "")
         .slice(0, 17);
       el.settingsWifiBssid.value = cleaned;
+    };
+  }
+  if (el.settingsTopbarWeatherEntity) {
+    el.settingsTopbarWeatherEntity.oninput = () => scheduleSettingsWeatherAutocomplete();
+    el.settingsTopbarWeatherEntity.onfocus = () => scheduleSettingsWeatherAutocomplete(true);
+  }
+  for (const input of [el.settingsStockEntity1, el.settingsStockEntity2, el.settingsStockEntity3]) {
+    if (!input) continue;
+    input.oninput = () => scheduleSettingsStockAutocomplete(input);
+    input.onfocus = () => scheduleSettingsStockAutocomplete(input, true);
+  }
+  if (el.settingsHardwareActiveBrightness) {
+    el.settingsHardwareActiveBrightness.oninput = () => {
+      setPercentSlider(
+        el.settingsHardwareActiveBrightness,
+        el.settingsHardwareActiveBrightnessValue,
+        el.settingsHardwareActiveBrightness.value,
+      );
+    };
+  }
+  if (el.settingsHardwareDimBrightness) {
+    el.settingsHardwareDimBrightness.oninput = () => {
+      setPercentSlider(
+        el.settingsHardwareDimBrightness,
+        el.settingsHardwareDimBrightnessValue,
+        el.settingsHardwareDimBrightness.value,
+      );
     };
   }
   if (el.uploadLanguageCode) {

@@ -199,12 +199,21 @@ esp_err_t api_settings_get_handler(httpd_req_t *req)
     cJSON *ha = cJSON_CreateObject();
     cJSON *time_cfg = cJSON_CreateObject();
     cJSON *ui = cJSON_CreateObject();
-    if (root == NULL || wifi == NULL || ha == NULL || time_cfg == NULL || ui == NULL) {
+    cJSON *weather = cJSON_CreateObject();
+    cJSON *stocks = cJSON_CreateObject();
+    cJSON *stock_entity_ids = cJSON_CreateArray();
+    cJSON *hardware = cJSON_CreateObject();
+    if (root == NULL || wifi == NULL || ha == NULL || time_cfg == NULL || ui == NULL ||
+        weather == NULL || stocks == NULL || stock_entity_ids == NULL || hardware == NULL) {
         cJSON_Delete(root);
         cJSON_Delete(wifi);
         cJSON_Delete(ha);
         cJSON_Delete(time_cfg);
         cJSON_Delete(ui);
+        cJSON_Delete(weather);
+        cJSON_Delete(stocks);
+        cJSON_Delete(stock_entity_ids);
+        cJSON_Delete(hardware);
         free(settings);
         return httpd_resp_send_500(req);
     }
@@ -254,6 +263,29 @@ esp_err_t api_settings_get_handler(httpd_req_t *req)
 
     cJSON_AddStringToObject(ui, "language", settings->ui_language);
     cJSON_AddItemToObject(root, "ui", ui);
+
+    cJSON_AddBoolToObject(weather, "topbar_enabled", settings->topbar_weather_enabled);
+    cJSON_AddStringToObject(weather, "entity_id", settings->topbar_weather_entity_id);
+    cJSON_AddItemToObject(root, "weather", weather);
+
+    for (size_t i = 0; i < 3U; i++) {
+        cJSON *item = cJSON_CreateString(settings->topbar_stock_entity_ids[i]);
+        if (item == NULL) {
+            cJSON_Delete(root);
+            cJSON_Delete(stocks);
+            cJSON_Delete(stock_entity_ids);
+            free(settings);
+            return httpd_resp_send_500(req);
+        }
+        cJSON_AddItemToArray(stock_entity_ids, item);
+    }
+    cJSON_AddItemToObject(stocks, "entity_ids", stock_entity_ids);
+    cJSON_AddItemToObject(root, "stocks", stocks);
+
+    cJSON_AddNumberToObject(hardware, "active_brightness", settings->hardware_active_brightness_percent);
+    cJSON_AddNumberToObject(hardware, "dim_brightness", settings->hardware_dim_brightness_percent);
+    cJSON_AddNumberToObject(hardware, "dim_timeout_seconds", settings->hardware_dim_timeout_seconds);
+    cJSON_AddItemToObject(root, "hardware", hardware);
 
     cJSON_AddBoolToObject(root, "ok", true);
 
@@ -322,6 +354,38 @@ static bool update_bool_setting(cJSON *obj, const char *key, bool *dst, bool *ou
     return false;
 }
 
+static bool update_int_setting(
+    cJSON *obj,
+    const char *key,
+    int *dst,
+    int min_value,
+    int max_value,
+    bool *out_invalid_type,
+    bool *out_out_of_range)
+{
+    cJSON *item = cJSON_GetObjectItemCaseSensitive(obj, key);
+    if (item == NULL) {
+        return false;
+    }
+
+    if (cJSON_IsNumber(item)) {
+        int value = item->valueint;
+        if (value < min_value || value > max_value) {
+            if (out_out_of_range != NULL) {
+                *out_out_of_range = true;
+            }
+            return false;
+        }
+        *dst = value;
+        return true;
+    }
+
+    if (out_invalid_type != NULL) {
+        *out_invalid_type = true;
+    }
+    return false;
+}
+
 esp_err_t api_settings_put_handler(httpd_req_t *req)
 {
     if (req->content_len <= 0 || req->content_len > APP_SETTINGS_MAX_JSON_LEN) {
@@ -365,6 +429,9 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
     cJSON *ha = cJSON_GetObjectItemCaseSensitive(root, "ha");
     cJSON *time_cfg = cJSON_GetObjectItemCaseSensitive(root, "time");
     cJSON *ui = cJSON_GetObjectItemCaseSensitive(root, "ui");
+    cJSON *weather = cJSON_GetObjectItemCaseSensitive(root, "weather");
+    cJSON *stocks = cJSON_GetObjectItemCaseSensitive(root, "stocks");
+    cJSON *hardware = cJSON_GetObjectItemCaseSensitive(root, "hardware");
     if (wifi != NULL && !cJSON_IsObject(wifi)) {
         cJSON_Delete(root);
         free(settings);
@@ -385,9 +452,25 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
         free(settings);
         return send_json_error(req, "400 Bad Request", "ui must be an object");
     }
+    if (weather != NULL && !cJSON_IsObject(weather)) {
+        cJSON_Delete(root);
+        free(settings);
+        return send_json_error(req, "400 Bad Request", "weather must be an object");
+    }
+    if (stocks != NULL && !cJSON_IsObject(stocks)) {
+        cJSON_Delete(root);
+        free(settings);
+        return send_json_error(req, "400 Bad Request", "stocks must be an object");
+    }
+    if (hardware != NULL && !cJSON_IsObject(hardware)) {
+        cJSON_Delete(root);
+        free(settings);
+        return send_json_error(req, "400 Bad Request", "hardware must be an object");
+    }
 
     bool invalid_type = false;
     bool too_long = false;
+    bool out_of_range = false;
     if (cJSON_IsObject(wifi)) {
         (void)update_string_setting(
             wifi, "ssid", settings->wifi_ssid, sizeof(settings->wifi_ssid), &invalid_type, &too_long);
@@ -415,6 +498,46 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
         (void)update_string_setting(
             ui, "language", settings->ui_language, sizeof(settings->ui_language), &invalid_type, &too_long);
     }
+    if (cJSON_IsObject(weather)) {
+        (void)update_bool_setting(weather, "topbar_enabled", &settings->topbar_weather_enabled, &invalid_type);
+        (void)update_string_setting(
+            weather, "entity_id", settings->topbar_weather_entity_id, sizeof(settings->topbar_weather_entity_id),
+            &invalid_type, &too_long);
+    }
+    if (cJSON_IsObject(stocks)) {
+        cJSON *entity_ids = cJSON_GetObjectItemCaseSensitive(stocks, "entity_ids");
+        if (entity_ids != NULL && !cJSON_IsArray(entity_ids)) {
+            invalid_type = true;
+        } else if (cJSON_IsArray(entity_ids)) {
+            for (size_t i = 0; i < 3U; i++) {
+                cJSON *item = cJSON_GetArrayItem(entity_ids, (int)i);
+                if (item == NULL || cJSON_IsNull(item)) {
+                    settings->topbar_stock_entity_ids[i][0] = '\0';
+                    continue;
+                }
+                if (!cJSON_IsString(item) || item->valuestring == NULL) {
+                    invalid_type = true;
+                    continue;
+                }
+                if (strlen(item->valuestring) >= sizeof(settings->topbar_stock_entity_ids[i])) {
+                    too_long = true;
+                    continue;
+                }
+                strlcpy(settings->topbar_stock_entity_ids[i], item->valuestring, sizeof(settings->topbar_stock_entity_ids[i]));
+            }
+        }
+    }
+    if (cJSON_IsObject(hardware)) {
+        (void)update_int_setting(
+            hardware, "active_brightness", &settings->hardware_active_brightness_percent, 10, 100, &invalid_type,
+            &out_of_range);
+        (void)update_int_setting(
+            hardware, "dim_brightness", &settings->hardware_dim_brightness_percent, 10, 100, &invalid_type,
+            &out_of_range);
+        (void)update_int_setting(
+            hardware, "dim_timeout_seconds", &settings->hardware_dim_timeout_seconds, 5, 3600, &invalid_type,
+            &out_of_range);
+    }
 
     (void)update_string_setting(
         root, "wifi_ssid", settings->wifi_ssid, sizeof(settings->wifi_ssid), &invalid_type, &too_long);
@@ -435,6 +558,28 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
         root, "time_tz", settings->time_tz, sizeof(settings->time_tz), &invalid_type, &too_long);
     (void)update_string_setting(
         root, "language", settings->ui_language, sizeof(settings->ui_language), &invalid_type, &too_long);
+    (void)update_bool_setting(root, "topbar_weather_enabled", &settings->topbar_weather_enabled, &invalid_type);
+    (void)update_string_setting(
+        root, "topbar_weather_entity_id", settings->topbar_weather_entity_id, sizeof(settings->topbar_weather_entity_id),
+        &invalid_type, &too_long);
+    (void)update_string_setting(
+        root, "topbar_stock_entity_id_1", settings->topbar_stock_entity_ids[0],
+        sizeof(settings->topbar_stock_entity_ids[0]), &invalid_type, &too_long);
+    (void)update_string_setting(
+        root, "topbar_stock_entity_id_2", settings->topbar_stock_entity_ids[1],
+        sizeof(settings->topbar_stock_entity_ids[1]), &invalid_type, &too_long);
+    (void)update_string_setting(
+        root, "topbar_stock_entity_id_3", settings->topbar_stock_entity_ids[2],
+        sizeof(settings->topbar_stock_entity_ids[2]), &invalid_type, &too_long);
+    (void)update_int_setting(
+        root, "hardware_active_brightness", &settings->hardware_active_brightness_percent, 10, 100, &invalid_type,
+        &out_of_range);
+    (void)update_int_setting(
+        root, "hardware_dim_brightness", &settings->hardware_dim_brightness_percent, 10, 100, &invalid_type,
+        &out_of_range);
+    (void)update_int_setting(
+        root, "hardware_dim_timeout_seconds", &settings->hardware_dim_timeout_seconds, 5, 3600, &invalid_type,
+        &out_of_range);
 
     bool reboot = true;
     cJSON *reboot_item = cJSON_GetObjectItemCaseSensitive(root, "reboot");
@@ -459,7 +604,11 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
         return send_json_error(
             req,
             "400 Bad Request",
-            "One or more settings values are too long (ssid<=32, wifi_password<=64, country_code<=2, bssid<=17, ws_url<=255, token<=511, ntp<=127, timezone<=127, language<=15)");
+            "One or more settings values are too long (ssid<=32, wifi_password<=64, country_code<=2, bssid<=17, ws_url<=255, token<=511, ntp<=127, timezone<=127, language<=15, entity_id<=95)");
+    }
+    if (out_of_range) {
+        free(settings);
+        return send_json_error(req, "400 Bad Request", "brightness values must be between 10 and 100, dim timeout between 5 and 3600 seconds");
     }
     if (!has_ws_scheme(settings->ha_ws_url)) {
         free(settings);

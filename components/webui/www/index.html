@@ -420,6 +420,60 @@
         </section>
 
         <section>
+          <h2 id="settingsWeatherHeading">Weather</h2>
+          <div class="form">
+            <label class="row">
+              <input id="settingsTopbarWeatherEnabled" type="checkbox" />
+              <span id="settingsTopbarWeatherEnabledLabel">Show weather in top bar</span>
+            </label>
+            <label><span id="settingsTopbarWeatherEntityLabel">Weather entity</span>
+              <input id="settingsTopbarWeatherEntity" type="text" list="settingsWeatherEntityOptions" placeholder="weather.home" maxlength="95" />
+              <datalist id="settingsWeatherEntityOptions"></datalist>
+            </label>
+            <div id="settingsWeatherInfo" class="meta"></div>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="settingsStocksHeading">Stocks</h2>
+          <div class="form">
+            <label><span id="settingsStockEntity1Label">Stock sensor 1</span>
+              <input id="settingsStockEntity1" type="text" list="settingsStockEntityOptions" placeholder="sensor.yahoofinance_vwce_de" maxlength="95" />
+            </label>
+            <label><span id="settingsStockEntity2Label">Stock sensor 2</span>
+              <input id="settingsStockEntity2" type="text" list="settingsStockEntityOptions" placeholder="sensor.yahoofinance_sap_de" maxlength="95" />
+            </label>
+            <label><span id="settingsStockEntity3Label">Stock sensor 3</span>
+              <input id="settingsStockEntity3" type="text" list="settingsStockEntityOptions" placeholder="sensor.yahoofinance_avws_de" maxlength="95" />
+            </label>
+            <datalist id="settingsStockEntityOptions"></datalist>
+            <div id="settingsStocksInfo" class="meta"></div>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="settingsHardwareHeading">Hardware</h2>
+          <div class="form">
+            <label><span id="settingsHardwareActiveBrightnessLabel">Normal brightness</span>
+              <span class="range-field">
+                <input id="settingsHardwareActiveBrightness" type="range" min="10" max="100" step="1" />
+                <output id="settingsHardwareActiveBrightnessValue" for="settingsHardwareActiveBrightness">100%</output>
+              </span>
+            </label>
+            <label><span id="settingsHardwareDimBrightnessLabel">Reduced brightness</span>
+              <span class="range-field">
+                <input id="settingsHardwareDimBrightness" type="range" min="10" max="100" step="1" />
+                <output id="settingsHardwareDimBrightnessValue" for="settingsHardwareDimBrightness">10%</output>
+              </span>
+            </label>
+            <label><span id="settingsHardwareDimTimeoutLabel">Reduce after</span>
+              <input id="settingsHardwareDimTimeout" type="number" min="5" max="3600" step="1" />
+            </label>
+            <div id="settingsHardwareInfo" class="meta"></div>
+          </div>
+        </section>
+
+        <section>
           <h2 id="settingsTimeHeading">Time</h2>
           <div class="form">
             <label><span id="settingsNtpServerLabel">NTP Server</span>

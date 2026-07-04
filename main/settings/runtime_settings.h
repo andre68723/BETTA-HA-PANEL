@@ -20,6 +20,12 @@ typedef struct {
     char ntp_server[APP_NTP_SERVER_MAX_LEN];
     char time_tz[APP_TIME_TZ_MAX_LEN];
     char ui_language[APP_UI_LANGUAGE_MAX_LEN];
+    bool topbar_weather_enabled;
+    char topbar_weather_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char topbar_stock_entity_ids[3][APP_MAX_ENTITY_ID_LEN];
+    int hardware_active_brightness_percent;
+    int hardware_dim_brightness_percent;
+    int hardware_dim_timeout_seconds;
 } runtime_settings_t;
 
 void runtime_settings_set_defaults(runtime_settings_t *out);

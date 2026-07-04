@@ -339,6 +339,26 @@ textarea {
   font-size: 12px;
 }
 
+input[type="range"] {
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.range-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  align-items: center;
+  gap: 10px;
+}
+
+.range-field output {
+  min-width: 46px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
 textarea {
   margin-top: 8px;
   min-height: 82px;
