@@ -96,6 +96,7 @@ static bool s_arrow_value_font_ready = false;
 #define ENERGY_HOME_ARC_WIDTH 4
 #define ENERGY_FLOW_LINE_WIDTH 2
 #define ENERGY_VALUE_FONT APP_FONT_TEXT_14
+#define ENERGY_EXPONENT_FONT APP_FONT_TEXT_12
 #define ENERGY_TITLE_FONT APP_FONT_TEXT_14
 #define ENERGY_STATS_FONT APP_FONT_TEXT_14
 #define ENERGY_STATS_X 16
@@ -124,6 +125,7 @@ static bool s_arrow_value_font_ready = false;
 #define ENERGY_HOME_ARC_WIDTH 6
 #define ENERGY_FLOW_LINE_WIDTH 3
 #define ENERGY_VALUE_FONT APP_FONT_TEXT_18
+#define ENERGY_EXPONENT_FONT APP_FONT_TEXT_14
 #define ENERGY_TITLE_FONT APP_FONT_TEXT_18
 #define ENERGY_STATS_FONT APP_FONT_TEXT_18
 #define ENERGY_STATS_X 24
@@ -177,6 +179,7 @@ typedef struct {
     lv_obj_t *circle;
     lv_obj_t *icon_label;
     lv_obj_t *value_label;
+    lv_obj_t *value_exponent_label;
     lv_obj_t *title_label;
 } energy_node_t;
 
@@ -331,8 +334,6 @@ static void energy_format_kwh(char *dst, size_t dst_size, float kwh)
     }
 }
 
-
-
 static void energy_format_value_unit(char *dst, size_t dst_size, float value, const char *unit)
 {
     if (dst == NULL || dst_size == 0) {
@@ -346,6 +347,21 @@ static void energy_format_value_unit(char *dst, size_t dst_size, float value, co
         snprintf(dst, dst_size, "%.1f %s", (double)value, u);
     } else {
         snprintf(dst, dst_size, "%.2f %s", (double)value, u);
+    }
+}
+
+static void energy_format_cubic_meter_value(char *dst, size_t dst_size, float value)
+{
+    if (dst == NULL || dst_size == 0) {
+        return;
+    }
+    float abs_val = fabsf(value);
+    if (abs_val >= 100.0f) {
+        snprintf(dst, dst_size, "%.0f m", (double)value);
+    } else if (abs_val >= 10.0f) {
+        snprintf(dst, dst_size, "%.1f m", (double)value);
+    } else {
+        snprintf(dst, dst_size, "%.2f m", (double)value);
     }
 }
 
@@ -429,6 +445,11 @@ static void energy_set_node_hidden(energy_node_t *node, bool hidden)
     energy_set_obj_hidden(node->title_label, hidden);
 }
 
+static bool energy_unit_is_cubic_meter(const char *unit)
+{
+    return unit != NULL && (strcmp(unit, "m\xC2\xB3") == 0 || strcmp(unit, "m3") == 0);
+}
+
 static void energy_style_text(lv_obj_t *label, lv_color_t color, const lv_font_t *font, lv_text_align_t align)
 {
     if (label == NULL) {
@@ -491,6 +512,11 @@ static void energy_create_node(energy_page_ctx_t *ctx, int node_id, int cx, int 
         lv_label_set_recolor(value, true);
     }
 
+    lv_obj_t *exponent = lv_label_create(circle);
+    lv_label_set_text(exponent, "");
+    lv_obj_add_flag(exponent, LV_OBJ_FLAG_IGNORE_LAYOUT | LV_OBJ_FLAG_HIDDEN);
+    energy_style_text(exponent, theme_default_color_text_primary(), ENERGY_EXPONENT_FONT, LV_TEXT_ALIGN_CENTER);
+
     lv_obj_t *title_label = lv_label_create(ctx->root);
     lv_label_set_text(title_label, title);
     lv_obj_set_width(title_label, ENERGY_NODE_TITLE_WIDTH);
@@ -502,7 +528,48 @@ static void energy_create_node(energy_page_ctx_t *ctx, int node_id, int cx, int 
     node->circle = circle;
     node->icon_label = icon;
     node->value_label = value;
+    node->value_exponent_label = exponent;
     node->title_label = title_label;
+}
+
+static void energy_set_node_value_text(energy_node_t *node, const char *text)
+{
+    if (node == NULL || node->value_label == NULL) {
+        return;
+    }
+    lv_label_set_text(node->value_label, text != NULL ? text : "");
+    energy_set_obj_hidden(node->value_exponent_label, true);
+}
+
+static void energy_set_node_value_text_with_exponent(energy_node_t *node, const char *text, const char *exponent)
+{
+    if (node == NULL || node->value_label == NULL) {
+        return;
+    }
+    if (text == NULL) {
+        text = "";
+    }
+    lv_label_set_text(node->value_label, text);
+    if (node->value_exponent_label == NULL || exponent == NULL || exponent[0] == '\0') {
+        energy_set_obj_hidden(node->value_exponent_label, true);
+        return;
+    }
+
+    lv_label_set_text(node->value_exponent_label, exponent);
+    energy_set_obj_hidden(node->value_exponent_label, false);
+
+    lv_obj_update_layout(node->circle);
+    lv_obj_update_layout(node->value_label);
+
+    lv_point_t text_size = {0};
+    lv_text_get_size(&text_size, text, ENERGY_VALUE_FONT, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+
+    int32_t label_x = lv_obj_get_x(node->value_label);
+    int32_t label_y = lv_obj_get_y(node->value_label);
+    int32_t label_w = lv_obj_get_width(node->value_label);
+    int32_t x = label_x + ((label_w - text_size.x) / 2) + text_size.x - 1;
+    int32_t y = label_y - (ENERGY_VALUE_FONT->line_height / 4);
+    lv_obj_set_pos(node->value_exponent_label, x, y);
 }
 
 static void energy_create_home_arc(energy_page_ctx_t *ctx, int index, lv_color_t color)
@@ -1282,8 +1349,13 @@ static void energy_recompute_ha_energy(energy_page_ctx_t *ctx)
 
     if (snapshot.has_gas) {
         const char *gas_unit = snapshot.gas_unit[0] ? snapshot.gas_unit : "m\xC2\xB3";
-        energy_format_value_unit(buf, sizeof(buf), snapshot.gas_value, gas_unit);
-        lv_label_set_text(ctx->nodes[ENERGY_NODE_GAS].value_label, buf);
+        if (energy_unit_is_cubic_meter(gas_unit)) {
+            energy_format_cubic_meter_value(buf, sizeof(buf), snapshot.gas_value);
+            energy_set_node_value_text_with_exponent(&ctx->nodes[ENERGY_NODE_GAS], buf, "3");
+        } else {
+            energy_format_value_unit(buf, sizeof(buf), snapshot.gas_value, gas_unit);
+            energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_GAS], buf);
+        }
     }
 
     if (snapshot.has_water) {
