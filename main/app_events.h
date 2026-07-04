@@ -4,6 +4,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
@@ -19,7 +20,19 @@ typedef enum {
     EV_HA_ENERGY_CHANGED,
     EV_LAYOUT_UPDATED,
     EV_UI_NAVIGATE,
+    EV_NOTIFICATION_SHOW,
 } app_event_type_t;
+
+/* Heap-allocated notification payload. Kept out of the event union by design:
+ * the queue preallocates APP_EVENT_QUEUE_LENGTH * sizeof(app_event_t), so the
+ * union must stay small. Ownership transfers to the UI task once the event is
+ * published successfully; on publish failure the sender must free it. */
+typedef struct {
+    char title[APP_NOTIFICATION_MAX_TITLE_LEN];
+    char message[APP_NOTIFICATION_MAX_MESSAGE_LEN];
+    char message_id[APP_NOTIFICATION_MAX_ID_LEN];
+    uint32_t timeout_sec; /* 0 = persistent until tapped */
+} app_notification_t;
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
@@ -30,10 +43,15 @@ typedef struct {
 } app_event_navigate_t;
 
 typedef struct {
+    app_notification_t *notification;
+} app_event_notification_t;
+
+typedef struct {
     app_event_type_t type;
     union {
         app_event_state_changed_t ha_state_changed;
         app_event_navigate_t navigate;
+        app_event_notification_t notification;
     } data;
 } app_event_t;
 

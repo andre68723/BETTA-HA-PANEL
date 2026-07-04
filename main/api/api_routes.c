@@ -101,6 +101,11 @@ static esp_err_t guarded_api_ha_diagnostics_get(httpd_req_t *req)
     return http_guard_handle(req, api_ha_diagnostics_get_handler);
 }
 
+static esp_err_t guarded_api_notifications_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_notifications_post_handler);
+}
+
 static esp_err_t guarded_api_themes_list_get(httpd_req_t *req)
 {
     return http_guard_handle(req, api_themes_list_get_handler);
@@ -240,6 +245,12 @@ esp_err_t api_routes_register(httpd_handle_t server)
         .handler = guarded_api_ota_upload_post,
         .user_ctx = NULL,
     };
+    httpd_uri_t post_notifications = {
+        .uri = "/api/notifications",
+        .method = HTTP_POST,
+        .handler = guarded_api_notifications_post,
+        .user_ctx = NULL,
+    };
 
     httpd_uri_t get_themes_list = {
         .uri = "/api/themes",
@@ -323,6 +334,9 @@ esp_err_t api_routes_register(httpd_handle_t server)
 
     ESP_RETURN_ON_ERROR(
         httpd_register_uri_handler(server, &get_ha_diagnostics), "api_routes", "GET /api/ha/diagnostics");
+
+    ESP_RETURN_ON_ERROR(
+        httpd_register_uri_handler(server, &post_notifications), "api_routes", "POST /api/notifications");
 
     return ESP_OK;
 }

@@ -97,6 +97,13 @@
 #define APP_MAX_UI_OPTION_LEN 24
 #define APP_MAX_COLOR_STR_LEN 16
 
+/* Notification overlay (POST /api/notifications) */
+#define APP_NOTIFICATION_MAX_JSON_LEN 2048
+#define APP_NOTIFICATION_MAX_TITLE_LEN 64
+#define APP_NOTIFICATION_MAX_MESSAGE_LEN 768
+#define APP_NOTIFICATION_MAX_ID_LEN 64
+#define APP_NOTIFICATION_MAX_TIMEOUT_SEC 3600
+
 #define APP_HA_MAX_ENTITIES 256
 #define APP_HA_MAX_STATES 256
 /* Must fit weather entity attributes incl. the compact forecast array

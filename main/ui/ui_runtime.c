@@ -24,6 +24,7 @@
 #include "ui/fonts/mdi_font_registry.h"
 #include "ui/ui_energy_page.h"
 #include "ui/ui_memory.h"
+#include "ui/ui_notification_popup.h"
 #include "ui/ui_pages.h"
 #include "ui/ui_widget_factory.h"
 #include "ui/theme/theme_default.h"
@@ -66,6 +67,8 @@ static uint32_t s_last_model_revision = 0;
 static bool s_model_reconcile_pending = false;
 static bool s_pending_state_reconcile = false;
 static bool s_pending_topbar_refresh = false;
+/* Notification deferred by display-lock contention; owned by the UI task. */
+static app_notification_t *s_pending_notification = NULL;
 static uint32_t s_deferred_event_count = 0;
 static int64_t s_deferred_event_log_ms = 0;
 
@@ -867,6 +870,11 @@ static void ui_runtime_handle_event(const app_event_t *event)
             s_pending_topbar_refresh = true;
         } else if (event->type == EV_HA_DISCONNECTED) {
             s_pending_topbar_refresh = true;
+        } else if (event->type == EV_NOTIFICATION_SHOW) {
+            /* Keep ownership: stash for retry instead of leaking the payload.
+             * A newer notification replaces an older deferred one. */
+            free(s_pending_notification);
+            s_pending_notification = event->data.notification.notification;
         }
 
         s_deferred_event_count++;
@@ -907,6 +915,9 @@ static void ui_runtime_handle_event(const app_event_t *event)
     case EV_UI_NAVIGATE:
         ui_pages_show(event->data.navigate.page_id);
         break;
+    case EV_NOTIFICATION_SHOW:
+        ui_notification_popup_show(event->data.notification.notification);
+        break;
     case EV_NONE:
     default:
         break;
@@ -943,6 +954,13 @@ static void ui_runtime_task(void *arg)
                 ui_runtime_apply_all_states_preserve_missing();
                 s_pending_state_reconcile = false;
             }
+            display_unlock();
+        }
+
+        if (s_pending_notification != NULL && display_lock(20)) {
+            app_notification_t *pending = s_pending_notification;
+            s_pending_notification = NULL;
+            ui_notification_popup_show(pending);
             display_unlock();
         }
 

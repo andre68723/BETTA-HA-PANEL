@@ -49,6 +49,7 @@ idf_component_register(
         "api/api_ota.c"
         "api/api_theme.c"
         "api/api_ha_diagnostics.c"
+        "api/api_notifications.c"
         ${PANEL_DRIVER_SRCS}
         "ha/ha_client.c"
         "ha/ha_ws.c"
@@ -64,6 +65,7 @@ idf_component_register(
         "net/time_sync.c"
         "ui/ui_runtime.c"
         "ui/ui_boot_splash.c"
+        "ui/ui_notification_popup.c"
         "ui/ui_ota_progress.c"
         "ui/ui_pages.c"
         "ui/ui_energy_page.c"

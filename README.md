@@ -121,6 +121,69 @@ Build artifacts land in `release/` and `release/ota/`. Previous versions are mov
 
 ---
 
+## Home Assistant notifications
+
+The panel can display Home Assistant notifications as a full-screen overlay.
+Send a `POST` to `/api/notifications` and the panel wakes the display, shows
+the notification above the current dashboard, and dismisses it on tap or after
+an optional timeout. A new notification replaces the one currently shown.
+
+Test it with `curl`:
+
+```bash
+curl -X POST http://<panel-ip>/api/notifications \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Laundry","message":"The washing machine is done.","message_id":"laundry_done","timeout_sec":30}'
+```
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `message` | yes | Main notification text (plain text). |
+| `title` | no | Optional short heading. |
+| `message_id` | no | Stable ID; a matching ID updates the visible notification in place. |
+| `timeout_sec` | no | `0` or missing keeps the notification until tapped. |
+
+To forward Home Assistant persistent notifications automatically, add a
+`rest_command` and one forwarding automation:
+
+```yaml
+rest_command:
+  betta_panel_notification:
+    url: "http://<panel-ip>/api/notifications"
+    method: POST
+    content_type: "application/json"
+    payload: >
+      {
+        "title": {{ title | to_json }},
+        "message": {{ message | to_json }},
+        "message_id": {{ message_id | to_json }},
+        "timeout_sec": 30
+      }
+```
+
+```yaml
+alias: Forward persistent notifications to BETTA panel
+mode: queued
+max: 10
+triggers:
+  - trigger: persistent_notification
+    update_type:
+      - added
+      - updated
+actions:
+  - action: rest_command.betta_panel_notification
+    data:
+      title: "{{ trigger.notification.title | default('') }}"
+      message: "{{ trigger.notification.message | default('') }}"
+      message_id: "{{ trigger.notification.notification_id | default('') }}"
+```
+
+Notifications created with `notify.persistent_notification` (including a
+`notification_id` under its nested `data:` block) are then mirrored to the
+panel automatically.
+
+---
+
 ## Editor preview
 
 
