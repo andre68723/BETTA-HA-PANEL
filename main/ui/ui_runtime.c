@@ -21,6 +21,7 @@
 #include "ha/ha_model.h"
 #include "layout/layout_store.h"
 #include "net/wifi_mgr.h"
+#include "settings/runtime_settings.h"
 #include "ui/fonts/mdi_font_registry.h"
 #include "ui/ui_energy_page.h"
 #include "ui/ui_memory.h"
@@ -67,6 +68,9 @@ static uint32_t s_last_model_revision = 0;
 static bool s_model_reconcile_pending = false;
 static bool s_pending_state_reconcile = false;
 static bool s_pending_topbar_refresh = false;
+static bool s_topbar_weather_enabled = false;
+static char s_topbar_weather_entity_id[APP_MAX_ENTITY_ID_LEN] = {0};
+static char s_topbar_stock_entity_ids[3][APP_MAX_ENTITY_ID_LEN] = {{0}};
 /* Notification deferred by display-lock contention; owned by the UI task. */
 static app_notification_t *s_pending_notification = NULL;
 static uint32_t s_deferred_event_count = 0;
@@ -110,6 +114,264 @@ static ui_topbar_cache_t s_topbar_cache = {0};
 #if APP_UI_TEST_WEATHER_ICON_OVERLAY
 static lv_obj_t *s_weather_icon_overlay = NULL;
 #endif
+
+static bool ui_runtime_weather_has_token(const char *key, const char *token)
+{
+    return key != NULL && token != NULL && strstr(key, token) != NULL;
+}
+
+static void ui_runtime_weather_normalize_condition_key(const char *src, char *dst, size_t dst_size)
+{
+    if (dst == NULL || dst_size == 0) {
+        return;
+    }
+    if (src == NULL || src[0] == '\0') {
+        dst[0] = '\0';
+        return;
+    }
+    size_t out = 0;
+    for (size_t i = 0; src[i] != '\0' && out + 1 < dst_size; i++) {
+        char c = src[i];
+        if (c == ' ' || c == '_') {
+            c = '-';
+        }
+        if (c >= 'A' && c <= 'Z') {
+            c = (char)(c + ('a' - 'A'));
+        }
+        dst[out++] = c;
+    }
+    dst[out] = '\0';
+}
+
+static uint32_t ui_runtime_weather_icon_codepoint_for_key(const char *key)
+{
+    if (key == NULL || key[0] == '\0') {
+        return 0U;
+    }
+    if (strcmp(key, "clear-night") == 0) return 0xF0594U;
+    if (strcmp(key, "partlycloudy") == 0 || strcmp(key, "partly-cloudy") == 0) return 0xF0595U;
+    if (ui_runtime_weather_has_token(key, "tornado")) return 0xF0F38U;
+    if (ui_runtime_weather_has_token(key, "hurricane")) return 0xF0898U;
+    if (ui_runtime_weather_has_token(key, "lightning") && ui_runtime_weather_has_token(key, "rain")) return 0xF067EU;
+    if (ui_runtime_weather_has_token(key, "partly") && ui_runtime_weather_has_token(key, "lightning")) return 0xF0F32U;
+    if (ui_runtime_weather_has_token(key, "lightning")) return 0xF0593U;
+    if (ui_runtime_weather_has_token(key, "hail")) return 0xF0592U;
+    if (ui_runtime_weather_has_token(key, "fog") || ui_runtime_weather_has_token(key, "hazy") ||
+        ui_runtime_weather_has_token(key, "mist")) return 0xF0591U;
+    if (ui_runtime_weather_has_token(key, "partly") && ui_runtime_weather_has_token(key, "snow") &&
+        ui_runtime_weather_has_token(key, "rain")) return 0xF0F35U;
+    if (ui_runtime_weather_has_token(key, "partly") && ui_runtime_weather_has_token(key, "snow")) return 0xF0F34U;
+    if (ui_runtime_weather_has_token(key, "snow") && ui_runtime_weather_has_token(key, "rain")) return 0xF067FU;
+    if (ui_runtime_weather_has_token(key, "snow") && ui_runtime_weather_has_token(key, "heavy")) return 0xF0F36U;
+    if (ui_runtime_weather_has_token(key, "snow")) return 0xF0598U;
+    if (ui_runtime_weather_has_token(key, "partly") && ui_runtime_weather_has_token(key, "rain")) return 0xF0F33U;
+    if (ui_runtime_weather_has_token(key, "pouring")) return 0xF0596U;
+    if (ui_runtime_weather_has_token(key, "rain")) return 0xF0597U;
+    if (ui_runtime_weather_has_token(key, "night") && ui_runtime_weather_has_token(key, "partly")) return 0xF0F31U;
+    if (ui_runtime_weather_has_token(key, "night")) return 0xF0594U;
+    if (ui_runtime_weather_has_token(key, "sunset")) return 0xF059AU;
+    if (ui_runtime_weather_has_token(key, "sunny") || ui_runtime_weather_has_token(key, "clear")) return 0xF0599U;
+    if (ui_runtime_weather_has_token(key, "wind") && ui_runtime_weather_has_token(key, "variant")) return 0xF059EU;
+    if (ui_runtime_weather_has_token(key, "wind")) return 0xF059DU;
+    if (ui_runtime_weather_has_token(key, "partly")) return 0xF0595U;
+    if (ui_runtime_weather_has_token(key, "cloud")) return 0xF0590U;
+    return 0U;
+}
+
+static bool ui_runtime_json_item_to_float(cJSON *item, float *out)
+{
+    if (item == NULL || out == NULL) {
+        return false;
+    }
+    if (cJSON_IsNumber(item)) {
+        *out = (float)item->valuedouble;
+        return true;
+    }
+    if (cJSON_IsString(item) && item->valuestring != NULL) {
+        char *end = NULL;
+        float value = strtof(item->valuestring, &end);
+        if (end != item->valuestring) {
+            *out = value;
+            return true;
+        }
+    }
+    return false;
+}
+
+static void ui_runtime_load_topbar_settings(void)
+{
+    runtime_settings_t settings = {0};
+    if (runtime_settings_load(&settings) != ESP_OK) {
+        runtime_settings_set_defaults(&settings);
+    }
+    s_topbar_weather_enabled =
+        settings.topbar_weather_enabled && settings.topbar_weather_entity_id[0] != '\0';
+    snprintf(
+        s_topbar_weather_entity_id,
+        sizeof(s_topbar_weather_entity_id),
+        "%s",
+        settings.topbar_weather_entity_id);
+    for (size_t i = 0; i < 3U; i++) {
+        snprintf(
+            s_topbar_stock_entity_ids[i],
+            sizeof(s_topbar_stock_entity_ids[i]),
+            "%s",
+            settings.topbar_stock_entity_ids[i]);
+    }
+}
+
+static void ui_runtime_apply_topbar_weather_state(const ha_state_t *state)
+{
+    if (!s_topbar_weather_enabled || state == NULL ||
+        strncmp(state->entity_id, s_topbar_weather_entity_id, APP_MAX_ENTITY_ID_LEN) != 0) {
+        return;
+    }
+
+    float temperature = 0.0f;
+    bool has_temperature = false;
+    char unit[12] = {0};
+    cJSON *attrs = cJSON_Parse(state->attributes_json);
+    if (attrs != NULL) {
+        has_temperature =
+            ui_runtime_json_item_to_float(cJSON_GetObjectItemCaseSensitive(attrs, "temperature"), &temperature) ||
+            ui_runtime_json_item_to_float(cJSON_GetObjectItemCaseSensitive(attrs, "current_temperature"), &temperature) ||
+            ui_runtime_json_item_to_float(cJSON_GetObjectItemCaseSensitive(attrs, "native_temperature"), &temperature);
+        cJSON *unit_item = cJSON_GetObjectItemCaseSensitive(attrs, "temperature_unit");
+        if (!cJSON_IsString(unit_item) || unit_item->valuestring == NULL || unit_item->valuestring[0] == '\0') {
+            unit_item = cJSON_GetObjectItemCaseSensitive(attrs, "native_temperature_unit");
+        }
+        if (cJSON_IsString(unit_item) && unit_item->valuestring != NULL) {
+            snprintf(unit, sizeof(unit), "%s", unit_item->valuestring);
+        }
+        cJSON_Delete(attrs);
+    }
+
+    char condition_key[32] = {0};
+    ui_runtime_weather_normalize_condition_key(state->state, condition_key, sizeof(condition_key));
+    uint32_t icon = ui_runtime_weather_icon_codepoint_for_key(condition_key);
+    ui_pages_set_topbar_weather(has_temperature, temperature, unit, icon);
+}
+
+static void ui_runtime_stock_symbol_from_entity(const char *entity_id, char *out, size_t out_len)
+{
+    if (out == NULL || out_len == 0) {
+        return;
+    }
+    out[0] = '\0';
+    const char *src = entity_id != NULL ? entity_id : "";
+    const char *prefix = "sensor.yahoofinance_";
+    if (strncmp(src, prefix, strlen(prefix)) == 0) {
+        src += strlen(prefix);
+    } else if (strncmp(src, "sensor.", 7) == 0) {
+        src += 7;
+    }
+
+    char tmp[24] = {0};
+    size_t out_pos = 0;
+    for (size_t i = 0; src[i] != '\0' && out_pos + 1 < sizeof(tmp); i++) {
+        char c = src[i];
+        if (c == ' ') {
+            break;
+        }
+        if (c == '_' && src[i + 1] != '\0' && src[i + 2] != '\0' && src[i + 3] == '\0') {
+            c = '.';
+        } else if (c == '_') {
+            c = ' ';
+        }
+        if (c >= 'a' && c <= 'z') {
+            c = (char)(c + ('A' - 'a'));
+        }
+        tmp[out_pos++] = c;
+    }
+    tmp[out_pos] = '\0';
+    snprintf(out, out_len, "%s", tmp[0] != '\0' ? tmp : "STK");
+}
+
+static bool ui_runtime_is_topbar_stock_entity(const char *entity_id)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return false;
+    }
+    for (size_t i = 0; i < 3U; i++) {
+        if (s_topbar_stock_entity_ids[i][0] != '\0' &&
+            strncmp(entity_id, s_topbar_stock_entity_ids[i], APP_MAX_ENTITY_ID_LEN) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool ui_runtime_stock_currency_is_euro(const char *currency)
+{
+    return currency != NULL && (strcmp(currency, "\xE2\x82\xAC") == 0 || strcmp(currency, "EUR") == 0);
+}
+
+static void ui_runtime_refresh_topbar_stocks(void)
+{
+    ui_pages_stock_item_t items[3] = {0};
+    size_t count = 0;
+    ha_state_t state = {0};
+
+    for (size_t i = 0; i < 3U; i++) {
+        const char *entity_id = s_topbar_stock_entity_ids[i];
+        if (entity_id[0] == '\0') {
+            continue;
+        }
+        memset(&state, 0, sizeof(state));
+        if (!ha_model_get_state(entity_id, &state) ||
+            state.state[0] == '\0' ||
+            strcmp(state.state, "unknown") == 0 ||
+            strcmp(state.state, "unavailable") == 0) {
+            continue;
+        }
+
+        char unit[8] = {0};
+        char currency_symbol[8] = {0};
+        float price = 0.0f;
+        bool has_price = false;
+        ui_runtime_stock_symbol_from_entity(entity_id, items[count].symbol, sizeof(items[count].symbol));
+
+        cJSON *attrs = cJSON_Parse(state.attributes_json);
+        if (attrs != NULL) {
+            cJSON *symbol_item = cJSON_GetObjectItemCaseSensitive(attrs, "symbol");
+            if (cJSON_IsString(symbol_item) && symbol_item->valuestring != NULL && symbol_item->valuestring[0] != '\0') {
+                ui_runtime_stock_symbol_from_entity(symbol_item->valuestring, items[count].symbol, sizeof(items[count].symbol));
+            }
+
+            cJSON *price_item = cJSON_GetObjectItemCaseSensitive(attrs, "regularMarketPrice");
+            has_price = ui_runtime_json_item_to_float(price_item, &price);
+
+            cJSON *currency_item = cJSON_GetObjectItemCaseSensitive(attrs, "currencySymbol");
+            if (cJSON_IsString(currency_item) && currency_item->valuestring != NULL) {
+                snprintf(currency_symbol, sizeof(currency_symbol), "%s", currency_item->valuestring);
+            }
+
+            cJSON *unit_item = cJSON_GetObjectItemCaseSensitive(attrs, "unit_of_measurement");
+            if (cJSON_IsString(unit_item) && unit_item->valuestring != NULL) {
+                snprintf(unit, sizeof(unit), "%s", unit_item->valuestring);
+            }
+            cJSON_Delete(attrs);
+        }
+        bool is_euro = ui_runtime_stock_currency_is_euro(currency_symbol) ||
+                       (currency_symbol[0] == '\0' && ui_runtime_stock_currency_is_euro(unit));
+
+        char *end = NULL;
+        float numeric = has_price ? price : strtof(state.state, &end);
+        if (has_price || end != state.state) {
+            const char *suffix = "";
+            if (!is_euro) {
+                suffix = currency_symbol[0] != '\0' ? currency_symbol : unit;
+            }
+            snprintf(items[count].value, sizeof(items[count].value), "%.2f%s", (double)numeric, suffix);
+            items[count].value_is_euro = is_euro;
+        } else {
+            snprintf(items[count].value, sizeof(items[count].value), "%.12s%s", state.state, unit);
+        }
+        count++;
+    }
+
+    ui_pages_set_topbar_stocks(items, count);
+}
 
 typedef struct {
     int min_w;
@@ -411,9 +673,17 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
     }
 
     if (found) {
+        ui_runtime_apply_topbar_weather_state(&s_state_scratch);
         for (size_t i = 0; i < s_energy_page_count; i++) {
             (void)ui_energy_page_apply_state(&s_energy_pages[i], &s_state_scratch);
         }
+    } else if (s_topbar_weather_enabled &&
+               strncmp(entity_id, s_topbar_weather_entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
+        ui_pages_set_topbar_weather(false, 0.0f, NULL, 0U);
+    }
+
+    if (ui_runtime_is_topbar_stock_entity(entity_id)) {
+        ui_runtime_refresh_topbar_stocks();
     }
 }
 
@@ -509,6 +779,12 @@ static void ui_runtime_apply_all_states(void)
     for (size_t i = 0; i < s_energy_page_count; i++) {
         ui_energy_page_apply_all_states(&s_energy_pages[i]);
     }
+    if (s_topbar_weather_enabled) {
+        ui_runtime_apply_entity_state(s_topbar_weather_entity_id);
+    } else {
+        ui_pages_set_topbar_weather(false, 0.0f, NULL, 0U);
+    }
+    ui_runtime_refresh_topbar_stocks();
 }
 
 static void ui_runtime_apply_all_states_preserve_missing(void)
@@ -538,6 +814,12 @@ static void ui_runtime_apply_all_states_preserve_missing(void)
     for (size_t i = 0; i < s_energy_page_count; i++) {
         ui_energy_page_apply_all_states(&s_energy_pages[i]);
     }
+    if (s_topbar_weather_enabled) {
+        ui_runtime_apply_entity_state_ex(s_topbar_weather_entity_id, false);
+    } else {
+        ui_pages_set_topbar_weather(false, 0.0f, NULL, 0U);
+    }
+    ui_runtime_refresh_topbar_stocks();
 }
 
 static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out)
@@ -753,6 +1035,7 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
     }
 
     s_topbar_cache.valid = false;
+    ui_runtime_load_topbar_settings();
     ui_pages_reset();
     memset(s_widgets, 0, APP_MAX_WIDGETS_TOTAL * sizeof(*s_widgets));
     s_widget_count = 0;

@@ -4,12 +4,19 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <time.h>
 
 #include "lvgl.h"
 
 typedef void (*ui_pages_show_cb_t)(const char *page_id, uint16_t index);
+
+typedef struct {
+    char symbol[12];
+    char value[24];
+    bool value_is_euro;
+} ui_pages_stock_item_t;
 
 void ui_pages_init(void);
 void ui_pages_reset(void);
@@ -26,3 +33,5 @@ uint16_t ui_pages_count(void);
 void ui_pages_set_topbar_status(
     bool wifi_connected, bool wifi_setup_ap_active, bool api_connected, bool api_initial_sync_done);
 void ui_pages_set_topbar_datetime(const struct tm *timeinfo);
+void ui_pages_set_topbar_weather(bool visible, float temperature, const char *unit, uint32_t icon_codepoint);
+void ui_pages_set_topbar_stocks(const ui_pages_stock_item_t *items, size_t count);

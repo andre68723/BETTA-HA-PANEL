@@ -32,6 +32,7 @@
 #include "ha/ha_ws.h"
 #include "layout/layout_store.h"
 #include "net/wifi_mgr.h"
+#include "settings/runtime_settings.h"
 #include "util/log_tags.h"
 
 typedef struct {
@@ -61,7 +62,8 @@ typedef enum {
 } ha_bg_budget_level_t;
 
 #define HA_ENERGY_PAGE_ENTITY_MAX (APP_MAX_PAGES * 9)
-#define HA_LAYOUT_ENTITY_MAX ((APP_MAX_WIDGETS_TOTAL * 2) + HA_ENERGY_PAGE_ENTITY_MAX)
+#define HA_SETTINGS_ENTITY_MAX 4
+#define HA_LAYOUT_ENTITY_MAX ((APP_MAX_WIDGETS_TOTAL * 2) + HA_ENERGY_PAGE_ENTITY_MAX + HA_SETTINGS_ENTITY_MAX)
 #define HA_WS_ENTITIES_SUB_MAX HA_LAYOUT_ENTITY_MAX
 #define HA_WS_ENTITIES_SUB_ID_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * (size_t)APP_MAX_ENTITY_ID_LEN)
 #define HA_WS_ENTITIES_SUB_REQ_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * sizeof(uint32_t))
@@ -3707,24 +3709,32 @@ static bool ha_client_energy_page_uses_manual_live(cJSON *energy)
     return ha_client_energy_has_manual_entities(energy);
 }
 
-static void ha_client_collect_entity_id(
-    cJSON *widget, const char *key, char *entity_ids, size_t *count, size_t max_count)
+static void ha_client_collect_raw_entity_id(const char *entity_id, char *entity_ids, size_t *count, size_t max_count)
 {
-    if (widget == NULL || key == NULL || entity_ids == NULL || count == NULL || *count >= max_count) {
+    if (entity_id == NULL || entity_id[0] == '\0' || entity_ids == NULL || count == NULL || *count >= max_count) {
         return;
     }
-
-    cJSON *id_item = cJSON_GetObjectItemCaseSensitive(widget, key);
-    if (!cJSON_IsString(id_item) || id_item->valuestring == NULL || id_item->valuestring[0] == '\0') {
-        return;
-    }
-    if (ha_client_entity_id_in_list(entity_ids, *count, id_item->valuestring)) {
+    if (ha_client_entity_id_in_list(entity_ids, *count, entity_id)) {
         return;
     }
 
     char *dst = entity_ids + (*count * APP_MAX_ENTITY_ID_LEN);
-    safe_copy_cstr(dst, APP_MAX_ENTITY_ID_LEN, id_item->valuestring);
+    safe_copy_cstr(dst, APP_MAX_ENTITY_ID_LEN, entity_id);
     (*count)++;
+}
+
+static void ha_client_collect_entity_id(
+    cJSON *widget, const char *key, char *entity_ids, size_t *count, size_t max_count)
+{
+    if (widget == NULL || key == NULL) {
+        return;
+    }
+
+    cJSON *id_item = cJSON_GetObjectItemCaseSensitive(widget, key);
+    if (!cJSON_IsString(id_item) || id_item->valuestring == NULL) {
+        return;
+    }
+    ha_client_collect_raw_entity_id(id_item->valuestring, entity_ids, count, max_count);
 }
 
 static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_count, bool *out_need_weather_forecast)
@@ -3814,6 +3824,19 @@ static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_c
     }
 
     cJSON_Delete(root);
+
+    runtime_settings_t settings = {0};
+    if (runtime_settings_load(&settings) == ESP_OK &&
+        settings.topbar_weather_enabled &&
+        settings.topbar_weather_entity_id[0] != '\0') {
+        ha_client_collect_raw_entity_id(settings.topbar_weather_entity_id, entity_ids, &count, max_count);
+    }
+    for (size_t i = 0; i < 3U; i++) {
+        if (settings.topbar_stock_entity_ids[i][0] != '\0') {
+            ha_client_collect_raw_entity_id(settings.topbar_stock_entity_ids[i], entity_ids, &count, max_count);
+        }
+    }
+
     if (out_need_weather_forecast != NULL) {
         *out_need_weather_forecast = need_weather_forecast;
     }
