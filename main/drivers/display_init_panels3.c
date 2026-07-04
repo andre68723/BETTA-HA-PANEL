@@ -122,6 +122,11 @@ static lv_display_t          *s_lv_display    = NULL;
 static esp_lcd_panel_handle_t s_panel         = NULL;
 static esp_timer_handle_t     s_dim_timer      = NULL;
 static int                    s_display_brightness = -1;
+static int                    s_active_brightness_percent = APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT;
+static int                    s_dim_brightness_percent = APP_DISPLAY_DIM_BRIGHTNESS_PERCENT;
+static uint32_t               s_dim_timeout_ms = APP_DISPLAY_DIM_TIMEOUT_MS;
+
+static void display_restart_dim_timer(void);
 
 /* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 static lvgl_port_cfg_t display_port_cfg(void)
@@ -138,6 +143,13 @@ static lvgl_port_cfg_t display_port_cfg(void)
 static int display_clamp_brightness(int percent)
 {
     if (percent < 0)   return 0;
+    if (percent > 100) return 100;
+    return percent;
+}
+
+static int display_clamp_config_brightness(int percent)
+{
+    if (percent < 10) return 10;
     if (percent > 100) return 100;
     return percent;
 }
@@ -183,12 +195,25 @@ esp_err_t display_set_brightness_percent(int percent)
     return err;
 }
 
+void display_configure_brightness(int active_brightness_percent, int dim_brightness_percent, int dim_timeout_seconds)
+{
+    s_active_brightness_percent = display_clamp_config_brightness(active_brightness_percent);
+    s_dim_brightness_percent = display_clamp_config_brightness(dim_brightness_percent);
+    if (dim_timeout_seconds < 5) dim_timeout_seconds = 5;
+    if (dim_timeout_seconds > 3600) dim_timeout_seconds = 3600;
+    s_dim_timeout_ms = (uint32_t)dim_timeout_seconds * 1000U;
+    if (s_display_ready) {
+        (void)display_set_brightness_percent(s_active_brightness_percent);
+        display_restart_dim_timer();
+    }
+}
+
 /* â”€â”€ Dim timer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 static void display_dim_timer_cb(void *arg)
 {
     (void)arg;
     if (!s_display_ready) return;
-    (void)display_set_brightness_percent(APP_DISPLAY_DIM_BRIGHTNESS_PERCENT);
+    (void)display_set_brightness_percent(s_dim_brightness_percent);
 }
 
 static esp_err_t display_dim_timer_init(void)
@@ -208,14 +233,14 @@ static void display_restart_dim_timer(void)
 {
     if (s_dim_timer == NULL) return;
     if (esp_timer_is_active(s_dim_timer)) (void)esp_timer_stop(s_dim_timer);
-    const uint64_t us = (uint64_t)APP_DISPLAY_DIM_TIMEOUT_MS * 1000ULL;
+    const uint64_t us = (uint64_t)s_dim_timeout_ms * 1000ULL;
     (void)esp_timer_start_once(s_dim_timer, us);
 }
 
 void display_note_activity(void)
 {
     if (!s_display_ready) return;
-    (void)display_set_brightness_percent(APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT);
+    (void)display_set_brightness_percent(s_active_brightness_percent);
     display_restart_dim_timer();
 }
 
@@ -507,4 +532,3 @@ esp_err_t bsp_display_backlight_off(void)
     ESP_LOGI(TAG_DISPLAY, "bsp_display_backlight_off");
     return display_set_brightness_percent(0);
 }
-

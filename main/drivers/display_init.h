@@ -13,4 +13,5 @@ bool display_is_ready(void);
 bool display_lock(uint32_t timeout_ms);
 void display_unlock(void);
 esp_err_t display_set_brightness_percent(int percent);
+void display_configure_brightness(int active_brightness_percent, int dim_brightness_percent, int dim_timeout_seconds);
 void display_note_activity(void);
