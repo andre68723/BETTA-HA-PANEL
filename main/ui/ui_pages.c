@@ -43,6 +43,9 @@ static lv_obj_t *s_stock_euro_labels[3] = {0};
 static lv_obj_t *s_weather_chip = NULL;
 static lv_obj_t *s_weather_temp_label = NULL;
 static lv_obj_t *s_weather_icon_label = NULL;
+static char s_topbar_left_slots[2][APP_MAX_UI_OPTION_LEN] = { "date", "" };
+static bool s_topbar_weather_has_value = false;
+static bool s_topbar_stock_has_value = false;
 static lv_obj_t *s_wifi_icon = NULL;
 static lv_obj_t *s_api_icon = NULL;
 static lv_obj_t *s_nav_bar = NULL;
@@ -228,6 +231,84 @@ static void ui_pages_style_topbar_chip(lv_obj_t *obj)
     lv_obj_set_style_text_font(obj, TOPBAR_ICON_FONT, LV_PART_MAIN);
 }
 
+static bool ui_pages_topbar_slot_enabled(const char *slot)
+{
+    if (slot == NULL || slot[0] == '\0' || strcmp(slot, "none") == 0) {
+        return false;
+    }
+    for (size_t i = 0; i < 2U; i++) {
+        if (strcmp(s_topbar_left_slots[i], slot) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void ui_pages_layout_topbar_left(void)
+{
+    lv_coord_t x = 16;
+    uint8_t shown = 0;
+
+    if (s_date_label != NULL) {
+        lv_obj_add_flag(s_date_label, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (s_weather_chip != NULL) {
+        lv_obj_add_flag(s_weather_chip, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (s_stock_chip != NULL) {
+        lv_obj_add_flag(s_stock_chip, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    for (size_t i = 0; i < 2U; i++) {
+#if APP_SCREEN_WIDTH < 700
+        if (shown > 0) {
+            break;
+        }
+#endif
+        const char *slot = s_topbar_left_slots[i];
+        if (slot[0] == '\0' || strcmp(slot, "none") == 0) {
+            continue;
+        }
+        if (i > 0 && strcmp(slot, s_topbar_left_slots[0]) == 0) {
+            continue;
+        }
+        lv_obj_t *obj = NULL;
+        lv_coord_t w = 0;
+        if (strcmp(slot, "date") == 0) {
+            obj = s_date_label;
+#if APP_SCREEN_WIDTH < 700
+            w = 116;
+#elif APP_SCREEN_WIDTH < 1000
+            w = 148;
+#else
+            w = 220;
+#endif
+        } else if (strcmp(slot, "weather") == 0 && s_topbar_weather_has_value) {
+            obj = s_weather_chip;
+#if APP_SCREEN_WIDTH < 1000
+            w = 104;
+#else
+            w = 116;
+#endif
+        } else if (strcmp(slot, "stock") == 0 && s_topbar_stock_has_value) {
+            obj = s_stock_chip;
+#if APP_SCREEN_WIDTH < 1000
+            w = 126;
+#else
+            w = 158;
+#endif
+        }
+        if (obj == NULL) {
+            continue;
+        }
+        lv_obj_set_width(obj, w);
+        lv_obj_align(obj, LV_ALIGN_LEFT_MID, x, 0);
+        lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+        x += w + 8;
+        shown++;
+    }
+}
+
 static bool ui_pages_utf8_from_codepoint(uint32_t codepoint, char out[5])
 {
     if (out == NULL || codepoint == 0U || codepoint > 0x10FFFFU) {
@@ -411,7 +492,7 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
     lv_obj_set_size(s_stock_chip, 126, 40);
     lv_obj_align(s_stock_chip, LV_ALIGN_LEFT_MID, 166, 0);
 #else
-    lv_obj_set_size(s_stock_chip, 318, 40);
+    lv_obj_set_size(s_stock_chip, 158, 40);
     lv_obj_align(s_stock_chip, LV_ALIGN_LEFT_MID, 232, 0);
 #endif
     ui_pages_style_topbar_chip(s_stock_chip);
@@ -419,9 +500,6 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
     lv_obj_set_style_pad_right(s_stock_chip, 8, LV_PART_MAIN);
     lv_obj_clear_flag(s_stock_chip, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(s_stock_chip, LV_OBJ_FLAG_HIDDEN);
-#if APP_SCREEN_WIDTH < 700
-    lv_obj_add_flag(s_stock_chip, LV_OBJ_FLAG_HIDDEN);
-#endif
     for (size_t i = 0; i < 3U; i++) {
         s_stock_labels[i] = lv_label_create(s_stock_chip);
 #if APP_SCREEN_WIDTH < 1000
@@ -429,7 +507,7 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
         lv_obj_align(s_stock_labels[i], LV_ALIGN_LEFT_MID, 8, 0);
 #else
         lv_obj_set_width(s_stock_labels[i], 128);
-        lv_obj_align(s_stock_labels[i], LV_ALIGN_LEFT_MID, 8 + (lv_coord_t)i * 150, 0);
+        lv_obj_align(s_stock_labels[i], LV_ALIGN_LEFT_MID, 8, 0);
 #endif
         lv_obj_set_style_text_color(s_stock_labels[i], lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
         lv_obj_set_style_text_font(s_stock_labels[i], APP_FONT_TEXT_14, LV_PART_MAIN);
@@ -443,7 +521,7 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
         lv_obj_align(s_stock_euro_labels[i], LV_ALIGN_LEFT_MID, 116, 2);
 #else
         lv_obj_set_width(s_stock_euro_labels[i], 12);
-        lv_obj_align(s_stock_euro_labels[i], LV_ALIGN_LEFT_MID, 143 + (lv_coord_t)i * 150, 2);
+        lv_obj_align(s_stock_euro_labels[i], LV_ALIGN_LEFT_MID, 143, 2);
 #endif
         lv_obj_set_style_text_color(s_stock_euro_labels[i], lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
         lv_obj_set_style_text_font(s_stock_euro_labels[i], &app_font_euro_14, LV_PART_MAIN);
@@ -455,11 +533,10 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
     s_time_label = lv_label_create(s_topbar);
 #if APP_SCREEN_WIDTH < 1000
     lv_obj_set_width(s_time_label, 88);
-    lv_obj_align(s_time_label, LV_ALIGN_CENTER, -20, 0);
 #else
     lv_obj_set_width(s_time_label, 180);
-    lv_obj_align(s_time_label, LV_ALIGN_CENTER, 70, 0);
 #endif
+    lv_obj_align(s_time_label, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_color(s_time_label, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_font(s_time_label, TOPBAR_TIME_FONT, LV_PART_MAIN);
     lv_obj_set_style_text_align(s_time_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
@@ -478,9 +555,6 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
     lv_obj_set_style_pad_right(s_weather_chip, 8, LV_PART_MAIN);
     lv_obj_clear_flag(s_weather_chip, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(s_weather_chip, LV_OBJ_FLAG_HIDDEN);
-#if APP_SCREEN_WIDTH < 700
-    lv_obj_add_flag(s_weather_chip, LV_OBJ_FLAG_HIDDEN);
-#endif
 
     s_weather_temp_label = lv_label_create(s_weather_chip);
 #if APP_SCREEN_WIDTH < 1000
@@ -588,6 +662,16 @@ void ui_pages_init(void)
     s_content_box = NULL;
     s_date_label = NULL;
     s_time_label = NULL;
+    s_stock_chip = NULL;
+    memset(s_stock_labels, 0, sizeof(s_stock_labels));
+    memset(s_stock_euro_labels, 0, sizeof(s_stock_euro_labels));
+    s_weather_chip = NULL;
+    s_weather_temp_label = NULL;
+    s_weather_icon_label = NULL;
+    strlcpy(s_topbar_left_slots[0], "date", sizeof(s_topbar_left_slots[0]));
+    s_topbar_left_slots[1][0] = '\0';
+    s_topbar_weather_has_value = false;
+    s_topbar_stock_has_value = false;
     s_wifi_icon = NULL;
     s_api_icon = NULL;
     s_nav_bar = NULL;
@@ -785,6 +869,13 @@ void ui_pages_set_topbar_status(
     }
 }
 
+void ui_pages_set_topbar_left_slots(const char *slot_1, const char *slot_2)
+{
+    snprintf(s_topbar_left_slots[0], sizeof(s_topbar_left_slots[0]), "%s", slot_1 != NULL ? slot_1 : "");
+    snprintf(s_topbar_left_slots[1], sizeof(s_topbar_left_slots[1]), "%s", slot_2 != NULL ? slot_2 : "");
+    ui_pages_layout_topbar_left();
+}
+
 void ui_pages_set_topbar_datetime(const struct tm *timeinfo)
 {
     if (timeinfo == NULL) {
@@ -803,6 +894,7 @@ void ui_pages_set_topbar_datetime(const struct tm *timeinfo)
     if (s_time_label != NULL) {
         lv_label_set_text(s_time_label, time_buf);
     }
+    ui_pages_layout_topbar_left();
 }
 
 void ui_pages_set_topbar_weather(bool visible, float temperature, const char *unit, uint32_t icon_codepoint)
@@ -811,12 +903,9 @@ void ui_pages_set_topbar_weather(bool visible, float temperature, const char *un
     if (s_weather_chip == NULL || s_weather_temp_label == NULL || s_weather_icon_label == NULL) {
         return;
     }
-#if APP_SCREEN_WIDTH < 700
-    lv_obj_add_flag(s_weather_chip, LV_OBJ_FLAG_HIDDEN);
-    return;
-#endif
-    if (!visible) {
-        lv_obj_add_flag(s_weather_chip, LV_OBJ_FLAG_HIDDEN);
+    if (!visible || !ui_pages_topbar_slot_enabled("weather")) {
+        s_topbar_weather_has_value = false;
+        ui_pages_layout_topbar_left();
         return;
     }
 
@@ -830,7 +919,8 @@ void ui_pages_set_topbar_weather(bool visible, float temperature, const char *un
     } else {
         lv_label_set_text(s_weather_icon_label, "");
     }
-    lv_obj_clear_flag(s_weather_chip, LV_OBJ_FLAG_HIDDEN);
+    s_topbar_weather_has_value = true;
+    ui_pages_layout_topbar_left();
 }
 
 void ui_pages_set_topbar_stocks(const ui_pages_stock_item_t *items, size_t count)
@@ -838,20 +928,14 @@ void ui_pages_set_topbar_stocks(const ui_pages_stock_item_t *items, size_t count
     if (s_stock_chip == NULL) {
         return;
     }
-#if APP_SCREEN_WIDTH < 700
-    lv_obj_add_flag(s_stock_chip, LV_OBJ_FLAG_HIDDEN);
-    return;
-#endif
-    if (items == NULL || count == 0) {
-        lv_obj_add_flag(s_stock_chip, LV_OBJ_FLAG_HIDDEN);
+    if (items == NULL || count == 0 || !ui_pages_topbar_slot_enabled("stock")) {
+        s_topbar_stock_has_value = false;
+        ui_pages_layout_topbar_left();
         return;
     }
 
     size_t visible_count = 0;
-    size_t max_items = 2U;
-#if APP_SCREEN_WIDTH < 1000
-    max_items = 1U;
-#endif
+    size_t max_items = 1U;
     for (size_t i = 0; i < 3U; i++) {
         if (s_stock_labels[i] == NULL) {
             continue;
@@ -879,8 +963,9 @@ void ui_pages_set_topbar_stocks(const ui_pages_stock_item_t *items, size_t count
     }
 
     if (visible_count == 0) {
-        lv_obj_add_flag(s_stock_chip, LV_OBJ_FLAG_HIDDEN);
+        s_topbar_stock_has_value = false;
     } else {
-        lv_obj_clear_flag(s_stock_chip, LV_OBJ_FLAG_HIDDEN);
+        s_topbar_stock_has_value = true;
     }
+    ui_pages_layout_topbar_left();
 }

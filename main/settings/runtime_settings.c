@@ -96,6 +96,56 @@ static int clamp_dim_timeout_seconds(int seconds)
     return seconds;
 }
 
+static bool topbar_slot_is_valid(const char *slot)
+{
+    return slot != NULL &&
+           (strcmp(slot, "") == 0 ||
+            strcmp(slot, "none") == 0 ||
+            strcmp(slot, "date") == 0 ||
+            strcmp(slot, "weather") == 0 ||
+            strcmp(slot, "stock") == 0);
+}
+
+static void topbar_normalize_slot(char *slot, size_t slot_len)
+{
+    if (slot == NULL || slot_len == 0) {
+        return;
+    }
+    if (!topbar_slot_is_valid(slot)) {
+        slot[0] = '\0';
+    }
+}
+
+static bool topbar_has_slot(const runtime_settings_t *settings, const char *slot)
+{
+    if (settings == NULL || slot == NULL) {
+        return false;
+    }
+    for (size_t i = 0; i < 2U; i++) {
+        if (strcmp(settings->topbar_left_slots[i], slot) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void topbar_migrate_legacy_slots(runtime_settings_t *settings)
+{
+    if (settings == NULL || settings->topbar_left_slots[1][0] != '\0') {
+        return;
+    }
+    if (settings->topbar_left_slots[0][0] == '\0') {
+        strlcpy(settings->topbar_left_slots[0], "date", sizeof(settings->topbar_left_slots[0]));
+    } else if (strcmp(settings->topbar_left_slots[0], "date") != 0) {
+        return;
+    }
+    if (settings->topbar_weather_enabled && settings->topbar_weather_entity_id[0] != '\0') {
+        strlcpy(settings->topbar_left_slots[1], "weather", sizeof(settings->topbar_left_slots[1]));
+    } else if (settings->topbar_stock_entity_ids[0][0] != '\0') {
+        strlcpy(settings->topbar_left_slots[1], "stock", sizeof(settings->topbar_left_slots[1]));
+    }
+}
+
 static esp_err_t load_file_text(const char *path, size_t max_len, char **out_text)
 {
     if (path == NULL || out_text == NULL) {
@@ -147,17 +197,22 @@ static esp_err_t write_public_settings_file(const runtime_settings_t *settings)
     cJSON *ha = cJSON_CreateObject();
     cJSON *time_cfg = cJSON_CreateObject();
     cJSON *ui = cJSON_CreateObject();
+    cJSON *topbar = cJSON_CreateObject();
+    cJSON *topbar_left_slots = cJSON_CreateArray();
     cJSON *weather = cJSON_CreateObject();
     cJSON *stocks = cJSON_CreateObject();
     cJSON *stock_entity_ids = cJSON_CreateArray();
     cJSON *hardware = cJSON_CreateObject();
     if (root == NULL || wifi == NULL || ha == NULL || time_cfg == NULL || ui == NULL ||
-        weather == NULL || stocks == NULL || stock_entity_ids == NULL || hardware == NULL) {
+        topbar == NULL || topbar_left_slots == NULL || weather == NULL || stocks == NULL ||
+        stock_entity_ids == NULL || hardware == NULL) {
         cJSON_Delete(root);
         cJSON_Delete(wifi);
         cJSON_Delete(ha);
         cJSON_Delete(time_cfg);
         cJSON_Delete(ui);
+        cJSON_Delete(topbar);
+        cJSON_Delete(topbar_left_slots);
         cJSON_Delete(weather);
         cJSON_Delete(stocks);
         cJSON_Delete(stock_entity_ids);
@@ -182,6 +237,20 @@ static esp_err_t write_public_settings_file(const runtime_settings_t *settings)
 
     cJSON_AddStringToObject(ui, "language", settings->ui_language);
     cJSON_AddItemToObject(root, "ui", ui);
+
+    for (size_t i = 0; i < 2U; i++) {
+        cJSON *item = cJSON_CreateString(settings->topbar_left_slots[i]);
+        if (item == NULL) {
+            cJSON_Delete(root);
+            cJSON_Delete(topbar);
+            return ESP_ERR_NO_MEM;
+        }
+        cJSON_AddItemToArray(topbar_left_slots, item);
+    }
+    cJSON_AddItemToObject(topbar, "left_slots", topbar_left_slots);
+    cJSON_AddStringToObject(topbar, "weather_entity_id", settings->topbar_weather_entity_id);
+    cJSON_AddStringToObject(topbar, "stock_entity_id", settings->topbar_stock_entity_ids[0]);
+    cJSON_AddItemToObject(root, "topbar", topbar);
 
     cJSON_AddBoolToObject(weather, "topbar_enabled", settings->topbar_weather_enabled);
     cJSON_AddStringToObject(weather, "entity_id", settings->topbar_weather_entity_id);
@@ -256,6 +325,7 @@ static esp_err_t parse_settings_json(
     cJSON *ha = cJSON_GetObjectItemCaseSensitive(root, "ha");
     cJSON *time_cfg = cJSON_GetObjectItemCaseSensitive(root, "time");
     cJSON *ui = cJSON_GetObjectItemCaseSensitive(root, "ui");
+    cJSON *topbar = cJSON_GetObjectItemCaseSensitive(root, "topbar");
     cJSON *weather = cJSON_GetObjectItemCaseSensitive(root, "weather");
     cJSON *stocks = cJSON_GetObjectItemCaseSensitive(root, "stocks");
     cJSON *hardware = cJSON_GetObjectItemCaseSensitive(root, "hardware");
@@ -357,6 +427,29 @@ static esp_err_t parse_settings_json(
         json_copy_string(root, "topbar_stock_entity_id_2", out->topbar_stock_entity_ids[1], sizeof(out->topbar_stock_entity_ids[1]));
         json_copy_string(root, "topbar_stock_entity_id_3", out->topbar_stock_entity_ids[2], sizeof(out->topbar_stock_entity_ids[2]));
     }
+
+    if (cJSON_IsObject(topbar)) {
+        cJSON *left_slots = cJSON_GetObjectItemCaseSensitive(topbar, "left_slots");
+        if (cJSON_IsArray(left_slots)) {
+            for (size_t i = 0; i < 2U; i++) {
+                cJSON *item = cJSON_GetArrayItem(left_slots, (int)i);
+                if (cJSON_IsString(item) && item->valuestring != NULL) {
+                    strlcpy(out->topbar_left_slots[i], item->valuestring, sizeof(out->topbar_left_slots[i]));
+                } else if (cJSON_IsNull(item)) {
+                    out->topbar_left_slots[i][0] = '\0';
+                }
+            }
+        }
+        json_copy_string(topbar, "weather_entity_id", out->topbar_weather_entity_id, sizeof(out->topbar_weather_entity_id));
+        json_copy_string(topbar, "stock_entity_id", out->topbar_stock_entity_ids[0], sizeof(out->topbar_stock_entity_ids[0]));
+        out->topbar_stock_entity_ids[1][0] = '\0';
+        out->topbar_stock_entity_ids[2][0] = '\0';
+    }
+    for (size_t i = 0; i < 2U; i++) {
+        topbar_normalize_slot(out->topbar_left_slots[i], sizeof(out->topbar_left_slots[i]));
+    }
+    topbar_migrate_legacy_slots(out);
+    out->topbar_weather_enabled = topbar_has_slot(out, "weather");
 
     if (cJSON_IsObject(hardware)) {
         json_copy_int(hardware, "active_brightness", &out->hardware_active_brightness_percent);
@@ -525,6 +618,8 @@ void runtime_settings_set_defaults(runtime_settings_t *out)
     strlcpy(out->ntp_server, APP_NTP_SERVER, sizeof(out->ntp_server));
     strlcpy(out->time_tz, APP_TIME_TZ, sizeof(out->time_tz));
     strlcpy(out->ui_language, APP_UI_DEFAULT_LANGUAGE, sizeof(out->ui_language));
+    strlcpy(out->topbar_left_slots[0], "date", sizeof(out->topbar_left_slots[0]));
+    out->topbar_left_slots[1][0] = '\0';
     out->topbar_weather_enabled = false;
     out->topbar_weather_entity_id[0] = '\0';
     out->hardware_active_brightness_percent = APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT;

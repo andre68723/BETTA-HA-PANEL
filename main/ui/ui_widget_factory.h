@@ -17,6 +17,7 @@ typedef struct {
     char title[APP_MAX_NAME_LEN];
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char secondary_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char tertiary_entity_id[APP_MAX_ENTITY_ID_LEN];
     char forecast_today_entity_id[APP_MAX_ENTITY_ID_LEN];
     char forecast_tomorrow_entity_id[APP_MAX_ENTITY_ID_LEN];
     char forecast_day_3_entity_id[APP_MAX_ENTITY_ID_LEN];
@@ -48,6 +49,7 @@ typedef struct {
     char title[APP_MAX_NAME_LEN];
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char secondary_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char tertiary_entity_id[APP_MAX_ENTITY_ID_LEN];
     char forecast_today_entity_id[APP_MAX_ENTITY_ID_LEN];
     char forecast_tomorrow_entity_id[APP_MAX_ENTITY_ID_LEN];
     char forecast_day_3_entity_id[APP_MAX_ENTITY_ID_LEN];

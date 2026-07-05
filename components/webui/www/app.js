@@ -149,6 +149,19 @@ const ENTITY_PICKER_CONFIGS = {
     minSearch: 2,
     liveSearch: false,
   },
+  car_widget: {
+    domain: "sensor",
+    titleKey: "entity_picker.title_sensor",
+    blankKey: "entity_picker.blank_car",
+    widgetKey: "entity_picker.widget_car",
+    itemsKey: "entity_picker.items_sensor",
+    titleFallback: "Choose Sensor",
+    blankFallback: "Blank Car Widget",
+    widgetFallback: "Car widget",
+    itemsFallback: "sensors",
+    minSearch: 2,
+    liveSearch: false,
+  },
   todo_list: {
     domain: "todo",
     titleKey: "entity_picker.title_todo",
@@ -212,8 +225,7 @@ const ENTITY_PICKER_CONFIGS = {
 const SETTINGS_NAV_ITEMS = [
   { sectionId: "settingsWifiSection", headingId: "settingsWifiHeading", labelKey: "settings.wifi.heading" },
   { sectionId: "settingsHaSection", headingId: "settingsHaHeading", labelKey: "settings.ha.heading" },
-  { sectionId: "settingsWeatherSection", headingId: "settingsWeatherHeading", labelKey: "settings.weather.heading" },
-  { sectionId: "settingsStocksSection", headingId: "settingsStocksHeading", labelKey: "settings.stocks.heading" },
+  { sectionId: "settingsTopbarSection", headingId: "settingsTopbarHeading", labelKey: "settings.topbar.heading" },
   { sectionId: "settingsHardwareSection", headingId: "settingsHardwareHeading", labelKey: "settings.hardware.heading" },
   { sectionId: "settingsTimeSection", headingId: "settingsTimeHeading", labelKey: "settings.time.heading" },
   { sectionId: "settingsUiSection", headingId: "settingsUiHeading", labelKey: "settings.ui.heading" },
@@ -306,6 +318,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_weather_tile": "+ Weather",
     "layout.widgets.add_weather_3day": "+ Weather Forecast",
     "layout.widgets.add_solar_forecast": "+ Solar Forecast",
+    "layout.widgets.add_car": "+ Car",
     "layout.widgets.add_todo": "+ Todo List",
     "layout.widgets.add_media_player": "+ Media Player",
     "layout.widgets.add_roborock": "+ Roborock",
@@ -335,6 +348,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_weather": "Blank Weather Tile",
     "entity_picker.blank_weather_3day": "Blank Weather Forecast Tile",
     "entity_picker.blank_solar_forecast": "Blank Solar Forecast Tile",
+    "entity_picker.blank_car": "Blank Car Widget",
     "entity_picker.blank_graph": "Blank Graph Tile",
     "entity_picker.blank_heating": "Blank Heating Tile",
     "entity_picker.blank_roborock": "Blank Roborock Tile",
@@ -369,6 +383,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.widget_weather": "Weather tile",
     "entity_picker.widget_weather_3day": "Weather Forecast tile",
     "entity_picker.widget_solar_forecast": "Solar Forecast tile",
+    "entity_picker.widget_car": "Car widget",
     "entity_picker.widget_graph": "Graph tile",
     "entity_picker.widget_heating": "Heating tile",
     "entity_picker.widget_roborock": "Roborock tile",
@@ -387,6 +402,8 @@ const WEB_I18N_BUILTIN = {
     "layout.inspector.solar_bar_orientation": "Bar orientation",
     "layout.inspector.secondary_entity": "Actual entity (sensor)",
     "layout.inspector.secondary_entity_roborock": "Map entity (image, optional)",
+    "layout.inspector.secondary_entity_car": "Charging power entity (sensor, optional)",
+    "layout.inspector.tertiary_entity_car": "Range entity (sensor, optional)",
     "layout.inspector.button_mode": "Button mode",
     "layout.inspector.button_accent_color": "Button accent color",
     "layout.inspector.slider_entity_domain": "Slider entity type",
@@ -438,6 +455,7 @@ const WEB_I18N_BUILTIN = {
     "layout.status.expected_domain": "the expected domain",
     "layout.status.secondary_sensor_required": "Actual entity must start with sensor.",
     "layout.status.secondary_image_required": "Map entity must start with image.",
+    "layout.status.tertiary_sensor_required": "Range entity must start with sensor.",
     "layout.status.invalid_json": "Invalid layout JSON",
     "layout.status.save_failed": "Save failed: {error}",
     "layout.status.import_failed": "Import failed: {error}",
@@ -488,15 +506,16 @@ const WEB_I18N_BUILTIN = {
     "settings.ha.token": "Long-lived Access Token",
     "settings.ha.token_placeholder": "Leave empty to keep the stored token",
     "settings.ha.rest_fallback": "Enable HA REST fallback (Default: Off, WS-only preferred)",
-    "settings.weather.heading": "Weather",
-    "settings.weather.topbar_enabled": "Show weather in top bar",
-    "settings.weather.entity": "Weather entity",
-    "settings.weather.info": "Uses a Home Assistant weather entity, for example weather.home.",
-    "settings.stocks.heading": "Stocks",
-    "settings.stocks.entity_1": "Stock sensor 1",
-    "settings.stocks.entity_2": "Stock sensor 2",
-    "settings.stocks.entity_3": "Stock sensor 3",
-    "settings.stocks.info": "Shows up to 3 Home Assistant sensor values in the top bar. 4 inch panels show only the first value.",
+    "settings.topbar.heading": "Top Bar",
+    "settings.topbar.slot_1": "Left item 1",
+    "settings.topbar.slot_2": "Left item 2",
+    "settings.topbar.option_none": "None",
+    "settings.topbar.option_date": "Date",
+    "settings.topbar.option_weather": "Weather",
+    "settings.topbar.option_stock": "Stock",
+    "settings.topbar.weather_entity": "Weather entity",
+    "settings.topbar.stock_entity": "Stock sensor",
+    "settings.topbar.info": "Shows one or two configured items on the left side. Compact panels render only the first item to keep the time centered.",
     "settings.hardware.heading": "Hardware",
     "settings.hardware.active_brightness": "Normal brightness",
     "settings.hardware.dim_brightness": "Reduced brightness",
@@ -668,6 +687,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_weather_tile": "+ Weather",
     "layout.widgets.add_weather_3day": "+ Wetter Vorhersage",
     "layout.widgets.add_solar_forecast": "+ Solar Forecast",
+    "layout.widgets.add_car": "+ Auto",
     "layout.widgets.add_todo": "+ Todo Liste",
     "layout.widgets.add_media_player": "+ Media Player",
     "layout.widgets.add_roborock": "+ Roborock",
@@ -697,6 +717,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_weather": "Leere Wetterkachel",
     "entity_picker.blank_weather_3day": "Leere Wetter-Vorhersage-Kachel",
     "entity_picker.blank_solar_forecast": "Leere Solar-Forecast-Kachel",
+    "entity_picker.blank_car": "Leeres Auto-Widget",
     "entity_picker.blank_graph": "Leere Graph-Kachel",
     "entity_picker.blank_heating": "Leere Heizungskachel",
     "entity_picker.blank_roborock": "Leere Roborock-Kachel",
@@ -731,6 +752,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.widget_weather": "Wetterkachel",
     "entity_picker.widget_weather_3day": "Wetter-Vorhersage-Kachel",
     "entity_picker.widget_solar_forecast": "Solar-Forecast-Kachel",
+    "entity_picker.widget_car": "Auto-Widget",
     "entity_picker.widget_graph": "Graph-Kachel",
     "entity_picker.widget_heating": "Heizungskachel",
     "entity_picker.widget_roborock": "Roborock-Kachel",
@@ -749,6 +771,8 @@ const WEB_I18N_BUILTIN = {
     "layout.inspector.solar_bar_orientation": "Balken-Ausrichtung",
     "layout.inspector.secondary_entity": "Ist-Entitaet (Sensor)",
     "layout.inspector.secondary_entity_roborock": "Karten-Entitaet (image, optional)",
+    "layout.inspector.secondary_entity_car": "Ladeleistung-Entitaet (Sensor, optional)",
+    "layout.inspector.tertiary_entity_car": "Reichweite-Entitaet (Sensor, optional)",
     "layout.inspector.button_mode": "Button Modus",
     "layout.inspector.button_accent_color": "Button Akzentfarbe",
     "layout.inspector.slider_entity_domain": "Slider Entitaetstyp",
@@ -800,6 +824,7 @@ const WEB_I18N_BUILTIN = {
     "layout.status.expected_domain": "die erwartete Domain",
     "layout.status.secondary_sensor_required": "Ist-Entitaet muss mit sensor. beginnen.",
     "layout.status.secondary_image_required": "Karten-Entitaet muss mit image. beginnen.",
+    "layout.status.tertiary_sensor_required": "Reichweite-Entitaet muss mit sensor. beginnen.",
     "layout.status.invalid_json": "Ungueltiges Layout JSON",
     "layout.status.save_failed": "Speichern fehlgeschlagen: {error}",
     "layout.status.import_failed": "Import fehlgeschlagen: {error}",
@@ -850,15 +875,16 @@ const WEB_I18N_BUILTIN = {
     "settings.ha.token": "Long-lived Access Token",
     "settings.ha.token_placeholder": "Leer lassen, um vorhandenen Token zu behalten",
     "settings.ha.rest_fallback": "HA REST Fallback aktivieren (Standard: Aus, WS bevorzugt)",
-    "settings.weather.heading": "Wetter",
-    "settings.weather.topbar_enabled": "Wetter in der Statuszeile anzeigen",
-    "settings.weather.entity": "Wetter-Entitaet",
-    "settings.weather.info": "Nutzt eine Home Assistant Wetter-Entitaet, zum Beispiel weather.home.",
-    "settings.stocks.heading": "Stocks",
-    "settings.stocks.entity_1": "Stock-Sensor 1",
-    "settings.stocks.entity_2": "Stock-Sensor 2",
-    "settings.stocks.entity_3": "Stock-Sensor 3",
-    "settings.stocks.info": "Zeigt bis zu 3 Home Assistant Sensorwerte in der Statuszeile. 4 Zoll Panels zeigen nur den ersten Wert.",
+    "settings.topbar.heading": "Top Bar",
+    "settings.topbar.slot_1": "Linker Inhalt 1",
+    "settings.topbar.slot_2": "Linker Inhalt 2",
+    "settings.topbar.option_none": "Keiner",
+    "settings.topbar.option_date": "Datum",
+    "settings.topbar.option_weather": "Wetter",
+    "settings.topbar.option_stock": "Stock",
+    "settings.topbar.weather_entity": "Wetter-Entitaet",
+    "settings.topbar.stock_entity": "Stock-Sensor",
+    "settings.topbar.info": "Zeigt ein oder zwei konfigurierte Inhalte links an. Kompakte Panels rendern nur den ersten Inhalt, damit die Uhr mittig bleibt.",
     "settings.hardware.heading": "Hardware",
     "settings.hardware.active_brightness": "Normale Helligkeit",
     "settings.hardware.dim_brightness": "Reduzierte Helligkeit",
@@ -1086,15 +1112,16 @@ const WEB_I18N_BUILTIN = {
     "settings.ha.token": "Token de acceso de larga duracion",
     "settings.ha.token_placeholder": "Dejar vacio para conservar el token guardado",
     "settings.ha.rest_fallback": "Activar fallback REST de HA (por defecto: off, se prefiere WS)",
-    "settings.weather.heading": "Tiempo",
-    "settings.weather.topbar_enabled": "Mostrar tiempo en la barra superior",
-    "settings.weather.entity": "Entidad de tiempo",
-    "settings.weather.info": "Usa una entidad weather de Home Assistant, por ejemplo weather.home.",
-    "settings.stocks.heading": "Acciones",
-    "settings.stocks.entity_1": "Sensor de accion 1",
-    "settings.stocks.entity_2": "Sensor de accion 2",
-    "settings.stocks.entity_3": "Sensor de accion 3",
-    "settings.stocks.info": "Muestra hasta 3 sensores de Home Assistant en la barra superior. Paneles de 4 pulgadas muestran solo el primer valor.",
+    "settings.topbar.heading": "Barra superior",
+    "settings.topbar.slot_1": "Elemento izquierdo 1",
+    "settings.topbar.slot_2": "Elemento izquierdo 2",
+    "settings.topbar.option_none": "Ninguno",
+    "settings.topbar.option_date": "Fecha",
+    "settings.topbar.option_weather": "Tiempo",
+    "settings.topbar.option_stock": "Accion",
+    "settings.topbar.weather_entity": "Entidad de tiempo",
+    "settings.topbar.stock_entity": "Sensor de accion",
+    "settings.topbar.info": "Muestra uno o dos elementos configurados a la izquierda. Los paneles compactos muestran solo el primero para mantener la hora centrada.",
     "settings.hardware.heading": "Hardware",
     "settings.hardware.active_brightness": "Brillo normal",
     "settings.hardware.dim_brightness": "Brillo reducido",
@@ -1318,15 +1345,16 @@ const WEB_I18N_BUILTIN = {
     "settings.ha.token": "Jeton d'acces longue duree",
     "settings.ha.token_placeholder": "Laisser vide pour garder le token stocke",
     "settings.ha.rest_fallback": "Activer le fallback REST HA (defaut: off, WS prefere)",
-    "settings.weather.heading": "Meteo",
-    "settings.weather.topbar_enabled": "Afficher la meteo dans la barre superieure",
-    "settings.weather.entity": "Entite meteo",
-    "settings.weather.info": "Utilise une entite weather de Home Assistant, par exemple weather.home.",
-    "settings.stocks.heading": "Actions",
-    "settings.stocks.entity_1": "Capteur action 1",
-    "settings.stocks.entity_2": "Capteur action 2",
-    "settings.stocks.entity_3": "Capteur action 3",
-    "settings.stocks.info": "Affiche jusqu'a 3 capteurs Home Assistant dans la barre superieure. Les panneaux 4 pouces affichent seulement la premiere valeur.",
+    "settings.topbar.heading": "Barre superieure",
+    "settings.topbar.slot_1": "Element gauche 1",
+    "settings.topbar.slot_2": "Element gauche 2",
+    "settings.topbar.option_none": "Aucun",
+    "settings.topbar.option_date": "Date",
+    "settings.topbar.option_weather": "Meteo",
+    "settings.topbar.option_stock": "Action",
+    "settings.topbar.weather_entity": "Entite meteo",
+    "settings.topbar.stock_entity": "Capteur action",
+    "settings.topbar.info": "Affiche un ou deux elements configures a gauche. Les panneaux compacts n'affichent que le premier pour garder l'heure centree.",
     "settings.hardware.heading": "Hardware",
     "settings.hardware.active_brightness": "Luminosite normale",
     "settings.hardware.dim_brightness": "Luminosite reduite",
@@ -1487,6 +1515,10 @@ function widgetSizeLimits(type) {
       return compact
         ? { minW: 280, minH: 180, maxW: 640, maxH: 480 }
         : { minW: 260, minH: 220, maxW: 640, maxH: 480 };
+    case "car_widget":
+      return compact
+        ? { minW: 180, minH: 220, maxW: 480, maxH: 560 }
+        : { minW: 220, minH: 260, maxW: 480, maxH: 560 };
     case "todo_list":
       return compact
         ? { minW: 180, minH: 160, maxW: 640, maxH: 640 }
@@ -1655,6 +1687,7 @@ const el = {
   addWeatherTileBtn: document.getElementById("addWeatherTileBtn"),
   addWeather3DayBtn: document.getElementById("addWeather3DayBtn"),
   addSolarForecastBtn: document.getElementById("addSolarForecastBtn"),
+  addCarWidgetBtn: document.getElementById("addCarWidgetBtn"),
   addTodoListBtn: document.getElementById("addTodoListBtn"),
   addMediaPlayerBtn: document.getElementById("addMediaPlayerBtn"),
   addRoborockTileBtn: document.getElementById("addRoborockTileBtn"),
@@ -1672,6 +1705,9 @@ const el = {
   fSecondaryEntityWrap: document.getElementById("fSecondaryEntityWrap"),
   fSecondaryEntityLabel: document.getElementById("fSecondaryEntityLabel"),
   fSecondaryEntity: document.getElementById("fSecondaryEntity"),
+  fTertiaryEntityWrap: document.getElementById("fTertiaryEntityWrap"),
+  fTertiaryEntityLabel: document.getElementById("fTertiaryEntityLabel"),
+  fTertiaryEntity: document.getElementById("fTertiaryEntity"),
   solarForecastFields: document.getElementById("solarForecastFields"),
   solarForecastStyleOptions: document.getElementById("solarForecastStyleOptions"),
   fSolarForecastTodayLabel: document.getElementById("fSolarForecastTodayLabel"),
@@ -1727,12 +1763,13 @@ const el = {
   settingsHaUrl: document.getElementById("settingsHaUrl"),
   settingsHaToken: document.getElementById("settingsHaToken"),
   settingsHaRestEnabled: document.getElementById("settingsHaRestEnabled"),
-  settingsTopbarWeatherEnabled: document.getElementById("settingsTopbarWeatherEnabled"),
+  settingsTopbarSlot1: document.getElementById("settingsTopbarSlot1"),
+  settingsTopbarSlot2: document.getElementById("settingsTopbarSlot2"),
   settingsTopbarWeatherEntity: document.getElementById("settingsTopbarWeatherEntity"),
+  settingsTopbarWeatherSearchBtn: document.getElementById("settingsTopbarWeatherSearchBtn"),
   settingsWeatherEntityOptions: document.getElementById("settingsWeatherEntityOptions"),
-  settingsStockEntity1: document.getElementById("settingsStockEntity1"),
-  settingsStockEntity2: document.getElementById("settingsStockEntity2"),
-  settingsStockEntity3: document.getElementById("settingsStockEntity3"),
+  settingsTopbarStockEntity: document.getElementById("settingsTopbarStockEntity"),
+  settingsTopbarStockSearchBtn: document.getElementById("settingsTopbarStockSearchBtn"),
   settingsStockEntityOptions: document.getElementById("settingsStockEntityOptions"),
   settingsHardwareActiveBrightness: document.getElementById("settingsHardwareActiveBrightness"),
   settingsHardwareActiveBrightnessValue: document.getElementById("settingsHardwareActiveBrightnessValue"),
@@ -1750,8 +1787,7 @@ const el = {
   settingsTranslationInfo: document.getElementById("settingsTranslationInfo"),
   settingsWifiInfo: document.getElementById("settingsWifiInfo"),
   settingsHaInfo: document.getElementById("settingsHaInfo"),
-  settingsWeatherInfo: document.getElementById("settingsWeatherInfo"),
-  settingsStocksInfo: document.getElementById("settingsStocksInfo"),
+  settingsTopbarInfo: document.getElementById("settingsTopbarInfo"),
   settingsHardwareInfo: document.getElementById("settingsHardwareInfo"),
   settingsTimeInfo: document.getElementById("settingsTimeInfo"),
   settingsUiInfo: document.getElementById("settingsUiInfo"),
@@ -1805,6 +1841,10 @@ const entityAutocomplete = {
     requestSeq: 0,
   },
   secondary: {
+    timerId: null,
+    requestSeq: 0,
+  },
+  tertiary: {
     timerId: null,
     requestSeq: 0,
   },
@@ -1944,6 +1984,16 @@ function normalizeLayoutWidgets(layout) {
           delete widget.solar_forecast_bar_max_kwh;
         }
         delete widget.secondary_entity_id;
+        delete widget.tertiary_entity_id;
+      } else if (widget.type === "car_widget") {
+        if (typeof widget.secondary_entity_id !== "string") {
+          widget.secondary_entity_id = "";
+        }
+        if (typeof widget.tertiary_entity_id !== "string") {
+          widget.tertiary_entity_id = "";
+        }
+      } else {
+        delete widget.tertiary_entity_id;
       }
     }
   }
@@ -2387,6 +2437,7 @@ function applyWebTranslations() {
   setTextById("addWeatherTileBtn", "layout.widgets.add_weather_tile");
   setTextById("addWeather3DayBtn", "layout.widgets.add_weather_3day");
   setTextById("addSolarForecastBtn", "layout.widgets.add_solar_forecast");
+  setTextById("addCarWidgetBtn", "layout.widgets.add_car");
   setTextById("addTodoListBtn", "layout.widgets.add_todo");
   setTextById("addMediaPlayerBtn", "layout.widgets.add_media_player");
   setTextById("addRoborockTileBtn", "layout.widgets.add_roborock");
@@ -2401,6 +2452,7 @@ function applyWebTranslations() {
   setTextById("fTitleLabel", "layout.inspector.title");
   setTextById("fEntityLabel", "layout.inspector.entity");
   setTextById("fSecondaryEntityLabel", "layout.inspector.secondary_entity");
+  setTextById("fTertiaryEntityLabel", "layout.inspector.tertiary_entity_car");
   setTextById("fSolarForecastTodayLabel", "layout.inspector.solar_today");
   setTextById("fSolarForecastTomorrowLabel", "layout.inspector.solar_tomorrow");
   setTextById("fSolarForecastDay3Label", "layout.inspector.solar_day_3");
@@ -2481,14 +2533,19 @@ function applyWebTranslations() {
   setPlaceholderById("settingsHaToken", "settings.ha.token_placeholder");
   setTextById("settingsHaRestEnabledLabel", "settings.ha.rest_fallback");
 
-  setTextById("settingsWeatherHeading", "settings.weather.heading");
-  setTextById("settingsTopbarWeatherEnabledLabel", "settings.weather.topbar_enabled");
-  setTextById("settingsTopbarWeatherEntityLabel", "settings.weather.entity");
-
-  setTextById("settingsStocksHeading", "settings.stocks.heading");
-  setTextById("settingsStockEntity1Label", "settings.stocks.entity_1");
-  setTextById("settingsStockEntity2Label", "settings.stocks.entity_2");
-  setTextById("settingsStockEntity3Label", "settings.stocks.entity_3");
+  setTextById("settingsTopbarHeading", "settings.topbar.heading");
+  setTextById("settingsTopbarSlot1Label", "settings.topbar.slot_1");
+  setTextById("settingsTopbarSlot2Label", "settings.topbar.slot_2");
+  setTextById("settingsTopbarWeatherEntityLabel", "settings.topbar.weather_entity");
+  setTextById("settingsTopbarStockEntityLabel", "settings.topbar.stock_entity");
+  setSelectOptionText(el.settingsTopbarSlot1, "", "settings.topbar.option_none");
+  setSelectOptionText(el.settingsTopbarSlot1, "date", "settings.topbar.option_date");
+  setSelectOptionText(el.settingsTopbarSlot1, "weather", "settings.topbar.option_weather");
+  setSelectOptionText(el.settingsTopbarSlot1, "stock", "settings.topbar.option_stock");
+  setSelectOptionText(el.settingsTopbarSlot2, "", "settings.topbar.option_none");
+  setSelectOptionText(el.settingsTopbarSlot2, "date", "settings.topbar.option_date");
+  setSelectOptionText(el.settingsTopbarSlot2, "weather", "settings.topbar.option_weather");
+  setSelectOptionText(el.settingsTopbarSlot2, "stock", "settings.topbar.option_stock");
 
   setTextById("settingsHardwareHeading", "settings.hardware.heading");
   setTextById("settingsHardwareActiveBrightnessLabel", "settings.hardware.active_brightness");
@@ -2852,6 +2909,34 @@ function setPercentSlider(input, output, value) {
   return percent;
 }
 
+function normalizeTopbarSlot(value) {
+  const slot = typeof value === "string" ? value : "";
+  return ["", "none", "date", "weather", "stock"].includes(slot) ? (slot === "none" ? "" : slot) : "";
+}
+
+function deriveTopbarSettings(settings) {
+  const topbar = settings.topbar || {};
+  const weather = settings.weather || {};
+  const stocks = settings.stocks || {};
+  const legacyStockIds = Array.isArray(stocks.entity_ids) ? stocks.entity_ids : [];
+  const slots = Array.isArray(topbar.left_slots) ? topbar.left_slots : [];
+  const slot1 = normalizeTopbarSlot(slots[0] ?? "date") || "date";
+  let slot2 = normalizeTopbarSlot(slots[1] ?? "");
+  if (!settings.topbar) {
+    slot2 = weather.topbar_enabled === true && weather.entity_id
+      ? "weather"
+      : legacyStockIds[0]
+        ? "stock"
+        : "";
+  }
+  return {
+    slot1,
+    slot2,
+    weatherEntity: topbar.weather_entity_id || weather.entity_id || "",
+    stockEntity: topbar.stock_entity_id || legacyStockIds[0] || "",
+  };
+}
+
 function applySectionCollapseState() {
   setSectionCollapsed("pages", editor.sectionCollapsed.pages);
   setSectionCollapsed("widgets", editor.sectionCollapsed.widgets);
@@ -2862,8 +2947,7 @@ function renderSettings() {
   const settings = editor.settings || {};
   const wifi = settings.wifi || {};
   const ha = settings.ha || {};
-  const weather = settings.weather || {};
-  const stocks = settings.stocks || {};
+  const topbar = deriveTopbarSettings(settings);
   const hardware = settings.hardware || {};
   const time = settings.time || {};
   const ui = settings.ui || {};
@@ -2883,16 +2967,16 @@ function renderSettings() {
   if (el.settingsHaRestEnabled) {
     el.settingsHaRestEnabled.checked = ha.rest_enabled === true;
   }
-  if (el.settingsTopbarWeatherEnabled) {
-    el.settingsTopbarWeatherEnabled.checked = weather.topbar_enabled === true;
+  if (el.settingsTopbarSlot1) {
+    el.settingsTopbarSlot1.value = topbar.slot1;
+  }
+  if (el.settingsTopbarSlot2) {
+    el.settingsTopbarSlot2.value = topbar.slot2;
   }
   if (el.settingsTopbarWeatherEntity) {
-    el.settingsTopbarWeatherEntity.value = weather.entity_id || "";
+    el.settingsTopbarWeatherEntity.value = topbar.weatherEntity;
   }
-  const stockEntityIds = Array.isArray(stocks.entity_ids) ? stocks.entity_ids : [];
-  if (el.settingsStockEntity1) el.settingsStockEntity1.value = stockEntityIds[0] || "";
-  if (el.settingsStockEntity2) el.settingsStockEntity2.value = stockEntityIds[1] || "";
-  if (el.settingsStockEntity3) el.settingsStockEntity3.value = stockEntityIds[2] || "";
+  if (el.settingsTopbarStockEntity) el.settingsTopbarStockEntity.value = topbar.stockEntity;
   setPercentSlider(
     el.settingsHardwareActiveBrightness,
     el.settingsHardwareActiveBrightnessValue,
@@ -2938,11 +3022,8 @@ function renderSettings() {
     `${t("settings.info.rest_fallback")}: ${ha.rest_enabled ? t("common.yes") : t("common.no")}`,
   ].join(" | ");
 
-  if (el.settingsWeatherInfo) {
-    el.settingsWeatherInfo.textContent = t("settings.weather.info");
-  }
-  if (el.settingsStocksInfo) {
-    el.settingsStocksInfo.textContent = t("settings.stocks.info");
+  if (el.settingsTopbarInfo) {
+    el.settingsTopbarInfo.textContent = t("settings.topbar.info");
   }
   if (el.settingsHardwareInfo) {
     el.settingsHardwareInfo.textContent = t("settings.hardware.info");
@@ -3502,13 +3583,13 @@ async function saveSettings() {
   const haUrl = el.settingsHaUrl.value.trim();
   const haToken = el.settingsHaToken.value.trim();
   const haRestEnabled = Boolean(el.settingsHaRestEnabled?.checked);
-  const weatherTopbarEnabled = Boolean(el.settingsTopbarWeatherEnabled?.checked);
+  const topbarSlot1 = normalizeTopbarSlot(el.settingsTopbarSlot1?.value || "date") || "date";
+  let topbarSlot2 = normalizeTopbarSlot(el.settingsTopbarSlot2?.value || "");
+  if (topbarSlot2 === topbarSlot1) {
+    topbarSlot2 = "";
+  }
   const weatherEntity = el.settingsTopbarWeatherEntity?.value.trim() || "";
-  const stockEntityIds = [
-    el.settingsStockEntity1?.value.trim() || "",
-    el.settingsStockEntity2?.value.trim() || "",
-    el.settingsStockEntity3?.value.trim() || "",
-  ];
+  const stockEntity = el.settingsTopbarStockEntity?.value.trim() || "";
   const hardwareActiveBrightness = clamp(Number(el.settingsHardwareActiveBrightness?.value || 100), 10, 100);
   const hardwareDimBrightness = clamp(Number(el.settingsHardwareDimBrightness?.value || 10), 10, 100);
   const hardwareDimTimeout = clamp(Number(el.settingsHardwareDimTimeout?.value || 180), 5, 3600);
@@ -3539,12 +3620,17 @@ async function saveSettings() {
       ws_url: haUrl,
       rest_enabled: haRestEnabled,
     },
+    topbar: {
+      left_slots: [topbarSlot1, topbarSlot2],
+      weather_entity_id: weatherEntity || null,
+      stock_entity_id: stockEntity || null,
+    },
     weather: {
-      topbar_enabled: weatherTopbarEnabled,
+      topbar_enabled: topbarSlot1 === "weather" || topbarSlot2 === "weather",
       entity_id: weatherEntity || null,
     },
     stocks: {
-      entity_ids: stockEntityIds,
+      entity_ids: [stockEntity, "", ""],
     },
     hardware: {
       active_brightness: hardwareActiveBrightness,
@@ -3678,7 +3764,7 @@ function allowedEntityDomainsForWidgetType(
   buttonMode = DEFAULT_BUTTON_MODE,
 ) {
   if (type === "empty_tile") return [];
-  if (type === "sensor" || type === "graph" || type === "solar_forecast") return ["sensor"];
+  if (type === "sensor" || type === "graph" || type === "solar_forecast" || type === "car_widget") return ["sensor"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     return buttonModeRequiresMediaPlayer(normalizedMode) ? ["media_player"] : ["switch", "media_player"];
@@ -3729,6 +3815,16 @@ function secondaryEntityConfigForWidgetType(type) {
       invalidStatusKey: "layout.status.secondary_image_required",
     };
   }
+  if (type === "car_widget") {
+    return {
+      enabled: true,
+      domain: "sensor",
+      optional: true,
+      labelKey: "layout.inspector.secondary_entity_car",
+      labelFallback: "Charging power entity (sensor, optional)",
+      invalidStatusKey: "layout.status.secondary_sensor_required",
+    };
+  }
   return {
     enabled: false,
     domain: "",
@@ -3736,6 +3832,27 @@ function secondaryEntityConfigForWidgetType(type) {
     labelKey: "layout.inspector.secondary_entity",
     labelFallback: "Actual entity (sensor)",
     invalidStatusKey: "layout.status.secondary_sensor_required",
+  };
+}
+
+function tertiaryEntityConfigForWidgetType(type) {
+  if (type === "car_widget") {
+    return {
+      enabled: true,
+      domain: "sensor",
+      optional: true,
+      labelKey: "layout.inspector.tertiary_entity_car",
+      labelFallback: "Range entity (sensor, optional)",
+      invalidStatusKey: "layout.status.tertiary_sensor_required",
+    };
+  }
+  return {
+    enabled: false,
+    domain: "",
+    optional: true,
+    labelKey: "layout.inspector.tertiary_entity_car",
+    labelFallback: "Range entity (sensor, optional)",
+    invalidStatusKey: "layout.status.tertiary_sensor_required",
   };
 }
 
@@ -3926,6 +4043,7 @@ function preferredInspectorPrimaryDomain(input) {
 
 function inspectorEntityPickerTarget(targetKey) {
   const secondaryConfig = secondaryEntityConfigForWidgetType(inspectorWidgetType());
+  const tertiaryConfig = tertiaryEntityConfigForWidgetType(inspectorWidgetType());
   const targets = {
     primary: {
       input: el.fEntity,
@@ -3938,6 +4056,12 @@ function inspectorEntityPickerTarget(targetKey) {
       domain: secondaryConfig.domain,
       titleKey: secondaryConfig.labelKey,
       titleFallback: secondaryConfig.labelFallback,
+    },
+    tertiary: {
+      input: el.fTertiaryEntity,
+      domain: tertiaryConfig.domain,
+      titleKey: tertiaryConfig.labelKey,
+      titleFallback: tertiaryConfig.labelFallback,
     },
     solar_today: {
       input: el.fSolarForecastToday,
@@ -3986,16 +4110,39 @@ function openInspectorEntityPicker(targetKey) {
   });
 }
 
+function openSettingsTopbarEntityPicker(kind) {
+  const target = kind === "weather"
+    ? {
+        input: el.settingsTopbarWeatherEntity,
+        domain: "weather",
+        titleKey: "entity_picker.title_weather",
+        titleFallback: "Choose Weather",
+      }
+    : {
+        input: el.settingsTopbarStockEntity,
+        domain: "sensor",
+        titleKey: "entity_picker.title_sensor",
+        titleFallback: "Choose Sensor",
+      };
+  if (!target.input || target.input.disabled) return;
+  openLightEntityPicker(`settings_topbar_${kind}`, {
+    inspectorTarget: target,
+    configOverride: entityPickerConfigForDomain(target.domain, target.titleKey, target.titleFallback),
+  });
+}
+
 function scheduleEntityAutocomplete(kind, immediate = false) {
   const isSecondary = kind === "secondary";
-  const state = isSecondary ? entityAutocomplete.secondary : entityAutocomplete.primary;
-  const input = isSecondary ? el.fSecondaryEntity : el.fEntity;
-  const options = isSecondary ? el.sensorEntityOptions : el.entityOptions;
+  const isTertiary = kind === "tertiary";
+  const state = isTertiary ? entityAutocomplete.tertiary : (isSecondary ? entityAutocomplete.secondary : entityAutocomplete.primary);
+  const input = isTertiary ? el.fTertiaryEntity : (isSecondary ? el.fSecondaryEntity : el.fEntity);
+  const options = (isSecondary || isTertiary) ? el.sensorEntityOptions : el.entityOptions;
   const secondaryConfig = secondaryEntityConfigForWidgetType(inspectorWidgetType());
+  const tertiaryConfig = tertiaryEntityConfigForWidgetType(inspectorWidgetType());
   if (!input || !options) return;
-  if (!isSecondary && input.disabled) return;
-  if (isSecondary && input.disabled) return;
+  if (input.disabled) return;
   if (isSecondary && !secondaryConfig.enabled) return;
+  if (isTertiary && !tertiaryConfig.enabled) return;
 
   if (state.timerId !== null) {
     window.clearTimeout(state.timerId);
@@ -4005,12 +4152,16 @@ function scheduleEntityAutocomplete(kind, immediate = false) {
   const run = async () => {
     const requestSeq = ++state.requestSeq;
     const raw = input.value || "";
-    const fallbackDomain = isSecondary ? secondaryConfig.domain : defaultPrimaryEntityDomain();
+    const fallbackDomain = isTertiary ? tertiaryConfig.domain : (isSecondary ? secondaryConfig.domain : defaultPrimaryEntityDomain());
     const { domain, search } = parseEntitySearchInput(raw, fallbackDomain);
-    const source = isSecondary ? listEntitiesByDomain(secondaryConfig.domain) : primaryEntitySource();
-    const allowedDomains = isSecondary
-      ? [secondaryConfig.domain]
-      : allowedEntityDomainsForWidgetType(inspectorWidgetType(), inspectorSliderEntityDomain(), inspectorButtonMode());
+    const source = isTertiary
+      ? listEntitiesByDomain(tertiaryConfig.domain)
+      : (isSecondary ? listEntitiesByDomain(secondaryConfig.domain) : primaryEntitySource());
+    const allowedDomains = isTertiary
+      ? [tertiaryConfig.domain]
+      : (isSecondary
+        ? [secondaryConfig.domain]
+        : allowedEntityDomainsForWidgetType(inspectorWidgetType(), inspectorSliderEntityDomain(), inspectorButtonMode()));
 
     if (domain && allowedDomains.length > 0 && !allowedDomains.includes(domain)) {
       setEntityOptionsList(options, []);
@@ -4702,13 +4853,14 @@ function renderEntityOptions() {
   const sliderDomain = inspectorSliderEntityDomain();
   const buttonMode = inspectorButtonMode();
   const secondaryConfig = secondaryEntityConfigForWidgetType(inspectorType);
+  const tertiaryConfig = tertiaryEntityConfigForWidgetType(inspectorType);
   const inspectorOptions = listEntitiesForWidgetType(inspectorType, sliderDomain, buttonMode);
   const primaryOptions = inspectorOptions.length > 0 ? inspectorOptions : editor.entities;
   setEntityOptionsList(el.entityOptions, primaryOptions.slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS));
 
   setEntityOptionsList(
     el.sensorEntityOptions,
-    (secondaryConfig.domain || inspectorType === "solar_forecast")
+    (secondaryConfig.domain || tertiaryConfig.domain || inspectorType === "solar_forecast")
       ? listEntitiesByDomain(inspectorType === "solar_forecast" ? "sensor" : secondaryConfig.domain).slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS)
       : [],
   );
@@ -4735,6 +4887,9 @@ function renderEntityOptions() {
     setTextById("fEntityLabel", primaryLabelKey);
     el.fSecondaryEntityLabel.textContent = t(secondaryConfig.labelKey, {}, secondaryConfig.labelFallback);
   }
+  if (el.fTertiaryEntityLabel) {
+    el.fTertiaryEntityLabel.textContent = t(tertiaryConfig.labelKey, {}, tertiaryConfig.labelFallback);
+  }
 
   const secondaryEnabled = secondaryConfig.enabled;
   if (el.fSecondaryEntityWrap) {
@@ -4743,6 +4898,17 @@ function renderEntityOptions() {
   el.fSecondaryEntity.disabled = !secondaryEnabled;
   if (!secondaryEnabled) {
     el.fSecondaryEntity.value = "";
+  }
+
+  const tertiaryEnabled = tertiaryConfig.enabled;
+  if (el.fTertiaryEntityWrap) {
+    el.fTertiaryEntityWrap.classList.toggle("hidden", !tertiaryEnabled);
+  }
+  if (el.fTertiaryEntity) {
+    el.fTertiaryEntity.disabled = !tertiaryEnabled;
+    if (!tertiaryEnabled) {
+      el.fTertiaryEntity.value = "";
+    }
   }
 
   const primaryEnabled = inspectorType !== "empty_tile";
@@ -4927,6 +5093,8 @@ function renderWidgets() {
     el.addHeatingTileBtn,
     el.addWeatherTileBtn,
     el.addWeather3DayBtn,
+    el.addSolarForecastBtn,
+    el.addCarWidgetBtn,
     el.addTodoListBtn,
     el.addMediaPlayerBtn,
   ];
@@ -5159,11 +5327,12 @@ function solarPreviewMarkup(widget) {
   const orientation = normalizeSolarForecastBarOrientation(widget.solar_forecast_bar_orientation);
   const rows = solarPreviewRows(widget);
   const rowMarkup = rows.map((row) => {
+    const remainingClass = row.label === "Rest" ? " remaining" : "";
     const widthStyle = `width:${row.percent}%`;
     const heightStyle = `height:${row.percent}%`;
     if (orientation === "vertical") {
       return `
-        <div class="solar-preview-col">
+        <div class="solar-preview-col${remainingClass}">
           <div class="solar-preview-vbar"><i style="${heightStyle}"></i></div>
           <strong>${escapeHtml(row.label)}</strong>
           <span>${escapeHtml(solarPreviewFormatValue(row.value, false))}</span>
@@ -5171,7 +5340,7 @@ function solarPreviewMarkup(widget) {
       `;
     }
     return `
-      <div class="solar-preview-row">
+      <div class="solar-preview-row${remainingClass}">
         <strong>${escapeHtml(row.label)}</strong>
         <div class="solar-preview-hbar"><i style="${widthStyle}"></i></div>
         <span>${escapeHtml(solarPreviewFormatValue(row.value))}</span>
@@ -5182,6 +5351,31 @@ function solarPreviewMarkup(widget) {
     <div class="solar-preview ${orientation}">
       <div class="solar-preview-title">${escapeHtml(widget.title || "Solar Forecast")}</div>
       <div class="solar-preview-body">${rowMarkup}</div>
+    </div>
+    <div class="resize-handle"></div>
+  `;
+}
+
+function carPreviewNumber(entityId, fallback = null) {
+  const raw = editor.states.get(entityId) ?? "";
+  const parsed = Number(String(raw).replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function carPreviewMarkup(widget) {
+  const soc = clamp(Math.round(carPreviewNumber(widget.entity_id, 27)), 0, 100);
+  const range = carPreviewNumber(widget.tertiary_entity_id, null);
+  const power = carPreviewNumber(widget.secondary_entity_id, null);
+  const rangeText = range === null ? "-- km" : `${range.toFixed(range >= 100 ? 0 : 1)} km`;
+  const powerText = power === null ? "-- W" : (Math.abs(power) >= 10000 ? `${(power / 1000).toFixed(1)} kW` : `${power.toFixed(0)} W`);
+  return `
+    <div class="car-preview" style="--soc:${soc};">
+      <div class="car-preview-gauge">
+        <div class="car-preview-range">${escapeHtml(rangeText)}</div>
+        <div class="car-preview-soc">${escapeHtml(String(soc))}<span>%</span></div>
+        <div class="car-preview-power">${escapeHtml(powerText)}</div>
+      </div>
+      <div class="car-preview-title">${escapeHtml(widget.title || "Car")}</div>
     </div>
     <div class="resize-handle"></div>
   `;
@@ -5486,6 +5680,8 @@ function renderCanvas() {
     }
     if (widget.type === "solar_forecast") {
       box.innerHTML = solarPreviewMarkup(widget);
+    } else if (widget.type === "car_widget") {
+      box.innerHTML = carPreviewMarkup(widget);
     } else {
       box.innerHTML = `
         <div class="w-type">${widget.type}</div>
@@ -5508,6 +5704,9 @@ function renderInspector() {
     el.fType.value = "sensor";
     el.fEntity.value = "";
     el.fSecondaryEntity.value = "";
+    if (el.fTertiaryEntity) {
+      el.fTertiaryEntity.value = "";
+    }
     el.fX.value = "";
     el.fY.value = "";
     el.fW.value = "";
@@ -5592,6 +5791,7 @@ function renderInspector() {
   el.fType.value = widget.type;
   el.fEntity.value = widget.entity_id || "";
   el.fSecondaryEntity.value = widget.secondary_entity_id || "";
+  if (el.fTertiaryEntity) el.fTertiaryEntity.value = widget.tertiary_entity_id || "";
   if (el.fSolarForecastToday) el.fSolarForecastToday.value = widget.forecast_today_entity_id || "";
   if (el.fSolarForecastTomorrow) el.fSolarForecastTomorrow.value = widget.forecast_tomorrow_entity_id || "";
   if (el.fSolarForecastDay3) el.fSolarForecastDay3.value = widget.forecast_day_3_entity_id || "";
@@ -5864,6 +6064,7 @@ function addWidget(type, options = {}) {
   const defaultW = compact
     ? type === "weather_3day" ? 420
       : type === "solar_forecast" ? 420
+      : type === "car_widget" ? 220
       : type === "todo_list" ? 300
       : type === "media_player" ? 300
       : type === "roborock_tile" ? 460
@@ -5873,6 +6074,7 @@ function addWidget(type, options = {}) {
       : 180
     : type === "weather_3day" ? 360
       : type === "solar_forecast" ? 460
+      : type === "car_widget" ? 280
       : type === "todo_list" ? 360
       : type === "media_player" ? 360
       : type === "roborock_tile" ? 360
@@ -5881,6 +6083,7 @@ function addWidget(type, options = {}) {
   const defaultH = compact
     ? type === "weather_3day" ? 240
       : type === "solar_forecast" ? 240
+      : type === "car_widget" ? 280
       : type === "todo_list" ? 220
       : type === "media_player" ? 220
       : type === "roborock_tile" ? 300
@@ -5890,6 +6093,7 @@ function addWidget(type, options = {}) {
       : 110
     : type === "weather_3day" ? 260
       : type === "solar_forecast" ? 250
+      : type === "car_widget" ? 340
       : type === "todo_list" ? 360
       : type === "media_player" ? 280
       : type === "roborock_tile" ? 300
@@ -5926,6 +6130,11 @@ function addWidget(type, options = {}) {
     widget.forecast_day_4_entity_id = DEFAULT_SOLCAST_ENTITIES.day4;
     widget.forecast_day_5_entity_id = DEFAULT_SOLCAST_ENTITIES.day5;
     widget.solar_forecast_bar_orientation = DEFAULT_SOLAR_FORECAST_BAR_ORIENTATION;
+  }
+  if (type === "car_widget") {
+    widget.title = typeof options.title === "string" && options.title.trim() ? options.title.trim() : "Car";
+    widget.secondary_entity_id = "";
+    widget.tertiary_entity_id = "";
   }
 
   page.widgets.push(widget);
@@ -5971,6 +6180,7 @@ function applyInspector(options = {}) {
     ? normalizeButtonMode(el.fButtonMode?.value)
     : DEFAULT_BUTTON_MODE;
   const secondaryConfig = secondaryEntityConfigForWidgetType(widgetType);
+  const tertiaryConfig = tertiaryEntityConfigForWidgetType(widgetType);
   const nextEntityId = el.fEntity.value.trim() || pickDefaultEntityForWidgetType(widgetType, sliderDomain, buttonMode);
 
   const primaryEntityValid = entityMatchesWidgetType({ id: nextEntityId }, widgetType, sliderDomain, buttonMode);
@@ -6023,6 +6233,22 @@ function applyInspector(options = {}) {
     }
   } else {
     widget.secondary_entity_id = "";
+  }
+  if (tertiaryConfig.enabled) {
+    const typedTertiaryEntityId = el.fTertiaryEntity?.value.trim() || "";
+    const tertiaryEntityId = tertiaryConfig.optional
+      ? typedTertiaryEntityId
+      : (typedTertiaryEntityId || pickDefaultEntityForWidgetType(tertiaryConfig.domain));
+    if (tertiaryEntityId.length > 0 && !tertiaryEntityId.startsWith(`${tertiaryConfig.domain}.`)) {
+      if (!softEntityValidation) {
+        setStatus(t(tertiaryConfig.invalidStatusKey), true);
+        return false;
+      }
+    } else {
+      widget.tertiary_entity_id = tertiaryEntityId;
+    }
+  } else {
+    delete widget.tertiary_entity_id;
   }
   if (widgetType === "button") {
     widget.button_mode = buttonMode;
@@ -6200,6 +6426,9 @@ function bindUi() {
   el.addWeather3DayBtn.onclick = () => openLightEntityPicker("weather_3day");
   if (el.addSolarForecastBtn) {
     el.addSolarForecastBtn.onclick = () => addWidget("solar_forecast");
+  }
+  if (el.addCarWidgetBtn) {
+    el.addCarWidgetBtn.onclick = () => openLightEntityPicker("car_widget");
   }
   if (el.addTodoListBtn) {
     el.addTodoListBtn.onclick = () => openLightEntityPicker("todo_list");
@@ -6408,8 +6637,20 @@ function bindUi() {
       if (!sensorEntity.startsWith("sensor.")) {
         el.fSecondaryEntity.value = pickDefaultEntityForWidgetType("sensor");
       }
+    } else if (el.fType.value === "car_widget") {
+      const sensorEntity = el.fSecondaryEntity.value.trim();
+      if (sensorEntity && !sensorEntity.startsWith("sensor.")) {
+        el.fSecondaryEntity.value = "";
+      }
+      const rangeEntity = el.fTertiaryEntity?.value.trim() || "";
+      if (el.fTertiaryEntity && rangeEntity && !rangeEntity.startsWith("sensor.")) {
+        el.fTertiaryEntity.value = "";
+      }
     } else {
       el.fSecondaryEntity.value = "";
+      if (el.fTertiaryEntity) {
+        el.fTertiaryEntity.value = "";
+      }
     }
   };
   if (el.fEntity) {
@@ -6450,6 +6691,12 @@ function bindUi() {
     el.fSecondaryEntity.onfocus = () => scheduleEntityAutocomplete("secondary", true);
     el.fSecondaryEntity.onchange = () => autoApplyInspector();
     el.fSecondaryEntity.onblur = () => autoApplyInspector();
+  }
+  if (el.fTertiaryEntity) {
+    el.fTertiaryEntity.oninput = () => scheduleEntityAutocomplete("tertiary");
+    el.fTertiaryEntity.onfocus = () => scheduleEntityAutocomplete("tertiary", true);
+    el.fTertiaryEntity.onchange = () => autoApplyInspector();
+    el.fTertiaryEntity.onblur = () => autoApplyInspector();
   }
   document.querySelectorAll("[data-inspector-entity-target]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -6531,10 +6778,15 @@ function bindUi() {
     el.settingsTopbarWeatherEntity.oninput = () => scheduleSettingsWeatherAutocomplete();
     el.settingsTopbarWeatherEntity.onfocus = () => scheduleSettingsWeatherAutocomplete(true);
   }
-  for (const input of [el.settingsStockEntity1, el.settingsStockEntity2, el.settingsStockEntity3]) {
-    if (!input) continue;
-    input.oninput = () => scheduleSettingsStockAutocomplete(input);
-    input.onfocus = () => scheduleSettingsStockAutocomplete(input, true);
+  if (el.settingsTopbarWeatherSearchBtn) {
+    el.settingsTopbarWeatherSearchBtn.onclick = () => openSettingsTopbarEntityPicker("weather");
+  }
+  if (el.settingsTopbarStockEntity) {
+    el.settingsTopbarStockEntity.oninput = () => scheduleSettingsStockAutocomplete(el.settingsTopbarStockEntity);
+    el.settingsTopbarStockEntity.onfocus = () => scheduleSettingsStockAutocomplete(el.settingsTopbarStockEntity, true);
+  }
+  if (el.settingsTopbarStockSearchBtn) {
+    el.settingsTopbarStockSearchBtn.onclick = () => openSettingsTopbarEntityPicker("stock");
   }
   if (el.settingsHardwareActiveBrightness) {
     el.settingsHardwareActiveBrightness.oninput = () => {

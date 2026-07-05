@@ -68,6 +68,7 @@ static uint32_t s_last_model_revision = 0;
 static bool s_model_reconcile_pending = false;
 static bool s_pending_state_reconcile = false;
 static bool s_pending_topbar_refresh = false;
+static char s_topbar_left_slots[2][APP_MAX_UI_OPTION_LEN] = { "date", "" };
 static bool s_topbar_weather_enabled = false;
 static char s_topbar_weather_entity_id[APP_MAX_ENTITY_ID_LEN] = {0};
 static char s_topbar_stock_entity_ids[3][APP_MAX_ENTITY_ID_LEN] = {{0}};
@@ -204,6 +205,13 @@ static void ui_runtime_load_topbar_settings(void)
     if (runtime_settings_load(&settings) != ESP_OK) {
         runtime_settings_set_defaults(&settings);
     }
+    for (size_t i = 0; i < 2U; i++) {
+        snprintf(
+            s_topbar_left_slots[i],
+            sizeof(s_topbar_left_slots[i]),
+            "%s",
+            settings.topbar_left_slots[i]);
+    }
     s_topbar_weather_enabled =
         settings.topbar_weather_enabled && settings.topbar_weather_entity_id[0] != '\0';
     snprintf(
@@ -216,8 +224,9 @@ static void ui_runtime_load_topbar_settings(void)
             s_topbar_stock_entity_ids[i],
             sizeof(s_topbar_stock_entity_ids[i]),
             "%s",
-            settings.topbar_stock_entity_ids[i]);
+            i == 0 ? settings.topbar_stock_entity_ids[i] : "");
     }
+    ui_pages_set_topbar_left_slots(s_topbar_left_slots[0], s_topbar_left_slots[1]);
 }
 
 static void ui_runtime_apply_topbar_weather_state(const ha_state_t *state)
@@ -651,6 +660,8 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
         bool is_primary = (strncmp(entity_id, s_widgets[i].entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
         bool is_secondary = (s_widgets[i].secondary_entity_id[0] != '\0') &&
                             (strncmp(entity_id, s_widgets[i].secondary_entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
+        bool is_tertiary = (s_widgets[i].tertiary_entity_id[0] != '\0') &&
+                           (strncmp(entity_id, s_widgets[i].tertiary_entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
         bool is_forecast_today = (s_widgets[i].forecast_today_entity_id[0] != '\0') &&
                                  (strncmp(entity_id, s_widgets[i].forecast_today_entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
         bool is_forecast_tomorrow = (s_widgets[i].forecast_tomorrow_entity_id[0] != '\0') &&
@@ -661,7 +672,7 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
                                  (strncmp(entity_id, s_widgets[i].forecast_day_4_entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
         bool is_forecast_day_5 = (s_widgets[i].forecast_day_5_entity_id[0] != '\0') &&
                                  (strncmp(entity_id, s_widgets[i].forecast_day_5_entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
-        if (!is_primary && !is_secondary && !is_forecast_today && !is_forecast_tomorrow &&
+        if (!is_primary && !is_secondary && !is_tertiary && !is_forecast_today && !is_forecast_tomorrow &&
             !is_forecast_day_3 && !is_forecast_day_4 && !is_forecast_day_5) {
             continue;
         }
@@ -715,6 +726,14 @@ static void ui_runtime_apply_widget_current_state(ui_widget_instance_t *widget, 
             ui_widget_factory_apply_state(widget, &s_state_scratch);
         }
     }
+    if (widget->tertiary_entity_id[0] != '\0' &&
+        strncmp(widget->tertiary_entity_id, widget->entity_id, APP_MAX_ENTITY_ID_LEN) != 0 &&
+        strncmp(widget->tertiary_entity_id, widget->secondary_entity_id, APP_MAX_ENTITY_ID_LEN) != 0) {
+        memset(&s_state_scratch, 0, sizeof(s_state_scratch));
+        if (ha_model_get_state(widget->tertiary_entity_id, &s_state_scratch)) {
+            ui_widget_factory_apply_state(widget, &s_state_scratch);
+        }
+    }
 
     const char *forecast_entity_ids[] = {
         widget->forecast_today_entity_id,
@@ -727,7 +746,8 @@ static void ui_runtime_apply_widget_current_state(ui_widget_instance_t *widget, 
         const char *forecast_entity_id = forecast_entity_ids[i];
         if (forecast_entity_id[0] == '\0' ||
             strncmp(forecast_entity_id, widget->entity_id, APP_MAX_ENTITY_ID_LEN) == 0 ||
-            strncmp(forecast_entity_id, widget->secondary_entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
+            strncmp(forecast_entity_id, widget->secondary_entity_id, APP_MAX_ENTITY_ID_LEN) == 0 ||
+            strncmp(forecast_entity_id, widget->tertiary_entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
             continue;
         }
         memset(&s_state_scratch, 0, sizeof(s_state_scratch));
@@ -759,6 +779,11 @@ static void ui_runtime_apply_all_states(void)
         if (s_widgets[i].secondary_entity_id[0] != '\0' &&
             strncmp(s_widgets[i].secondary_entity_id, s_widgets[i].entity_id, APP_MAX_ENTITY_ID_LEN) != 0) {
             ui_runtime_apply_entity_state(s_widgets[i].secondary_entity_id);
+        }
+        if (s_widgets[i].tertiary_entity_id[0] != '\0' &&
+            strncmp(s_widgets[i].tertiary_entity_id, s_widgets[i].entity_id, APP_MAX_ENTITY_ID_LEN) != 0 &&
+            strncmp(s_widgets[i].tertiary_entity_id, s_widgets[i].secondary_entity_id, APP_MAX_ENTITY_ID_LEN) != 0) {
+            ui_runtime_apply_entity_state(s_widgets[i].tertiary_entity_id);
         }
         if (s_widgets[i].forecast_today_entity_id[0] != '\0') {
             ui_runtime_apply_entity_state(s_widgets[i].forecast_today_entity_id);
@@ -795,6 +820,11 @@ static void ui_runtime_apply_all_states_preserve_missing(void)
             strncmp(s_widgets[i].secondary_entity_id, s_widgets[i].entity_id, APP_MAX_ENTITY_ID_LEN) != 0) {
             ui_runtime_apply_entity_state_ex(s_widgets[i].secondary_entity_id, false);
         }
+        if (s_widgets[i].tertiary_entity_id[0] != '\0' &&
+            strncmp(s_widgets[i].tertiary_entity_id, s_widgets[i].entity_id, APP_MAX_ENTITY_ID_LEN) != 0 &&
+            strncmp(s_widgets[i].tertiary_entity_id, s_widgets[i].secondary_entity_id, APP_MAX_ENTITY_ID_LEN) != 0) {
+            ui_runtime_apply_entity_state_ex(s_widgets[i].tertiary_entity_id, false);
+        }
         if (s_widgets[i].forecast_today_entity_id[0] != '\0') {
             ui_runtime_apply_entity_state_ex(s_widgets[i].forecast_today_entity_id, false);
         }
@@ -829,6 +859,7 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     cJSON *title = cJSON_GetObjectItemCaseSensitive(widget_json, "title");
     cJSON *entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "entity_id");
     cJSON *secondary_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "secondary_entity_id");
+    cJSON *tertiary_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "tertiary_entity_id");
     cJSON *forecast_today_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_today_entity_id");
     cJSON *forecast_tomorrow_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_tomorrow_entity_id");
     cJSON *forecast_day_3_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_day_3_entity_id");
@@ -874,6 +905,9 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     }
     if (cJSON_IsString(secondary_entity_id) && secondary_entity_id->valuestring != NULL) {
         snprintf(out->secondary_entity_id, sizeof(out->secondary_entity_id), "%s", secondary_entity_id->valuestring);
+    }
+    if (cJSON_IsString(tertiary_entity_id) && tertiary_entity_id->valuestring != NULL) {
+        snprintf(out->tertiary_entity_id, sizeof(out->tertiary_entity_id), "%s", tertiary_entity_id->valuestring);
     }
     if (cJSON_IsString(forecast_today_entity_id) && forecast_today_entity_id->valuestring != NULL) {
         snprintf(out->forecast_today_entity_id, sizeof(out->forecast_today_entity_id), "%s", forecast_today_entity_id->valuestring);
@@ -1035,8 +1069,8 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
     }
 
     s_topbar_cache.valid = false;
-    ui_runtime_load_topbar_settings();
     ui_pages_reset();
+    ui_runtime_load_topbar_settings();
     memset(s_widgets, 0, APP_MAX_WIDGETS_TOTAL * sizeof(*s_widgets));
     s_widget_count = 0;
     memset(s_energy_pages, 0, APP_MAX_PAGES * sizeof(*s_energy_pages));

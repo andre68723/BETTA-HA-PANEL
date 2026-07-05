@@ -199,17 +199,22 @@ esp_err_t api_settings_get_handler(httpd_req_t *req)
     cJSON *ha = cJSON_CreateObject();
     cJSON *time_cfg = cJSON_CreateObject();
     cJSON *ui = cJSON_CreateObject();
+    cJSON *topbar = cJSON_CreateObject();
+    cJSON *topbar_left_slots = cJSON_CreateArray();
     cJSON *weather = cJSON_CreateObject();
     cJSON *stocks = cJSON_CreateObject();
     cJSON *stock_entity_ids = cJSON_CreateArray();
     cJSON *hardware = cJSON_CreateObject();
     if (root == NULL || wifi == NULL || ha == NULL || time_cfg == NULL || ui == NULL ||
-        weather == NULL || stocks == NULL || stock_entity_ids == NULL || hardware == NULL) {
+        topbar == NULL || topbar_left_slots == NULL || weather == NULL || stocks == NULL ||
+        stock_entity_ids == NULL || hardware == NULL) {
         cJSON_Delete(root);
         cJSON_Delete(wifi);
         cJSON_Delete(ha);
         cJSON_Delete(time_cfg);
         cJSON_Delete(ui);
+        cJSON_Delete(topbar);
+        cJSON_Delete(topbar_left_slots);
         cJSON_Delete(weather);
         cJSON_Delete(stocks);
         cJSON_Delete(stock_entity_ids);
@@ -263,6 +268,21 @@ esp_err_t api_settings_get_handler(httpd_req_t *req)
 
     cJSON_AddStringToObject(ui, "language", settings->ui_language);
     cJSON_AddItemToObject(root, "ui", ui);
+
+    for (size_t i = 0; i < 2U; i++) {
+        cJSON *item = cJSON_CreateString(settings->topbar_left_slots[i]);
+        if (item == NULL) {
+            cJSON_Delete(root);
+            cJSON_Delete(topbar);
+            free(settings);
+            return httpd_resp_send_500(req);
+        }
+        cJSON_AddItemToArray(topbar_left_slots, item);
+    }
+    cJSON_AddItemToObject(topbar, "left_slots", topbar_left_slots);
+    cJSON_AddStringToObject(topbar, "weather_entity_id", settings->topbar_weather_entity_id);
+    cJSON_AddStringToObject(topbar, "stock_entity_id", settings->topbar_stock_entity_ids[0]);
+    cJSON_AddItemToObject(root, "topbar", topbar);
 
     cJSON_AddBoolToObject(weather, "topbar_enabled", settings->topbar_weather_enabled);
     cJSON_AddStringToObject(weather, "entity_id", settings->topbar_weather_entity_id);
@@ -386,6 +406,29 @@ static bool update_int_setting(
     return false;
 }
 
+static bool topbar_slot_is_valid(const char *slot)
+{
+    return slot != NULL &&
+           (strcmp(slot, "") == 0 ||
+            strcmp(slot, "none") == 0 ||
+            strcmp(slot, "date") == 0 ||
+            strcmp(slot, "weather") == 0 ||
+            strcmp(slot, "stock") == 0);
+}
+
+static bool topbar_has_slot(const runtime_settings_t *settings, const char *slot)
+{
+    if (settings == NULL || slot == NULL) {
+        return false;
+    }
+    for (size_t i = 0; i < 2U; i++) {
+        if (strcmp(settings->topbar_left_slots[i], slot) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 esp_err_t api_settings_put_handler(httpd_req_t *req)
 {
     if (req->content_len <= 0 || req->content_len > APP_SETTINGS_MAX_JSON_LEN) {
@@ -429,6 +472,7 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
     cJSON *ha = cJSON_GetObjectItemCaseSensitive(root, "ha");
     cJSON *time_cfg = cJSON_GetObjectItemCaseSensitive(root, "time");
     cJSON *ui = cJSON_GetObjectItemCaseSensitive(root, "ui");
+    cJSON *topbar = cJSON_GetObjectItemCaseSensitive(root, "topbar");
     cJSON *weather = cJSON_GetObjectItemCaseSensitive(root, "weather");
     cJSON *stocks = cJSON_GetObjectItemCaseSensitive(root, "stocks");
     cJSON *hardware = cJSON_GetObjectItemCaseSensitive(root, "hardware");
@@ -451,6 +495,11 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
         cJSON_Delete(root);
         free(settings);
         return send_json_error(req, "400 Bad Request", "ui must be an object");
+    }
+    if (topbar != NULL && !cJSON_IsObject(topbar)) {
+        cJSON_Delete(root);
+        free(settings);
+        return send_json_error(req, "400 Bad Request", "topbar must be an object");
     }
     if (weather != NULL && !cJSON_IsObject(weather)) {
         cJSON_Delete(root);
@@ -498,6 +547,42 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
         (void)update_string_setting(
             ui, "language", settings->ui_language, sizeof(settings->ui_language), &invalid_type, &too_long);
     }
+    if (cJSON_IsObject(topbar)) {
+        cJSON *left_slots = cJSON_GetObjectItemCaseSensitive(topbar, "left_slots");
+        if (left_slots != NULL && !cJSON_IsArray(left_slots)) {
+            invalid_type = true;
+        } else if (cJSON_IsArray(left_slots)) {
+            for (size_t i = 0; i < 2U; i++) {
+                cJSON *item = cJSON_GetArrayItem(left_slots, (int)i);
+                if (item == NULL || cJSON_IsNull(item)) {
+                    settings->topbar_left_slots[i][0] = '\0';
+                    continue;
+                }
+                if (!cJSON_IsString(item) || item->valuestring == NULL) {
+                    invalid_type = true;
+                    continue;
+                }
+                if (strlen(item->valuestring) >= sizeof(settings->topbar_left_slots[i])) {
+                    too_long = true;
+                    continue;
+                }
+                if (!topbar_slot_is_valid(item->valuestring)) {
+                    invalid_type = true;
+                    continue;
+                }
+                strlcpy(settings->topbar_left_slots[i], item->valuestring, sizeof(settings->topbar_left_slots[i]));
+            }
+        }
+        (void)update_string_setting(
+            topbar, "weather_entity_id", settings->topbar_weather_entity_id, sizeof(settings->topbar_weather_entity_id),
+            &invalid_type, &too_long);
+        (void)update_string_setting(
+            topbar, "stock_entity_id", settings->topbar_stock_entity_ids[0], sizeof(settings->topbar_stock_entity_ids[0]),
+            &invalid_type, &too_long);
+        settings->topbar_stock_entity_ids[1][0] = '\0';
+        settings->topbar_stock_entity_ids[2][0] = '\0';
+        settings->topbar_weather_enabled = topbar_has_slot(settings, "weather");
+    }
     if (cJSON_IsObject(weather)) {
         (void)update_bool_setting(weather, "topbar_enabled", &settings->topbar_weather_enabled, &invalid_type);
         (void)update_string_setting(
@@ -526,6 +611,11 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
                 strlcpy(settings->topbar_stock_entity_ids[i], item->valuestring, sizeof(settings->topbar_stock_entity_ids[i]));
             }
         }
+    }
+    if (cJSON_IsObject(topbar)) {
+        settings->topbar_stock_entity_ids[1][0] = '\0';
+        settings->topbar_stock_entity_ids[2][0] = '\0';
+        settings->topbar_weather_enabled = topbar_has_slot(settings, "weather");
     }
     if (cJSON_IsObject(hardware)) {
         (void)update_int_setting(

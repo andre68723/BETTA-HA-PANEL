@@ -108,7 +108,8 @@ static bool is_supported_widget_type(const char *type)
     return (strcmp(type, "sensor") == 0) || (strcmp(type, "button") == 0) || (strcmp(type, "slider") == 0) ||
            (strcmp(type, "graph") == 0) || (strcmp(type, "empty_tile") == 0) || (strcmp(type, "light_tile") == 0) ||
            (strcmp(type, "heating_tile") == 0) || (strcmp(type, "weather_tile") == 0) ||
-           (strcmp(type, "weather_3day") == 0) || (strcmp(type, "solar_forecast") == 0) || (strcmp(type, "todo_list") == 0) ||
+           (strcmp(type, "weather_3day") == 0) || (strcmp(type, "solar_forecast") == 0) ||
+           (strcmp(type, "car_widget") == 0) || (strcmp(type, "todo_list") == 0) ||
            (strcmp(type, "media_player") == 0) || (strcmp(type, "roborock_tile") == 0);
 }
 
@@ -233,6 +234,16 @@ static widget_size_limits_t widget_size_limits_for_type(const char *type)
 #endif
         limits.max_w = 640;
         limits.max_h = 480;
+    } else if (strcmp(type, "car_widget") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 180;
+        limits.min_h = 220;
+#else
+        limits.min_w = 220;
+        limits.min_h = 260;
+#endif
+        limits.max_w = 480;
+        limits.max_h = 560;
     } else if (strcmp(type, "todo_list") == 0) {
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
         limits.min_w = 180;
@@ -282,7 +293,7 @@ static const char *required_domain_for_widget_type(const char *type)
     if (strcmp(type, "sensor") == 0) {
         return "sensor";
     }
-    if (strcmp(type, "solar_forecast") == 0) {
+    if (strcmp(type, "solar_forecast") == 0 || strcmp(type, "car_widget") == 0) {
         return "sensor";
     }
     if (strcmp(type, "light_tile") == 0) {
@@ -315,7 +326,7 @@ static bool widget_entity_domain_valid(const char *type, const char *entity_id)
     if (strcmp(type, "sensor") == 0) {
         return entity_in_domain(entity_id, "sensor") || entity_in_domain(entity_id, "binary_sensor");
     }
-    if (strcmp(type, "solar_forecast") == 0) {
+    if (strcmp(type, "solar_forecast") == 0 || strcmp(type, "car_widget") == 0) {
         return entity_in_domain(entity_id, "sensor");
     }
     if (strcmp(type, "button") == 0) {
@@ -508,6 +519,7 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
     cJSON *type = cJSON_GetObjectItemCaseSensitive(widget, "type");
     cJSON *entity_id = cJSON_GetObjectItemCaseSensitive(widget, "entity_id");
     cJSON *secondary_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "secondary_entity_id");
+    cJSON *tertiary_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "tertiary_entity_id");
     cJSON *forecast_today_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_today_entity_id");
     cJSON *forecast_tomorrow_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_tomorrow_entity_id");
     cJSON *forecast_day_3_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_day_3_entity_id");
@@ -619,6 +631,21 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
                 snprintf(msg, sizeof(msg), "widget %s: secondary_entity_id must be image.*",
                     cJSON_IsString(id) ? id->valuestring : "?");
                 layout_validation_add(result, msg);
+            }
+        }
+    }
+
+    if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "car_widget") == 0) {
+        const cJSON *extra_entities[] = { secondary_entity_id, tertiary_entity_id };
+        const char *extra_keys[] = { "secondary_entity_id", "tertiary_entity_id" };
+        for (size_t i = 0; i < sizeof(extra_entities) / sizeof(extra_entities[0]); i++) {
+            const cJSON *extra = extra_entities[i];
+            if (cJSON_IsString(extra) && extra->valuestring != NULL && extra->valuestring[0] != '\0') {
+                if (!is_valid_entity_id(extra->valuestring) || !entity_in_domain(extra->valuestring, "sensor")) {
+                    snprintf(msg, sizeof(msg), "widget %s: %s must be sensor.*",
+                        cJSON_IsString(id) ? id->valuestring : "?", extra_keys[i]);
+                    layout_validation_add(result, msg);
+                }
             }
         }
     }

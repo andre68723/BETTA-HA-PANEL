@@ -63,7 +63,7 @@ typedef enum {
 
 #define HA_ENERGY_PAGE_ENTITY_MAX (APP_MAX_PAGES * 9)
 #define HA_SETTINGS_ENTITY_MAX 4
-#define HA_LAYOUT_ENTITY_MAX ((APP_MAX_WIDGETS_TOTAL * 2) + HA_ENERGY_PAGE_ENTITY_MAX + HA_SETTINGS_ENTITY_MAX)
+#define HA_LAYOUT_ENTITY_MAX ((APP_MAX_WIDGETS_TOTAL * 3) + HA_ENERGY_PAGE_ENTITY_MAX + HA_SETTINGS_ENTITY_MAX)
 #define HA_WS_ENTITIES_SUB_MAX HA_LAYOUT_ENTITY_MAX
 #define HA_WS_ENTITIES_SUB_ID_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * (size_t)APP_MAX_ENTITY_ID_LEN)
 #define HA_WS_ENTITIES_SUB_REQ_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * sizeof(uint32_t))
@@ -3814,6 +3814,7 @@ static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_c
                 }
                 ha_client_collect_entity_id(widget, "entity_id", entity_ids, &count, max_count);
                 ha_client_collect_entity_id(widget, "secondary_entity_id", entity_ids, &count, max_count);
+                ha_client_collect_entity_id(widget, "tertiary_entity_id", entity_ids, &count, max_count);
                 ha_client_collect_entity_id(widget, "forecast_today_entity_id", entity_ids, &count, max_count);
                 ha_client_collect_entity_id(widget, "forecast_tomorrow_entity_id", entity_ids, &count, max_count);
                 ha_client_collect_entity_id(widget, "forecast_day_3_entity_id", entity_ids, &count, max_count);

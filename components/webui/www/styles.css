@@ -694,6 +694,11 @@ textarea {
   height: 100%;
 }
 
+.solar-preview-row.remaining .solar-preview-hbar i {
+  margin-left: auto;
+  background: linear-gradient(to left, #ffd500 0%, #22d164 100%);
+}
+
 .solar-preview.vertical .solar-preview-body {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -737,6 +742,78 @@ textarea {
 .solar-preview-vbar i {
   width: 100%;
   background: linear-gradient(0deg, #ffd500 0%, #22d164 100%);
+}
+
+.solar-preview-col.remaining .solar-preview-vbar {
+  align-items: flex-start;
+}
+
+.solar-preview-col.remaining .solar-preview-vbar i {
+  background: linear-gradient(to bottom, #ffd500 0%, #22d164 100%);
+}
+
+.car-preview {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  justify-items: center;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+  color: var(--text);
+}
+
+.car-preview-gauge {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  width: min(100%, 190px);
+  aspect-ratio: 1;
+  border: 10px solid rgba(240, 244, 248, 0.18);
+  border-left-color: var(--accent);
+  border-radius: 999px;
+  min-width: 0;
+}
+
+.car-preview-range,
+.car-preview-power {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.car-preview-soc {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.car-preview-soc span {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 700;
+  vertical-align: 0.45em;
+}
+
+.car-preview-title {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 800;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .resize-handle {

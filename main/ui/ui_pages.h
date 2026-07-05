@@ -33,5 +33,6 @@ uint16_t ui_pages_count(void);
 void ui_pages_set_topbar_status(
     bool wifi_connected, bool wifi_setup_ap_active, bool api_connected, bool api_initial_sync_done);
 void ui_pages_set_topbar_datetime(const struct tm *timeinfo);
+void ui_pages_set_topbar_left_slots(const char *slot_1, const char *slot_2);
 void ui_pages_set_topbar_weather(bool visible, float temperature, const char *unit, uint32_t icon_codepoint);
 void ui_pages_set_topbar_stocks(const ui_pages_stock_item_t *items, size_t count);

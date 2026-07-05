@@ -42,6 +42,10 @@ esp_err_t w_solar_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, 
 void w_solar_forecast_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_solar_forecast_mark_unavailable(ui_widget_instance_t *instance);
 
+esp_err_t w_car_widget_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
+void w_car_widget_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
+void w_car_widget_mark_unavailable(ui_widget_instance_t *instance);
+
 esp_err_t w_todo_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void w_todo_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_todo_mark_unavailable(ui_widget_instance_t *instance);
@@ -68,6 +72,7 @@ esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent,
     snprintf(out_instance->title, sizeof(out_instance->title), "%s", def->title);
     snprintf(out_instance->entity_id, sizeof(out_instance->entity_id), "%s", def->entity_id);
     snprintf(out_instance->secondary_entity_id, sizeof(out_instance->secondary_entity_id), "%s", def->secondary_entity_id);
+    snprintf(out_instance->tertiary_entity_id, sizeof(out_instance->tertiary_entity_id), "%s", def->tertiary_entity_id);
     snprintf(out_instance->forecast_today_entity_id, sizeof(out_instance->forecast_today_entity_id), "%s", def->forecast_today_entity_id);
     snprintf(out_instance->forecast_tomorrow_entity_id, sizeof(out_instance->forecast_tomorrow_entity_id), "%s", def->forecast_tomorrow_entity_id);
     snprintf(out_instance->forecast_day_3_entity_id, sizeof(out_instance->forecast_day_3_entity_id), "%s", def->forecast_day_3_entity_id);
@@ -115,6 +120,9 @@ esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent,
     if (strcmp(def->type, "solar_forecast") == 0) {
         return w_solar_forecast_create(def, parent, out_instance);
     }
+    if (strcmp(def->type, "car_widget") == 0) {
+        return w_car_widget_create(def, parent, out_instance);
+    }
     if (strcmp(def->type, "todo_list") == 0) {
         return w_todo_create(def, parent, out_instance);
     }
@@ -150,6 +158,8 @@ void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_stat
         w_weather_tile_apply_state(instance, state);
     } else if (strcmp(instance->type, "solar_forecast") == 0) {
         w_solar_forecast_apply_state(instance, state);
+    } else if (strcmp(instance->type, "car_widget") == 0) {
+        w_car_widget_apply_state(instance, state);
     } else if (strcmp(instance->type, "todo_list") == 0) {
         w_todo_apply_state(instance, state);
     } else if (strcmp(instance->type, "media_player") == 0) {
@@ -182,6 +192,8 @@ void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance)
         w_weather_tile_mark_unavailable(instance);
     } else if (strcmp(instance->type, "solar_forecast") == 0) {
         w_solar_forecast_mark_unavailable(instance);
+    } else if (strcmp(instance->type, "car_widget") == 0) {
+        w_car_widget_mark_unavailable(instance);
     } else if (strcmp(instance->type, "todo_list") == 0) {
         w_todo_mark_unavailable(instance);
     } else if (strcmp(instance->type, "media_player") == 0) {

@@ -204,6 +204,21 @@ static int solar_bar_percent(const w_solar_forecast_ctx_t *ctx, int index, float
     return bar_value;
 }
 
+static void solar_configure_bar_direction(lv_obj_t *bar, bool remaining_row, bool vertical)
+{
+    if (bar == NULL) {
+        return;
+    }
+    lv_bar_set_range(bar, remaining_row ? 100 : 0, remaining_row ? 0 : 100);
+    if (!vertical && remaining_row) {
+        lv_obj_set_style_bg_color(bar, lv_color_hex(0x22D164), LV_PART_INDICATOR);
+        lv_obj_set_style_bg_grad_color(bar, lv_color_hex(0xFFD500), LV_PART_INDICATOR);
+    } else {
+        lv_obj_set_style_bg_color(bar, lv_color_hex(0xFFD500), LV_PART_INDICATOR);
+        lv_obj_set_style_bg_grad_color(bar, lv_color_hex(0x22D164), LV_PART_INDICATOR);
+    }
+}
+
 static void solar_set_row_hidden(solar_forecast_row_t *row, bool hidden)
 {
     if (row == NULL) {
@@ -311,6 +326,7 @@ static void solar_render(w_solar_forecast_ctx_t *ctx)
             lv_obj_set_style_text_align(row->day_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
             lv_obj_set_size(row->day_label, slot_w, day_h);
 
+            solar_configure_bar_direction(row->bar, i == 0, true);
             lv_obj_set_style_bg_grad_dir(row->bar, LV_GRAD_DIR_VER, LV_PART_INDICATOR);
             lv_obj_set_size(row->bar, bar_w, chart_h);
             lv_bar_set_value(row->bar, solar_bar_percent(ctx, i, max_value), LV_ANIM_OFF);
@@ -364,6 +380,7 @@ static void solar_render(w_solar_forecast_ctx_t *ctx)
         lv_obj_set_size(row->day_label, label_w, row_h);
         lv_obj_align(row->day_label, LV_ALIGN_TOP_LEFT, 14, row_y);
 
+        solar_configure_bar_direction(row->bar, i == 0, false);
         lv_obj_set_style_bg_grad_dir(row->bar, LV_GRAD_DIR_HOR, LV_PART_INDICATOR);
         lv_obj_set_size(row->bar, bar_w, bar_h);
         lv_obj_align(row->bar, LV_ALIGN_TOP_LEFT, 14 + label_w + 8, row_y + (row_h / 2) - (bar_h / 2));
