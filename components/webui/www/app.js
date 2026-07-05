@@ -182,6 +182,19 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Roborock tile",
     itemsFallback: "vacuum robots",
   },
+  image: {
+    domain: "image",
+    titleKey: "entity_picker.title_image",
+    blankKey: "entity_picker.blank_image",
+    widgetKey: "entity_picker.widget_image",
+    itemsKey: "entity_picker.items_image",
+    titleFallback: "Choose Image",
+    blankFallback: "Blank Image",
+    widgetFallback: "Image",
+    itemsFallback: "image entities",
+    minSearch: 2,
+    liveSearch: false,
+  },
   graph: {
     domain: "sensor",
     titleKey: "entity_picker.title_sensor",
@@ -307,6 +320,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.title_solar_forecast": "Choose Solar Forecast",
     "entity_picker.title_climate": "Choose Heating",
     "entity_picker.title_roborock": "Choose Roborock",
+    "entity_picker.title_image": "Choose Image",
+    "entity_picker.title_entity": "Choose Entity",
     "entity_picker.refresh": "Refresh",
     "entity_picker.search": "Search",
     "entity_picker.close": "Close",
@@ -323,6 +338,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_graph": "Blank Graph Tile",
     "entity_picker.blank_heating": "Blank Heating Tile",
     "entity_picker.blank_roborock": "Blank Roborock Tile",
+    "entity_picker.blank_image": "Blank Image",
     "entity_picker.loading": "Loading lights...",
     "entity_picker.loading_items": "Loading {items}...",
     "entity_picker.refreshing": "Refreshing lights...",
@@ -345,6 +361,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.items_weather": "weather entities",
     "entity_picker.items_climate": "climate entities",
     "entity_picker.items_vacuum": "vacuum robots",
+    "entity_picker.items_image": "image entities",
+    "entity_picker.items_entity": "entities",
     "entity_picker.widget_light": "Light tile",
     "entity_picker.widget_sensor": "Sensor tile",
     "entity_picker.widget_button": "Button tile",
@@ -354,6 +372,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.widget_graph": "Graph tile",
     "entity_picker.widget_heating": "Heating tile",
     "entity_picker.widget_roborock": "Roborock tile",
+    "entity_picker.widget_image": "Image",
+    "entity_picker.assigned": "Entity set: {entity}",
     "layout.inspector.heading": "Inspector",
     "layout.inspector.title": "Title",
     "layout.inspector.entity": "Entity",
@@ -662,6 +682,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.title_solar_forecast": "Solar Forecast auswaehlen",
     "entity_picker.title_climate": "Heizung auswaehlen",
     "entity_picker.title_roborock": "Roborock auswaehlen",
+    "entity_picker.title_image": "Bild auswaehlen",
+    "entity_picker.title_entity": "Entitaet auswaehlen",
     "entity_picker.refresh": "Aktualisieren",
     "entity_picker.search": "Suchen",
     "entity_picker.close": "Schliessen",
@@ -678,6 +700,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_graph": "Leere Graph-Kachel",
     "entity_picker.blank_heating": "Leere Heizungskachel",
     "entity_picker.blank_roborock": "Leere Roborock-Kachel",
+    "entity_picker.blank_image": "Leeres Bild",
     "entity_picker.loading": "Lichter werden geladen...",
     "entity_picker.loading_items": "{items} werden geladen...",
     "entity_picker.refreshing": "Lichter werden aktualisiert...",
@@ -700,6 +723,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.items_weather": "Wetter-Entitaeten",
     "entity_picker.items_climate": "Climate-Entitaeten",
     "entity_picker.items_vacuum": "Saugroboter",
+    "entity_picker.items_image": "Bild-Entitaeten",
+    "entity_picker.items_entity": "Entitaeten",
     "entity_picker.widget_light": "Lichtkachel",
     "entity_picker.widget_sensor": "Sensorkachel",
     "entity_picker.widget_button": "Button-Kachel",
@@ -709,6 +734,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.widget_graph": "Graph-Kachel",
     "entity_picker.widget_heating": "Heizungskachel",
     "entity_picker.widget_roborock": "Roborock-Kachel",
+    "entity_picker.widget_image": "Bild",
+    "entity_picker.assigned": "Entitaet gesetzt: {entity}",
     "layout.inspector.heading": "Inspektor",
     "layout.inspector.title": "Titel",
     "layout.inspector.entity": "Entitaet",
@@ -1527,6 +1554,8 @@ const editor = {
     pollTimerId: null,
     requestSeq: 0,
     lastStatus: "",
+    inspectorTarget: null,
+    configOverride: null,
   },
   setupWizard: {
     active: false,
@@ -2379,6 +2408,10 @@ function applyWebTranslations() {
   setTextById("fSolarForecastDay5Label", "layout.inspector.solar_day_5");
   setTextById("fSolarForecastBarMaxLabel", "layout.inspector.solar_bar_max");
   setTextById("fSolarForecastBarOrientationLabel", "layout.inspector.solar_bar_orientation");
+  document.querySelectorAll("[data-inspector-entity-target]").forEach((button) => {
+    button.textContent = t("entity_picker.search");
+    button.setAttribute("aria-label", t("entity_picker.search"));
+  });
   setTextById("fButtonModeLabel", "layout.inspector.button_mode");
   setTextById("fButtonAccentColorLabel", "layout.inspector.button_accent_color");
   setTextById("fSliderEntityDomainLabel", "layout.inspector.slider_entity_domain");
@@ -3873,6 +3906,86 @@ function defaultPrimaryEntityDomain() {
   return expectedDomainForWidgetType(inspectorWidgetType(), inspectorSliderEntityDomain(), inspectorButtonMode());
 }
 
+function entityDomainFromValue(value) {
+  const text = String(value || "").trim();
+  const dotIndex = text.indexOf(".");
+  if (dotIndex <= 0) return "";
+  const domain = text.slice(0, dotIndex).trim().toLowerCase();
+  return /^[a-z0-9_]+$/.test(domain) ? domain : "";
+}
+
+function preferredInspectorPrimaryDomain(input) {
+  const allowed = allowedEntityDomainsForWidgetType(inspectorWidgetType(), inspectorSliderEntityDomain(), inspectorButtonMode());
+  if (!allowed.length) return "";
+  const currentDomain = entityDomainFromValue(input?.value);
+  if (currentDomain && allowed.includes(currentDomain)) {
+    return currentDomain;
+  }
+  return expectedDomainForWidgetType(inspectorWidgetType(), inspectorSliderEntityDomain(), inspectorButtonMode()) || allowed[0];
+}
+
+function inspectorEntityPickerTarget(targetKey) {
+  const secondaryConfig = secondaryEntityConfigForWidgetType(inspectorWidgetType());
+  const targets = {
+    primary: {
+      input: el.fEntity,
+      domain: preferredInspectorPrimaryDomain(el.fEntity),
+      titleKey: "layout.inspector.entity",
+      titleFallback: "Choose Entity",
+    },
+    secondary: {
+      input: el.fSecondaryEntity,
+      domain: secondaryConfig.domain,
+      titleKey: secondaryConfig.labelKey,
+      titleFallback: secondaryConfig.labelFallback,
+    },
+    solar_today: {
+      input: el.fSolarForecastToday,
+      domain: "sensor",
+      titleKey: "layout.inspector.solar_today",
+      titleFallback: "Today forecast",
+    },
+    solar_tomorrow: {
+      input: el.fSolarForecastTomorrow,
+      domain: "sensor",
+      titleKey: "layout.inspector.solar_tomorrow",
+      titleFallback: "Tomorrow forecast",
+    },
+    solar_day_3: {
+      input: el.fSolarForecastDay3,
+      domain: "sensor",
+      titleKey: "layout.inspector.solar_day_3",
+      titleFallback: "Day 3 forecast",
+    },
+    solar_day_4: {
+      input: el.fSolarForecastDay4,
+      domain: "sensor",
+      titleKey: "layout.inspector.solar_day_4",
+      titleFallback: "Day 4 forecast",
+    },
+    solar_day_5: {
+      input: el.fSolarForecastDay5,
+      domain: "sensor",
+      titleKey: "layout.inspector.solar_day_5",
+      titleFallback: "Day 5 forecast",
+    },
+  };
+  const target = targets[targetKey];
+  if (!target?.input || target.input.disabled || !target.domain) {
+    return null;
+  }
+  return target;
+}
+
+function openInspectorEntityPicker(targetKey) {
+  const target = inspectorEntityPickerTarget(targetKey);
+  if (!target) return;
+  openLightEntityPicker(`inspector_${targetKey}`, {
+    inspectorTarget: target,
+    configOverride: entityPickerConfigForDomain(target.domain, target.titleKey, target.titleFallback),
+  });
+}
+
 function scheduleEntityAutocomplete(kind, immediate = false) {
   const isSecondary = kind === "secondary";
   const state = isSecondary ? entityAutocomplete.secondary : entityAutocomplete.primary;
@@ -4111,10 +4224,54 @@ function cancelLightEntityPickerRequest() {
 }
 
 function entityPickerConfig(widgetType = editor.lightPicker.widgetType) {
+  if (editor.lightPicker.configOverride) {
+    return {
+      widgetType,
+      ...editor.lightPicker.configOverride,
+    };
+  }
   const normalizedWidgetType = ENTITY_PICKER_CONFIGS[widgetType] ? widgetType : "light_tile";
   return {
     widgetType: normalizedWidgetType,
     ...ENTITY_PICKER_CONFIGS[normalizedWidgetType],
+  };
+}
+
+function entityPickerConfigForDomain(domain, titleKey = "entity_picker.title_entity", titleFallback = "Choose Entity") {
+  const keyByDomain = {
+    climate: "heating_tile",
+    cover: "slider",
+    image: "image",
+    light: "light_tile",
+    media_player: "media_player",
+    sensor: "sensor",
+    switch: "button",
+    todo: "todo_list",
+    vacuum: "roborock_tile",
+    weather: "weather_tile",
+  };
+  const key = keyByDomain[domain] || "sensor";
+  const base = ENTITY_PICKER_CONFIGS[key];
+  if (!base) {
+    return {
+      domain,
+      titleKey,
+      blankKey: "entity_picker.blank",
+      widgetKey: "entity_picker.title_entity",
+      itemsKey: "entity_picker.items_entity",
+      titleFallback,
+      blankFallback: "Blank Entity",
+      widgetFallback: "Entity",
+      itemsFallback: `${domain} entities`,
+      minSearch: 2,
+      liveSearch: false,
+    };
+  }
+  return {
+    ...base,
+    domain,
+    titleKey,
+    titleFallback,
   };
 }
 
@@ -4208,6 +4365,7 @@ function renderLightEntityPicker(data = {}) {
   const itemsLabel = entityPickerItemsLabel(config);
   const searchReady = entityPickerSearchReady(config);
   const liveSearch = entityPickerLiveSearchEnabled(config);
+  const inspectorTarget = editor.lightPicker.inspectorTarget;
   const sourceItems = Object.prototype.hasOwnProperty.call(data, "items")
     ? data.items
     : editor.lightPicker.items;
@@ -4218,6 +4376,7 @@ function renderLightEntityPicker(data = {}) {
   }
   if (el.lightEntityPickerBlankBtn) {
     el.lightEntityPickerBlankBtn.textContent = t(config.blankKey, {}, config.blankFallback);
+    el.lightEntityPickerBlankBtn.classList.toggle("hidden", Boolean(inspectorTarget));
   }
   if (el.lightEntityPickerRefreshBtn) {
     el.lightEntityPickerRefreshBtn.textContent = liveSearch ? t("entity_picker.refresh") : t("entity_picker.search");
@@ -4295,6 +4454,15 @@ function renderLightEntityPicker(data = {}) {
       button.querySelector("strong").textContent = item.name || item.id;
       button.querySelector("span").textContent = item.id;
       button.onclick = () => {
+        if (editor.lightPicker.inspectorTarget?.input) {
+          const input = editor.lightPicker.inspectorTarget.input;
+          input.value = item.id;
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+          input.focus();
+          closeLightEntityPicker();
+          setStatus(t("entity_picker.assigned", { entity: item.id }));
+          return;
+        }
         addWidget(config.widgetType || editor.lightPicker.widgetType, {
           entityId: item.id,
           title: item.name || item.id,
@@ -4363,10 +4531,14 @@ async function fetchLightEntityPicker(options = {}) {
   }
 }
 
-function openLightEntityPicker(widgetType = "light_tile") {
+function openLightEntityPicker(widgetType = "light_tile", options = {}) {
+  editor.lightPicker.inspectorTarget = options.inspectorTarget || null;
+  editor.lightPicker.configOverride = options.configOverride || null;
   const config = entityPickerConfig(widgetType);
   if (!el.lightEntityPickerOverlay) {
     addWidget(config.widgetType || widgetType);
+    editor.lightPicker.inspectorTarget = null;
+    editor.lightPicker.configOverride = null;
     return;
   }
   editor.lightPicker.widgetType = widgetType;
@@ -4399,6 +4571,11 @@ function closeLightEntityPicker() {
   editor.lightPicker.loading = false;
   if (el.lightEntityPickerOverlay) {
     el.lightEntityPickerOverlay.classList.add("hidden");
+  }
+  editor.lightPicker.inspectorTarget = null;
+  editor.lightPicker.configOverride = null;
+  if (el.lightEntityPickerBlankBtn) {
+    el.lightEntityPickerBlankBtn.classList.remove("hidden");
   }
 }
 
@@ -4578,6 +4755,11 @@ function renderEntityOptions() {
       el.fEntity.value = "";
     }
   }
+
+  document.querySelectorAll("[data-inspector-entity-target]").forEach((button) => {
+    const target = inspectorEntityPickerTarget(button.dataset.inspectorEntityTarget || "");
+    button.disabled = !target;
+  });
 }
 
 function renderPages() {
@@ -6269,6 +6451,11 @@ function bindUi() {
     el.fSecondaryEntity.onchange = () => autoApplyInspector();
     el.fSecondaryEntity.onblur = () => autoApplyInspector();
   }
+  document.querySelectorAll("[data-inspector-entity-target]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openInspectorEntityPicker(button.dataset.inspectorEntityTarget || "");
+    });
+  });
   bindInspectorAutoApply(el.fTitle, ["input"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fButtonAccentColor, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderDirection, ["change"], { softEntityValidation: true });

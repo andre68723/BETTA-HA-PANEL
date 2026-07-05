@@ -344,6 +344,23 @@ input[type="range"] {
   accent-color: var(--accent);
 }
 
+.entity-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.entity-input-row input {
+  min-width: 0;
+}
+
+.entity-picker-btn {
+  min-width: 68px;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
 .range-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 46px;

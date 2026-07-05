@@ -232,28 +232,49 @@
                     <option value="roborock_tile">roborock_tile</option>
                   </select>
                   <label id="fEntityWrap"><span id="fEntityLabel">Entity</span>
-                    <input id="fEntity" type="text" list="entityOptions" />
+                    <div class="entity-input-row">
+                      <input id="fEntity" type="text" list="entityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="primary">Search</button>
+                    </div>
                     <datalist id="entityOptions"></datalist>
                   </label>
                   <label id="fSecondaryEntityWrap" class="hidden"><span id="fSecondaryEntityLabel">Actual entity (sensor)</span>
-                    <input id="fSecondaryEntity" type="text" list="sensorEntityOptions" />
+                    <div class="entity-input-row">
+                      <input id="fSecondaryEntity" type="text" list="sensorEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="secondary">Search</button>
+                    </div>
                     <datalist id="sensorEntityOptions"></datalist>
                   </label>
                   <div id="solarForecastFields" class="hidden">
                     <label><span id="fSolarForecastTodayLabel">Today forecast</span>
-                      <input id="fSolarForecastToday" type="text" list="sensorEntityOptions" />
+                      <div class="entity-input-row">
+                        <input id="fSolarForecastToday" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="solar_today">Search</button>
+                      </div>
                     </label>
                     <label><span id="fSolarForecastTomorrowLabel">Tomorrow forecast</span>
-                      <input id="fSolarForecastTomorrow" type="text" list="sensorEntityOptions" />
+                      <div class="entity-input-row">
+                        <input id="fSolarForecastTomorrow" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="solar_tomorrow">Search</button>
+                      </div>
                     </label>
                     <label><span id="fSolarForecastDay3Label">Day 3 forecast</span>
-                      <input id="fSolarForecastDay3" type="text" list="sensorEntityOptions" />
+                      <div class="entity-input-row">
+                        <input id="fSolarForecastDay3" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="solar_day_3">Search</button>
+                      </div>
                     </label>
                     <label><span id="fSolarForecastDay4Label">Day 4 forecast</span>
-                      <input id="fSolarForecastDay4" type="text" list="sensorEntityOptions" />
+                      <div class="entity-input-row">
+                        <input id="fSolarForecastDay4" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="solar_day_4">Search</button>
+                      </div>
                     </label>
                     <label><span id="fSolarForecastDay5Label">Day 5 forecast</span>
-                      <input id="fSolarForecastDay5" type="text" list="sensorEntityOptions" />
+                      <div class="entity-input-row">
+                        <input id="fSolarForecastDay5" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="solar_day_5">Search</button>
+                      </div>
                     </label>
                     <label><span id="fSolarForecastBarMaxLabel">Bar max (kWh)</span>
                       <input id="fSolarForecastBarMax" type="number" min="0" step="0.1" placeholder="auto" />
