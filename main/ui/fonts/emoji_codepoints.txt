@@ -1,0 +1,195 @@
+# Noto Emoji codepoints the firmware can show in notification titles and messages: standalone, monochrome emoji for faces and
+# reactions, weather, alerts, household and device states. tools/generate_widget_fonts.py subsets the pinned static instance
+# (wght 400) of NotoEmoji[wght].ttf to this list, and notification_text.c treats exactly these codepoints as supported.
+# Sequences (skin tones, ZWJ, flags, keycaps, tags) are not shaped: see notification_text.h. One U+ codepoint per line.
+U+203C  # double exclamation mark
+U+2139  # information source
+U+2194  # left right arrow
+U+2195  # up down arrow
+U+2196  # north west arrow
+U+2197  # north east arrow
+U+2198  # south east arrow
+U+2199  # south west arrow
+U+21A9  # leftwards arrow with hook
+U+231B  # hourglass
+U+23ED  # black right-pointing double triangle with vertical bar
+U+23EE  # black left-pointing double triangle with vertical bar
+U+23F0  # alarm clock
+U+23F1  # stopwatch
+U+23F3  # hourglass with flowing sand
+U+23F8  # double vertical bar
+U+23F9  # black square for stop
+U+25B6  # black right-pointing triangle
+U+2600  # black sun with rays
+U+2601  # cloud
+U+260E  # black telephone
+U+2614  # umbrella with rain drops
+U+2615  # hot beverage
+U+2699  # gear
+U+26A0  # warning sign
+U+26A1  # high voltage sign
+U+26C4  # snowman without snow
+U+26C5  # sun behind cloud
+U+26C8  # thunder cloud and rain
+U+2705  # white heavy check mark
+U+2709  # envelope
+U+270C  # victory hand
+U+2714  # heavy check mark
+U+2716  # heavy multiplication x
+U+2728  # sparkles
+U+2744  # snowflake
+U+274C  # cross mark
+U+2753  # black question mark ornament
+U+2757  # heavy exclamation mark symbol
+U+2764  # heavy black heart
+U+2795  # heavy plus sign
+U+2796  # heavy minus sign
+U+27A1  # black rightwards arrow
+U+2B05  # leftwards black arrow
+U+2B06  # upwards black arrow
+U+2B07  # downwards black arrow
+U+2B50  # white medium star
+U+2B55  # heavy large circle
+U+FE0F  # variation selector-16
+U+1F305  # sunrise
+U+1F306  # cityscape at dusk
+U+1F308  # rainbow
+U+1F310  # globe with meridians
+U+1F319  # crescent moon
+U+1F31F  # glowing star
+U+1F321  # thermometer
+U+1F324  # white sun with small cloud
+U+1F325  # white sun behind cloud
+U+1F326  # white sun behind cloud with rain
+U+1F327  # cloud with rain
+U+1F328  # cloud with snow
+U+1F329  # cloud with lightning
+U+1F32A  # cloud with tornado
+U+1F32B  # fog
+U+1F32C  # wind blowing face
+U+1F331  # seedling
+U+1F333  # deciduous tree
+U+1F338  # cherry blossom
+U+1F373  # cooking
+U+1F37D  # fork and knife with plate
+U+1F381  # wrapped present
+U+1F382  # birthday cake
+U+1F389  # party popper
+U+1F3B5  # musical note
+U+1F3B6  # multiple musical notes
+U+1F3C6  # trophy
+U+1F3E0  # house building
+U+1F3E1  # house with garden
+U+1F431  # cat face
+U+1F436  # dog face
+U+1F440  # eyes
+U+1F44B  # waving hand sign
+U+1F44C  # ok hand sign
+U+1F44D  # thumbs up sign
+U+1F44E  # thumbs down sign
+U+1F44F  # clapping hands sign
+U+1F48A  # pill
+U+1F494  # broken heart
+U+1F499  # blue heart
+U+1F49A  # green heart
+U+1F49B  # yellow heart
+U+1F49C  # purple heart
+U+1F4A1  # electric light bulb
+U+1F4A4  # sleeping symbol
+U+1F4A7  # droplet
+U+1F4A8  # dash symbol
+U+1F4AA  # flexed biceps
+U+1F4AC  # speech balloon
+U+1F4BB  # personal computer
+U+1F4C5  # calendar
+U+1F4C8  # chart with upwards trend
+U+1F4C9  # chart with downwards trend
+U+1F4CA  # bar chart
+U+1F4CD  # round pushpin
+U+1F4DE  # telephone receiver
+U+1F4E2  # public address loudspeaker
+U+1F4E4  # outbox tray
+U+1F4E5  # inbox tray
+U+1F4E6  # package
+U+1F4F1  # mobile phone
+U+1F4F6  # antenna with bars
+U+1F4FA  # television
+U+1F500  # twisted rightwards arrows
+U+1F501  # clockwise rightwards and leftwards open circle arrows
+U+1F506  # high brightness symbol
+U+1F507  # speaker with cancellation stroke
+U+1F50A  # speaker with three sound waves
+U+1F50B  # battery
+U+1F50C  # electric plug
+U+1F511  # key
+U+1F512  # lock
+U+1F513  # open lock
+U+1F514  # bell
+U+1F515  # bell with cancellation stroke
+U+1F525  # fire
+U+1F527  # wrench
+U+1F528  # hammer
+U+1F5D1  # wastebasket
+U+1F600  # grinning face
+U+1F601  # grinning face with smiling eyes
+U+1F602  # face with tears of joy
+U+1F603  # smiling face with open mouth
+U+1F604  # smiling face with open mouth and smiling eyes
+U+1F605  # smiling face with open mouth and cold sweat
+U+1F606  # smiling face with open mouth and tightly-closed eyes
+U+1F607  # smiling face with halo
+U+1F609  # winking face
+U+1F60A  # smiling face with smiling eyes
+U+1F60B  # face savouring delicious food
+U+1F60D  # smiling face with heart-shaped eyes
+U+1F60E  # smiling face with sunglasses
+U+1F60F  # smirking face
+U+1F610  # neutral face
+U+1F611  # expressionless face
+U+1F618  # face throwing a kiss
+U+1F620  # angry face
+U+1F621  # pouting face
+U+1F622  # crying face
+U+1F628  # fearful face
+U+1F62C  # grimacing face
+U+1F62D  # loudly crying face
+U+1F631  # face screaming in fear
+U+1F633  # flushed face
+U+1F634  # sleeping face
+U+1F636  # face without mouth
+U+1F637  # face with medical mask
+U+1F642  # slightly smiling face
+U+1F643  # upside-down face
+U+1F644  # face with rolling eyes
+U+1F64C  # person raising both hands in celebration
+U+1F64F  # person with folded hands
+U+1F697  # automobile
+U+1F6A8  # police cars revolving light
+U+1F6AA  # door
+U+1F6B0  # potable water symbol
+U+1F6B6  # pedestrian
+U+1F6BD  # toilet
+U+1F6BF  # shower
+U+1F6C1  # bathtub
+U+1F6CF  # bed
+U+1F6D1  # octagonal sign
+U+1F6D2  # shopping trolley
+U+1F6F0  # satellite
+U+1F912  # face with thermometer
+U+1F914  # thinking face
+U+1F916  # robot face
+U+1F917  # hugging face
+U+1F929  # grinning face with star eyes
+U+1F92F  # shocked face with exploding head
+U+1F973  # face with party horn and party hat
+U+1F975  # overheated face
+U+1F976  # freezing face
+U+1F9E1  # orange heart
+U+1F9EF  # fire extinguisher
+U+1F9F0  # toolbox
+U+1F9F9  # broom
+U+1F9FA  # basket
+U+1F9FC  # bar of soap
+U+1FA9F  # window
+U+1FAAB  # low battery
+U+1FAB4  # potted plant

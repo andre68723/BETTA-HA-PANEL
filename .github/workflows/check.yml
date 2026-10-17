@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+#
+# Only the fast checks run here. The firmware builds need ESP-IDF 6.1 and run in build.yml.
+name: check
+on:
+  push:
+  pull_request:
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update && sudo apt-get install -y libcjson-dev pkg-config cmake libsdl2-dev python3-pil
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: '0.12.21'
+          python-version: '3.13'
+          enable-cache: false
+      - run: uv run --locked --only-group checks tools/check.sh

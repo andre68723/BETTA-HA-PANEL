@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 */
+.local-editor-bar { box-sizing:border-box; display:flex; align-items:center; gap:12px; height:32px; padding:0 16px; background:#24334b; color:#d3e4fc; font:11px -apple-system,BlinkMacSystemFont,sans-serif; }
+.local-editor-bar strong { color:#f4c778; }
+.local-editor-bar label { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:11px; white-space:nowrap; }
+.local-editor-bar select { font:inherit; width:auto; padding:3px 6px; color:#edf4ff; background:#17273d; border:1px solid #566b89; border-radius:5px; }
+.local-editor-bar + .shell { min-height:calc(100vh - 32px); }
+@media(min-width:1101px) { .compact-inspector .local-editor-bar + .shell .sidebar { height:calc(100dvh - 32px); } }
+@media(max-width:650px) { .local-editor-bar { padding:0 10px; gap:8px; } .local-editor-bar > span { display:none; } }

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "id": "weather",
+      "title": "Weather",
+      "widgets": []
+    }
+  ],
+  "notification": {
+    "title": "Dense Fog Detected",
+    "message": "**Dense Fog Detected!**\n\nTime: 09:00\nHumidity: 100%\nTemperature: 11.8 °C\nBasis: local measurement (temperature 11.8 °C, humidity 100%)\n\n__Effects on Solar Production:__\n\nFog blocks less light than real clouds\nDiffuse radiation passes through fog\nThe forecast is automatically adjusted\n\n**Note:** Fog often dissipates once the sun gets stronger and temperature rises.\n\n\"Through the fog, the sun still shines.\" - Inspired by Star Trek.",
+    "timeout_sec": 0
+  },
+  "frame": {
+    "date": "14.10.2026",
+    "time": "09:00",
+    "left_items": [
+      "date"
+    ],
+    "mqtt": true
+  }
+}

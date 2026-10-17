@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "util/json_util.h"
 
@@ -54,4 +55,16 @@ void json_util_safe_free(char **ptr)
     }
     free(*ptr);
     *ptr = NULL;
+}
+
+uint32_t json_util_number_u32(const cJSON *item)
+{
+    if (!cJSON_IsNumber(item)) {
+        return 0;
+    }
+    const double d = item->valuedouble;
+    if (!(d >= 1.0)) {
+        return 0; /* also NaN */
+    }
+    return d >= 4294967295.0 ? UINT32_MAX : (uint32_t)d;
 }

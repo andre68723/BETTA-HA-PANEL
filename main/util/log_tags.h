@@ -11,6 +11,7 @@
 #define TAG_HA_CLIENT "ha_client"
 #define TAG_HA_WS "ha_ws"
 #define TAG_HA_MODEL "ha_model"
+#define TAG_MQTT "mqtt_mgr"
 #define TAG_UI "ui_runtime"
 #define TAG_DISPLAY "display"
 #define TAG_TOUCH "touch"

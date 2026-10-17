@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork.
  */
+#include "ui/display_geometry.h"
 #include "ui/ui_boot_splash.h"
 
 #include <stdint.h>
@@ -16,7 +18,7 @@
 
 #include "app_config.h"
 #include "drivers/display_init.h"
-#include "ui/fonts/app_text_fonts.h"
+#include "ui/theme/ui_typography.h"
 #include "ui/ui_i18n.h"
 #include "util/log_tags.h"
 
@@ -47,29 +49,6 @@ extern const lv_image_dsc_t SMART86OS_Betta;
 #define SPLASH_PROGRESS_STEP 5
 #define SPLASH_STATUS_LINE_LEN 64
 
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-#define SPLASH_STATUS_MAX_LINES 3
-#define SPLASH_STATUS_X_OFFSET_DEFAULT 0
-#define SPLASH_STATUS_WIDTH_DEFAULT 360
-#define SPLASH_STATUS_TEXT_ALIGN_DEFAULT LV_TEXT_ALIGN_CENTER
-#define SPLASH_BETTA_EMBLEM_W 250
-#define SPLASH_BETTA_EMBLEM_H 230
-#define SPLASH_BETTA_EMBLEM_TOP 42
-#define SPLASH_BETTA_IMAGE_SCALE 166
-#define SPLASH_HOUSE_EMBLEM_W 160
-#define SPLASH_HOUSE_EMBLEM_H 160
-#define SPLASH_HOUSE_EMBLEM_TOP 58
-#define SPLASH_HOUSE_IMAGE_SCALE 186
-#define SPLASH_FALLBACK_EMBLEM_W 300
-#define SPLASH_FALLBACK_EMBLEM_H 150
-#define SPLASH_FALLBACK_EMBLEM_TOP 70
-#define SPLASH_PROGRESS_W 280
-#define SPLASH_PROGRESS_H 8
-#define SPLASH_PROGRESS_GAP 18
-#define SPLASH_TITLE_GAP 12
-#define SPLASH_STATUS_GAP 10
-#define SPLASH_TITLE_W 420
-#else
 #define SPLASH_STATUS_MAX_LINES 5
 #define SPLASH_STATUS_X_OFFSET_DEFAULT 24
 #define SPLASH_STATUS_WIDTH_DEFAULT 400
@@ -91,7 +70,6 @@ extern const lv_image_dsc_t SMART86OS_Betta;
 #define SPLASH_TITLE_GAP 18
 #define SPLASH_STATUS_GAP 14
 #define SPLASH_TITLE_W 640
-#endif
 
 typedef struct {
     lv_obj_t *root;
@@ -112,44 +90,29 @@ static int16_t s_status_x_offset = SPLASH_STATUS_X_OFFSET_DEFAULT;
 static lv_coord_t s_status_width = SPLASH_STATUS_WIDTH_DEFAULT;
 static lv_text_align_t s_status_text_align = SPLASH_STATUS_TEXT_ALIGN_DEFAULT;
 
+/* Poppins, not LVGL's ASCII-only Montserrat: status lines are translated ("BETTA Editor öffnen:")
+ * and can show an SSID. Poppins 38 is about as wide as the Montserrat 34 it replaces. */
 static const lv_font_t *splash_title_font(void)
 {
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-    return APP_FONT_DISPLAY_28;
-#elif LV_FONT_MONTSERRAT_48
-    return &lv_font_montserrat_48;
-#elif LV_FONT_MONTSERRAT_40
-    return &lv_font_montserrat_40;
-#elif LV_FONT_MONTSERRAT_34
-    return &lv_font_montserrat_34;
-#else
-    return APP_FONT_DISPLAY_34;
-#endif
+    return ui_font_role(UI_TEXT_KEY);
 }
 
 static const lv_font_t *splash_status_font(void)
 {
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-    return APP_FONT_TEXT_20;
-#elif LV_FONT_MONTSERRAT_24
-    return &lv_font_montserrat_24;
-#elif LV_FONT_MONTSERRAT_20
-    return &lv_font_montserrat_20;
-#else
-    return APP_FONT_TEXT_20;
-#endif
+    return ui_font_role(UI_TEXT_META);
 }
 
+/* Only called from splash_create_emblem()'s own #else fallback branch below, which itself only
+ * compiles when neither splash image is available -- on a build where one is (every variant this
+ * project currently ships, e.g. APP_HAVE_SPLASH_HOUSE_IMAGE on panel4), this function is defined
+ * but never called, an unused-function warning found via a clean rebuild. Guarded by the same
+ * condition as that call site instead of unconditionally, so it only exists where it is needed. */
+#if !APP_HAVE_SMART86OS_BETTA_IMAGE && !APP_HAVE_SPLASH_HOUSE_IMAGE
 static const lv_font_t *splash_fallback_font(void)
 {
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-    return APP_FONT_DISPLAY_34;
-#elif LV_FONT_MONTSERRAT_48
-    return &lv_font_montserrat_48;
-#else
-    return APP_FONT_DISPLAY_40;
-#endif
+    return ui_font_role(UI_TEXT_KEY);
 }
+#endif
 
 static const char *splash_app_version(void)
 {
@@ -264,7 +227,7 @@ static lv_obj_t *splash_create_emblem(lv_obj_t *parent)
     lv_obj_set_style_bg_opa(emblem, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_border_width(emblem, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(emblem, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(emblem, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(emblem, false);
 
 #if APP_HAVE_SMART86OS_BETTA_IMAGE
     lv_obj_set_size(emblem, SPLASH_BETTA_EMBLEM_W, SPLASH_BETTA_EMBLEM_H);
@@ -312,9 +275,9 @@ esp_err_t ui_boot_splash_show(void)
 
     lv_obj_t *top_layer = lv_layer_top();
     s_splash.root = lv_obj_create(top_layer);
-    lv_obj_set_size(s_splash.root, APP_SCREEN_WIDTH, APP_SCREEN_HEIGHT);
+    lv_obj_set_size(s_splash.root, APP_VIEW_WIDTH, APP_VIEW_HEIGHT);
     lv_obj_set_pos(s_splash.root, 0, 0);
-    lv_obj_clear_flag(s_splash.root, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(s_splash.root, false);
     lv_obj_set_style_radius(s_splash.root, 0, LV_PART_MAIN);
     lv_obj_set_style_border_width(s_splash.root, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(s_splash.root, 0, LV_PART_MAIN);
@@ -465,7 +428,7 @@ void ui_boot_splash_set_status_layout(bool centered, uint16_t width, int16_t x_o
         return;
     }
 
-    if (width >= 120U && width <= (uint16_t)APP_SCREEN_WIDTH) {
+    if (width >= 120U && width <= (uint16_t)APP_VIEW_WIDTH) {
         s_status_width = (lv_coord_t)width;
     }
     s_status_text_align = centered ? LV_TEXT_ALIGN_CENTER : LV_TEXT_ALIGN_LEFT;

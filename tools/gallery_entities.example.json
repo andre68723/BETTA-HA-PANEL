@@ -1,0 +1,43 @@
+{
+  "_comment": "Copy this file to gallery_entities.json (gitignored, tools/* is ignored by default) and fill in real entity ids from your own Home Assistant. Personal entity ids never belong in a committed file.",
+  "sensor": "sensor.your_power_or_temperature_sensor",
+  "button": "switch.your_switch",
+  "slider": "cover.your_cover",
+  "gauge": "sensor.your_humidity_or_percentage_sensor",
+  "graph": "sensor.your_numeric_sensor_with_history",
+  "light_tile": "light.your_light",
+  "heating_tile": "climate.your_thermostat",
+  "weather": "weather.your_weather_entity",
+  "weather_report": "sensor.your_dwd_weather_report_sensor",
+  "solar_forecast": {
+    "entity_id": "sensor.your_solar_forecast_remaining_today",
+    "today": "sensor.your_solar_forecast_today",
+    "tomorrow": "sensor.your_solar_forecast_tomorrow",
+    "day_3": "sensor.your_solar_forecast_day_3",
+    "day_4": "sensor.your_solar_forecast_day_4",
+    "day_5": "sensor.your_solar_forecast_day_5"
+  },
+  "car_widget": {
+    "entity_id": "sensor.your_car_battery_or_soc_sensor",
+    "precond_entity_id": "climate.your_car_preconditioning",
+    "interior_temp_entity_id": "sensor.your_car_interior_temperature"
+  },
+  "media_player": "media_player.your_media_player",
+  "sonos_favorites": "sensor.sonos_favorites",
+  "cover_tile": "cover.your_cover",
+  "fan_tile": "fan.your_fan",
+  "contact_tile": "binary_sensor.your_door_or_window_sensor",
+  "climate_tile": "climate.your_thermostat",
+  "scene_tile": "scene.your_scene",
+  "lock_tile": "lock.your_front_door",
+  "alarm_tile": "alarm_control_panel.your_alarm",
+  "select_tile": "select.your_select_entity_for_example_an_evcc_charge_mode",
+  "binary_tile": "binary_sensor.your_motion_or_other_binary_sensor",
+  "room_tile": {
+    "entity_id": "sensor.your_room_temperature_sensor",
+    "room_entities": ["light.your_light", "binary_sensor.your_motion_sensor", "binary_sensor.your_contact_sensor"]
+  },
+  "vacuum_tile": "vacuum.your_vacuum",
+  "_camera_tile_note": "camera_tile is intentionally left out: it would screenshot a live frame from a real camera entity, which this tool must never commit to the repo. It still gets a row in the gallery, without a preview image.",
+  "_todo_list_note": "todo_list needs a todo.* entity; if your Home Assistant has none, it gets a row without a preview image too."
+}

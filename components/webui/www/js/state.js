@@ -1,0 +1,691 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
+ * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+ *
+ * Widget size limits, the editor state object and the DOM element map
+ *
+ * Part of the web editor: classic scripts loaded in the order of index.html, sharing one global scope
+ * (see docs/editor-source.md).
+ */
+function widgetSizeLimitsForCanvas(type) {
+  const fallback = {
+    minW: MIN_WIDGET_SIZE,
+    minH: MIN_WIDGET_SIZE,
+    maxW: CANVAS_WIDTH,
+    maxH: CANVAS_HEIGHT,
+  };
+
+  switch (type) {
+    case "sensor":
+      return { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "button":
+      return { minW: 100, minH: 100, maxW: 480, maxH: 320 };
+    case "slider":
+      return { minW: 100, minH: 100, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "gauge_horizontal":
+      return { minW: 100, minH: 70, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "gauge":
+      return { minW: 80, minH: 160, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "graph":
+      return { minW: 220, minH: 140, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "empty_tile":
+      return { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "light_tile":
+      return { minW: 180, minH: 180, maxW: 480, maxH: 480 };
+    case "heating_tile":
+      return { minW: 220, minH: 200, maxW: 480, maxH: 480 };
+    case "weather_tile":
+      return { minW: 220, minH: 200, maxW: 480, maxH: 480 };
+    case "weather_3day":
+      return { minW: 260, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "solar_forecast":
+      return { minW: 260, minH: 220, maxW: 640, maxH: 480 };
+    case "car_widget":
+      return { minW: 200, minH: 200, maxW: 480, maxH: 560 };
+    case "wallbox_evcc":
+      return { minW: 320, minH: 360, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "bambu_printer":
+      return { minW: 320, minH: 320, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "todo_list":
+      return { minW: 220, minH: 200, maxW: 640, maxH: 640 };
+    case "media_player":
+      return { minW: 260, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "sonos_favorites":
+      return { minW: 280, minH: 240, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "cover_tile":
+      return { minW: 240, minH: 80, maxW: CANVAS_WIDTH, maxH: 200 };
+    case "climate_tile":
+      return { minW: 240, minH: 180, maxW: 480, maxH: 480 };
+    case "room_tile":
+      return { minW: 220, minH: 120, maxW: 640, maxH: 320 };
+    case "scene_tile":
+    case "binary_tile":
+      return { minW: 160, minH: 70, maxW: CANVAS_WIDTH, maxH: 160 };
+    case "energy_timeline":
+      return { minW: 300, minH: 200, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "select_tile":
+      return { minW: 160, minH: 80, maxW: CANVAS_WIDTH, maxH: 200 };
+    case "datetime_tile":
+      return { minW: 180, minH: 90, maxW: CANVAS_WIDTH, maxH: 220 };
+    case "lock_tile":
+    case "alarm_tile":
+      return { minW: 180, minH: 80, maxW: CANVAS_WIDTH, maxH: 200 };
+    case "contact_tile":
+      return { minW: 180, minH: 70, maxW: CANVAS_WIDTH, maxH: 160 };
+    case "camera_tile":
+      return { minW: 160, minH: 120, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "fan_tile":
+      return { minW: 240, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "vacuum_tile":
+      return { minW: 240, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    default:
+      return fallback;
+  }
+}
+
+// Portrait pages can scroll; individual cards remain bounded to the viewport height.
+function widgetSizeLimits(type) {
+  const limits = widgetSizeLimitsForCanvas(type);
+  if (editor.layout?.orientation === "portrait") {
+    limits.maxH = Math.min(limits.maxH, 1160);
+    if (type === "solar_forecast") limits.maxW = CANVAS_WIDTH;
+  }
+  return limits;
+}
+
+// The size table a widget's rect follows. The panel draws a binary tile in the door look with its
+// contact renderer and enforces that renderer's larger minimum (contact_tile) at runtime; sizing it as a
+// plain binary tile let the editor show it narrower than the panel draws it, covering its neighbour.
+function widgetSizeType(widget) {
+  if (widget?.type === "binary_tile" && widget.display_mode === "door") return "contact_tile";
+  // The flat horizontal gauge has its own limits (s_variant_sizes in widget_types.c).
+  if (widget?.type === "gauge" && widget.style_variant === "horizontal") return "gauge_horizontal";
+  return widget?.type;
+}
+
+function clampRectToCanvas(rect, type) {
+  const limits = widgetSizeLimits(type);
+  const maxW = Math.min(limits.maxW, CANVAS_WIDTH);
+  const maxH = Math.min(limits.maxH, CANVAS_HEIGHT);
+  const minW = Math.min(limits.minW, maxW);
+  const minH = Math.min(limits.minH, maxH);
+
+  const w = clamp(snap(Number(rect.w || minW)), minW, maxW);
+  const h = clamp(snap(Number(rect.h || minH)), minH, maxH);
+  const x = clamp(snap(Number(rect.x || 0)), 0, CANVAS_WIDTH - w);
+  const y = clamp(snap(Number(rect.y || 0)), 0, CANVAS_HEIGHT - h);
+
+  return { x, y, w, h };
+}
+
+const editor = {
+  layout: null,
+  dirty: false, // true once the in-memory layout differs from what the panel has, see markDirty()
+  entities: [],
+  states: new Map(),
+  stateMeta: new Map(), // device class and unit per entity, from the attributes of /api/state
+  energySnapshot: null,
+  selectedPageId: null,
+  selectedWidgetId: null,
+  widgetFilter: "", // lowercase search text over the current page's widget list, see renderWidgets()
+  activePane: "layout",
+  activeSettingsSection: "settingsDeviceSection",
+  workspaceNavigationReady: false,
+  canvasScale: 1,
+  provisioningStage: null,
+  editorStarted: false,
+  settings: null,
+  appVersion: "",
+  appProject: "",
+  appScreenW: 0,
+  appScreenH: 0,
+  appMaxPages: 0, // from /api/version; 0 until it is known
+  appText: null, // /api/version "text": role names and the px size of every role for the text steps 0..2
+  appFullNavPages: 0, // pages that keep icon and title tabs; more turn the bar compact
+  appComponents: null,
+  appBoard: "",
+  appBuildDate: "",
+  appBuildTime: "",
+  appGitCommit: "",
+  haDiagnostics: { total: 0, listed: 0, updatedUnixMs: 0, names: [], dismissedSignature: "" },
+  wifiScanItems: [],
+  wifiScanHasRun: false,
+  wifiScanInProgress: false,
+  wifiScanSupported: true,
+  lightPicker: {
+    items: [],
+    itemsByDomain: {},
+    loadedByDomain: {},
+    domain: "light",
+    widgetType: "light_tile",
+    search: "",
+    searchByDomain: {},
+    searchDebounceId: null,
+    loading: false,
+    hasLoaded: false,
+    pollTimerId: null,
+    requestSeq: 0,
+    lastStatus: "",
+    inspectorTarget: null,
+    configOverride: null,
+  },
+  ota: {
+    status: null,
+    pollTimerId: null,
+    uploadInProgress: false,
+    latestUrl: "",
+    autoFilledUrl: "",
+    autoUpdate: null, // the "auto_update" object of /api/ota/status
+    // The panel's daily update check, the "update" object of /api/ota/status (update-check.js).
+    update: null,
+    checkPolling: false,
+  },
+  languageCatalog: [],
+  i18nLanguage: DEFAULT_UI_LANGUAGE,
+  i18nMap: { ...(WEB_I18N_BUILTIN.en || {}) },
+  i18nEffective: {},
+  sectionCollapsed: {
+    pages: false,
+    widgets: false,
+    inspector: false,
+  },
+};
+
+const el = {
+  provisioningRoot: document.getElementById("provisioningRoot"),
+  provisioningWifiPage: document.getElementById("provisioningWifiPage"),
+  provisioningHaPage: document.getElementById("provisioningHaPage"),
+  bootErrorPage: document.getElementById("bootErrorPage"),
+  bootErrorTitle: document.getElementById("bootErrorTitle"),
+  bootErrorText: document.getElementById("bootErrorText"),
+  bootErrorDetail: document.getElementById("bootErrorDetail"),
+  bootErrorRetryBtn: document.getElementById("bootErrorRetryBtn"),
+  editorShell: document.getElementById("editorShell"),
+  sidebarTitleText: document.getElementById("sidebarTitleText"),
+  appVersionLabel: document.getElementById("appVersionLabel"),
+  layoutTabBtn: document.getElementById("layoutTabBtn"),
+  settingsTabBtn: document.getElementById("settingsTabBtn"),
+  layoutPane: document.getElementById("layoutPane"),
+  settingsPane: document.getElementById("settingsPane"),
+  settingsContentPane: document.getElementById("settingsContentPane"),
+  settingsNavButtons: [],
+  settingsContentSections: [],
+  canvasWrap: document.querySelector(".canvas-wrap"),
+  canvasStage: document.getElementById("canvasStage"),
+  actionsPanel: document.querySelector("aside.actions-panel"),
+  pagesList: document.getElementById("pagesList"),
+  pagesMiniList: document.getElementById("pagesMiniList"),
+  widgetsList: document.getElementById("widgetsList"),
+  widgetSearchInput: document.getElementById("widgetSearchInput"),
+  canvas: document.getElementById("canvas"),
+  canvasTitle: document.getElementById("canvasTitle"),
+  status: document.getElementById("status"),
+  unsavedBadge: document.getElementById("unsavedBadge"),
+  undoToast: document.getElementById("undoToast"),
+  undoToastText: document.getElementById("undoToastText"),
+  undoToastBtn: document.getElementById("undoToastBtn"),
+  haDiagnosticsBanner: document.getElementById("haDiagnosticsBanner"),
+  haDiagnosticsTitle: document.getElementById("haDiagnosticsTitle"),
+  haDiagnosticsList: document.getElementById("haDiagnosticsList"),
+  haDiagnosticsHint: document.getElementById("haDiagnosticsHint"),
+  haDiagnosticsDismiss: document.getElementById("haDiagnosticsDismiss"),
+  pagesSection: document.getElementById("pagesSection"),
+  widgetsSection: document.getElementById("widgetsSection"),
+  inspectorSection: document.getElementById("inspectorSection"),
+  togglePagesSection: document.getElementById("togglePagesSection"),
+  toggleWidgetsSection: document.getElementById("toggleWidgetsSection"),
+  addPageBtn: document.getElementById("addPageBtn"),
+  addEnergyPageBtn: document.getElementById("addEnergyPageBtn"),
+  deletePageBtn: document.getElementById("deletePageBtn"),
+  pageTitleInput: document.getElementById("pageTitleInput"),
+  applyPageBtn: document.getElementById("applyPageBtn"),
+  energyPageOptions: document.getElementById("energyPageOptions"),
+  housePageOptions: document.getElementById("housePageOptions"),
+  houseRoomList: document.getElementById("houseRoomList"),
+  houseImportBtn: document.getElementById("houseImportBtn"),
+  houseStatus: document.getElementById("houseStatus"),
+  roomImportOverlay: document.getElementById("roomImportOverlay"),
+  addTileOverlay: document.getElementById("addTileOverlay"),
+  addTileCloseBtn: document.getElementById("addTileCloseBtn"),
+  addTileSearch: document.getElementById("addTileSearch"),
+  addTileSearchStatus: document.getElementById("addTileSearchStatus"),
+  addTileResults: document.getElementById("addTileResults"),
+  roomImportCard: document.getElementById("roomImportCard"),
+  roomImportStepRoom: document.getElementById("roomImportStepRoom"),
+  roomImportStepAssign: document.getElementById("roomImportStepAssign"),
+  roomImportRoles: document.getElementById("roomImportRoles"),
+  roomImportPreview: document.getElementById("roomImportPreview"),
+  roomImportFit: document.getElementById("roomImportFit"),
+  roomImportBackBtn: document.getElementById("roomImportBackBtn"),
+  roomImportTitle: document.getElementById("roomImportTitle"),
+  roomImportHint: document.getElementById("roomImportHint"),
+  roomImportStatus: document.getElementById("roomImportStatus"),
+  roomImportSelect: document.getElementById("roomImportSelect"),
+  roomImportConfirmBtn: document.getElementById("roomImportConfirmBtn"),
+  roomImportCloseBtn: document.getElementById("roomImportCloseBtn"),
+  energySource: document.getElementById("energySource"),
+  energyDetails: document.getElementById("energyDetails"),
+  energyDetailsLabel: document.getElementById("energyDetailsLabel"),
+  energyDetailsHint: document.getElementById("energyDetailsHint"),
+  energyDetailsPopupOption: document.getElementById("energyDetailsPopupOption"),
+  energyDetailsSideOption: document.getElementById("energyDetailsSideOption"),
+  energySourceHint: document.getElementById("energySourceHint"),
+  energyManualOptions: document.getElementById("energyManualOptions"),
+  energyHomePower: document.getElementById("energyHomePower"),
+  energySolarPower: document.getElementById("energySolarPower"),
+  energyGridPower: document.getElementById("energyGridPower"),
+  energyGridImport: document.getElementById("energyGridImport"),
+  energyGridExport: document.getElementById("energyGridExport"),
+  energyBatteryPower: document.getElementById("energyBatteryPower"),
+  energyBatteryCharge: document.getElementById("energyBatteryCharge"),
+  energyBatteryDischarge: document.getElementById("energyBatteryDischarge"),
+  energyBatterySoc: document.getElementById("energyBatterySoc"),
+  energyGas: document.getElementById("energyGas"),
+  energyWater: document.getElementById("energyWater"),
+  applyEnergyPageBtn: document.getElementById("applyEnergyPageBtn"),
+  addSensorBtn: document.getElementById("addSensorBtn"),
+  addButtonBtn: document.getElementById("addButtonBtn"),
+  addSliderBtn: document.getElementById("addSliderBtn"),
+  addGaugeBtn: document.getElementById("addGaugeBtn"),
+  addGraphBtn: document.getElementById("addGraphBtn"),
+  addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
+  addLightTileBtn: document.getElementById("addLightTileBtn"),
+  addTileBtn: document.getElementById("addTileBtn"),
+  lightEntityPickerOverlay: document.getElementById("lightEntityPickerOverlay"),
+  lightEntityPickerTitle: document.getElementById("lightEntityPickerTitle"),
+  lightEntityPickerRefreshBtn: document.getElementById("lightEntityPickerRefreshBtn"),
+  lightEntityPickerCloseBtn: document.getElementById("lightEntityPickerCloseBtn"),
+  lightEntityPickerBlankBtn: document.getElementById("lightEntityPickerBlankBtn"),
+  lightEntityPickerSearch: document.getElementById("lightEntityPickerSearch"),
+  lightEntityPickerStatus: document.getElementById("lightEntityPickerStatus"),
+  lightEntityPickerProgress: document.getElementById("lightEntityPickerProgress"),
+  lightEntityPickerProgressBar: document.getElementById("lightEntityPickerProgressBar"),
+  lightEntityPickerProgressText: document.getElementById("lightEntityPickerProgressText"),
+  lightEntityPickerRooms: document.getElementById("lightEntityPickerRooms"),
+  addHeatingTileBtn: document.getElementById("addHeatingTileBtn"),
+  addWeatherTileBtn: document.getElementById("addWeatherTileBtn"),
+  addWeather3DayBtn: document.getElementById("addWeather3DayBtn"),
+  addSolarForecastBtn: document.getElementById("addSolarForecastBtn"),
+  addCarWidgetBtn: document.getElementById("addCarWidgetBtn"),
+  addBambuPrinterBtn: document.getElementById("addBambuPrinterBtn"),
+  addTodoListBtn: document.getElementById("addTodoListBtn"),
+  addMediaPlayerBtn: document.getElementById("addMediaPlayerBtn"),
+  addSonosFavoritesBtn: document.getElementById("addSonosFavoritesBtn"),
+  addVacuumTileBtn: document.getElementById("addVacuumTileBtn"),
+  addCoverTileBtn: document.getElementById("addCoverTileBtn"),
+  addClimateTileBtn: document.getElementById("addClimateTileBtn"),
+  addRoomTileBtn: document.getElementById("addRoomTileBtn"),
+  addSceneTileBtn: document.getElementById("addSceneTileBtn"),
+  addSelectTileBtn: document.getElementById("addSelectTileBtn"),
+  addEnergyTimelineBtn: document.getElementById("addEnergyTimelineBtn"),
+  addDatetimeTileBtn: document.getElementById("addDatetimeTileBtn"),
+  addLockTileBtn: document.getElementById("addLockTileBtn"),
+  addAlarmTileBtn: document.getElementById("addAlarmTileBtn"),
+  lockOptions: document.getElementById("lockOptions"),
+  fAlarmDisarm: document.getElementById("fAlarmDisarm"),
+  fAlarmArmHome: document.getElementById("fAlarmArmHome"),
+  fAlarmArmAway: document.getElementById("fAlarmArmAway"),
+  fAlarmArmNight: document.getElementById("fAlarmArmNight"),
+  fAlarmArmVacation: document.getElementById("fAlarmArmVacation"),
+  fAlarmArmCustom: document.getElementById("fAlarmArmCustom"),
+  alarmOptions: document.getElementById("alarmOptions"),
+  cameraOptions: document.getElementById("cameraOptions"),
+  fCameraLive: document.getElementById("fCameraLive"),
+  fLockConfirm: document.getElementById("fLockConfirm"),
+  historyOptions: document.getElementById("historyOptions"),
+  fHistoryPopup: document.getElementById("fHistoryPopup"),
+  fHistoryPopupLabel: document.getElementById("fHistoryPopupLabel"),
+  addScriptTileBtn: document.getElementById("addScriptTileBtn"),
+  addDoorbellTileBtn: document.getElementById("addDoorbellTileBtn"),
+  addBinaryTileBtn: document.getElementById("addBinaryTileBtn"),
+  roomEntitiesFields: document.getElementById("roomEntitiesFields"),
+  binaryOptions: document.getElementById("binaryOptions"),
+  vacuumOptions: document.getElementById("vacuumOptions"),
+  fVacuumDefaultMode: document.getElementById("fVacuumDefaultMode"),
+  fVacuumBattery: document.getElementById("fVacuumBattery"),
+  fBinaryDisplayMode: document.getElementById("fBinaryDisplayMode"),
+  fBinaryDisplayModeLabel: document.getElementById("fBinaryDisplayModeLabel"),
+  fRoomEntities: document.getElementById("fRoomEntities"),
+  fRoomEntitiesLabel: document.getElementById("fRoomEntitiesLabel"),
+  fRoomEntitiesHint: document.getElementById("fRoomEntitiesHint"),
+  fRoomControls: document.getElementById("fRoomControls"),
+  fRoomControlsLabel: document.getElementById("fRoomControlsLabel"),
+  fRoomControlsHint: document.getElementById("fRoomControlsHint"),
+  fRoomExtraMode: document.getElementById("fRoomExtraMode"),
+  fRoomExtraEntity: document.getElementById("fRoomExtraEntity"),
+  fRoomExtraEntityWrap: document.getElementById("fRoomExtraEntityWrap"),
+  fRoomExtraHint: document.getElementById("fRoomExtraHint"),
+  addContactTileBtn: document.getElementById("addContactTileBtn"),
+  addCameraTileBtn: document.getElementById("addCameraTileBtn"),
+  addFanTileBtn: document.getElementById("addFanTileBtn"),
+  duplicateWidgetBtn: document.getElementById("duplicateWidgetBtn"),
+  deleteWidgetBtn: document.getElementById("deleteWidgetBtn"),
+  reloadBtn: document.getElementById("reloadBtn"),
+  saveBtn: document.getElementById("saveBtn"),
+  stackedSaveBtn: document.getElementById("stackedSaveBtn"),
+  exportBtn: document.getElementById("exportBtn"),
+  importBtn: document.getElementById("importBtn"),
+  importFile: document.getElementById("importFile"),
+  jsonPaste: document.getElementById("jsonPaste"),
+  fTitle: document.getElementById("fTitle"),
+  fType: document.getElementById("fType"),
+  fEntityWrap: document.getElementById("fEntityWrap"),
+  fEntity: document.getElementById("fEntity"),
+  fSecondaryEntityWrap: document.getElementById("fSecondaryEntityWrap"),
+  fSecondaryEntityLabel: document.getElementById("fSecondaryEntityLabel"),
+  fSecondaryEntity: document.getElementById("fSecondaryEntity"),
+  sonosFavoritesHint: document.getElementById("sonosFavoritesHint"),
+  weatherReportHint: document.getElementById("weatherReportHint"),
+  fTertiaryEntityWrap: document.getElementById("fTertiaryEntityWrap"),
+  fTertiaryEntityLabel: document.getElementById("fTertiaryEntityLabel"),
+  fTertiaryEntity: document.getElementById("fTertiaryEntity"),
+  solarForecastFields: document.getElementById("solarForecastFields"),
+  energyTimelineFields: document.getElementById("energyTimelineFields"),
+  fEtlStyle: document.getElementById("fEtlStyle"),
+  fEtlCharge: document.getElementById("fEtlCharge"),
+  fEtlDischarge: document.getElementById("fEtlDischarge"),
+  fEtlSoc: document.getElementById("fEtlSoc"),
+  fEtlForecast: document.getElementById("fEtlForecast"),
+  energyTimelineHint: document.getElementById("energyTimelineHint"),
+  addEvccWallboxBtn: document.getElementById("addEvccWallboxBtn"),
+evccFields: document.getElementById("evccFields"),
+fEvccLoadpoint: document.getElementById("fEvccLoadpoint"),
+fEvccDetectBtn: document.getElementById("fEvccDetectBtn"),
+evccStatus: document.getElementById("evccStatus"),
+fEvccMode: document.getElementById("fEvccMode"),
+fEvccVehicle: document.getElementById("fEvccVehicle"),
+fEvccTarget: document.getElementById("fEvccTarget"),
+fEvccPower: document.getElementById("fEvccPower"),
+fEvccSoc: document.getElementById("fEvccSoc"),
+fEvccConnected: document.getElementById("fEvccConnected"),
+fEvccCharging: document.getElementById("fEvccCharging"),
+fEvccDisabled: document.getElementById("fEvccDisabled"),
+fEvccEffective: document.getElementById("fEvccEffective"),
+fEvccEnergy: document.getElementById("fEvccEnergy"),
+fEvccRemaining: document.getElementById("fEvccRemaining"),
+bambuFields: document.getElementById("bambuFields"),
+  bambuDetailsSummary: document.getElementById("bambuDetailsSummary"),
+  fBambuPrinter: document.getElementById("fBambuPrinter"),
+  fBambuDetectBtn: document.getElementById("fBambuDetectBtn"),
+  bambuDetectStatus: document.getElementById("bambuDetectStatus"),
+  fBambuNozzle: document.getElementById("fBambuNozzle"),
+  fBambuBed: document.getElementById("fBambuBed"),
+  fBambuProgress: document.getElementById("fBambuProgress"),
+  fBambuRemaining: document.getElementById("fBambuRemaining"),
+  fBambuStage: document.getElementById("fBambuStage"),
+  fBambuJob: document.getElementById("fBambuJob"),
+  fBambuPause: document.getElementById("fBambuPause"),
+  fBambuResume: document.getElementById("fBambuResume"),
+  fBambuStop: document.getElementById("fBambuStop"),
+  fBambuCamera: document.getElementById("fBambuCamera"),
+  carExtraFields: document.getElementById("carExtraFields"),
+  fCarPrecond: document.getElementById("fCarPrecond"),
+  fCarLock: document.getElementById("fCarLock"),
+  fCarTemp: document.getElementById("fCarTemp"),
+  solarForecastStyleOptions: document.getElementById("solarForecastStyleOptions"),
+  sensorOptions: document.getElementById("sensorOptions"),
+  fShowName: document.getElementById("fShowName"),
+  fShowNameLabel: document.getElementById("fShowNameLabel"),
+  fSensorShowAge: document.getElementById("fSensorShowAge"),
+  fSensorShowAgeLabel: document.getElementById("fSensorShowAgeLabel"),
+  weatherForecastOptions: document.getElementById("weatherForecastOptions"),
+  fWeatherShowPrecip: document.getElementById("fWeatherShowPrecip"),
+  fForecastDays: document.getElementById("fForecastDays"),
+  fAlignForecast: document.getElementById("fAlignForecast"),
+  fSolarForecastTodayLabel: document.getElementById("fSolarForecastTodayLabel"),
+  fSolarForecastToday: document.getElementById("fSolarForecastToday"),
+  fSolarForecastTomorrowLabel: document.getElementById("fSolarForecastTomorrowLabel"),
+  fSolarForecastTomorrow: document.getElementById("fSolarForecastTomorrow"),
+  fSolarForecastDay3Label: document.getElementById("fSolarForecastDay3Label"),
+  fSolarForecastDay3: document.getElementById("fSolarForecastDay3"),
+  fSolarForecastDay4Label: document.getElementById("fSolarForecastDay4Label"),
+  fSolarForecastDay4: document.getElementById("fSolarForecastDay4"),
+  fSolarForecastDay5Label: document.getElementById("fSolarForecastDay5Label"),
+  fSolarForecastDay5: document.getElementById("fSolarForecastDay5"),
+  fSolarForecastBarMaxLabel: document.getElementById("fSolarForecastBarMaxLabel"),
+  fSolarForecastBarMax: document.getElementById("fSolarForecastBarMax"),
+  fSolarForecastBarOrientationLabel: document.getElementById("fSolarForecastBarOrientationLabel"),
+  fSolarForecastBarOrientation: document.getElementById("fSolarForecastBarOrientation"),
+  gaugeOptions: document.getElementById("gaugeOptions"),
+  fGaugeStyleLabel: document.getElementById("fGaugeStyleLabel"),
+  fGaugeStyle: document.getElementById("fGaugeStyle"),
+  fGaugeBarStyleWrap: document.getElementById("fGaugeBarStyleWrap"),
+  fGaugeBarStyleLabel: document.getElementById("fGaugeBarStyleLabel"),
+  fGaugeBarStyle: document.getElementById("fGaugeBarStyle"),
+  fGaugeSegmentCountWrap: document.getElementById("fGaugeSegmentCountWrap"),
+  fGaugeSegmentCount: document.getElementById("fGaugeSegmentCount"),
+  fGaugeMinLabel: document.getElementById("fGaugeMinLabel"),
+  fGaugeMin: document.getElementById("fGaugeMin"),
+  fGaugeMaxLabel: document.getElementById("fGaugeMaxLabel"),
+  fGaugeMax: document.getElementById("fGaugeMax"),
+  fGaugeHint: document.getElementById("fGaugeHint"),
+  fGaugeColorModeLabel: document.getElementById("fGaugeColorModeLabel"),
+  fGaugeColorMode: document.getElementById("fGaugeColorMode"),
+  fGaugeTargetRangeWrap: document.getElementById("fGaugeTargetRangeWrap"),
+  fGaugeTargetLowLabel: document.getElementById("fGaugeTargetLowLabel"),
+  fGaugeTargetLow: document.getElementById("fGaugeTargetLow"),
+  fGaugeTargetHighLabel: document.getElementById("fGaugeTargetHighLabel"),
+  fGaugeTargetHigh: document.getElementById("fGaugeTargetHigh"),
+  fGaugeColorLowHighWrap: document.getElementById("fGaugeColorLowHighWrap"),
+  fGaugeColorLowLabel: document.getElementById("fGaugeColorLowLabel"),
+  fGaugeColorLow: document.getElementById("fGaugeColorLow"),
+  fGaugeColorHighLabel: document.getElementById("fGaugeColorHighLabel"),
+  fGaugeColorHigh: document.getElementById("fGaugeColorHigh"),
+  fGaugeTargetColorWrap: document.getElementById("fGaugeTargetColorWrap"),
+  fGaugeTargetColorLabel: document.getElementById("fGaugeTargetColorLabel"),
+  fGaugeTargetColor: document.getElementById("fGaugeTargetColor"),
+  buttonOptions: document.getElementById("buttonOptions"),
+  fButtonMode: document.getElementById("fButtonMode"),
+  fSliderEntityDomain: document.getElementById("fSliderEntityDomain"),
+  fButtonAccentColor: document.getElementById("fButtonAccentColor"),
+  sliderOptions: document.getElementById("sliderOptions"),
+  fSliderDirection: document.getElementById("fSliderDirection"),
+  fSliderAccentColor: document.getElementById("fSliderAccentColor"),
+  graphOptions: document.getElementById("graphOptions"),
+  fGraphLineColor: document.getElementById("fGraphLineColor"),
+  fGraphTimeWindowMin: document.getElementById("fGraphTimeWindowMin"),
+  fGraphHaHistory: document.getElementById("fGraphHaHistory"),
+  fGraphPointCount: document.getElementById("fGraphPointCount"),
+  fGraphPointCountWrap: document.getElementById("fGraphPointCountWrap"),
+  fGraphDisplayMode: document.getElementById("fGraphDisplayMode"),
+  fGraphDisplayModeLabel: document.getElementById("fGraphDisplayModeLabel"),
+  fGraphBarBucketMin: document.getElementById("fGraphBarBucketMin"),
+  fGraphBarBucketMinLabel: document.getElementById("fGraphBarBucketMinLabel"),
+  fGraphBarBucketMinWrap: document.getElementById("fGraphBarBucketMinWrap"),
+  heatingOptions: document.getElementById("heatingOptions"),
+  fHeatingStyleVariant: document.getElementById("fHeatingStyleVariant"),
+  fHeatingArcOpening: document.getElementById("fHeatingArcOpening"),
+  fHeatingArcOpeningWrap: document.getElementById("fHeatingArcOpeningWrap"),
+  fX: document.getElementById("fX"),
+  fY: document.getElementById("fY"),
+  fW: document.getElementById("fW"),
+  fH: document.getElementById("fH"),
+  fMovePage: document.getElementById("fMovePage"),
+  applyInspectorBtn: document.getElementById("applyInspectorBtn"),
+  entityOptions: document.getElementById("entityOptions"),
+  energyEntityOptions: document.getElementById("energyEntityOptions"),
+  sensorEntityOptions: document.getElementById("sensorEntityOptions"),
+  houseSensorOptions: document.getElementById("houseSensorOptions"),
+  settingsWifiSsid: document.getElementById("settingsWifiSsid"),
+  settingsWifiCountryCode: document.getElementById("settingsWifiCountryCode"),
+  settingsWifiBssid: document.getElementById("settingsWifiBssid"),
+  scanWifiBtn: document.getElementById("scanWifiBtn"),
+  settingsWifiScanResults: document.getElementById("settingsWifiScanResults"),
+  settingsWifiScanInfo: document.getElementById("settingsWifiScanInfo"),
+  settingsWifiPassword: document.getElementById("settingsWifiPassword"),
+  settingsHaUrl: document.getElementById("settingsHaUrl"),
+  settingsHaToken: document.getElementById("settingsHaToken"),
+  settingsHaRestEnabled: document.getElementById("settingsHaRestEnabled"),
+  settingsMqttEnabled: document.getElementById("settingsMqttEnabled"),
+  settingsMqttHost: document.getElementById("settingsMqttHost"),
+  settingsMqttPort: document.getElementById("settingsMqttPort"),
+  settingsMqttTls: document.getElementById("settingsMqttTls"),
+  settingsMqttUsername: document.getElementById("settingsMqttUsername"),
+  settingsMqttPassword: document.getElementById("settingsMqttPassword"),
+  settingsMqttTopicPrefix: document.getElementById("settingsMqttTopicPrefix"),
+  settingsMqttDeviceName: document.getElementById("settingsMqttDeviceName"),
+  settingsDeviceRoom: document.getElementById("settingsDeviceRoom"),
+  deviceIdLabel: document.getElementById("deviceIdLabel"),
+  deviceIdValue: document.getElementById("deviceIdValue"),
+  boardLabel: document.getElementById("boardLabel"),
+  boardLabelValue: document.getElementById("boardLabelValue"),
+  buildTimeLabel: document.getElementById("buildTimeLabel"),
+  buildTimeValue: document.getElementById("buildTimeValue"),
+  settingsMqttInfo: document.getElementById("settingsMqttInfo"),
+  settingsTopbarSlot1: document.getElementById("settingsTopbarSlot1"),
+  settingsTopbarSlot2: document.getElementById("settingsTopbarSlot2"),
+  settingsTopbarSlot3: document.getElementById("settingsTopbarSlot3"),
+  settingsTopbarSlot3Wrap: document.getElementById("settingsTopbarSlot3Wrap"),
+  settingsTopbarWeatherEntity: document.getElementById("settingsTopbarWeatherEntity"),
+  settingsSaverMode: document.getElementById("settingsSaverMode"),
+  settingsSaverTiming: document.getElementById("settingsSaverTiming"),
+  settingsSaverTimeout: document.getElementById("settingsSaverTimeout"),
+  settingsSaverWeatherFields: document.getElementById("settingsSaverWeatherFields"),
+  settingsSaverWeatherEntity: document.getElementById("settingsSaverWeatherEntity"),
+  settingsSaverWeatherSearchBtn: document.getElementById("settingsSaverWeatherSearchBtn"),
+  settingsSaverWeatherMinutes: document.getElementById("settingsSaverWeatherMinutes"),
+  settingsSaverPagesFields: document.getElementById("settingsSaverPagesFields"),
+  settingsSaverPageInterval: document.getElementById("settingsSaverPageInterval"),
+  settingsSaverPagesMinutes: document.getElementById("settingsSaverPagesMinutes"),
+  settingsSaverPageWake: document.getElementById("settingsSaverPageWake"),
+  settingsSaverWeatherBrightness: document.getElementById("settingsSaverWeatherBrightness"),
+  settingsSaverWeatherBrightnessValue: document.getElementById("settingsSaverWeatherBrightnessValue"),
+  settingsSaverPixelRefreshRow: document.getElementById("settingsSaverPixelRefreshRow"),
+  settingsSaverPixelRefresh: document.getElementById("settingsSaverPixelRefresh"),
+  settingsSaverAdvanced: document.getElementById("settingsSaverAdvanced"),
+  settingsSaverHint: document.getElementById("settingsSaverHint"),
+  settingsTopbarWeatherSearchBtn: document.getElementById("settingsTopbarWeatherSearchBtn"),
+  settingsWeatherEntityOptions: document.getElementById("settingsWeatherEntityOptions"),
+  settingsTopbarStockEntity: document.getElementById("settingsTopbarStockEntity"),
+  settingsTopbarStockSearchBtn: document.getElementById("settingsTopbarStockSearchBtn"),
+  settingsStockEntityOptions: document.getElementById("settingsStockEntityOptions"),
+  settingsHardwareActiveBrightness: document.getElementById("settingsHardwareActiveBrightness"),
+  settingsHardwareActiveBrightnessValue: document.getElementById("settingsHardwareActiveBrightnessValue"),
+  settingsHardwareDimBrightness: document.getElementById("settingsHardwareDimBrightness"),
+  settingsHardwareDimBrightnessValue: document.getElementById("settingsHardwareDimBrightnessValue"),
+  settingsHardwareDimTimeout: document.getElementById("settingsHardwareDimTimeout"),
+  settingsActiveBrightnessTestBtn: document.getElementById("settingsActiveBrightnessTestBtn"),
+  settingsActiveBrightnessTestStatus: document.getElementById("settingsActiveBrightnessTestStatus"),
+  settingsDimBrightnessTestBtn: document.getElementById("settingsDimBrightnessTestBtn"),
+  settingsDimBrightnessTestStatus: document.getElementById("settingsDimBrightnessTestStatus"),
+  settingsNightBrightnessTestBtn: document.getElementById("settingsNightBrightnessTestBtn"),
+  settingsNightBrightnessTestStatus: document.getElementById("settingsNightBrightnessTestStatus"),
+  settingsHardwareNightBrightness: document.getElementById("settingsHardwareNightBrightness"),
+  settingsHardwareNightBrightnessValue: document.getElementById("settingsHardwareNightBrightnessValue"),
+  settingsRotationGroup: document.getElementById("settingsRotationGroup"),
+  settingsRotationRow: document.getElementById("settingsRotationRow"),
+  settingsHardwareAutoRotation: document.getElementById("settingsHardwareAutoRotation"),
+  settingsHardwareAutoBrightness: document.getElementById("settingsHardwareAutoBrightness"),
+  settingsCameraBrightnessStatus: document.getElementById("settingsCameraBrightnessStatus"),
+  settingsHardwarePresenceWake: document.getElementById("settingsHardwarePresenceWake"),
+  settingsHardwarePresenceSensitivity: document.getElementById("settingsHardwarePresenceSensitivity"),
+  settingsHardwarePresenceSensitivityValue: document.getElementById("settingsHardwarePresenceSensitivityValue"),
+  settingsCameraTestBtn: document.getElementById("settingsCameraTestBtn"),
+  settingsCameraTestStatus: document.getElementById("settingsCameraTestStatus"),
+  settingsHardwareNightPresenceWake: document.getElementById("settingsHardwareNightPresenceWake"),
+  settingsPresenceFields: document.getElementById("settingsPresenceFields"),
+  settingsNightPresenceRow: document.getElementById("settingsNightPresenceRow"),
+  settingsNightFields: document.getElementById("settingsNightFields"),
+  settingsSoundEnabled: document.getElementById("settingsSoundEnabled"),
+  settingsSoundVolume: document.getElementById("settingsSoundVolume"),
+  settingsSoundVolumeValue: document.getElementById("settingsSoundVolumeValue"),
+  settingsSoundNightMute: document.getElementById("settingsSoundNightMute"),
+  settingsSoundTestBtn: document.getElementById("settingsSoundTestBtn"),
+  settingsSoundControls: document.getElementById("settingsSoundControls"),
+  settingsSoundStatus: document.getElementById("settingsSoundStatus"),
+  settingsHardwareNightEnabled: document.getElementById("settingsHardwareNightEnabled"),
+  settingsHardwareNightStart: document.getElementById("settingsHardwareNightStart"),
+  settingsHardwareNightEnd: document.getElementById("settingsHardwareNightEnd"),
+  settingsNtpServer: document.getElementById("settingsNtpServer"),
+  settingsTimezone: document.getElementById("settingsTimezone"),
+  settingsTimezonePreset: document.getElementById("settingsTimezonePreset"),
+  settingsTimezoneCustomRow: document.getElementById("settingsTimezoneCustomRow"),
+  settingsLanguage: document.getElementById("settingsLanguage"),
+  settingsUiStyle: document.getElementById("settingsUiStyle"),
+  settingsUiTextStep: document.getElementById("settingsUiTextStep"),
+  settingsUiTextStepLabel: document.getElementById("settingsUiTextStepLabel"),
+  settingsUiTextStepInfo: document.getElementById("settingsUiTextStepInfo"),
+  reloadLanguagesBtn: document.getElementById("reloadLanguagesBtn"),
+  downloadLanguageBtn: document.getElementById("downloadLanguageBtn"),
+  uploadLanguageCode: document.getElementById("uploadLanguageCode"),
+  uploadLanguageFile: document.getElementById("uploadLanguageFile"),
+  uploadLanguageBtn: document.getElementById("uploadLanguageBtn"),
+  settingsTranslationInfo: document.getElementById("settingsTranslationInfo"),
+  settingsWifiInfo: document.getElementById("settingsWifiInfo"),
+  settingsHaInfo: document.getElementById("settingsHaInfo"),
+  settingsTopbarInfo: document.getElementById("settingsTopbarInfo"),
+  settingsHardwareResetBtn: document.getElementById("settingsHardwareResetBtn"),
+  settingsAppearanceResetBtn: document.getElementById("settingsAppearanceResetBtn"),
+  settingsTopbarResetBtn: document.getElementById("settingsTopbarResetBtn"),
+  settingsTimeInfo: document.getElementById("settingsTimeInfo"),
+  settingsUiInfo: document.getElementById("settingsUiInfo"),
+  settingsOtaUrl: document.getElementById("settingsOtaUrl"),
+  startOtaUrlBtn: document.getElementById("startOtaUrlBtn"),
+  settingsOtaFile: document.getElementById("settingsOtaFile"),
+  uploadOtaBtn: document.getElementById("uploadOtaBtn"),
+  settingsOtaProgressBar: document.getElementById("settingsOtaProgressBar"),
+  settingsOtaInfo: document.getElementById("settingsOtaInfo"),
+  settingsOtaUpdateCheck: document.getElementById("settingsOtaUpdateCheck"),
+  settingsOtaUpdateCheckEnabled: document.getElementById("settingsOtaUpdateCheckEnabled"),
+  settingsOtaIncludePrereleases: document.getElementById("settingsOtaIncludePrereleases"),
+  settingsOtaAutoInstall: document.getElementById("settingsOtaAutoInstall"),
+  settingsOtaAutoInstallHint: document.getElementById("settingsOtaAutoInstallHint"),
+  settingsOtaAutoInstallStatus: document.getElementById("settingsOtaAutoInstallStatus"),
+  checkUpdateNowBtn: document.getElementById("checkUpdateNowBtn"),
+  updateBanner: document.getElementById("updateBanner"),
+  updateBannerTitle: document.getElementById("updateBannerTitle"),
+  updateBannerHint: document.getElementById("updateBannerHint"),
+  updateBannerOpen: document.getElementById("updateBannerOpen"),
+  updateBannerDismiss: document.getElementById("updateBannerDismiss"),
+  coredumpUnsupportedHint: document.getElementById("coredumpUnsupportedHint"),
+  settingsFirmwareInfoBox: document.getElementById("settingsFirmwareInfoBox"),
+  settingsFirmwareInfoHeading: document.getElementById("settingsFirmwareInfoHeading"),
+  settingsFirmwareInfoMeta: document.getElementById("settingsFirmwareInfoMeta"),
+  settingsFirmwareInfoColComponent: document.getElementById("settingsFirmwareInfoColComponent"),
+  settingsFirmwareInfoColVersion: document.getElementById("settingsFirmwareInfoColVersion"),
+  settingsFirmwareInfoColDescription: document.getElementById("settingsFirmwareInfoColDescription"),
+  settingsFirmwareInfoTable: document.getElementById("settingsFirmwareInfoTable"),
+  settingsFirmwareInfoSummary: document.getElementById("settingsFirmwareInfoSummary"),
+  settingsFirmwareInfoDetails: document.getElementById("settingsFirmwareInfoDetails"),
+  settingsFirmwareInfoBody: document.getElementById("settingsFirmwareInfoBody"),
+  reloadSettingsBtn: document.getElementById("reloadSettingsBtn"),
+  saveSettingsBtn: document.getElementById("saveSettingsBtn"),
+  provWifiSsid: document.getElementById("provWifiSsid"),
+  provWifiCountryCode: document.getElementById("provWifiCountryCode"),
+  provScanWifiBtn: document.getElementById("provScanWifiBtn"),
+  provWifiScanResults: document.getElementById("provWifiScanResults"),
+  provWifiScanInfo: document.getElementById("provWifiScanInfo"),
+  provWifiPassword: document.getElementById("provWifiPassword"),
+  provWifiShowPassword: document.getElementById("provWifiShowPassword"),
+  provWifiInfo: document.getElementById("provWifiInfo"),
+  provWifiSaveBtn: document.getElementById("provWifiSaveBtn"),
+  provHaUrl: document.getElementById("provHaUrl"),
+  provHaUseUrlBtn: document.getElementById("provHaUseUrlBtn"),
+  provHaToken: document.getElementById("provHaToken"),
+  provHaShowToken: document.getElementById("provHaShowToken"),
+  provHaInfo: document.getElementById("provHaInfo"),
+  provHaSaveBtn: document.getElementById("provHaSaveBtn"),
+};
+
+const entityAutocomplete = {
+  primary: {
+    timerId: null,
+    requestSeq: 0,
+  },
+  secondary: {
+    timerId: null,
+    requestSeq: 0,
+  },
+  tertiary: {
+    timerId: null,
+    requestSeq: 0,
+  },
+  settingsWeather: {
+    timerId: null,
+    requestSeq: 0,
+  },
+  settingsStocks: {
+    timerId: null,
+    requestSeq: 0,
+  },
+};

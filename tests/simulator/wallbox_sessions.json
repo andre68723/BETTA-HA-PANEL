@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "id": "wallbox",
+      "title": "Wallbox",
+      "widgets": [
+        {
+          "id": "wallbox",
+          "type": "wallbox_evcc",
+          "title": "Wallbox",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "w": 360,
+            "h": 360
+          },
+          "entity_id": "select.demo_evcc_mode",
+          "evcc_vehicle_entity_id": "select.demo_evcc_vehicle",
+          "evcc_target_soc_entity_id": "number.demo_evcc_limit",
+          "evcc_power_entity_id": "sensor.demo_evcc_power",
+          "evcc_soc_entity_id": "sensor.demo_evcc_soc",
+          "evcc_connected_entity_id": "binary_sensor.demo_evcc_connected",
+          "evcc_charging_entity_id": "binary_sensor.demo_evcc_charging",
+          "evcc_disabled_entity_id": "binary_sensor.demo_evcc_disabled",
+          "evcc_effective_soc_entity_id": "sensor.demo_evcc_effective",
+          "evcc_energy_entity_id": "sensor.demo_evcc_energy",
+          "evcc_remaining_entity_id": "sensor.demo_evcc_remaining"
+        }
+      ]
+    }
+  ],
+  "states": [
+    {
+      "entity_id": "select.demo_evcc_mode",
+      "state": "smart",
+      "attributes": {
+        "options": [
+          "off",
+          "smart",
+          "now"
+        ]
+      }
+    },
+    {
+      "entity_id": "select.demo_evcc_vehicle",
+      "state": "ev4",
+      "attributes": {
+        "options": [
+          "null",
+          "ev1",
+          "ev4"
+        ],
+        "vehicle": {
+          "name": "Demo car"
+        }
+      }
+    },
+    {
+      "entity_id": "number.demo_evcc_limit",
+      "state": "85",
+      "attributes": {
+        "min": 20,
+        "max": 100,
+        "step": 5,
+        "unit_of_measurement": "%"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_power",
+      "state": "7.4",
+      "attributes": {
+        "unit_of_measurement": "kW"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_soc",
+      "state": "62.187",
+      "attributes": {
+        "unit_of_measurement": "%"
+      }
+    },
+    {
+      "entity_id": "binary_sensor.demo_evcc_connected",
+      "state": "off",
+      "attributes": {}
+    },
+    {
+      "entity_id": "binary_sensor.demo_evcc_charging",
+      "state": "off",
+      "attributes": {}
+    },
+    {
+      "entity_id": "binary_sensor.demo_evcc_disabled",
+      "state": "off",
+      "attributes": {}
+    },
+    {
+      "entity_id": "sensor.demo_evcc_effective",
+      "state": "85",
+      "attributes": {
+        "unit_of_measurement": "%"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_energy",
+      "state": "12.8",
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_remaining",
+      "state": "13980",
+      "attributes": {
+        "unit_of_measurement": "s"
+      }
+    }
+  ],
+  "ha_online": true,
+  "evcc_sessions": [
+    {
+      "mode_entity_id": "select.demo_evcc_mode",
+      "loadpoint": "Demo charger",
+      "sessions": [
+        {
+          "created": "2026-10-10T11:54:00+02:00",
+          "finished": "2026-10-10T15:20:00+02:00",
+          "loadpoint": "Demo charger",
+          "vehicle": "Demo car",
+          "chargedEnergy": 20.2
+        },
+        {
+          "created": "2026-10-07T14:48:00+02:00",
+          "finished": "2026-10-07T16:00:00+02:00",
+          "loadpoint": "Demo charger",
+          "vehicle": "Demo car",
+          "chargedEnergy": 7.1
+        }
+      ]
+    }
+  ],
+  "evcc_sessions_popup": "select.demo_evcc_mode"
+}

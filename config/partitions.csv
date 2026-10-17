@@ -1,0 +1,14 @@
+# Partition table for the 32 MB boards (panel4, panel10): layout "p4-32-v2", docs/hardware/storage.md (Partition Tables).
+# Same addresses as the 16 MB tables up to the filesystem, which takes everything above 0xD60000 (18.625 MiB).
+# Both app slots and the coredump partition must stay inside the first 16 MB: the flash cache cannot map addresses
+# above that on this quad flash (an image in ota_1 at 0x1220000 failed verification and could not boot). The
+# filesystem is read through the SPI flash API and may use the upper half. No factory app: the USB-installed app is ota_0.
+# nvs, otadata and phy_init keep the addresses of every earlier table; the filesystem moves and is formatted by the first boot.
+# Name,   Type, SubType, Offset,    Size,      Flags
+nvs,      data, nvs,     0x9000,    0x6000,
+otadata,  data, ota,     0xF000,    0x2000,
+phy_init, data, phy,     0x11000,   0x1000,
+ota_0,    app,  ota_0,   0x20000,   0x680000,
+ota_1,    app,  ota_1,   0x6A0000,  0x680000,
+coredump, data, coredump,0xD20000,  0x40000,
+storage,  data, littlefs,0xD60000,  0x12A0000,

@@ -1,7 +1,10 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ha/ha_client.h"
+#include "util/entity_id.h"
+#include "util/json_util.h"
 
 #include <inttypes.h>
 #include <stdlib.h>
@@ -26,13 +29,30 @@
 
 #include "app_config.h"
 #include "app_events.h"
+#include "ha/ha_attrs_compact.h"
+#include "ha/ha_attr_serialize.h"
 #include "ha/ha_energy_model.h"
+#include "ha/ha_energy_prefs.h"
 #include "ha/ha_light_capabilities.h"
+#include "ha/ha_layout_entities.h"
+#include "ha/ha_auth_state.h"
+#include "ha/ha_discovery_domains.h"
+#include "ha/ha_registry_discovery.h"
+#include "ha/ha_display_precision.h"
+#include "ha/ha_printer_lookup.h"
+#include "ha/ha_evcc_lookup.h"
+#include "ha/ha_evcc_sessions.h"
+#include "ha/ha_evcc_value.h"
+#include "ha/ha_room_registry.h"
 #include "ha/ha_model.h"
 #include "ha/ha_ws.h"
 #include "layout/layout_store.h"
 #include "net/wifi_mgr.h"
+#include "settings/runtime_settings.h"
 #include "util/log_tags.h"
+
+_Static_assert(HA_ENERGY_STAT_ID_LEN == APP_MAX_ENTITY_ID_LEN && HA_ENERGY_STAT_UNIT_LEN == APP_MAX_UNIT_LEN,
+               "energy stat ref buffers follow the app limits");
 
 typedef struct {
     char *payload;
@@ -61,7 +81,12 @@ typedef enum {
 } ha_bg_budget_level_t;
 
 #define HA_ENERGY_PAGE_ENTITY_MAX (APP_MAX_PAGES * 9)
-#define HA_LAYOUT_ENTITY_MAX ((APP_MAX_WIDGETS_TOTAL * 2) + HA_ENERGY_PAGE_ENTITY_MAX)
+#define HA_SETTINGS_ENTITY_MAX 4
+/* Average entity-ID budget per widget. Most widgets use 1-2 IDs, but a
+ * solar_forecast widget can contribute up to 8 (entity + secondary +
+ * tertiary + 5 forecast days); 4 gives headroom for mixed layouts without
+ * oversizing the subscription buffers. Overflow is logged, not silent. */
+#define HA_LAYOUT_ENTITY_MAX ((APP_MAX_WIDGETS_TOTAL * 4) + HA_ENERGY_PAGE_ENTITY_MAX + HA_SETTINGS_ENTITY_MAX)
 #define HA_WS_ENTITIES_SUB_MAX HA_LAYOUT_ENTITY_MAX
 #define HA_WS_ENTITIES_SUB_ID_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * (size_t)APP_MAX_ENTITY_ID_LEN)
 #define HA_WS_ENTITIES_SUB_REQ_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * sizeof(uint32_t))
@@ -70,7 +95,6 @@ typedef enum {
  * counts and logs all of them; only the first N get stored by entity_id. */
 #define HA_MISSING_ENTITIES_REPORT_MAX 16
 #define HA_SVC_TRACE_CAPACITY 48U
-#define HA_ENERGY_STAT_REF_MAX 16U
 /* Energy statistics are daily kWh aggregates that tick slowly.
  * 15 minutes is responsive enough for a wall panel and keeps TLS / WS
  * pressure low; the UI additionally forces a refresh whenever the user
@@ -117,11 +141,7 @@ typedef enum {
  *       gate opens automatically (no cooldown is armed in that case,
  *       which is correct: no big payload was processed).
  */
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-#define HA_WS_HEAVY_MIN_GAP_MS 1200
-#else
 #define HA_WS_HEAVY_MIN_GAP_MS 400
-#endif
 
 typedef enum {
     HA_WS_SEND_LIGHT = 0,  /* small payload, never gated */
@@ -137,22 +157,6 @@ typedef enum {
     HA_LIGHT_DISCOVERY_PHASE_DEVICES,
 } ha_light_discovery_phase_t;
 
-typedef enum {
-    HA_ENERGY_STAT_GRID_FROM = 0,
-    HA_ENERGY_STAT_GRID_TO,
-    HA_ENERGY_STAT_SOLAR,
-    HA_ENERGY_STAT_BATTERY_FROM,
-    HA_ENERGY_STAT_BATTERY_TO,
-    HA_ENERGY_STAT_GAS,
-    HA_ENERGY_STAT_WATER,
-} ha_energy_stat_kind_t;
-
-typedef struct {
-    char id[APP_MAX_ENTITY_ID_LEN];
-    char unit[APP_MAX_UNIT_LEN];
-    ha_energy_stat_kind_t kind;
-} ha_energy_stat_ref_t;
-
 typedef struct {
     char id[APP_MAX_ENTITY_ID_LEN];
     char name[APP_MAX_NAME_LEN];
@@ -160,6 +164,9 @@ typedef struct {
     char area_id[APP_HA_DISCOVERY_ID_MAX_LEN];
     char device_id[APP_HA_DISCOVERY_ID_MAX_LEN];
     char icon[APP_MAX_ICON_LEN];
+    char device_class[24];
+    char floor[APP_MAX_NAME_LEN];
+    bool prefix_device;
 } ha_light_discovery_pending_item_t;
 
 typedef struct {
@@ -168,6 +175,8 @@ typedef struct {
     char room[APP_MAX_NAME_LEN];
     char area_id[APP_HA_DISCOVERY_ID_MAX_LEN];
     char icon[APP_MAX_ICON_LEN];
+    char device_class[24];
+    char floor[APP_MAX_NAME_LEN];
 } ha_light_discovery_item_t;
 
 typedef struct {
@@ -175,10 +184,7 @@ typedef struct {
     char name[APP_MAX_NAME_LEN];
 } ha_light_discovery_area_t;
 
-typedef struct {
-    char id[APP_HA_DISCOVERY_ID_MAX_LEN];
-    char area_id[APP_HA_DISCOVERY_ID_MAX_LEN];
-} ha_light_discovery_device_t;
+typedef ha_registry_device_t ha_light_discovery_device_t;
 
 typedef struct {
     bool started;
@@ -357,15 +363,6 @@ static inline void ha_client_ws_send_gate_mark_heavy_done_locked(int64_t now_ms)
 {
     s_client.heavy_ws_gate_next_allowed_unix_ms = now_ms + HA_WS_HEAVY_MIN_GAP_MS;
 }
-/* Capacity matches the weather tile: both the P4 and the 480x480 S3 variant
- * can render today's summary row plus up to 5 forecast days when the tile is
- * tall enough; shorter tiles still reduce the visible row count dynamically
- * in the widget renderer. */
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6;
-#else
-static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6;
-#endif
 static const int64_t HA_WS_RESTART_INTERVAL_MS = 12000;
 static const int64_t HA_WS_RESTART_INTERVAL_MAX_MS = 30000;
 static const int64_t HA_WS_RESTART_JITTER_MS = 1000;
@@ -406,16 +403,8 @@ static const TickType_t HA_CLIENT_TASK_DELAY_TICKS = pdMS_TO_TICKS(30);
  * todo lists push the tail of the state burst past that window and cause
  * TLS BAD_INPUT_DATA collisions with the first heavy send.  4 s gives
  * comfortable margin for typical 6-10 entity layouts. */
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-static const int64_t HA_WS_WEATHER_PRIORITY_GRACE_MS = 8000;
-#else
 static const int64_t HA_WS_WEATHER_PRIORITY_GRACE_MS = 4000;
-#endif
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-static const int64_t HA_WEATHER_FORECAST_LAYOUT_SETTLE_MS = 2500;
-#else
 static const int64_t HA_WEATHER_FORECAST_LAYOUT_SETTLE_MS = 0;
-#endif
 static const int HA_WS_TLS_ERR_BAD_INPUT_DATA = 0x7100;
 static const int64_t HA_WS_GET_STATES_MIN_SESSION_MS = 3000;
 static const int64_t HA_WS_GET_STATES_POST_SUBSCRIBE_DELAY_MS = 1200;
@@ -438,57 +427,36 @@ static const int64_t HA_WS_ENTITIES_SUBSCRIBE_STEP_DELAY_MS = 150;
  * latency (~100 ms per entity) and small enough that the user only sees
  * a brief "loading" flicker on a broken layout. */
 static const int64_t HA_WS_ENTITIES_SUBSCRIBE_COMPLETION_TIMEOUT_MS = 5000;
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-static const int64_t HA_LIGHT_DISCOVERY_WS_STABLE_DELAY_MS = 30000;
-static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_STABLE_DELAY_MS = 8000;
-static const int64_t HA_LIGHT_DISCOVERY_PAGE_STEP_DELAY_MS = 1000;
-#else
 static const int64_t HA_LIGHT_DISCOVERY_WS_STABLE_DELAY_MS = 45000;
 static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_STABLE_DELAY_MS = 12000;
-static const int64_t HA_LIGHT_DISCOVERY_PAGE_STEP_DELAY_MS = 700;
-#endif
+/* Pause between two template pages. It was 700 ms while the internal RAM was scarce (20 pages of the house import took 14 s of
+ * pure waiting); the free-heap gate below still holds a page back when memory is short, so the pause only needs to give the HTTP
+ * and UI tasks a turn. */
+static const int64_t HA_LIGHT_DISCOVERY_PAGE_STEP_DELAY_MS = 100;
 static const int64_t HA_LIGHT_DISCOVERY_RETRY_DELAY_MS = 6000;
 static const int64_t HA_LIGHT_DISCOVERY_WAIT_LOG_INTERVAL_MS = 5000;
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_FREE_BYTES = (96U * 1024U);
-static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_LARGEST_BYTES = (48U * 1024U);
-static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES = (48U * 1024U);
-static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES = (20U * 1024U);
-#else
 static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_FREE_BYTES = (180U * 1024U);
 static const size_t HA_LIGHT_DISCOVERY_MIN_INTERNAL_LARGEST_BYTES = (80U * 1024U);
-static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES = (120U * 1024U);
-static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES = (48U * 1024U);
-#endif
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_FALLBACK_CAP = 4096U;
-static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_MAX_BYTES = 4096U;
-static const int HA_LIGHT_DISCOVERY_HTTP_BUFFER_SIZE = 1024;
-static const int HA_LIGHT_DISCOVERY_HTTP_TX_BUFFER_SIZE = 768;
-static const bool HA_HTTP_KEEP_ALIVE = false;
-#else
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES = APP_HA_DISCOVERY_TEMPLATE_MIN_INTERNAL_FREE_BYTES;
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES = APP_HA_DISCOVERY_TEMPLATE_MIN_INTERNAL_LARGEST_BYTES;
 static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_FALLBACK_CAP = 8192U;
 static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_PAYLOAD_MAX_BYTES = 16384U;
 static const int HA_LIGHT_DISCOVERY_HTTP_BUFFER_SIZE = 2048;
 static const int HA_LIGHT_DISCOVERY_HTTP_TX_BUFFER_SIZE = 1024;
 static const bool HA_HTTP_KEEP_ALIVE = true;
-#endif
 /* User-priority escalation: when the user is actively waiting for an entity picker
  * result, the standard heap thresholds above can leave the request stuck for minutes
  * because periodic background work (todo.get_items, energy sync, ping) keeps internal
  * heap just below the template threshold. After this delay, relax the thresholds so
- * the queued discovery can run. The S3 480 panel has far less internal RAM than
- * the P4 boards and can idle around 27-30 KiB internal free with a ~9 KiB largest
- * block while still having enough PSRAM for the small template-page request. */
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_WAIT_ESCALATE_MS = 3000;
-static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_FREE_BYTES = (24U * 1024U);
-static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_LARGEST_BYTES = (8U * 1024U);
-#else
+ * the queued discovery can run. A panel with little internal RAM can idle
+ * around 27-30 KiB free with a ~9 KiB largest block while still having enough PSRAM for the small
+ * template-page request. */
 static const int64_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_WAIT_ESCALATE_MS = 8000;
-static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_FREE_BYTES = (72U * 1024U);
-static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_LARGEST_BYTES = (40U * 1024U);
-#endif
+/* The camera stack (esp_video) and a long uptime leave the largest internal block around 36 KB on
+ * the JC panel; 40 KB then blocked every editor discovery (room import) for good. The request
+ * itself keeps its TLS buffers in PSRAM (CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC), 24 KB is enough. */
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_FREE_BYTES = (64U * 1024U);
+static const size_t HA_LIGHT_DISCOVERY_TEMPLATE_USER_MIN_INTERNAL_LARGEST_BYTES = (24U * 1024U);
 /* Internal heap on ESP32-P4 can be low in normal operation due to DMA/internal reservations.
    Tune thresholds to avoid permanent "protect" on healthy WS-only idle. */
 static const size_t HA_BG_HEAP_PRESSURE_BYTES = (12U * 1024U);
@@ -536,7 +504,6 @@ static void ha_client_priority_sync_queue_push_locked(const char *entity_id);
 static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_count, bool *out_need_weather_forecast);
 static bool ha_client_layout_needs_ha_energy(void);
 static bool ha_client_entity_is_weather(const char *entity_id);
-static bool ha_client_entity_id_in_list(const char *entity_ids, size_t entity_count, const char *entity_id);
 static void ha_client_queue_weather_priority_sync_from_layout(int64_t now_ms);
 static ha_bg_budget_level_t ha_client_eval_bg_budget_level(
     size_t free_internal, uint8_t ws_q_fill_pct, uint32_t ws_error_streak);
@@ -993,10 +960,19 @@ static void ha_client_queue_weather_priority_sync_from_layout(int64_t now_ms)
     free(entity_ids);
 }
 
+/* Feeds a status from Home Assistant to ha_auth_state.c and logs a new block once (see there). */
+static void ha_client_auth_status(int status, bool template_request)
+{
+    if (ha_auth_state_report_http(status, template_request, s_client.authenticated)) {
+        ESP_LOGE(TAG_HA_CLIENT, "HA rejected the panel (HTTP %d, %s): no more requests with this token until "
+                 "a restart or a new token in Settings", status, ha_auth_state_name());
+    }
+}
+
 static esp_err_t ha_client_http_open_budgeted(esp_http_client_handle_t client, int write_len, const char *reason)
 {
-    if (client == NULL) {
-        return ESP_ERR_INVALID_ARG;
+    if (client == NULL || ha_auth_state_blocked()) {
+        return client == NULL ? ESP_ERR_INVALID_ARG : ESP_ERR_INVALID_STATE;
     }
 
     int64_t now_ms = ha_client_now_ms();
@@ -1119,6 +1095,7 @@ static uint16_t ha_client_prepare_entities_resubscribe_locked(int64_t now_ms)
         bool need_weather_forecast = false;
         entity_count = ha_client_collect_layout_entity_ids(entity_ids, max_entities, &need_weather_forecast);
         s_client.layout_needs_weather_forecast = need_weather_forecast;
+        ha_display_precision_set_wanted(entity_ids, entity_count);
     }
 
     uint16_t target_count =
@@ -1353,9 +1330,7 @@ static void safe_copy_cstr(char *dst, size_t dst_size, const char *src)
         dst[0] = '\0';
         return;
     }
-    size_t n = strnlen(src, dst_size - 1U);
-    memcpy(dst, src, n);
-    dst[n] = '\0';
+    strlcpy(dst, src, dst_size);
 }
 
 static bool ha_client_entity_is_weather(const char *entity_id)
@@ -1374,36 +1349,27 @@ static bool ha_client_entity_is_light(const char *entity_id)
     return strncmp(entity_id, "light.", 6) == 0;
 }
 
-static bool ha_client_discovery_domain_supported(const char *domain)
+static bool ha_client_entity_is_cover(const char *entity_id)
 {
-    if (domain == NULL) {
+    if (entity_id == NULL) {
         return false;
     }
-    return strcmp(domain, "light") == 0 ||
-           strcmp(domain, "sensor") == 0 ||
-           strcmp(domain, "switch") == 0 ||
-           strcmp(domain, "weather") == 0 ||
-           strcmp(domain, "climate") == 0 ||
-           strcmp(domain, "todo") == 0 ||
-           strcmp(domain, "media_player") == 0 ||
-           strcmp(domain, "vacuum") == 0 ||
-           strcmp(domain, "image") == 0;
+    return strncmp(entity_id, "cover.", 6) == 0;
 }
 
-static const char *ha_client_discovery_domain_or_default(const char *domain)
+static bool ha_client_entity_is_alarm(const char *entity_id)
 {
-    return ha_client_discovery_domain_supported(domain) ? domain : "light";
+    return entity_id != NULL && strncmp(entity_id, "alarm_control_panel.", 20) == 0;
 }
 
-static bool ha_client_entity_matches_domain(const char *entity_id, const char *domain)
+static bool ha_client_entity_is_fan(const char *entity_id)
 {
-    const char *checked_domain = ha_client_discovery_domain_or_default(domain);
-    if (entity_id == NULL || entity_id[0] == '\0') {
+    if (entity_id == NULL) {
         return false;
     }
-    size_t domain_len = strlen(checked_domain);
-    return strncmp(entity_id, checked_domain, domain_len) == 0 && entity_id[domain_len] == '.';
+    return strncmp(entity_id, "fan.", 4) == 0;
 }
+
 
 static void ha_client_discovery_normalize_search(const char *src, char *dst, size_t dst_size)
 {
@@ -1450,6 +1416,11 @@ static bool ha_client_entity_is_image(const char *entity_id)
         return false;
     }
     return strncmp(entity_id, "image.", 6) == 0;
+}
+
+static bool ha_client_entity_is_sonos_favorites_sensor(const char *entity_id)
+{
+    return entity_id != NULL && strcmp(entity_id, "sensor.sonos_favorites") == 0;
 }
 
 static bool ha_client_json_string_value(cJSON *obj, const char *key, char *dst, size_t dst_size)
@@ -1577,7 +1548,7 @@ static bool ha_client_light_discovery_has_ready_cache_locked(void)
 
 static bool ha_client_light_discovery_start_locked(const char *domain, const char *search, int64_t now_ms)
 {
-    const char *checked_domain = ha_client_discovery_domain_or_default(domain);
+    const char *checked_domain = ha_discovery_domain_or_default(domain);
     char checked_search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
     ha_client_discovery_normalize_search(search, checked_search, sizeof(checked_search));
     bool same_domain =
@@ -1603,6 +1574,9 @@ static bool ha_client_light_discovery_start_locked(const char *domain, const cha
     safe_copy_cstr(s_client.light_discovery_domain, sizeof(s_client.light_discovery_domain), checked_domain);
     safe_copy_cstr(s_client.light_discovery_search, sizeof(s_client.light_discovery_search), checked_search);
     ha_client_light_discovery_reset_pending_locked();
+    if (strcmp(checked_domain, "room") == 0) {
+        ha_room_registry_request();
+    }
     s_client.light_discovery_requested = true;
     s_client.light_discovery_inflight = false;
     s_client.light_discovery_phase = APP_HA_LIGHT_DISCOVERY_TEMPLATE_ENABLED
@@ -1657,7 +1631,7 @@ static void ha_client_light_discovery_add_pending_locked(const ha_light_discover
 {
     if (item == NULL || item->id[0] == '\0' ||
         s_client.light_discovery_pending_items == NULL ||
-        !ha_client_entity_matches_domain(item->id, s_client.light_discovery_domain)) {
+        !ha_discovery_entity_matches(item->id, s_client.light_discovery_domain)) {
         return;
     }
     if (ha_client_light_discovery_pending_contains_locked(item->id)) {
@@ -1670,68 +1644,26 @@ static void ha_client_light_discovery_add_pending_locked(const ha_light_discover
     s_client.light_discovery_pending_items[s_client.light_discovery_pending_count++] = *item;
 }
 
-static void ha_client_light_discovery_parse_display_entities_locked(cJSON *result)
+static void ha_client_light_discovery_parse_entities_locked(cJSON *result, bool display)
 {
-    cJSON *entities = cJSON_IsObject(result) ? cJSON_GetObjectItemCaseSensitive(result, "entities") : result;
-    if (!cJSON_IsArray(entities)) {
-        return;
-    }
-
+    cJSON *entities = display && cJSON_IsObject(result) ? cJSON_GetObjectItemCaseSensitive(result, "entities") : result;
+    if (!cJSON_IsArray(entities)) return;
     cJSON *entry = NULL;
-    cJSON_ArrayForEach(entry, entities)
-    {
-        if (!cJSON_IsObject(entry)) {
-            continue;
-        }
-        cJSON *hidden_by = cJSON_GetObjectItemCaseSensitive(entry, "hb");
-        if (cJSON_IsTrue(hidden_by)) {
-            continue;
-        }
+    cJSON_ArrayForEach(entry, entities) {
+        cJSON *hidden = cJSON_GetObjectItemCaseSensitive(entry, display ? "hb" : "hidden_by");
+        cJSON *disabled = cJSON_GetObjectItemCaseSensitive(entry, "disabled_by");
+        if (cJSON_IsTrue(hidden) || (cJSON_IsString(hidden) && hidden->valuestring[0] != '\0') ||
+            (cJSON_IsString(disabled) && disabled->valuestring[0] != '\0')) continue;
         ha_light_discovery_pending_item_t item = {0};
-        if (!ha_client_json_string_value(entry, "ei", item.id, sizeof(item.id)) ||
-            !ha_client_entity_matches_domain(item.id, s_client.light_discovery_domain)) {
-            continue;
-        }
-        if (!ha_client_json_string_value(entry, "en", item.name, sizeof(item.name))) {
-            safe_copy_cstr(item.name, sizeof(item.name), item.id);
-        }
-        (void)ha_client_json_string_value(entry, "ai", item.area_id, sizeof(item.area_id));
-        (void)ha_client_json_string_value(entry, "di", item.device_id, sizeof(item.device_id));
-        (void)ha_client_json_string_value(entry, "ic", item.icon, sizeof(item.icon));
-        ha_client_light_discovery_add_pending_locked(&item);
-    }
-}
-
-static void ha_client_light_discovery_parse_full_entities_locked(cJSON *result)
-{
-    if (!cJSON_IsArray(result)) {
-        return;
-    }
-
-    cJSON *entry = NULL;
-    cJSON_ArrayForEach(entry, result)
-    {
-        if (!cJSON_IsObject(entry)) {
-            continue;
-        }
-        cJSON *disabled_by = cJSON_GetObjectItemCaseSensitive(entry, "disabled_by");
-        cJSON *hidden_by = cJSON_GetObjectItemCaseSensitive(entry, "hidden_by");
-        if ((cJSON_IsString(disabled_by) && disabled_by->valuestring != NULL && disabled_by->valuestring[0] != '\0') ||
-            (cJSON_IsString(hidden_by) && hidden_by->valuestring != NULL && hidden_by->valuestring[0] != '\0')) {
-            continue;
-        }
-        ha_light_discovery_pending_item_t item = {0};
-        if (!ha_client_json_string_value(entry, "entity_id", item.id, sizeof(item.id)) ||
-            !ha_client_entity_matches_domain(item.id, s_client.light_discovery_domain)) {
-            continue;
-        }
-        if (!ha_client_json_string_value(entry, "name", item.name, sizeof(item.name)) &&
-            !ha_client_json_string_value(entry, "original_name", item.name, sizeof(item.name))) {
-            safe_copy_cstr(item.name, sizeof(item.name), item.id);
-        }
-        (void)ha_client_json_string_value(entry, "area_id", item.area_id, sizeof(item.area_id));
-        (void)ha_client_json_string_value(entry, "device_id", item.device_id, sizeof(item.device_id));
-        (void)ha_client_json_string_value(entry, "icon", item.icon, sizeof(item.icon));
+        if (!ha_client_json_string_value(entry, display ? "ei" : "entity_id", item.id, sizeof(item.id)) ||
+            !ha_discovery_entity_matches(item.id, s_client.light_discovery_domain)) continue;
+        ha_registry_name_t name;
+        ha_registry_name_parse(entry, display, &name);
+        safe_copy_cstr(item.name, sizeof(item.name), name.text);
+        item.prefix_device = name.prefix_device;
+        (void)ha_client_json_string_value(entry, display ? "ai" : "area_id", item.area_id, sizeof(item.area_id));
+        (void)ha_client_json_string_value(entry, display ? "di" : "device_id", item.device_id, sizeof(item.device_id));
+        (void)ha_client_json_string_value(entry, display ? "ic" : "icon", item.icon, sizeof(item.icon));
         ha_client_light_discovery_add_pending_locked(&item);
     }
 }
@@ -1780,10 +1712,7 @@ static void ha_client_light_discovery_parse_devices_locked(cJSON *result)
             return;
         }
         ha_light_discovery_device_t device = {0};
-        if (!ha_client_json_string_value(entry, "id", device.id, sizeof(device.id))) {
-            continue;
-        }
-        (void)ha_client_json_string_value(entry, "area_id", device.area_id, sizeof(device.area_id));
+        if (!ha_registry_device_parse(entry, &device)) continue;
         s_client.light_discovery_devices[s_client.light_discovery_device_count++] = device;
     }
 }
@@ -1800,20 +1729,6 @@ static const char *ha_client_light_discovery_area_name_locked(const char *area_i
         }
     }
     return area_id;
-}
-
-static const char *ha_client_light_discovery_device_area_id_locked(const char *device_id)
-{
-    if (device_id == NULL || device_id[0] == '\0' || s_client.light_discovery_devices == NULL) {
-        return "";
-    }
-    for (uint16_t i = 0; i < s_client.light_discovery_device_count; i++) {
-        const ha_light_discovery_device_t *device = &s_client.light_discovery_devices[i];
-        if (strncmp(device->id, device_id, sizeof(device->id)) == 0) {
-            return device->area_id;
-        }
-    }
-    return "";
 }
 
 static int ha_client_light_discovery_item_cmp(const void *lhs, const void *rhs)
@@ -1859,12 +1774,19 @@ static void ha_client_light_discovery_finish_locked(int64_t now_ms)
         const ha_light_discovery_pending_item_t *src = &s_client.light_discovery_pending_items[i];
         ha_light_discovery_item_t *dst = &s_client.light_discovery_items[s_client.light_discovery_count++];
         safe_copy_cstr(dst->id, sizeof(dst->id), src->id);
-        safe_copy_cstr(dst->name, sizeof(dst->name), src->name[0] != '\0' ? src->name : src->id);
+        ha_registry_name_t name = {.prefix_device = src->prefix_device};
+        safe_copy_cstr(name.text, sizeof(name.text), src->name);
+        ha_registry_name_resolve(&name, src->id, src->device_id, s_client.light_discovery_devices,
+            s_client.light_discovery_device_count, dst->name, sizeof(dst->name));
+        /* HA's computed friendly name includes the configured name parts. */
+        (void)ha_model_get_entity_name(src->id, dst->name, sizeof(dst->name));
         safe_copy_cstr(dst->icon, sizeof(dst->icon), src->icon);
+        safe_copy_cstr(dst->device_class, sizeof(dst->device_class), src->device_class);
+        safe_copy_cstr(dst->floor, sizeof(dst->floor), src->floor);
 
         const char *area_id = src->area_id;
         if (area_id[0] == '\0') {
-            area_id = ha_client_light_discovery_device_area_id_locked(src->device_id);
+            area_id = ha_registry_device_area(s_client.light_discovery_devices, s_client.light_discovery_device_count, src->device_id);
         }
         safe_copy_cstr(dst->area_id, sizeof(dst->area_id), area_id);
         if (src->room[0] != '\0') {
@@ -1911,7 +1833,7 @@ static void ha_client_light_discovery_abort_locked(void)
 
 static esp_err_t ha_client_light_discovery_refresh_from_model(const char *domain, const char *search, int64_t now_ms)
 {
-    const char *checked_domain = ha_client_discovery_domain_or_default(domain);
+    const char *checked_domain = ha_discovery_domain_or_default(domain);
     char checked_search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
     ha_client_discovery_normalize_search(search, checked_search, sizeof(checked_search));
     ha_entity_info_t *model_items = (ha_entity_info_t *)ha_client_light_discovery_calloc(
@@ -1941,7 +1863,7 @@ static esp_err_t ha_client_light_discovery_refresh_from_model(const char *domain
     s_client.light_discovery_truncated = (model_count >= APP_HA_LIGHT_DISCOVERY_MAX_ITEMS);
     for (size_t i = 0; i < model_count; i++) {
         const ha_entity_info_t *src = &model_items[i];
-        if (src->id[0] == '\0' || !ha_client_entity_matches_domain(src->id, checked_domain)) {
+        if (src->id[0] == '\0' || !ha_discovery_entity_matches(src->id, checked_domain)) {
             continue;
         }
         if (s_client.light_discovery_count >= APP_HA_LIGHT_DISCOVERY_MAX_ITEMS) {
@@ -2051,199 +1973,12 @@ static bool ha_client_entity_should_use_trigger_subscription(const char *entity_
     return true;
 }
 
-static bool ha_client_copy_attr_dup(cJSON *dst_obj, const char *dst_key, cJSON *src_obj, const char *src_key)
-{
-    if (!cJSON_IsObject(dst_obj) || dst_key == NULL || !cJSON_IsObject(src_obj) || src_key == NULL) {
-        return false;
-    }
-
-    cJSON *item = cJSON_GetObjectItemCaseSensitive(src_obj, src_key);
-    if (item == NULL) {
-        return false;
-    }
-
-    cJSON *dup = cJSON_Duplicate(item, true);
-    if (dup == NULL) {
-        return false;
-    }
-
-    cJSON_AddItemToObject(dst_obj, dst_key, dup);
-    return true;
-}
-
-static cJSON *ha_client_build_compact_forecast_array(cJSON *src_forecast)
-{
-    if (!cJSON_IsArray(src_forecast)) {
-        return NULL;
-    }
-
-    cJSON *dst_forecast = cJSON_CreateArray();
-    if (dst_forecast == NULL) {
-        return NULL;
-    }
-
-    int count = cJSON_GetArraySize(src_forecast);
-    for (int i = 0; i < count && i < HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS; i++) {
-        cJSON *src_item = cJSON_GetArrayItem(src_forecast, i);
-        if (!cJSON_IsObject(src_item)) {
-            continue;
-        }
-
-        cJSON *dst_item = cJSON_CreateObject();
-        if (dst_item == NULL) {
-            continue;
-        }
-
-        bool copied = false;
-        bool has_datetime = ha_client_copy_attr_dup(dst_item, "datetime", src_item, "datetime");
-        if (!has_datetime) {
-            has_datetime = ha_client_copy_attr_dup(dst_item, "datetime", src_item, "date");
-        }
-        copied |= has_datetime;
-        copied |= ha_client_copy_attr_dup(dst_item, "condition", src_item, "condition");
-
-        if (!ha_client_copy_attr_dup(dst_item, "temperature", src_item, "temperature")) {
-            copied |= ha_client_copy_attr_dup(dst_item, "temperature", src_item, "native_temperature");
-        } else {
-            copied = true;
-        }
-        if (!ha_client_copy_attr_dup(dst_item, "templow", src_item, "templow")) {
-            copied |= ha_client_copy_attr_dup(dst_item, "templow", src_item, "native_templow");
-        } else {
-            copied = true;
-        }
-
-        if (copied) {
-            cJSON_AddItemToArray(dst_forecast, dst_item);
-        } else {
-            cJSON_Delete(dst_item);
-        }
-    }
-
-    if (cJSON_GetArraySize(dst_forecast) == 0) {
-        cJSON_Delete(dst_forecast);
-        return NULL;
-    }
-
-    return dst_forecast;
-}
-
-static void ha_client_compact_weather_forecast(cJSON *dst_attrs, cJSON *src_attrs)
-{
-    if (!cJSON_IsObject(dst_attrs) || !cJSON_IsObject(src_attrs)) {
-        return;
-    }
-
-    cJSON *src_forecast = cJSON_GetObjectItemCaseSensitive(src_attrs, "forecast");
-    if (!cJSON_IsArray(src_forecast)) {
-        src_forecast = cJSON_GetObjectItemCaseSensitive(src_attrs, "forecast_daily");
-    }
-    if (!cJSON_IsArray(src_forecast)) {
-        return;
-    }
-
-    cJSON *dst_forecast = ha_client_build_compact_forecast_array(src_forecast);
-    if (dst_forecast != NULL) {
-        cJSON_AddItemToObject(dst_attrs, "forecast", dst_forecast);
-    }
-}
-
-static cJSON *ha_client_find_compact_forecast_in_entity_obj(cJSON *entity_obj)
-{
-    if (!cJSON_IsObject(entity_obj)) {
-        return NULL;
-    }
-
-    cJSON *forecast = cJSON_GetObjectItemCaseSensitive(entity_obj, "forecast");
-    cJSON *compact = ha_client_build_compact_forecast_array(forecast);
-    if (compact != NULL) {
-        return compact;
-    }
-
-    cJSON *forecast_daily = cJSON_GetObjectItemCaseSensitive(entity_obj, "forecast_daily");
-    return ha_client_build_compact_forecast_array(forecast_daily);
-}
-
-static cJSON *ha_client_find_compact_forecast_in_container(cJSON *container, const char *entity_id)
-{
-    if (!cJSON_IsObject(container) || entity_id == NULL || entity_id[0] == '\0') {
-        return NULL;
-    }
-
-    cJSON *compact =
-        ha_client_find_compact_forecast_in_entity_obj(cJSON_GetObjectItemCaseSensitive(container, entity_id));
-    if (compact != NULL) {
-        return compact;
-    }
-
-    cJSON *service_response = cJSON_GetObjectItemCaseSensitive(container, "service_response");
-    if (cJSON_IsObject(service_response)) {
-        compact = ha_client_find_compact_forecast_in_entity_obj(
-            cJSON_GetObjectItemCaseSensitive(service_response, entity_id));
-        if (compact != NULL) {
-            return compact;
-        }
-    }
-
-    cJSON *response = cJSON_GetObjectItemCaseSensitive(container, "response");
-    if (cJSON_IsObject(response)) {
-        compact = ha_client_find_compact_forecast_in_container(response, entity_id);
-        if (compact != NULL) {
-            return compact;
-        }
-    }
-
-    return NULL;
-}
-
-static cJSON *ha_client_find_compact_forecast_recursive(cJSON *node, int depth)
-{
-    if (node == NULL || depth > 10) {
-        return NULL;
-    }
-
-    if (cJSON_IsObject(node)) {
-        cJSON *compact = ha_client_find_compact_forecast_in_entity_obj(node);
-        if (compact != NULL) {
-            return compact;
-        }
-
-        for (cJSON *child = node->child; child != NULL; child = child->next) {
-            compact = ha_client_find_compact_forecast_recursive(child, depth + 1);
-            if (compact != NULL) {
-                return compact;
-            }
-        }
-        return NULL;
-    }
-
-    if (cJSON_IsArray(node)) {
-        int n = cJSON_GetArraySize(node);
-        for (int i = 0; i < n; i++) {
-            cJSON *compact = ha_client_find_compact_forecast_recursive(cJSON_GetArrayItem(node, i), depth + 1);
-            if (compact != NULL) {
-                return compact;
-            }
-        }
-    }
-
-    return NULL;
-}
-
-static cJSON *ha_client_find_compact_weather_forecast(cJSON *node, const char *entity_id)
-{
-    cJSON *compact = ha_client_find_compact_forecast_in_container(node, entity_id);
-    if (compact != NULL) {
-        return compact;
-    }
-
-    return ha_client_find_compact_forecast_recursive(node, 0);
-}
 
 static esp_err_t ha_client_fetch_weather_daily_forecast_http(
     const char *base_url, const char *host_header, const char *entity_id, cJSON **out_forecast)
 {
-    if (base_url == NULL || entity_id == NULL || out_forecast == NULL || entity_id[0] == '\0' || s_client.http_client == NULL) {
+    if (base_url == NULL || entity_id == NULL || out_forecast == NULL || entity_id[0] == '\0' || s_client.http_client == NULL ||
+        !entity_id_valid(entity_id)) { /* the id is pasted into a JSON body below: only [a-z0-9_.] may get there */
         return ESP_ERR_INVALID_ARG;
     }
     *out_forecast = NULL;
@@ -2311,6 +2046,7 @@ static esp_err_t ha_client_fetch_weather_daily_forecast_http(
 
     int status = esp_http_client_get_status_code(s_client.http_client);
     esp_http_client_close(s_client.http_client);
+    ha_client_auth_status(status, false);
 
     if (err != ESP_OK) {
         free(payload);
@@ -2337,453 +2073,6 @@ static esp_err_t ha_client_fetch_weather_daily_forecast_http(
     return ESP_OK;
 }
 
-static bool ha_client_serialize_weather_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size)
-{
-    if (!cJSON_IsObject(src_attrs) || out_json == NULL || out_json_size == 0) {
-        return false;
-    }
-
-    cJSON *compact = cJSON_CreateObject();
-    if (compact == NULL) {
-        return false;
-    }
-
-    bool any = false;
-    bool has_temperature = ha_client_copy_attr_dup(compact, "temperature", src_attrs, "temperature");
-    if (!has_temperature) {
-        has_temperature = ha_client_copy_attr_dup(compact, "temperature", src_attrs, "native_temperature");
-    }
-    any |= has_temperature;
-    any |= ha_client_copy_attr_dup(compact, "current_temperature", src_attrs, "current_temperature");
-    any |= ha_client_copy_attr_dup(compact, "native_temperature", src_attrs, "native_temperature");
-    bool has_temperature_unit = ha_client_copy_attr_dup(compact, "temperature_unit", src_attrs, "temperature_unit");
-    if (!has_temperature_unit) {
-        has_temperature_unit = ha_client_copy_attr_dup(compact, "temperature_unit", src_attrs, "native_temperature_unit");
-    }
-    any |= has_temperature_unit;
-    any |= ha_client_copy_attr_dup(compact, "native_temperature_unit", src_attrs, "native_temperature_unit");
-    any |= ha_client_copy_attr_dup(compact, "humidity", src_attrs, "humidity");
-
-    ha_client_compact_weather_forecast(compact, src_attrs);
-    if (cJSON_GetObjectItemCaseSensitive(compact, "forecast") != NULL) {
-        any = true;
-    }
-
-    if (!any) {
-        cJSON_Delete(compact);
-        return false;
-    }
-
-    char *compact_json = cJSON_PrintUnformatted(compact);
-    cJSON_Delete(compact);
-    if (compact_json == NULL) {
-        return false;
-    }
-
-    size_t len = strlen(compact_json);
-    bool fits = (len < out_json_size);
-    if (fits) {
-        memcpy(out_json, compact_json, len + 1U);
-    }
-    cJSON_free(compact_json);
-    return fits;
-}
-
-static bool ha_client_serialize_climate_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size)
-{
-    if (!cJSON_IsObject(src_attrs) || out_json == NULL || out_json_size == 0) {
-        return false;
-    }
-
-    cJSON *compact = cJSON_CreateObject();
-    if (compact == NULL) {
-        return false;
-    }
-
-    bool any = false;
-    bool has_target_temp = ha_client_copy_attr_dup(compact, "temperature", src_attrs, "temperature");
-    if (!has_target_temp) {
-        has_target_temp = ha_client_copy_attr_dup(compact, "temperature", src_attrs, "target_temperature");
-    }
-    if (!has_target_temp) {
-        has_target_temp = ha_client_copy_attr_dup(compact, "temperature", src_attrs, "target_temp");
-    }
-    any |= has_target_temp;
-
-    any |= ha_client_copy_attr_dup(compact, "current_temperature", src_attrs, "current_temperature");
-    any |= ha_client_copy_attr_dup(compact, "temperature_unit", src_attrs, "temperature_unit");
-    any |= ha_client_copy_attr_dup(compact, "hvac_action", src_attrs, "hvac_action");
-    any |= ha_client_copy_attr_dup(compact, "hvac_mode", src_attrs, "hvac_mode");
-    any |= ha_client_copy_attr_dup(compact, "preset_mode", src_attrs, "preset_mode");
-    any |= ha_client_copy_attr_dup(compact, "min_temp", src_attrs, "min_temp");
-    any |= ha_client_copy_attr_dup(compact, "max_temp", src_attrs, "max_temp");
-    any |= ha_client_copy_attr_dup(compact, "target_temp_low", src_attrs, "target_temp_low");
-    any |= ha_client_copy_attr_dup(compact, "target_temp_high", src_attrs, "target_temp_high");
-    any |= ha_client_copy_attr_dup(compact, "humidity", src_attrs, "humidity");
-
-    if (!any) {
-        cJSON_Delete(compact);
-        return false;
-    }
-
-    char *compact_json = cJSON_PrintUnformatted(compact);
-    cJSON_Delete(compact);
-    if (compact_json == NULL) {
-        return false;
-    }
-
-    size_t len = strlen(compact_json);
-    bool fits = (len < out_json_size);
-    if (fits) {
-        memcpy(out_json, compact_json, len + 1U);
-    }
-    cJSON_free(compact_json);
-    return fits;
-}
-
-static bool ha_client_serialize_media_player_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size)
-{
-    if (!cJSON_IsObject(src_attrs) || out_json == NULL || out_json_size == 0) {
-        return false;
-    }
-
-    cJSON *compact = cJSON_CreateObject();
-    if (compact == NULL) {
-        return false;
-    }
-
-    bool any = false;
-    cJSON *volume_level = cJSON_GetObjectItemCaseSensitive(src_attrs, "volume_level");
-    if (cJSON_IsNumber(volume_level)) {
-        double volume = volume_level->valuedouble;
-        if (volume < 0.0) {
-            volume = 0.0;
-        } else if (volume > 1.0) {
-            volume = 1.0;
-        }
-        cJSON_AddNumberToObject(compact, "volume_level", volume);
-        any = true;
-    }
-
-    cJSON *is_volume_muted = cJSON_GetObjectItemCaseSensitive(src_attrs, "is_volume_muted");
-    if (cJSON_IsBool(is_volume_muted)) {
-        cJSON_AddBoolToObject(compact, "is_volume_muted", cJSON_IsTrue(is_volume_muted));
-        any = true;
-    }
-
-    cJSON *media_title = cJSON_GetObjectItemCaseSensitive(src_attrs, "media_title");
-    if (cJSON_IsString(media_title) && media_title->valuestring != NULL && media_title->valuestring[0] != '\0') {
-        cJSON_AddStringToObject(compact, "media_title", media_title->valuestring);
-        any = true;
-    }
-
-    cJSON *media_artist = cJSON_GetObjectItemCaseSensitive(src_attrs, "media_artist");
-    if (cJSON_IsString(media_artist) && media_artist->valuestring != NULL && media_artist->valuestring[0] != '\0') {
-        cJSON_AddStringToObject(compact, "media_artist", media_artist->valuestring);
-        any = true;
-    }
-
-    cJSON *media_duration = cJSON_GetObjectItemCaseSensitive(src_attrs, "media_duration");
-    if (cJSON_IsNumber(media_duration)) {
-        cJSON_AddNumberToObject(compact, "media_duration", media_duration->valuedouble);
-        any = true;
-    }
-
-    cJSON *media_position = cJSON_GetObjectItemCaseSensitive(src_attrs, "media_position");
-    if (cJSON_IsNumber(media_position)) {
-        cJSON_AddNumberToObject(compact, "media_position", media_position->valuedouble);
-        any = true;
-    }
-
-    cJSON *media_position_updated_at = cJSON_GetObjectItemCaseSensitive(src_attrs, "media_position_updated_at");
-    if (cJSON_IsString(media_position_updated_at) && media_position_updated_at->valuestring != NULL &&
-        media_position_updated_at->valuestring[0] != '\0') {
-        cJSON_AddStringToObject(compact, "media_position_updated_at", media_position_updated_at->valuestring);
-        any = true;
-    }
-
-    cJSON *entity_picture = cJSON_GetObjectItemCaseSensitive(src_attrs, "entity_picture");
-    if (cJSON_IsString(entity_picture) && entity_picture->valuestring != NULL &&
-        entity_picture->valuestring[0] != '\0') {
-        cJSON_AddStringToObject(compact, "entity_picture", entity_picture->valuestring);
-        any = true;
-    }
-
-    if (!any) {
-        cJSON_Delete(compact);
-        return false;
-    }
-
-    char *compact_json = cJSON_PrintUnformatted(compact);
-    cJSON_Delete(compact);
-    if (compact_json == NULL) {
-        return false;
-    }
-
-    size_t len = strlen(compact_json);
-    bool fits = (len < out_json_size);
-    if (fits) {
-        memcpy(out_json, compact_json, len + 1U);
-    }
-    cJSON_free(compact_json);
-    return fits;
-}
-
-static bool ha_client_serialize_light_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size)
-{
-    if (!cJSON_IsObject(src_attrs) || out_json == NULL || out_json_size == 0) {
-        return false;
-    }
-
-    cJSON *compact = cJSON_CreateObject();
-    if (compact == NULL) {
-        return false;
-    }
-
-    bool any = false;
-    any |= ha_client_copy_attr_dup(compact, "supported_color_modes", src_attrs, "supported_color_modes");
-    any |= ha_client_copy_attr_dup(compact, "color_mode", src_attrs, "color_mode");
-    any |= ha_client_copy_attr_dup(compact, "brightness", src_attrs, "brightness");
-    any |= ha_client_copy_attr_dup(compact, "brightness_pct", src_attrs, "brightness_pct");
-    any |= ha_client_copy_attr_dup(compact, "rgb_color", src_attrs, "rgb_color");
-    any |= ha_client_copy_attr_dup(compact, "hs_color", src_attrs, "hs_color");
-    any |= ha_client_copy_attr_dup(compact, "xy_color", src_attrs, "xy_color");
-    any |= ha_client_copy_attr_dup(compact, "color_temp", src_attrs, "color_temp");
-    any |= ha_client_copy_attr_dup(compact, "color_temp_kelvin", src_attrs, "color_temp_kelvin");
-    any |= ha_client_copy_attr_dup(compact, "min_color_temp_kelvin", src_attrs, "min_color_temp_kelvin");
-    any |= ha_client_copy_attr_dup(compact, "max_color_temp_kelvin", src_attrs, "max_color_temp_kelvin");
-    any |= ha_client_copy_attr_dup(compact, "min_mireds", src_attrs, "min_mireds");
-    any |= ha_client_copy_attr_dup(compact, "max_mireds", src_attrs, "max_mireds");
-    any |= ha_client_copy_attr_dup(compact, "supported_features", src_attrs, "supported_features");
-
-    cJSON *effect_list = cJSON_GetObjectItemCaseSensitive(src_attrs, "effect_list");
-    if (cJSON_IsArray(effect_list)) {
-        cJSON *effect_marker = cJSON_CreateArray();
-        if (effect_marker != NULL) {
-            cJSON_AddItemToObject(compact, "effect_list", effect_marker);
-            any = true;
-        }
-    }
-
-    if (!any) {
-        cJSON_Delete(compact);
-        return false;
-    }
-
-    char *compact_json = cJSON_PrintUnformatted(compact);
-    cJSON_Delete(compact);
-    if (compact_json == NULL) {
-        return false;
-    }
-
-    size_t len = strlen(compact_json);
-    bool fits = (len < out_json_size);
-    if (fits) {
-        memcpy(out_json, compact_json, len + 1U);
-    }
-    cJSON_free(compact_json);
-    return fits;
-}
-
-static bool ha_client_serialize_image_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size)
-{
-    if (!cJSON_IsObject(src_attrs) || out_json == NULL || out_json_size == 0) {
-        return false;
-    }
-
-    cJSON *compact = cJSON_CreateObject();
-    if (compact == NULL) {
-        return false;
-    }
-
-    bool any = false;
-    any |= ha_client_copy_attr_dup(compact, "entity_picture", src_attrs, "entity_picture");
-    any |= ha_client_copy_attr_dup(compact, "entity_picture_local", src_attrs, "entity_picture_local");
-    any |= ha_client_copy_attr_dup(compact, "access_token", src_attrs, "access_token");
-
-    cJSON *calibration_points = cJSON_GetObjectItemCaseSensitive(src_attrs, "calibration_points");
-    if (cJSON_IsArray(calibration_points)) {
-        cJSON *dst_points = cJSON_CreateArray();
-        if (dst_points != NULL) {
-            cJSON *src_point = NULL;
-            cJSON_ArrayForEach(src_point, calibration_points)
-            {
-                cJSON *vacuum = cJSON_GetObjectItemCaseSensitive(src_point, "vacuum");
-                cJSON *map = cJSON_GetObjectItemCaseSensitive(src_point, "map");
-                cJSON *vacuum_x = cJSON_IsObject(vacuum) ? cJSON_GetObjectItemCaseSensitive(vacuum, "x") : NULL;
-                cJSON *vacuum_y = cJSON_IsObject(vacuum) ? cJSON_GetObjectItemCaseSensitive(vacuum, "y") : NULL;
-                cJSON *map_x = cJSON_IsObject(map) ? cJSON_GetObjectItemCaseSensitive(map, "x") : NULL;
-                cJSON *map_y = cJSON_IsObject(map) ? cJSON_GetObjectItemCaseSensitive(map, "y") : NULL;
-                if (!cJSON_IsNumber(vacuum_x) || !cJSON_IsNumber(vacuum_y) ||
-                    !cJSON_IsNumber(map_x) || !cJSON_IsNumber(map_y)) {
-                    continue;
-                }
-
-                cJSON *dst_point = cJSON_CreateObject();
-                cJSON *dst_vacuum = cJSON_CreateObject();
-                cJSON *dst_map = cJSON_CreateObject();
-                if (dst_point == NULL || dst_vacuum == NULL || dst_map == NULL) {
-                    cJSON_Delete(dst_point);
-                    cJSON_Delete(dst_vacuum);
-                    cJSON_Delete(dst_map);
-                    continue;
-                }
-
-                cJSON_AddNumberToObject(dst_vacuum, "x", vacuum_x->valuedouble);
-                cJSON_AddNumberToObject(dst_vacuum, "y", vacuum_y->valuedouble);
-                cJSON_AddNumberToObject(dst_map, "x", map_x->valuedouble);
-                cJSON_AddNumberToObject(dst_map, "y", map_y->valuedouble);
-                cJSON_AddItemToObject(dst_point, "vacuum", dst_vacuum);
-                cJSON_AddItemToObject(dst_point, "map", dst_map);
-                cJSON_AddItemToArray(dst_points, dst_point);
-            }
-
-            if (cJSON_GetArraySize(dst_points) > 0) {
-                cJSON_AddItemToObject(compact, "calibration_points", dst_points);
-                any = true;
-            } else {
-                cJSON_Delete(dst_points);
-            }
-        }
-    }
-
-    cJSON *rooms = cJSON_GetObjectItemCaseSensitive(src_attrs, "rooms");
-    if (cJSON_IsObject(rooms)) {
-        cJSON *dst_rooms = cJSON_CreateObject();
-        if (dst_rooms != NULL) {
-            for (cJSON *room = rooms->child; room != NULL; room = room->next) {
-                if (room->string == NULL || room->string[0] == '\0' || !cJSON_IsObject(room)) {
-                    continue;
-                }
-
-                cJSON *x0 = cJSON_GetObjectItemCaseSensitive(room, "x0");
-                cJSON *y0 = cJSON_GetObjectItemCaseSensitive(room, "y0");
-                cJSON *x1 = cJSON_GetObjectItemCaseSensitive(room, "x1");
-                cJSON *y1 = cJSON_GetObjectItemCaseSensitive(room, "y1");
-                if (!cJSON_IsNumber(x0) || !cJSON_IsNumber(y0) ||
-                    !cJSON_IsNumber(x1) || !cJSON_IsNumber(y1)) {
-                    continue;
-                }
-
-                cJSON *dst_room = cJSON_CreateObject();
-                if (dst_room == NULL) {
-                    continue;
-                }
-                cJSON_AddNumberToObject(dst_room, "x0", x0->valuedouble);
-                cJSON_AddNumberToObject(dst_room, "y0", y0->valuedouble);
-                cJSON_AddNumberToObject(dst_room, "x1", x1->valuedouble);
-                cJSON_AddNumberToObject(dst_room, "y1", y1->valuedouble);
-
-                cJSON *name = cJSON_GetObjectItemCaseSensitive(room, "name");
-                if (cJSON_IsString(name) && name->valuestring != NULL && name->valuestring[0] != '\0') {
-                    cJSON_AddStringToObject(dst_room, "name", name->valuestring);
-                }
-
-                cJSON *iot_name = cJSON_GetObjectItemCaseSensitive(room, "iot_name");
-                if (cJSON_IsString(iot_name) && iot_name->valuestring != NULL && iot_name->valuestring[0] != '\0') {
-                    cJSON_AddStringToObject(dst_room, "iot_name", iot_name->valuestring);
-                }
-
-                cJSON *room_name = cJSON_GetObjectItemCaseSensitive(room, "room_name");
-                if (cJSON_IsString(room_name) && room_name->valuestring != NULL && room_name->valuestring[0] != '\0') {
-                    cJSON_AddStringToObject(dst_room, "room_name", room_name->valuestring);
-                }
-
-                cJSON_AddItemToObject(dst_rooms, room->string, dst_room);
-            }
-
-            if (dst_rooms->child != NULL) {
-                cJSON_AddItemToObject(compact, "rooms", dst_rooms);
-                any = true;
-            } else {
-                cJSON_Delete(dst_rooms);
-            }
-        }
-    }
-
-    if (!any) {
-        cJSON_Delete(compact);
-        return false;
-    }
-
-    char *compact_json = cJSON_PrintUnformatted(compact);
-    cJSON_Delete(compact);
-    if (compact_json == NULL) {
-        return false;
-    }
-
-    size_t len = strlen(compact_json);
-    bool fits = (len < out_json_size);
-    if (fits) {
-        memcpy(out_json, compact_json, len + 1U);
-    }
-    cJSON_free(compact_json);
-    return fits;
-}
-
-static cJSON *ha_client_extract_compact_forecast_from_attrs_json(const char *attrs_json)
-{
-    if (attrs_json == NULL || attrs_json[0] == '\0') {
-        return NULL;
-    }
-
-    cJSON *attrs = cJSON_Parse(attrs_json);
-    if (!cJSON_IsObject(attrs)) {
-        cJSON_Delete(attrs);
-        return NULL;
-    }
-
-    cJSON *forecast = cJSON_GetObjectItemCaseSensitive(attrs, "forecast");
-    if (!cJSON_IsArray(forecast)) {
-        forecast = cJSON_GetObjectItemCaseSensitive(attrs, "forecast_daily");
-    }
-
-    cJSON *compact = ha_client_build_compact_forecast_array(forecast);
-    cJSON_Delete(attrs);
-    return compact;
-}
-
-static bool ha_client_weather_attrs_has_forecast_json(const char *attrs_json)
-{
-    cJSON *compact = ha_client_extract_compact_forecast_from_attrs_json(attrs_json);
-    if (compact == NULL) {
-        return false;
-    }
-    cJSON_Delete(compact);
-    return true;
-}
-
-static bool ha_client_append_compact_forecast_to_attrs_json(char *attrs_json, size_t attrs_json_size, cJSON *forecast)
-{
-    if (attrs_json == NULL || attrs_json_size == 0 || !cJSON_IsArray(forecast)) {
-        cJSON_Delete(forecast);
-        return false;
-    }
-
-    cJSON *attrs = cJSON_Parse(attrs_json);
-    if (!cJSON_IsObject(attrs)) {
-        cJSON_Delete(attrs);
-        cJSON_Delete(forecast);
-        return false;
-    }
-
-    cJSON_DeleteItemFromObjectCaseSensitive(attrs, "forecast");
-    cJSON_AddItemToObject(attrs, "forecast", forecast);
-
-    char *merged_json = cJSON_PrintUnformatted(attrs);
-    cJSON_Delete(attrs);
-    if (merged_json == NULL) {
-        return false;
-    }
-
-    size_t len = strlen(merged_json);
-    bool fits = (len < attrs_json_size);
-    if (fits) {
-        memcpy(attrs_json, merged_json, len + 1U);
-    }
-    cJSON_free(merged_json);
-    return fits;
-}
 
 static bool ha_client_priority_sync_queue_contains_locked(const char *entity_id)
 {
@@ -3384,15 +2673,15 @@ static esp_err_t ha_client_ensure_http_client(const char *base_url, const char *
 
 static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16_t page_size)
 {
-    if (page_size == 0) {
-        return ESP_ERR_INVALID_ARG;
+    if (page_size == 0 || ha_auth_state_template_disabled()) {
+        return page_size == 0 ? ESP_ERR_INVALID_ARG : ESP_ERR_NOT_SUPPORTED;
     }
 
     char domain[APP_HA_DISCOVERY_DOMAIN_MAX_LEN] = {0};
     char search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
     uint32_t template_req_seq = 0;
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-    safe_copy_cstr(domain, sizeof(domain), ha_client_discovery_domain_or_default(s_client.light_discovery_domain));
+    safe_copy_cstr(domain, sizeof(domain), ha_discovery_domain_or_default(s_client.light_discovery_domain));
     safe_copy_cstr(s_client.light_discovery_domain, sizeof(s_client.light_discovery_domain), domain);
     safe_copy_cstr(search, sizeof(search), s_client.light_discovery_search);
     s_client.light_discovery_requested = false;
@@ -3438,7 +2727,64 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
     }
 
     char template_text[2048] = {0};
-    int template_len = snprintf(template_text, sizeof(template_text),
+    int template_len = 0;
+    char domains_jinja[384] = "[]"; /* the "any" and "room" domain lists, from ha_discovery_domains.c */
+    (void)ha_discovery_domains_jinja(domain, domains_jinja, sizeof(domains_jinja));
+    if (strcmp(domain, "any") == 0) {
+        /* Add from an entity: every entity a tile can show, matched on id, name and area, with its
+         * device class so the editor can suggest the right tile. */
+        template_len = snprintf(template_text, sizeof(template_text),
+            "{%% set offset = %u %%}"
+            "{%% set limit = %u %%}"
+            "{%% set q = (%s|lower) %%}"
+            "{%% set doms = %s %%}"
+            "{%% set ns = namespace(items=[], total=0) %%}"
+            "{%% for s in states|sort(attribute='entity_id') %%}"
+            "{%% if s.domain in doms %%}"
+            "{%% set room = area_name(s.entity_id) or '' %%}"
+            "{%% set hay = (s.entity_id ~ ' ' ~ s.name ~ ' ' ~ room)|lower %%}"
+            "{%% if q == '' or q in hay %%}"
+            "{%% set idx = ns.total %%}"
+            "{%% set ns.total = ns.total + 1 %%}"
+            "{%% if idx >= offset and idx < offset + limit %%}"
+            "{%% set ns.items = ns.items + [dict(id=s.entity_id, name=s.name, room=room, "
+            "dc=(s.attributes.device_class|default('', true)))] %%}"
+            "{%% endif %%}"
+            "{%% endif %%}"
+            "{%% endif %%}"
+            "{%% endfor %%}"
+            "{{ {'total': ns.total, 'items': ns.items}|to_json }}",
+            (unsigned)offset, (unsigned)page_size, search_literal, domains_jinja);
+    } else if (strcmp(domain, "room") == 0) {
+        /* Room cards (and the editor's per-room widget import): everything that belongs to an
+         * area and can be shown for a room (temperature and humidity sensors, window/door/motion
+         * sensors, lights, covers, fans, climate, media players, locks, switches, vacuums), with
+         * its device class. */
+        template_len = snprintf(template_text, sizeof(template_text),
+            "{%% set offset = %u %%}"
+            "{%% set limit = %u %%}"
+            "{%% set q = (%s|lower) %%}"
+            "{%% set sc = ['temperature','humidity','battery'] %%}"
+            "{%% set bc = ['window','door','opening','garage_door','motion','occupancy','presence','moving','battery'] %%}"
+            "{%% set ns = namespace(items=[], total=0) %%}"
+            "{%% for s in states|sort(attribute='entity_id') %%}"
+            "{%% set d = s.domain %%}"
+            "{%% set dc = s.attributes.device_class|default('', true) %%}"
+            "{%% if (d == 'sensor' and dc in sc) or (d == 'binary_sensor' and dc in bc) or (d not in ['sensor','binary_sensor'] and d in %s) %%}"
+            "{%% set room = area_name(s.entity_id) or '' %%}"
+            "{%% if room != '' and (q == '' or q in room|lower) %%}"
+            "{%% set idx = ns.total %%}"
+            "{%% set ns.total = ns.total + 1 %%}"
+            "{%% if idx >= offset and idx < offset + limit %%}"
+            "{%% set ns.items = ns.items + [dict(id=s.entity_id, name=s.name, room=room, dc=dc, fl=(floor_name(s.entity_id) or ''))] %%}"
+            "{%% endif %%}"
+            "{%% endif %%}"
+            "{%% endif %%}"
+            "{%% endfor %%}"
+            "{{ {'total': ns.total, 'items': ns.items}|to_json }}",
+            (unsigned)offset, (unsigned)page_size, search_literal, domains_jinja);
+    } else {
+        template_len = snprintf(template_text, sizeof(template_text),
         "{%% set offset = %u %%}"
         "{%% set limit = %u %%}"
         "{%% set q = (%s|lower) %%}"
@@ -3456,6 +2802,7 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
         "{%% endfor %%}"
         "{{ {'total': ns.total, 'items': ns.items}|to_json }}",
         (unsigned)offset, (unsigned)page_size, search_literal, domain);
+    }
     cJSON_free(search_literal);
     if (template_len <= 0 || (size_t)template_len >= sizeof(template_text)) {
         err = ESP_ERR_INVALID_SIZE;
@@ -3515,6 +2862,7 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
 
     int64_t content_length = esp_http_client_fetch_headers(s_client.http_client);
     int status = esp_http_client_get_status_code(s_client.http_client);
+    ha_client_auth_status(status, true);
     if (status != 200) {
         esp_http_client_close(s_client.http_client);
         err = ESP_ERR_INVALID_RESPONSE;
@@ -3572,9 +2920,7 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
 
     cJSON *total_item = cJSON_GetObjectItemCaseSensitive(root, "total");
     cJSON *items = cJSON_GetObjectItemCaseSensitive(root, "items");
-    uint16_t total = cJSON_IsNumber(total_item) && total_item->valuedouble > 0
-        ? (uint16_t)total_item->valuedouble
-        : 0;
+    uint16_t total = (uint16_t)(json_util_number_u32(total_item) > UINT16_MAX ? UINT16_MAX : json_util_number_u32(total_item));
     uint16_t page_count = cJSON_IsArray(items) ? (uint16_t)cJSON_GetArraySize(items) : 0;
 
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
@@ -3600,7 +2946,7 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
         }
         ha_light_discovery_pending_item_t item = {0};
         if (!ha_client_json_string_value(entry, "id", item.id, sizeof(item.id)) ||
-            !ha_client_entity_matches_domain(item.id, domain)) {
+            !ha_discovery_entity_matches(item.id, domain)) {
             continue;
         }
         if (!ha_client_json_string_value(entry, "name", item.name, sizeof(item.name))) {
@@ -3608,6 +2954,8 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
         }
         (void)ha_client_json_string_value(entry, "room", item.room, sizeof(item.room));
         (void)ha_client_json_string_value(entry, "icon", item.icon, sizeof(item.icon));
+        (void)ha_client_json_string_value(entry, "dc", item.device_class, sizeof(item.device_class));
+        (void)ha_client_json_string_value(entry, "fl", item.floor, sizeof(item.floor));
         ha_client_light_discovery_add_pending_locked(&item);
     }
 
@@ -3655,76 +3003,10 @@ fail:
     return err;
 }
 
-static bool ha_client_entity_id_in_list(const char *entity_ids, size_t count, const char *entity_id)
+static void ha_client_layout_entity_overflow_log(size_t capacity, const char *entity_id)
 {
-    if (entity_ids == NULL || entity_id == NULL) {
-        return false;
-    }
-
-    for (size_t i = 0; i < count; i++) {
-        const char *entry = entity_ids + (i * APP_MAX_ENTITY_ID_LEN);
-        if (strncmp(entry, entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static bool ha_client_energy_has_manual_entities(cJSON *energy)
-{
-    if (!cJSON_IsObject(energy)) {
-        return false;
-    }
-    static const char *energy_keys[] = {
-        "home_power_entity_id",
-        "solar_power_entity_id",
-        "grid_power_entity_id",
-        "grid_import_power_entity_id",
-        "grid_export_power_entity_id",
-        "battery_power_entity_id",
-        "battery_charge_power_entity_id",
-        "battery_discharge_power_entity_id",
-        "battery_soc_entity_id",
-    };
-    for (size_t i = 0; i < (sizeof(energy_keys) / sizeof(energy_keys[0])); i++) {
-        cJSON *item = cJSON_GetObjectItemCaseSensitive(energy, energy_keys[i]);
-        if (cJSON_IsString(item) && item->valuestring != NULL && item->valuestring[0] != '\0') {
-            return true;
-        }
-    }
-    return false;
-}
-
-static bool ha_client_energy_page_uses_manual_live(cJSON *energy)
-{
-    if (!cJSON_IsObject(energy)) {
-        return false;
-    }
-    cJSON *source = cJSON_GetObjectItemCaseSensitive(energy, "source");
-    if (cJSON_IsString(source) && source->valuestring != NULL && source->valuestring[0] != '\0') {
-        return strcmp(source->valuestring, "manual_live") == 0;
-    }
-    return ha_client_energy_has_manual_entities(energy);
-}
-
-static void ha_client_collect_entity_id(
-    cJSON *widget, const char *key, char *entity_ids, size_t *count, size_t max_count)
-{
-    if (widget == NULL || key == NULL || entity_ids == NULL || count == NULL || *count >= max_count) {
-        return;
-    }
-
-    cJSON *id_item = cJSON_GetObjectItemCaseSensitive(widget, key);
-    if (!cJSON_IsString(id_item) || id_item->valuestring == NULL || id_item->valuestring[0] == '\0') {
-        return;
-    }
-    if (ha_client_entity_id_in_list(entity_ids, *count, id_item->valuestring)) {
-        return;
-    }
-
-    char *dst = entity_ids + (*count * APP_MAX_ENTITY_ID_LEN);
-    safe_copy_cstr(dst, APP_MAX_ENTITY_ID_LEN, id_item->valuestring);
-    (*count)++;
+    ESP_LOGW(TAG_HA_CLIENT, "Entity budget full (%u): dropping %s from live subscription",
+             (unsigned)capacity, entity_id);
 }
 
 static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_count, bool *out_need_weather_forecast)
@@ -3736,17 +3018,7 @@ static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_c
         return 0;
     }
 
-    char *layout_json = NULL;
-    esp_err_t load_err = layout_store_load(&layout_json);
-    if (load_err != ESP_OK || layout_json == NULL) {
-        layout_json = strdup(layout_store_default_json());
-        if (layout_json == NULL) {
-            return 0;
-        }
-    }
-
-    cJSON *root = cJSON_Parse(layout_json);
-    free(layout_json);
+    cJSON *root = layout_store_load_parsed();
     if (root == NULL) {
         if (out_need_weather_forecast != NULL) {
             *out_need_weather_forecast = false;
@@ -3754,139 +3026,49 @@ static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_c
         return 0;
     }
 
-    size_t count = 0;
-    bool need_weather_forecast = false;
-    cJSON *pages = cJSON_GetObjectItemCaseSensitive(root, "pages");
-    if (cJSON_IsArray(pages)) {
-        int page_count = cJSON_GetArraySize(pages);
-        for (int p = 0; p < page_count && count < max_count; p++) {
-            cJSON *page = cJSON_GetArrayItem(pages, p);
-            cJSON *page_type = cJSON_GetObjectItemCaseSensitive(page, "type");
-            if (cJSON_IsString(page_type) && page_type->valuestring != NULL &&
-                strcmp(page_type->valuestring, "energy_dashboard") == 0) {
-                cJSON *energy = cJSON_GetObjectItemCaseSensitive(page, "energy");
-                static const char *energy_keys[] = {
-                    "home_power_entity_id",
-                    "solar_power_entity_id",
-                    "grid_power_entity_id",
-                    "grid_import_power_entity_id",
-                    "grid_export_power_entity_id",
-                    "battery_power_entity_id",
-                    "battery_charge_power_entity_id",
-                    "battery_discharge_power_entity_id",
-                    "battery_soc_entity_id",
-                };
-                if (cJSON_IsObject(energy)) {
-                    if (ha_client_energy_page_uses_manual_live(energy)) {
-                        for (size_t i = 0; i < (sizeof(energy_keys) / sizeof(energy_keys[0])) && count < max_count; i++) {
-                            ha_client_collect_entity_id(energy, energy_keys[i], entity_ids, &count, max_count);
-                        }
-                    }
-                }
-                continue;
-            }
-
-            cJSON *widgets = cJSON_GetObjectItemCaseSensitive(page, "widgets");
-            if (!cJSON_IsArray(widgets)) {
-                continue;
-            }
-
-            int widget_count = cJSON_GetArraySize(widgets);
-            for (int w = 0; w < widget_count && count < max_count; w++) {
-                cJSON *widget = cJSON_GetArrayItem(widgets, w);
-                if (!cJSON_IsObject(widget)) {
-                    continue;
-                }
-                cJSON *type = cJSON_GetObjectItemCaseSensitive(widget, "type");
-                if (cJSON_IsString(type) && type->valuestring != NULL &&
-                    strcmp(type->valuestring, "weather_3day") == 0) {
-                    need_weather_forecast = true;
-                }
-                ha_client_collect_entity_id(widget, "entity_id", entity_ids, &count, max_count);
-                ha_client_collect_entity_id(widget, "secondary_entity_id", entity_ids, &count, max_count);
-            }
-        }
-    }
-
+    ha_layout_entity_set_t set = {
+        .ids = entity_ids,
+        .capacity = max_count,
+        .on_overflow = ha_client_layout_entity_overflow_log,
+    };
+    ha_layout_entities_collect(root, &set);
     cJSON_Delete(root);
-    if (out_need_weather_forecast != NULL) {
-        *out_need_weather_forecast = need_weather_forecast;
+
+    /* Heap-allocate: runtime_settings_t is ~1.6KB, too large for this task's
+     * stack alongside the WS handling frames. */
+    runtime_settings_t *settings = calloc(1, sizeof(*settings));
+    if (settings != NULL) {
+        if (runtime_settings_load(settings) == ESP_OK &&
+            settings->topbar_weather_enabled &&
+            settings->topbar_weather_entity_id[0] != '\0') {
+            ha_layout_entities_add(&set, settings->topbar_weather_entity_id);
+        }
+        if (settings->topbar_stock_entity_id[0] != '\0') {
+            ha_layout_entities_add(&set, settings->topbar_stock_entity_id);
+        }
+        if (strcmp(settings->hardware_saver_mode, "weather") == 0 &&
+            settings->hardware_saver_weather_entity_id[0] != '\0') {
+            ha_layout_entities_add(&set, settings->hardware_saver_weather_entity_id);
+        }
+        free(settings);
     }
-    return count;
+
+    if (out_need_weather_forecast != NULL) {
+        *out_need_weather_forecast = set.need_weather_forecast;
+    }
+    return set.count;
 }
 
 static bool ha_client_layout_needs_ha_energy(void)
 {
-    char *layout_json = NULL;
-    esp_err_t load_err = layout_store_load(&layout_json);
-    if (load_err != ESP_OK || layout_json == NULL) {
-        layout_json = strdup(layout_store_default_json());
-        if (layout_json == NULL) {
-            return false;
-        }
-    }
-
-    cJSON *root = cJSON_Parse(layout_json);
-    free(layout_json);
+    cJSON *root = layout_store_load_parsed();
     if (root == NULL) {
         return false;
     }
 
-    bool needs_ha_energy = false;
-    cJSON *pages = cJSON_GetObjectItemCaseSensitive(root, "pages");
-    if (cJSON_IsArray(pages)) {
-        int page_count = cJSON_GetArraySize(pages);
-        for (int p = 0; p < page_count; p++) {
-            cJSON *page = cJSON_GetArrayItem(pages, p);
-            cJSON *page_type = cJSON_GetObjectItemCaseSensitive(page, "type");
-            if (!cJSON_IsString(page_type) || page_type->valuestring == NULL ||
-                strcmp(page_type->valuestring, "energy_dashboard") != 0) {
-                continue;
-            }
-
-            cJSON *energy = cJSON_GetObjectItemCaseSensitive(page, "energy");
-            if (!ha_client_energy_page_uses_manual_live(energy)) {
-                needs_ha_energy = true;
-                break;
-            }
-        }
-    }
-
+    bool needs_ha_energy = ha_layout_needs_ha_energy(root);
     cJSON_Delete(root);
     return needs_ha_energy;
-}
-
-static int ha_client_entity_id_sort_cmp(const void *lhs, const void *rhs)
-{
-    if (lhs == NULL || rhs == NULL) {
-        return 0;
-    }
-    return strncmp((const char *)lhs, (const char *)rhs, APP_MAX_ENTITY_ID_LEN);
-}
-
-static uint32_t ha_client_layout_entity_signature(char *entity_ids, size_t entity_count)
-{
-    if (entity_ids == NULL || entity_count == 0) {
-        return 0;
-    }
-
-    qsort(entity_ids, entity_count, APP_MAX_ENTITY_ID_LEN, ha_client_entity_id_sort_cmp);
-
-    uint32_t hash = 2166136261u; /* FNV-1a 32-bit */
-    for (size_t i = 0; i < entity_count; i++) {
-        const char *entry = entity_ids + (i * APP_MAX_ENTITY_ID_LEN);
-        for (size_t j = 0; j < APP_MAX_ENTITY_ID_LEN; j++) {
-            uint8_t ch = (uint8_t)entry[j];
-            if (ch == '\0') {
-                break;
-            }
-            hash ^= ch;
-            hash *= 16777619u;
-        }
-        hash ^= 0xFFu; /* delimiter to avoid concatenation ambiguity */
-        hash *= 16777619u;
-    }
-    return hash;
 }
 
 static bool ha_client_capture_layout_snapshot(
@@ -3908,7 +3090,7 @@ static bool ha_client_capture_layout_snapshot(
 
     bool need_weather_forecast = false;
     size_t entity_count = ha_client_collect_layout_entity_ids(entity_ids, max_entities, &need_weather_forecast);
-    uint32_t signature = ha_client_layout_entity_signature(entity_ids, entity_count);
+    uint32_t signature = ha_layout_entities_signature(entity_ids, entity_count);
 
     free(entity_ids);
 
@@ -4023,6 +3205,7 @@ static esp_err_t ha_client_fetch_state_http(
 
     int status = esp_http_client_get_status_code(s_client.http_client);
     esp_http_client_close(s_client.http_client);
+    ha_client_auth_status(status, false);
 
     if (err != ESP_OK) {
         free(payload);
@@ -4139,9 +3322,7 @@ static uint32_t ha_client_next_message_id(void)
     uint32_t id;
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
     id = ++s_client.next_message_id;
-    if (s_client.next_message_id == 0U) {
-        s_client.next_message_id = 1U;
-    }
+    if (id == 0U) id = s_client.next_message_id = 1U; /* after 2^32 messages; 0 means "no id" everywhere */
     xSemaphoreGive(s_client.mutex);
     return id;
 }
@@ -4361,92 +3542,36 @@ static void ha_client_energy_clear_refs_locked(void)
     s_client.energy_stat_ref_count = 0;
 }
 
-static void ha_client_energy_add_ref_locked(ha_energy_stat_kind_t kind, const char *stat_id, const char *unit)
+size_t ha_client_energy_source_ids(ha_energy_resource_t resource, char ids[][APP_MAX_ENTITY_ID_LEN], size_t max_ids)
 {
-    if (stat_id == NULL || stat_id[0] == '\0') {
-        return;
+    /* the public resources follow the order of ha_energy_stat_kind_t */
+    _Static_assert((int)HA_ENERGY_RES_GRID_IMPORT == (int)HA_ENERGY_STAT_GRID_FROM &&
+                       (int)HA_ENERGY_RES_GRID_EXPORT == (int)HA_ENERGY_STAT_GRID_TO &&
+                       (int)HA_ENERGY_RES_SOLAR == (int)HA_ENERGY_STAT_SOLAR &&
+                       (int)HA_ENERGY_RES_BATTERY_DISCHARGE == (int)HA_ENERGY_STAT_BATTERY_FROM &&
+                       (int)HA_ENERGY_RES_BATTERY_CHARGE == (int)HA_ENERGY_STAT_BATTERY_TO &&
+                       (int)HA_ENERGY_RES_GAS == (int)HA_ENERGY_STAT_GAS &&
+                       (int)HA_ENERGY_RES_WATER == (int)HA_ENERGY_STAT_WATER,
+                   "ha_energy_resource_t must match ha_energy_stat_kind_t");
+    if (ids == NULL || max_ids == 0 || s_client.mutex == NULL) {
+        return 0;
     }
-    for (uint8_t i = 0; i < s_client.energy_stat_ref_count; i++) {
-        if (s_client.energy_stat_refs[i].kind == kind &&
-            strncmp(s_client.energy_stat_refs[i].id, stat_id, APP_MAX_ENTITY_ID_LEN) == 0) {
-            return;
+    size_t n = 0;
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    for (uint8_t i = 0; i < s_client.energy_stat_ref_count && n < max_ids; i++) {
+        const ha_energy_stat_ref_t *ref = &s_client.energy_stat_refs[i];
+        if ((int)ref->kind == (int)resource && ref->id[0] != '\0') {
+            safe_copy_cstr(ids[n++], APP_MAX_ENTITY_ID_LEN, ref->id);
         }
     }
-    if (s_client.energy_stat_ref_count >= HA_ENERGY_STAT_REF_MAX) {
-        return;
-    }
-    ha_energy_stat_ref_t *ref = &s_client.energy_stat_refs[s_client.energy_stat_ref_count++];
-    ref->kind = kind;
-    safe_copy_cstr(ref->id, sizeof(ref->id), stat_id);
-    safe_copy_cstr(ref->unit, sizeof(ref->unit), unit);
-}
-
-static const char *ha_client_json_string(cJSON *obj, const char *key)
-{
-    cJSON *item = cJSON_IsObject(obj) ? cJSON_GetObjectItemCaseSensitive(obj, key) : NULL;
-    return (cJSON_IsString(item) && item->valuestring != NULL) ? item->valuestring : "";
+    xSemaphoreGive(s_client.mutex);
+    return n;
 }
 
 static void ha_client_energy_parse_prefs_locked(cJSON *result)
 {
-    ha_client_energy_clear_refs_locked();
-    cJSON *sources = cJSON_IsObject(result) ? cJSON_GetObjectItemCaseSensitive(result, "energy_sources") : NULL;
-    if (!cJSON_IsArray(sources)) {
-        return;
-    }
-
-    cJSON *source = NULL;
-    cJSON_ArrayForEach(source, sources)
-    {
-        const char *type = ha_client_json_string(source, "type");
-        if (strcmp(type, "grid") == 0) {
-            /* Grid sources expose their statistics via flow_from[] / flow_to[]
-             * arrays (HA 2022.4+), not as top-level stat_energy_from/to.
-             * Each array entry is an object with stat_energy_from or
-             * stat_energy_to set.  Multiple entries are allowed (e.g. for
-             * day/night tariffs) and must all be summed. */
-            cJSON *flow_from = cJSON_GetObjectItemCaseSensitive(source, "flow_from");
-            if (cJSON_IsArray(flow_from)) {
-                cJSON *entry = NULL;
-                cJSON_ArrayForEach(entry, flow_from) {
-                    ha_client_energy_add_ref_locked(
-                        HA_ENERGY_STAT_GRID_FROM,
-                        ha_client_json_string(entry, "stat_energy_from"), NULL);
-                }
-            }
-            cJSON *flow_to = cJSON_GetObjectItemCaseSensitive(source, "flow_to");
-            if (cJSON_IsArray(flow_to)) {
-                cJSON *entry = NULL;
-                cJSON_ArrayForEach(entry, flow_to) {
-                    ha_client_energy_add_ref_locked(
-                        HA_ENERGY_STAT_GRID_TO,
-                        ha_client_json_string(entry, "stat_energy_to"), NULL);
-                }
-            }
-            /* Legacy fallback: older HA versions placed the stat IDs on the
-             * source object directly.  Still honored for compatibility. */
-            ha_client_energy_add_ref_locked(
-                HA_ENERGY_STAT_GRID_FROM, ha_client_json_string(source, "stat_energy_from"), NULL);
-            ha_client_energy_add_ref_locked(
-                HA_ENERGY_STAT_GRID_TO, ha_client_json_string(source, "stat_energy_to"), NULL);
-        } else if (strcmp(type, "solar") == 0) {
-            ha_client_energy_add_ref_locked(
-                HA_ENERGY_STAT_SOLAR, ha_client_json_string(source, "stat_energy_from"), NULL);
-        } else if (strcmp(type, "battery") == 0) {
-            ha_client_energy_add_ref_locked(
-                HA_ENERGY_STAT_BATTERY_FROM, ha_client_json_string(source, "stat_energy_from"), NULL);
-            ha_client_energy_add_ref_locked(
-                HA_ENERGY_STAT_BATTERY_TO, ha_client_json_string(source, "stat_energy_to"), NULL);
-        } else if (strcmp(type, "gas") == 0) {
-            ha_client_energy_add_ref_locked(HA_ENERGY_STAT_GAS,
-                ha_client_json_string(source, "stat_energy_from"),
-                ha_client_json_string(source, "unit_of_measurement"));
-        } else if (strcmp(type, "water") == 0) {
-            ha_client_energy_add_ref_locked(HA_ENERGY_STAT_WATER,
-                ha_client_json_string(source, "stat_energy_from"),
-                ha_client_json_string(source, "unit_of_measurement"));
-        }
-    }
+    s_client.energy_stat_ref_count =
+        (uint8_t)ha_energy_prefs_parse(result, s_client.energy_stat_refs, HA_ENERGY_STAT_REF_MAX);
 
     /* Trace the parsed refs so we can diagnose mismatched stat IDs (e.g. if
      * the user renamed a sensor in HA after configuring the energy page). */
@@ -4522,11 +3647,7 @@ static esp_err_t ha_client_send_energy_prefs_ws(uint32_t *out_req_id)
     return err;
 }
 
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-#define HA_ENERGY_STATS_BATCH_SIZE 1U
-#else
 #define HA_ENERGY_STATS_BATCH_SIZE 2U
-#endif
 /* Inter-batch delay.  Purpose is to relieve pressure on the mbedTLS stack
  * on the ESP: each batch is a WSS request/response with a large JSON
  * payload, which spikes heap + the TLS record decoder.  Pausing between
@@ -4534,11 +3655,7 @@ static esp_err_t ha_client_send_energy_prefs_ws(uint32_t *out_req_id)
  * before the next roundtrip starts, avoiding -0x7100-class TLS errors.
  * 400 ms is a solid compromise vs the original 1000 ms: still gives mbedTLS
  * room to breathe while cutting ~2.4 s off a typical 4-batch sync. */
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-#define HA_ENERGY_STATS_BATCH_DELAY_MS 800U
-#else
 #define HA_ENERGY_STATS_BATCH_DELAY_MS 400U
-#endif
 
 static esp_err_t ha_client_send_energy_stats_ws(uint32_t *out_req_id)
 {
@@ -5014,6 +4131,8 @@ static esp_err_t ha_client_send_pong(uint32_t pong_id)
     return err;
 }
 
+static double s_import_last_changed_s = 0.0; /* set by the WS import around ha_client_import_state_object */
+
 static bool ha_client_import_state_object(cJSON *state_obj)
 {
     if (!cJSON_IsObject(state_obj)) {
@@ -5033,6 +4152,7 @@ static bool ha_client_import_state_object(cJSON *state_obj)
     snprintf(model_state.entity_id, sizeof(model_state.entity_id), "%s", entity_id->valuestring);
     snprintf(model_state.state, sizeof(model_state.state), "%s", state->valuestring);
     model_state.last_changed_unix_ms = esp_timer_get_time() / 1000;
+    model_state.ha_changed_s = (int64_t)s_import_last_changed_s;
     bool weather_missing_forecast = false;
     bool is_media_player = ha_client_entity_is_media_player(model_state.entity_id);
     ha_state_t previous_compact_state = {0};
@@ -5064,6 +4184,13 @@ static bool ha_client_import_state_object(cJSON *state_obj)
             if (serialized && !weather_has_forecast) {
                 weather_missing_forecast = true;
             }
+        } else if (ha_client_entity_is_sonos_favorites_sensor(model_state.entity_id)) {
+            serialized = ha_client_serialize_sonos_favorites_attrs_compact(
+                attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
+            if (!serialized) {
+                snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");
+                serialized = true;
+            }
         } else if (ha_client_entity_is_light(model_state.entity_id)) {
             serialized = ha_client_serialize_light_attrs_compact(
                 attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
@@ -5071,6 +4198,10 @@ static bool ha_client_import_state_object(cJSON *state_obj)
                 snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");
                 serialized = true;
             }
+        } else if (strncmp(model_state.entity_id, "vacuum.", 7) == 0) {
+            if (!ha_client_serialize_vacuum_attrs_compact(attributes, model_state.attributes_json, sizeof(model_state.attributes_json)))
+                snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");
+            serialized = true;
         } else if (ha_client_entity_is_climate(model_state.entity_id)) {
             serialized = ha_client_serialize_climate_attrs_compact(
                 attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
@@ -5092,15 +4223,55 @@ static bool ha_client_import_state_object(cJSON *state_obj)
                 snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");
                 serialized = true;
             }
+        } else if (ha_client_entity_is_cover(model_state.entity_id)) {
+            serialized = ha_client_serialize_cover_attrs_compact(
+                attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
+            if (!serialized) {
+                snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");
+                serialized = true;
+            }
+        } else if (ha_client_entity_is_fan(model_state.entity_id)) {
+            serialized = ha_client_serialize_fan_attrs_compact(
+                attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
+            if (!serialized) {
+                snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");
+                serialized = true;
+            }
+        } else if (ha_client_entity_is_alarm(model_state.entity_id)) {
+            serialized = ha_client_serialize_alarm_attrs_compact(
+                attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
+            if (!serialized) {
+                snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");
+                serialized = true;
+            }
+        } else if (ha_client_attrs_is_weather_report(attributes)) {
+            serialized = ha_client_serialize_weather_report_compact(
+                attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
+            if (!serialized) {
+                snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");
+                serialized = true;
+            }
         }
 
+        if (!serialized && (strncmp(model_state.entity_id, "select.", 7) == 0 ||
+                            strncmp(model_state.entity_id, "number.", 7) == 0)) {
+            (void)ha_evcc_control_attrs(attributes, strncmp(model_state.entity_id, "number.", 7) == 0,
+                model_state.attributes_json, sizeof(model_state.attributes_json));
+            serialized = true;
+        }
         if (!serialized) {
             char *attr_json = cJSON_PrintUnformatted(attributes);
             if (attr_json != NULL) {
                 int written = snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "%s", attr_json);
                 if (written >= (int)sizeof(model_state.attributes_json)) {
-                    ESP_LOGW(TAG_HA_CLIENT, "attributes_json truncated for %s (%d > %u bytes)",
+                    ESP_LOGW(TAG_HA_CLIENT, "attributes_json too large for %s (%d > %u bytes), using the generic fallback",
                         model_state.entity_id, written, (unsigned)(sizeof(model_state.attributes_json) - 1U));
+                    /* The snprintf() above already left an invalid, truncated JSON string in the
+                     * buffer -- silently unparseable by every reader's cJSON_Parse(). Replace it with
+                     * a small but always-valid object holding the handful of fields a generic
+                     * (non-domain-specific) widget might still need, instead of leaving that. */
+                    ha_attrs_build_generic_overflow_fallback(
+                        attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
                 }
                 cJSON_free(attr_json);
             }
@@ -5188,7 +4359,7 @@ static bool ha_client_import_state_object(cJSON *state_obj)
             snprintf(entity.icon, sizeof(entity.icon), "%s", icon->valuestring);
         }
         if (cJSON_IsNumber(supported_features)) {
-            entity.supported_features = (uint32_t)supported_features->valuedouble;
+            entity.supported_features = json_util_number_u32(supported_features);
         }
     }
     ha_light_capabilities_t light_caps = {0};
@@ -5200,7 +4371,8 @@ static bool ha_client_import_state_object(cJSON *state_obj)
     return (!is_media_player) || media_player_compact_changed || !has_previous_compact_state;
 }
 
-static bool ha_client_import_ws_entity_state(const char *entity_id, const char *state_value, cJSON *attrs_obj)
+static bool ha_client_import_ws_entity_state_lc(const char *entity_id, const char *state_value, cJSON *attrs_obj,
+    double last_changed_s)
 {
     if (entity_id == NULL || entity_id[0] == '\0' || state_value == NULL) {
         return false;
@@ -5224,9 +4396,16 @@ static bool ha_client_import_ws_entity_state(const char *entity_id, const char *
         cJSON_AddItemToObject(state_obj, "attributes", cJSON_CreateObject());
     }
 
+    s_import_last_changed_s = last_changed_s;
     bool changed = ha_client_import_state_object(state_obj);
+    s_import_last_changed_s = 0.0;
     cJSON_Delete(state_obj);
     return changed;
+}
+
+static bool ha_client_import_ws_entity_state(const char *entity_id, const char *state_value, cJSON *attrs_obj)
+{
+    return ha_client_import_ws_entity_state_lc(entity_id, state_value, attrs_obj, 0.0);
 }
 
 static bool ha_client_entities_sub_req_known_locked(uint32_t req_id)
@@ -5298,7 +4477,9 @@ static uint32_t ha_client_import_ws_entities_added(cJSON *added_map)
         const char *state_value = cJSON_IsString(state_item) && state_item->valuestring != NULL
             ? state_item->valuestring
             : "unknown";
-        bool state_changed = ha_client_import_ws_entity_state(entry->string, state_value, attrs_item);
+        cJSON *lc_item = cJSON_GetObjectItemCaseSensitive(entry, "lc");
+        bool state_changed = ha_client_import_ws_entity_state_lc(entry->string, state_value, attrs_item,
+            cJSON_IsNumber(lc_item) ? lc_item->valuedouble : 0.0);
         ha_client_mark_entities_seen(entry->string);
         if (!state_changed) {
             continue;
@@ -5395,7 +4576,14 @@ static uint32_t ha_client_import_ws_entities_changed(cJSON *changed_map)
         cJSON *minus_obj = cJSON_GetObjectItemCaseSensitive(entry, "-");
         ha_client_apply_ws_attr_minus(attrs_obj, minus_obj);
 
-        bool state_changed = ha_client_import_ws_entity_state(entry->string, next_state, attrs_obj);
+        double changed_s = has_prev ? (double)prev.ha_changed_s : 0.0;
+        if (cJSON_IsObject(plus_obj)) {
+            cJSON *plus_lc = cJSON_GetObjectItemCaseSensitive(plus_obj, "lc");
+            if (cJSON_IsNumber(plus_lc)) {
+                changed_s = plus_lc->valuedouble;
+            }
+        }
+        bool state_changed = ha_client_import_ws_entity_state_lc(entry->string, next_state, attrs_obj, changed_s);
         cJSON_Delete(attrs_obj);
         ha_client_mark_entities_seen(entry->string);
         if (!state_changed) {
@@ -5438,8 +4626,55 @@ static uint32_t ha_client_import_ws_entities_removed(cJSON *removed_list)
     return removed;
 }
 
+static esp_err_t ha_client_send_room_registry_requests(void)
+{
+    static const char *const types[2] = {"config/area_registry/list", "config/floor_registry/list"};
+    uint32_t req_ids[2] = {ha_client_next_message_id(), ha_client_next_message_id()};
+    /* Both requests count as in flight before the first is sent, so the areas-only API never
+     * sees a gap in which the registry looks settled while the answer is still due. */
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    bool ready = ha_room_registry_begin(req_ids[0], req_ids[1], ha_client_now_ms());
+    xSemaphoreGive(s_client.mutex);
+    if (!ready) {
+        return ESP_ERR_NO_MEM;
+    }
+    for (int i = 0; i < 2; i++) {
+        cJSON *root = cJSON_CreateObject();
+        esp_err_t err = ESP_ERR_NO_MEM;
+        if (root != NULL) {
+            cJSON_AddNumberToObject(root, "id", (double)req_ids[i]);
+            cJSON_AddStringToObject(root, "type", types[i]);
+            err = ha_client_send_json(root);
+            cJSON_Delete(root);
+        }
+        if (err != ESP_OK) {
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            ha_room_registry_cancel();
+            xSemaphoreGive(s_client.mutex);
+            return err;
+        }
+    }
+    return ESP_OK;
+}
+
+static void ha_client_precision_changed(const char *entity_id)
+{
+    ha_client_publish_event(EV_HA_STATE_CHANGED, entity_id);
+}
+
 static bool ha_client_light_discovery_handle_result(uint32_t msg_id, cJSON *root, cJSON *success_item)
 {
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    bool room_registry = ha_room_registry_handle_result(msg_id, cJSON_IsTrue(success_item),
+        cJSON_GetObjectItemCaseSensitive(root, "result"));
+    xSemaphoreGive(s_client.mutex);
+    if (ha_evcc_lookup_handle_result(msg_id, cJSON_IsTrue(success_item), cJSON_GetObjectItemCaseSensitive(root, "result")) ||
+        room_registry || ha_printer_lookup_handle_result(msg_id, cJSON_IsTrue(success_item),
+            cJSON_GetObjectItemCaseSensitive(root, "result")) ||
+        ha_display_precision_handle_result(msg_id, cJSON_IsTrue(success_item),
+            cJSON_GetObjectItemCaseSensitive(root, "result"), ha_client_precision_changed)) {
+        return true;
+    }
     ha_light_discovery_phase_t phase = HA_LIGHT_DISCOVERY_PHASE_NONE;
     bool is_light_discovery = false;
 
@@ -5466,12 +4701,12 @@ static bool ha_client_light_discovery_handle_result(uint32_t msg_id, cJSON *root
     if (success) {
         switch (phase) {
         case HA_LIGHT_DISCOVERY_PHASE_ENTITY_DISPLAY:
-            ha_client_light_discovery_parse_display_entities_locked(result);
+            ha_client_light_discovery_parse_entities_locked(result, true);
             s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_AREAS;
             s_client.light_discovery_requested = true;
             break;
         case HA_LIGHT_DISCOVERY_PHASE_ENTITY_FULL:
-            ha_client_light_discovery_parse_full_entities_locked(result);
+            ha_client_light_discovery_parse_entities_locked(result, false);
             s_client.light_discovery_phase = HA_LIGHT_DISCOVERY_PHASE_AREAS;
             s_client.light_discovery_requested = true;
             break;
@@ -5515,7 +4750,7 @@ static void ha_client_handle_result_message(cJSON *root)
     if (!cJSON_IsNumber(id)) {
         return;
     }
-    uint32_t msg_id = (uint32_t)id->valuedouble;
+    uint32_t msg_id = json_util_number_u32(id);
 
     cJSON *success_item = cJSON_GetObjectItemCaseSensitive(root, "success");
     if (cJSON_IsBool(success_item)) {
@@ -5770,7 +5005,7 @@ static void ha_client_handle_result_message(cJSON *root)
         if (filtered_to_layout) {
             cJSON *entity_id_item = cJSON_GetObjectItemCaseSensitive(state_obj, "entity_id");
             if (!cJSON_IsString(entity_id_item) || entity_id_item->valuestring == NULL ||
-                !ha_client_entity_id_in_list(layout_entity_ids, layout_entity_count, entity_id_item->valuestring)) {
+                !ha_layout_entities_contains(layout_entity_ids, layout_entity_count, entity_id_item->valuestring)) {
                 continue;
             }
         }
@@ -5807,7 +5042,7 @@ static void ha_client_handle_result_message(cJSON *root)
 static void ha_client_handle_event_message(cJSON *root)
 {
     cJSON *id_item = cJSON_GetObjectItemCaseSensitive(root, "id");
-    uint32_t msg_id = cJSON_IsNumber(id_item) ? (uint32_t)id_item->valuedouble : 0;
+    uint32_t msg_id = json_util_number_u32(id_item);
     bool is_trigger_event = false;
     bool is_entities_event = false;
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
@@ -5953,7 +5188,7 @@ static void ha_client_handle_text_message(const char *data, int len)
         uint32_t ping_id = 0;
         cJSON *id = cJSON_GetObjectItemCaseSensitive(root, "id");
         if (cJSON_IsNumber(id)) {
-            ping_id = (uint32_t)id->valuedouble;
+            ping_id = json_util_number_u32(id);
         }
         ESP_LOGI(TAG_HA_CLIENT, "HA ping received, id=%" PRIu32, ping_id);
         if (ha_client_send_pong(ping_id) == ESP_OK) {
@@ -6133,7 +5368,7 @@ static void ha_client_handle_text_message(const char *data, int len)
     } else if (strcmp(type->valuestring, "pong") == 0) {
         cJSON *id = cJSON_GetObjectItemCaseSensitive(root, "id");
         bool has_id = cJSON_IsNumber(id);
-        uint32_t pong_id = has_id ? (uint32_t)id->valuedouble : 0;
+        uint32_t pong_id = has_id ? json_util_number_u32(id) : 0;
         bool cleared_inflight = false;
         bool id_mismatch = false;
         uint32_t expected_id = 0;
@@ -6165,8 +5400,8 @@ static void ha_client_handle_text_message(const char *data, int len)
         if (!cleared_inflight && !id_mismatch) {
             ESP_LOGD(TAG_HA_CLIENT, "HA pong received while no ping was in-flight");
         }
-    } else if (strcmp(type->valuestring, "auth_invalid") == 0) {
-        ESP_LOGE(TAG_HA_CLIENT, "HA authentication failed");
+    } else if (strcmp(type->valuestring, "auth_invalid") == 0 && ha_auth_state_report_ws_auth_invalid()) {
+        ESP_LOGE(TAG_HA_CLIENT, "HA rejected the token: no reconnect until a restart or a new token in Settings");
     }
 
     cJSON_Delete(root);
@@ -6316,6 +5551,7 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
             event->sock_errno,
             (unsigned)ws_hwm_error);
         int64_t ws_error_now_ms = ha_client_now_ms();
+        ha_client_auth_status(event->ws_handshake_status_code, false); /* 401/403 before any token was sent */
         bool tls_bad_input = ha_client_is_tls_bad_input_data(event->tls_stack_err);
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
         s_client.ws_error_streak++;
@@ -6344,6 +5580,11 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
     default:
         break;
     }
+}
+
+static void evcc_sessions_reply(bool success, cJSON *result, void *user)
+{
+    ha_evcc_sessions_result((uint32_t)(uintptr_t)user, success, result);
 }
 
 static void ha_client_task(void *arg)
@@ -6491,7 +5732,7 @@ static void ha_client_task(void *arg)
         light_discovery_inflight = s_client.light_discovery_inflight;
         light_discovery_phase = s_client.light_discovery_phase;
         safe_copy_cstr(light_discovery_domain, sizeof(light_discovery_domain),
-            ha_client_discovery_domain_or_default(s_client.light_discovery_domain));
+            ha_discovery_domain_or_default(s_client.light_discovery_domain));
         light_discovery_next_step_unix_ms = s_client.light_discovery_next_step_unix_ms;
         light_discovery_last_wait_log_unix_ms = s_client.light_discovery_last_wait_log_unix_ms;
         light_discovery_started_unix_ms = s_client.light_discovery_started_unix_ms;
@@ -6742,7 +5983,7 @@ static void ha_client_task(void *arg)
         }
         ws_restart_wait_ms += (int64_t)(esp_random() % (uint32_t)(HA_WS_RESTART_JITTER_MS + 1));
 
-        if (!connected && wifi_up && (now_ms - last_ws_restart_ms) >= ws_restart_wait_ms) {
+        if (!connected && wifi_up && !ha_auth_state_blocked() && (now_ms - last_ws_restart_ms) >= ws_restart_wait_ms) {
             if (ws_running && (now_ms - last_ws_restart_ms) < HA_WS_CONNECT_GRACE_MS) {
                 vTaskDelay(HA_CLIENT_TASK_DELAY_TICKS);
                 continue;
@@ -6832,6 +6073,41 @@ static void ha_client_task(void *arg)
                 }
                 xSemaphoreGive(s_client.mutex);
             }
+        }
+        if (connected && authenticated && ha_room_registry_is_due()) {
+            (void)ha_client_send_room_registry_requests();
+        }
+        if (connected && authenticated && ha_evcc_sessions_is_due() && !ha_client_heavy_gate_is_busy()) {
+            uint32_t token = ha_client_next_message_id();
+            cJSON *request = ha_evcc_sessions_next_request(token);
+            if (request) {
+                esp_err_t err = ha_client_send_command_with_response(request, evcc_sessions_reply, (void *)(uintptr_t)token);
+                if (err != ESP_OK) ha_evcc_sessions_send_failed(err == ESP_ERR_INVALID_STATE);
+            }
+        }
+        if (connected && authenticated && ha_evcc_lookup_is_due(now_ms)) {
+            cJSON *req = ha_evcc_lookup_next_request(ha_client_next_message_id(), now_ms);
+            if (req != NULL && ha_client_send_json(req) != ESP_OK) ha_evcc_lookup_send_failed();
+            cJSON_Delete(req);
+        }
+        if (connected && authenticated && ha_printer_lookup_is_due(now_ms)) {
+            cJSON *pl_req = ha_printer_lookup_next_request(ha_client_next_message_id(), now_ms);
+            if (pl_req != NULL && ha_client_send_json(pl_req) != ESP_OK) {
+                ha_printer_lookup_send_failed();
+            }
+            cJSON_Delete(pl_req);
+        }
+        if (!connected || !authenticated) {
+            ha_printer_lookup_cancel();
+            ha_evcc_lookup_cancel();
+            ha_evcc_sessions_cancel();
+        }
+        if (connected && authenticated && ha_display_precision_is_due(now_ms)) {
+            cJSON *dp_req = ha_display_precision_next_request(ha_client_next_message_id(), now_ms);
+            if (dp_req != NULL && ha_client_send_json(dp_req) != ESP_OK) {
+                ha_display_precision_cancel();
+            }
+            cJSON_Delete(dp_req);
         }
         if (connected && authenticated && light_discovery_requested && !light_discovery_inflight) {
             if (APP_HA_LIGHT_DISCOVERY_TEMPLATE_ENABLED &&
@@ -7568,15 +6844,7 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
     }
 
     BaseType_t created = pdFAIL;
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480) && CONFIG_SPIRAM && CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM && CONFIG_FREERTOS_NUMBER_OF_CORES > 1
-    created = xTaskCreatePinnedToCoreWithCaps(
-        ha_client_task, "ha_client", APP_HA_TASK_STACK, NULL, APP_HA_TASK_PRIO, &s_client.task_handle, 0,
-        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-#elif defined(CONFIG_APP_PANEL_VARIANT_S3_480) && CONFIG_SPIRAM && CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
-    created = xTaskCreateWithCaps(
-        ha_client_task, "ha_client", APP_HA_TASK_STACK, NULL, APP_HA_TASK_PRIO, &s_client.task_handle,
-        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-#elif CONFIG_FREERTOS_NUMBER_OF_CORES > 1
+#if CONFIG_FREERTOS_NUMBER_OF_CORES > 1
     created = xTaskCreatePinnedToCore(
         ha_client_task, "ha_client", APP_HA_TASK_STACK, NULL, APP_HA_TASK_PRIO, &s_client.task_handle, 0);
 #else
@@ -7619,11 +6887,7 @@ void ha_client_stop(void)
         return;
     }
     if (s_client.task_handle != NULL) {
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480) && CONFIG_SPIRAM && CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
-        vTaskDeleteWithCaps(s_client.task_handle);
-#else
         vTaskDelete(s_client.task_handle);
-#endif
         s_client.task_handle = NULL;
     }
     ha_ws_stop();
@@ -7815,13 +7079,35 @@ esp_err_t ha_client_notify_layout_updated(void)
             }
             uint16_t target_count =
                 (entity_count > HA_WS_ENTITIES_SUB_MAX) ? HA_WS_ENTITIES_SUB_MAX : (uint16_t)entity_count;
-            ha_client_clear_entities_sub_buffers();
-            for (uint16_t i = 0; i < target_count; i++) {
-                char *target = ha_client_entities_sub_target_at(i);
-                if (target != NULL) {
-                    safe_copy_cstr(target, APP_MAX_ENTITY_ID_LEN, entity_ids + ((size_t)i * APP_MAX_ENTITY_ID_LEN));
+            /* Subscribe the entities the previous layout did not have first: they have no state yet and show
+             * "unavailable" until their step runs, one step per HA_WS_ENTITIES_SUBSCRIBE_STEP_DELAY_MS, while the
+             * known ones keep their last state in the model. Saving a layout with one new tile used to leave
+             * it unavailable for the whole list (about 24 s for 148 entities). */
+            uint8_t *known = (entity_ids != NULL && target_count > 0) ? calloc(target_count, sizeof(uint8_t)) : NULL;
+            if (known != NULL) {
+                const uint16_t old_count = s_client.entities_sub_target_count;
+                for (uint16_t i = 0; i < target_count; i++) {
+                    const char *id = entity_ids + ((size_t)i * APP_MAX_ENTITY_ID_LEN);
+                    for (uint16_t j = 0; j < old_count && !known[i]; j++) {
+                        const char *old_id = ha_client_entities_sub_target_at(j);
+                        known[i] = (old_id != NULL && strncmp(id, old_id, APP_MAX_ENTITY_ID_LEN) == 0);
+                    }
                 }
             }
+            ha_client_clear_entities_sub_buffers();
+            uint16_t slot = 0;
+            for (int pass = 0; pass < (known != NULL ? 2 : 1); pass++) {
+                for (uint16_t i = 0; i < target_count; i++) {
+                    if (known != NULL && (known[i] != 0) != (pass == 1)) {
+                        continue; /* pass 0: new entities, pass 1: already known ones */
+                    }
+                    char *target = ha_client_entities_sub_target_at(slot++);
+                    if (target != NULL) {
+                        safe_copy_cstr(target, APP_MAX_ENTITY_ID_LEN, entity_ids + ((size_t)i * APP_MAX_ENTITY_ID_LEN));
+                    }
+                }
+            }
+            free(known);
             s_client.entities_sub_target_count = target_count;
             s_client.entities_sub_sent_count = 0;
             s_client.entities_sub_seen_count = 0;
@@ -7858,6 +7144,9 @@ esp_err_t ha_client_notify_layout_updated(void)
             scheduled_resync = APP_HA_FETCH_INITIAL_STATES;
         }
 
+        if (s_client.priority_sync_count > 0) {
+            s_client.next_weather_forecast_retry_unix_ms = 0; /* a dropped, unsent forecast sync may be queued again */
+        }
         memset(s_client.priority_sync_entities, 0, sizeof(s_client.priority_sync_entities));
         s_client.priority_sync_head = 0;
         s_client.priority_sync_tail = 0;
@@ -7992,7 +7281,7 @@ bool ha_client_get_http_context(ha_client_http_ctx_t *out)
     safe_copy_cstr(out->bearer_token, sizeof(out->bearer_token), s_client.access_token);
     xSemaphoreGive(s_client.mutex);
 
-    if (ws_url[0] == '\0') return false;
+    if (ws_url[0] == '\0' || ha_auth_state_blocked()) return false; /* auxiliary fetches carry the token too */
 
     if (!ha_client_build_http_request_context(ws_url, out->base_url, sizeof(out->base_url), out->host_header,
             sizeof(out->host_header), out->cert_common_name, sizeof(out->cert_common_name))) {
@@ -8035,7 +7324,7 @@ bool ha_client_heavy_gate_is_busy(void)
 
 esp_err_t ha_client_cancel_domain_entities(const char *domain, const char *search)
 {
-    const char *checked_domain = ha_client_discovery_domain_or_default(domain);
+    const char *checked_domain = ha_discovery_domain_or_default(domain);
     char checked_search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
     ha_client_discovery_normalize_search(search, checked_search, sizeof(checked_search));
 
@@ -8057,6 +7346,37 @@ esp_err_t ha_client_cancel_domain_entities(const char *domain, const char *searc
     return ESP_OK;
 }
 
+esp_err_t ha_client_get_room_areas_json(bool refresh, char **out_json)
+{
+    if (out_json == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    *out_json = NULL;
+    const bool connected = ha_client_is_connected();
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+    const char *status = "disconnected";
+    if (s_client.mutex != NULL) {
+        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+        bool pending = ha_room_registry_poll(connected, refresh, ha_client_now_ms());
+        status = pending ? "pending" : (connected || ha_room_registry_has_areas() ? "ready" : "disconnected");
+        ha_room_registry_add_areas_json(root);
+        xSemaphoreGive(s_client.mutex);
+    }
+    cJSON_AddStringToObject(root, "status", status);
+    cJSON_AddBoolToObject(root, "connected", connected);
+    cJSON_AddBoolToObject(root, "pending", strcmp(status, "pending") == 0);
+    char *payload = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (payload == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+    *out_json = payload;
+    return ESP_OK;
+}
+
 esp_err_t ha_client_get_domain_entities_json(const char *domain, const char *search, bool refresh, char **out_json)
 {
     if (out_json == NULL) {
@@ -8064,7 +7384,7 @@ esp_err_t ha_client_get_domain_entities_json(const char *domain, const char *sea
     }
     *out_json = NULL;
 
-    const char *checked_domain = ha_client_discovery_domain_or_default(domain);
+    const char *checked_domain = ha_discovery_domain_or_default(domain);
     char checked_search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
     ha_client_discovery_normalize_search(search, checked_search, sizeof(checked_search));
     const bool connected = ha_client_is_connected();
@@ -8186,12 +7506,19 @@ esp_err_t ha_client_get_domain_entities_json(const char *domain, const char *sea
             cJSON_AddStringToObject(item, "room", src->room);
             cJSON_AddStringToObject(item, "area_id", src->area_id);
             cJSON_AddStringToObject(item, "icon", src->icon);
+            cJSON_AddStringToObject(item, "device_class", src->device_class);
+            cJSON_AddStringToObject(item, "floor", src->floor);
             cJSON_AddItemToArray(items, item);
         }
     }
     xSemaphoreGive(s_client.mutex);
 
     cJSON_AddItemToObject(root, "items", items);
+    if (strcmp(checked_domain, "room") == 0) {
+        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+        ha_room_registry_add_areas_json(root);
+        xSemaphoreGive(s_client.mutex);
+    }
     char *payload = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     if (payload == NULL) {
@@ -8301,81 +7628,41 @@ esp_err_t ha_client_call_service(const char *domain, const char *service, const 
     return err;
 }
 
-esp_err_t ha_client_call_service_with_response(
-    const char *domain,
-    const char *service,
-    const char *target_entity_id,
-    const char *json_service_data,
-    ha_client_response_cb_t cb,
-    void *user)
+esp_err_t ha_client_send_command_with_response(cJSON *command, ha_client_response_cb_t cb, void *user)
 {
-    if (domain == NULL || service == NULL || domain[0] == '\0' || service[0] == '\0' || cb == NULL) {
-        return ESP_ERR_INVALID_ARG;
+    if (command == NULL || cb == NULL || !ha_client_is_connected()) {
+        esp_err_t why = (command == NULL || cb == NULL) ? ESP_ERR_INVALID_ARG : ESP_ERR_INVALID_STATE;
+        cJSON_Delete(command); /* NULL-safe: the function owns the tree on every path */
+        return why;
     }
-    if (!ha_client_is_connected()) {
-        return ESP_ERR_INVALID_STATE;
-    }
-
     int64_t now_ms = ha_client_now_ms();
-    /* Gate: treat as HEAVY so we don't pile on top of weather/energy/
-     * discovery roundtrips and blow up the TLS receive path. */
+    /* HEAVY gate: no pile-up on top of weather/energy/discovery roundtrips. */
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
     bool gate_ok = ha_client_ws_send_gate_ok_locked(HA_WS_SEND_HEAVY, now_ms);
     xSemaphoreGive(s_client.mutex);
     if (!gate_ok) {
+        cJSON_Delete(command);
         return ESP_ERR_INVALID_STATE; /* caller retries later */
     }
-
     ha_client_mark_ws_priority_boost(now_ms);
-
-    cJSON *root = cJSON_CreateObject();
-    if (root == NULL) {
-        return ESP_ERR_NO_MEM;
-    }
     uint32_t req_id = ha_client_next_message_id();
-    cJSON_AddNumberToObject(root, "id", (double)req_id);
-    cJSON_AddStringToObject(root, "type", "call_service");
-    cJSON_AddStringToObject(root, "domain", domain);
-    cJSON_AddStringToObject(root, "service", service);
-    cJSON_AddBoolToObject(root, "return_response", true);
-
-    if (target_entity_id != NULL && target_entity_id[0] != '\0') {
-        cJSON *target = cJSON_CreateObject();
-        if (target == NULL) {
-            cJSON_Delete(root);
-            return ESP_ERR_NO_MEM;
-        }
-        cJSON_AddStringToObject(target, "entity_id", target_entity_id);
-        cJSON_AddItemToObject(root, "target", target);
-    }
-
-    if (json_service_data != NULL && json_service_data[0] != '\0') {
-        cJSON *sd = cJSON_Parse(json_service_data);
-        if (sd != NULL && cJSON_IsObject(sd)) {
-            cJSON_AddItemToObject(root, "service_data", sd);
-        } else if (sd != NULL) {
-            cJSON_Delete(sd);
-        }
-    }
-
-    bool registered = false;
+    cJSON_AddNumberToObject(command, "id", (double)req_id);
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-    registered = ha_client_pending_response_register_locked(req_id, cb, user, ha_client_now_ms());
+    bool registered = ha_client_pending_response_register_locked(req_id, cb, user, ha_client_now_ms());
     if (registered) {
         s_client.call_response_req_inflight = true;
         s_client.call_response_req_id = req_id;
     }
     xSemaphoreGive(s_client.mutex);
     if (!registered) {
-        cJSON_Delete(root);
-        ESP_LOGW(TAG_HA_CLIENT, "call_service_with_response: no free response slot");
+        cJSON_Delete(command);
+        ESP_LOGW(TAG_HA_CLIENT, "send_command_with_response: no free response slot");
         return ESP_ERR_NO_MEM;
     }
 
-    esp_err_t err = ha_client_send_json(root);
-    cJSON_Delete(root);
-    if (err != ESP_OK) {
-        /* Clean up slot if send failed so the caller's cb is not leaked. */
+    esp_err_t err = ha_client_send_json(command);
+    cJSON_Delete(command);
+    if (err != ESP_OK) { /* free the slot so the caller's cb is not leaked */
         ha_client_response_cb_t evicted_cb = NULL;
         void *evicted_user = NULL;
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
@@ -8390,6 +7677,45 @@ esp_err_t ha_client_call_service_with_response(
         }
     }
     return err;
+}
+
+esp_err_t ha_client_call_service_with_response(
+    const char *domain,
+    const char *service,
+    const char *target_entity_id,
+    const char *json_service_data,
+    ha_client_response_cb_t cb,
+    void *user)
+{
+    if (domain == NULL || service == NULL || domain[0] == '\0' || service[0] == '\0' || cb == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+    cJSON_AddStringToObject(root, "type", "call_service");
+    cJSON_AddStringToObject(root, "domain", domain);
+    cJSON_AddStringToObject(root, "service", service);
+    cJSON_AddBoolToObject(root, "return_response", true);
+
+    if (target_entity_id != NULL && target_entity_id[0] != '\0') {
+        cJSON *target = cJSON_AddObjectToObject(root, "target");
+        if (target == NULL) {
+            cJSON_Delete(root);
+            return ESP_ERR_NO_MEM;
+        }
+        cJSON_AddStringToObject(target, "entity_id", target_entity_id);
+    }
+    if (json_service_data != NULL && json_service_data[0] != '\0') {
+        cJSON *sd = cJSON_Parse(json_service_data);
+        if (cJSON_IsObject(sd)) {
+            cJSON_AddItemToObject(root, "service_data", sd);
+        } else {
+            cJSON_Delete(sd); /* NULL-safe */
+        }
+    }
+    return ha_client_send_command_with_response(root, cb, user);
 }
 
 void ha_client_cancel_pending_responses_for_user(void *user)

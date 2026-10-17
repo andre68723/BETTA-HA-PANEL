@@ -1,0 +1,83 @@
+<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md -->
+
+# Gallery
+
+Compare the same widgets in Flat, Glow, Glass and Matte. This is an optional visual reference; for choosing a look, use [Appearance](appearance.md). For features and setup, use the [widget library](widgets/README.md).
+
+Examples use synthetic data. The columns change only the style, not the available functions.
+
+## Widgets
+
+| Widget | Flat | Glow | Glass | Matte |
+| --- | --- | --- | --- | --- |
+| [Sensor](widgets/sensor.md) | ![Sensor (flat)](img/gallery/sensor_flat.png) | ![Sensor (glow)](img/gallery/sensor_glow.png) | ![Sensor (glass)](img/gallery/sensor_glass.png) | ![Sensor (matte)](img/gallery/sensor_matte.png) |
+| [Gauge](widgets/gauge.md) | **Smooth**<br>![Smooth (flat)](img/gallery/smooth_flat.png)<br>**Segmented**<br>![Segmented (flat)](img/gallery/segmented_flat.png)<br>**Horizontal gauge**<br>![Horizontal gauge (flat)](img/gallery/horizontal_gauge_flat.png)<br>**Radial**<br>![Radial (flat)](img/gallery/radial_flat.png) | **Smooth**<br>![Smooth (glow)](img/gallery/smooth_glow.png)<br>**Segmented**<br>![Segmented (glow)](img/gallery/segmented_glow.png)<br>**Horizontal gauge**<br>![Horizontal gauge (glow)](img/gallery/horizontal_gauge_glow.png)<br>**Radial**<br>![Radial (glow)](img/gallery/radial_glow.png) | **Smooth**<br>![Smooth (glass)](img/gallery/smooth_glass.png)<br>**Segmented**<br>![Segmented (glass)](img/gallery/segmented_glass.png)<br>**Horizontal gauge**<br>![Horizontal gauge (glass)](img/gallery/horizontal_gauge_glass.png)<br>**Radial**<br>![Radial (glass)](img/gallery/radial_glass.png) | **Smooth**<br>![Smooth (matte)](img/gallery/smooth_matte.png)<br>**Segmented**<br>![Segmented (matte)](img/gallery/segmented_matte.png)<br>**Horizontal gauge**<br>![Horizontal gauge (matte)](img/gallery/horizontal_gauge_matte.png)<br>**Radial**<br>![Radial (matte)](img/gallery/radial_matte.png) |
+| [Graph](widgets/graph.md) | **Graph (line)**<br>![Graph (line) (flat)](img/gallery/graph_line_flat.png)<br>**Graph (bars)**<br>![Graph (bars) (flat)](img/gallery/graph_bars_flat.png) | **Graph (line)**<br>![Graph (line) (glow)](img/gallery/graph_line_glow.png)<br>**Graph (bars)**<br>![Graph (bars) (glow)](img/gallery/graph_bars_glow.png) | **Graph (line)**<br>![Graph (line) (glass)](img/gallery/graph_line_glass.png)<br>**Graph (bars)**<br>![Graph (bars) (glass)](img/gallery/graph_bars_glass.png) | **Graph (line)**<br>![Graph (line) (matte)](img/gallery/graph_line_matte.png)<br>**Graph (bars)**<br>![Graph (bars) (matte)](img/gallery/graph_bars_matte.png) |
+| [Binary sensor](widgets/binary_tile.md) | ![Binary sensor (flat)](img/gallery/binary_sensor_flat.png) | ![Binary sensor (glow)](img/gallery/binary_sensor_glow.png) | ![Binary sensor (glass)](img/gallery/binary_sensor_glass.png) | ![Binary sensor (matte)](img/gallery/binary_sensor_matte.png) |
+| [Contact](widgets/contact_tile.md) | ![Contact (flat)](img/gallery/contact_flat.png) | ![Contact (glow)](img/gallery/contact_glow.png) | ![Contact (glass)](img/gallery/contact_glass.png) | ![Contact (matte)](img/gallery/contact_matte.png) |
+| [Button](widgets/button.md) | ![Button (flat)](img/gallery/button_flat.png) | ![Button (glow)](img/gallery/button_glow.png) | ![Button (glass)](img/gallery/button_glass.png) | ![Button (matte)](img/gallery/button_matte.png) |
+| [Slider](widgets/slider.md) | **Vertical**<br>![Vertical (flat)](img/gallery/vertical_flat.png)<br>**Horizontal**<br>![Horizontal (flat)](img/gallery/horizontal_flat.png) | **Vertical**<br>![Vertical (glow)](img/gallery/vertical_glow.png)<br>**Horizontal**<br>![Horizontal (glow)](img/gallery/horizontal_glow.png) | **Vertical**<br>![Vertical (glass)](img/gallery/vertical_glass.png)<br>**Horizontal**<br>![Horizontal (glass)](img/gallery/horizontal_glass.png) | **Vertical**<br>![Vertical (matte)](img/gallery/vertical_matte.png)<br>**Horizontal**<br>![Horizontal (matte)](img/gallery/horizontal_matte.png) |
+| [Light](widgets/light_tile.md) | ![Light (flat)](img/gallery/light_flat.png) | ![Light (glow)](img/gallery/light_glow.png) | ![Light (glass)](img/gallery/light_glass.png) | ![Light (matte)](img/gallery/light_matte.png) |
+| [Heating](widgets/heating_tile.md) | **Heating (default)**<br>![Heating (default) (flat)](img/gallery/heating_default_flat.png)<br>**Heating (semi arc)**<br>![Heating (semi arc) (flat)](img/gallery/heating_semi_arc_flat.png) | **Heating (default)**<br>![Heating (default) (glow)](img/gallery/heating_default_glow.png)<br>**Heating (semi arc)**<br>![Heating (semi arc) (glow)](img/gallery/heating_semi_arc_glow.png) | **Heating (default)**<br>![Heating (default) (glass)](img/gallery/heating_default_glass.png)<br>**Heating (semi arc)**<br>![Heating (semi arc) (glass)](img/gallery/heating_semi_arc_glass.png) | **Heating (default)**<br>![Heating (default) (matte)](img/gallery/heating_default_matte.png)<br>**Heating (semi arc)**<br>![Heating (semi arc) (matte)](img/gallery/heating_semi_arc_matte.png) |
+| [Climate](widgets/climate_tile.md) | ![Climate (flat)](img/gallery/climate_flat.png) | ![Climate (glow)](img/gallery/climate_glow.png) | ![Climate (glass)](img/gallery/climate_glass.png) | ![Climate (matte)](img/gallery/climate_matte.png) |
+| [Cover](widgets/cover_tile.md) | ![Cover (flat)](img/gallery/cover_flat.png) | ![Cover (glow)](img/gallery/cover_glow.png) | ![Cover (glass)](img/gallery/cover_glass.png) | ![Cover (matte)](img/gallery/cover_matte.png) |
+| [Fan](widgets/fan_tile.md) | ![Fan (flat)](img/gallery/fan_flat.png) | ![Fan (glow)](img/gallery/fan_glow.png) | ![Fan (glass)](img/gallery/fan_glass.png) | ![Fan (matte)](img/gallery/fan_matte.png) |
+| [Lock](widgets/lock_tile.md) | ![Front door (flat)](img/gallery/front_door_flat.png) | ![Front door (glow)](img/gallery/front_door_glow.png) | ![Front door (glass)](img/gallery/front_door_glass.png) | ![Front door (matte)](img/gallery/front_door_matte.png) |
+| [Alarm](widgets/alarm_tile.md) | ![Alarm (flat)](img/gallery/alarm_flat.png) | ![Alarm (glow)](img/gallery/alarm_glow.png) | ![Alarm (glass)](img/gallery/alarm_glass.png) | ![Alarm (matte)](img/gallery/alarm_matte.png) |
+| [Select](widgets/select_tile.md) | ![Charge mode (flat)](img/gallery/charge_mode_flat.png) | ![Charge mode (glow)](img/gallery/charge_mode_glow.png) | ![Charge mode (glass)](img/gallery/charge_mode_glass.png) | ![Charge mode (matte)](img/gallery/charge_mode_matte.png) |
+| [Date/Time](widgets/datetime_tile.md) | ![Morning routine (flat)](img/gallery/morning_routine_flat.png) | ![Morning routine (glow)](img/gallery/morning_routine_glow.png) | ![Morning routine (glass)](img/gallery/morning_routine_glass.png) | ![Morning routine (matte)](img/gallery/morning_routine_matte.png) |
+| [Scene](widgets/scene_tile.md) | ![Scene (flat)](img/gallery/scene_flat.png) | ![Scene (glow)](img/gallery/scene_glow.png) | ![Scene (glass)](img/gallery/scene_glass.png) | ![Scene (matte)](img/gallery/scene_matte.png) |
+| [Room card](widgets/room_tile.md) | **Room, humidity**<br>![Room, humidity (flat)](img/gallery/room_humidity_flat.png)<br>**Room, cover**<br>![Room, cover (flat)](img/gallery/room_cover_flat.png)<br>**Room, media player**<br>![Room, media player (flat)](img/gallery/room_media_player_flat.png) | **Room, humidity**<br>![Room, humidity (glow)](img/gallery/room_humidity_glow.png)<br>**Room, cover**<br>![Room, cover (glow)](img/gallery/room_cover_glow.png)<br>**Room, media player**<br>![Room, media player (glow)](img/gallery/room_media_player_glow.png) | **Room, humidity**<br>![Room, humidity (glass)](img/gallery/room_humidity_glass.png)<br>**Room, cover**<br>![Room, cover (glass)](img/gallery/room_cover_glass.png)<br>**Room, media player**<br>![Room, media player (glass)](img/gallery/room_media_player_glass.png) | **Room, humidity**<br>![Room, humidity (matte)](img/gallery/room_humidity_matte.png)<br>**Room, cover**<br>![Room, cover (matte)](img/gallery/room_cover_matte.png)<br>**Room, media player**<br>![Room, media player (matte)](img/gallery/room_media_player_matte.png) |
+| [Room card](widgets/room_tile.md) | ![Room card (flat)](img/gallery/room_card_flat.png) | ![Room card (glow)](img/gallery/room_card_glow.png) | ![Room card (glass)](img/gallery/room_card_glass.png) | ![Room card (matte)](img/gallery/room_card_matte.png) |
+| [Weather (now)](widgets/weather_tile.md) | ![Weather (now) (flat)](img/gallery/weather_now_flat.png) | ![Weather (now) (glow)](img/gallery/weather_now_glow.png) | ![Weather (now) (glass)](img/gallery/weather_now_glass.png) | ![Weather (now) (matte)](img/gallery/weather_now_matte.png) |
+| [Weather forecast](widgets/weather_3day.md) | ![Weather forecast (flat)](img/gallery/weather_forecast_flat.png) | ![Weather forecast (glow)](img/gallery/weather_forecast_glow.png) | ![Weather forecast (glass)](img/gallery/weather_forecast_glass.png) | ![Weather forecast (matte)](img/gallery/weather_forecast_matte.png) |
+| [Solar forecast](widgets/solar_forecast.md) | **Solar forecast**<br>![Solar forecast (flat)](img/gallery/solar_forecast_flat.png)<br>**Solar forecast (vertical)**<br>![Solar forecast (vertical) (flat)](img/gallery/solar_forecast_vertical_flat.png) | **Solar forecast**<br>![Solar forecast (glow)](img/gallery/solar_forecast_glow.png)<br>**Solar forecast (vertical)**<br>![Solar forecast (vertical) (glow)](img/gallery/solar_forecast_vertical_glow.png) | **Solar forecast**<br>![Solar forecast (glass)](img/gallery/solar_forecast_glass.png)<br>**Solar forecast (vertical)**<br>![Solar forecast (vertical) (glass)](img/gallery/solar_forecast_vertical_glass.png) | **Solar forecast**<br>![Solar forecast (matte)](img/gallery/solar_forecast_matte.png)<br>**Solar forecast (vertical)**<br>![Solar forecast (vertical) (matte)](img/gallery/solar_forecast_vertical_matte.png) |
+| [Energy timeline](widgets/energy_timeline.md) | ![Energy last 24 hours (flat)](img/gallery/energy_last_24_hours_flat.png) | ![Energy last 24 hours (glow)](img/gallery/energy_last_24_hours_glow.png) | ![Energy last 24 hours (glass)](img/gallery/energy_last_24_hours_glass.png) | ![Energy last 24 hours (matte)](img/gallery/energy_last_24_hours_matte.png) |
+| [Energy timeline](widgets/energy_timeline.md) | ![Nested rings (flat)](img/gallery/nested_rings_flat.png) | ![Nested rings (glow)](img/gallery/nested_rings_glow.png) | ![Nested rings (glass)](img/gallery/nested_rings_glass.png) | ![Nested rings (matte)](img/gallery/nested_rings_matte.png) |
+| [Media player](widgets/media_player.md) | ![Media player (flat)](img/gallery/media_player_flat.png) | ![Media player (glow)](img/gallery/media_player_glow.png) | ![Media player (glass)](img/gallery/media_player_glass.png) | ![Media player (matte)](img/gallery/media_player_matte.png) |
+| [Sonos favorites](widgets/sonos_favorites.md) | ![Sonos favorites (flat)](img/gallery/sonos_favorites_flat.png) | ![Sonos favorites (glow)](img/gallery/sonos_favorites_glow.png) | ![Sonos favorites (glass)](img/gallery/sonos_favorites_glass.png) | ![Sonos favorites (matte)](img/gallery/sonos_favorites_matte.png) |
+| [Todo list](widgets/todo_list.md) | ![Todo list (flat)](img/gallery/todo_list_flat.png) | ![Todo list (glow)](img/gallery/todo_list_glow.png) | ![Todo list (glass)](img/gallery/todo_list_glass.png) | ![Todo list (matte)](img/gallery/todo_list_matte.png) |
+| [Vacuum](widgets/vacuum_tile.md) | **Vacuum**<br>![Vacuum (flat)](img/gallery/vacuum_flat.png)<br>**Vacuum with map**<br>![Vacuum with map (flat)](img/gallery/vacuum_with_map_flat.png) | **Vacuum**<br>![Vacuum (glow)](img/gallery/vacuum_glow.png)<br>**Vacuum with map**<br>![Vacuum with map (glow)](img/gallery/vacuum_with_map_glow.png) | **Vacuum**<br>![Vacuum (glass)](img/gallery/vacuum_glass.png)<br>**Vacuum with map**<br>![Vacuum with map (glass)](img/gallery/vacuum_with_map_glass.png) | **Vacuum**<br>![Vacuum (matte)](img/gallery/vacuum_matte.png)<br>**Vacuum with map**<br>![Vacuum with map (matte)](img/gallery/vacuum_with_map_matte.png) |
+| [Camera](widgets/camera_tile.md) | ![Camera (flat)](img/gallery/camera_flat.png) | ![Camera (glow)](img/gallery/camera_glow.png) | ![Camera (glass)](img/gallery/camera_glass.png) | ![Camera (matte)](img/gallery/camera_matte.png) |
+| [Car](widgets/car_widget.md) | ![Car (flat)](img/gallery/car_flat.png) | ![Car (glow)](img/gallery/car_glow.png) | ![Car (glass)](img/gallery/car_glass.png) | ![Car (matte)](img/gallery/car_matte.png) |
+| [Bambu printer](widgets/bambu_printer.md) | ![Bambu A1 (flat)](img/gallery/bambu_a1_flat.png) | ![Bambu A1 (glow)](img/gallery/bambu_a1_glow.png) | ![Bambu A1 (glass)](img/gallery/bambu_a1_glass.png) | ![Bambu A1 (matte)](img/gallery/bambu_a1_matte.png) |
+| [Wallbox](widgets/wallbox.md) | ![Wallbox (flat)](img/gallery/wallbox_flat.png) | ![Wallbox (glow)](img/gallery/wallbox_glow.png) | ![Wallbox (glass)](img/gallery/wallbox_glass.png) | ![Wallbox (matte)](img/gallery/wallbox_matte.png) |
+
+## Special pages
+
+[Pages and layouts](pages.md) explains their setup.
+
+| Page | Flat | Glow | Glass | Matte |
+| --- | --- | --- | --- | --- |
+| House dashboard | ![House dashboard (flat)](img/gallery/gallery_house_flat.png) | ![House dashboard (glow)](img/gallery/gallery_house_glow.png) | ![House dashboard (glass)](img/gallery/gallery_house_glass.png) | ![House dashboard (matte)](img/gallery/gallery_house_matte.png) |
+| Energy dashboard | ![Energy dashboard (flat)](img/gallery/gallery_energy_flat.png) | ![Energy dashboard (glow)](img/gallery/gallery_energy_glow.png) | ![Energy dashboard (glass)](img/gallery/gallery_energy_glass.png) | ![Energy dashboard (matte)](img/gallery/gallery_energy_matte.png) |
+
+## Doorbell popup
+
+Setup: [Notifications](notifications.md). Camera pictures are placeholders.
+
+| Example | Flat | Glow | Glass | Matte |
+| --- | --- | --- | --- | --- |
+| Doorbell popup | ![Doorbell popup, flat](img/gallery/gallery_doorbell_flat.png) | ![Doorbell popup, glow](img/gallery/gallery_doorbell_glow.png) | ![Doorbell popup, glass](img/gallery/gallery_doorbell_glass.png) | ![Doorbell popup, matte](img/gallery/gallery_doorbell_matte.png) |
+
+## Select detail popup
+
+Setup: [Select](widgets/select_tile.md).
+
+| Example | Flat | Glow | Glass | Matte |
+| --- | --- | --- | --- | --- |
+| Select detail popup | ![Select detail popup, flat](img/gallery/gallery_select_detail_flat.png) | ![Select detail popup, glow](img/gallery/gallery_select_detail_glow.png) | ![Select detail popup, glass](img/gallery/gallery_select_detail_glass.png) | ![Select detail popup, matte](img/gallery/gallery_select_detail_matte.png) |
+
+## History popup
+
+Setup: [History popups](history.md).
+
+| Example | Flat | Glow | Glass | Matte |
+| --- | --- | --- | --- | --- |
+| History popup | ![History popup, flat](img/gallery/gallery_history_sensor_en_flat.png) | ![History popup, glow](img/gallery/gallery_history_sensor_en_glow.png) | ![History popup, glass](img/gallery/gallery_history_sensor_en_glass.png) | ![History popup, matte](img/gallery/gallery_history_sensor_en_matte.png) |
+
+## Rendering
+
+Everything is rendered from the current firmware sources by the LVGL/SDL simulator (`tools/generate_simulator_gallery.py`) with the synthetic states of `tests/simulator/gallery_data.json`, including the House and Energy pages and the doorbell popup with a stylized camera picture.
+
+Regenerate images after visual changes with `python3 tools/generate_simulator_gallery.py`. For prose-only edits use `--markdown-only`; it preserves images and the source freshness record.

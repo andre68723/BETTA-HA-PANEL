@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk -->
+<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk | Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BETTA HA Panel - BETTA Editor</title>
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/css/style-depth.css" />
+  <link rel="stylesheet" href="/css/style-flat.css" />
+  <link rel="stylesheet" href="/css/style-glow.css" />
+  <link rel="stylesheet" href="/css/style-glass.css" />
+  <link rel="stylesheet" href="/css/style-matte.css" />
+  <link rel="stylesheet" href="/css/readability.css" />
+  <link rel="stylesheet" href="/css/preview-fit.css" />
+  <link rel="stylesheet" href="/css/settings.css" />
+  <link rel="stylesheet" href="/css/layout-toolbar.css" />
+  <link rel="stylesheet" href="/css/layout-actions.css" />
+  <link rel="stylesheet" href="/css/evcc-wallbox.css" />
+  <link rel="stylesheet" href="/css/inspector.css" />
 </head>
 <body>
   <div id="provisioningRoot" class="provisioning-shell hidden">
@@ -40,9 +52,12 @@
       <div id="provisioningHaPage" class="provisioning-page hidden">
         <h1 id="provHaTitle">HA Provisioning</h1>
         <p id="provHaSubtitle" class="provisioning-subtitle">Connect the panel to Home Assistant.</p>
-        <label><span id="provHaUrlLabel">WebSocket URL (ws:// or wss://)</span>
-          <input id="provHaUrl" type="text" placeholder="ws://homeassistant.local:8123/api/websocket" maxlength="255" />
-        </label>
+        <div class="row provisioning-url-row">
+          <label><span id="provHaUrlLabel">WebSocket URL (ws:// or wss://)</span>
+            <input id="provHaUrl" type="text" placeholder="ws://homeassistant.local:8123/api/websocket" maxlength="255" />
+          </label>
+          <button id="provHaUseUrlBtn" class="btn" type="button">Use suggestion</button>
+        </div>
         <label><span id="provHaTokenLabel">Long-lived Access Token</span>
           <input id="provHaToken" type="password" placeholder="Home Assistant Token" maxlength="511" />
         </label>
@@ -53,6 +68,12 @@
         <div id="provHaInfo" class="meta"></div>
         <button id="provHaSaveBtn" class="btn primary" type="button">Save + Reboot</button>
       </div>
+      <div id="bootErrorPage" class="provisioning-page hidden">
+        <h1 id="bootErrorTitle">Panel not reachable</h1>
+        <p id="bootErrorText" class="provisioning-subtitle">The panel's settings could not be read. It may still be starting up or the Wi-Fi connection dropped briefly.</p>
+        <div id="bootErrorDetail" class="meta"></div>
+        <button id="bootErrorRetryBtn" class="btn primary" type="button">Reload</button>
+      </div>
     </div>
   </div>
 
@@ -61,6 +82,18 @@
       <header class="sidebar-header">
         <h1 id="sidebarTitle"><span id="sidebarTitleText">BETTA Editor</span><small id="appVersionLabel" class="app-version"></small></h1>
         <p id="sidebarSubtitle">Layout source of truth: JSON</p>
+        <p id="deviceIdLabel" class="device-id" title="">
+          <span class="sidebar-meta-label" id="deviceIdMetaLabel">Device:</span>
+          <span id="deviceIdValue"></span>
+        </p>
+        <p id="boardLabel" class="device-id" title="" hidden>
+          <span class="sidebar-meta-label" id="boardMetaLabel">Type:</span>
+          <span id="boardLabelValue"></span>
+        </p>
+        <p id="buildTimeLabel" class="device-id build-time" title="Firmware build time" hidden>
+          <span class="sidebar-meta-label" id="buildTimeMetaLabel">Build:</span>
+          <span id="buildTimeValue"></span>
+        </p>
       </header>
 
       <div class="mode-tabs">
@@ -76,8 +109,12 @@
               <div class="dropdown">
                 <button id="addPageMenuBtn" class="btn small primary dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">+ Add ▾</button>
                 <div id="addPageMenu" class="dropdown-menu hidden" role="menu">
-                  <button id="addPageMenuNormal" class="dropdown-item" type="button" role="menuitem">Normal Page</button>
-                  <button id="addPageMenuEnergy" class="dropdown-item" type="button" role="menuitem">Energy Page</button>
+                  <button id="addPageMenuNormal" class="dropdown-item dropdown-item-desc" type="button" role="menuitem"><span id="addPageMenuNormalLabel">Blank page</span><small id="addPageMenuNormalDesc">Arrange tiles freely</small></button>
+                  <div class="dropdown-group-label" id="addPageMenuGroupHa">Pre-filled from Home Assistant</div>
+                  <button id="addPageMenuRoom" class="dropdown-item dropdown-item-desc" type="button" role="menuitem"><span id="addPageMenuRoomLabel">Room page...</span><small id="addPageMenuRoomDesc">Tiles of one area, freely editable afterwards</small></button>
+                  <button id="addPageMenuHouse" class="dropdown-item dropdown-item-desc" type="button" role="menuitem"><span id="addPageMenuHouseLabel">Room overview</span><small id="addPageMenuHouseDesc">All rooms as room cards by floor, rooms editable</small></button>
+                  <div class="dropdown-group-label" id="addPageMenuGroupSpecial">Special page</div>
+                  <button id="addPageMenuEnergy" class="dropdown-item dropdown-item-desc" type="button" role="menuitem"><span id="addPageMenuEnergyLabel">Energy dashboard</span><small id="addPageMenuEnergyDesc">Fixed energy flow from the Home Assistant energy dashboard</small></button>
                 </div>
               </div>
               <button id="togglePagesSection" class="btn small collapse-toggle" type="button" aria-expanded="true"
@@ -91,10 +128,831 @@
               <button id="addPageBtn" type="button">+ Page</button>
               <button id="addEnergyPageBtn" type="button">+ Energy Page</button>
               <button id="deletePageBtn" type="button">Delete</button>
-              <input id="pageTitleInput" type="text" />
-              <button id="applyPageBtn" type="button">Apply page title</button>
             </div>
-            <div class="form" style="margin-top: 8px;">
+
+          </div>
+          <div id="pagesMiniList" class="section-mini"></div>
+        </section>
+
+        <section id="widgetsSection" class="panel-section collapsible">
+          <div class="section-head">
+            <h2 id="widgetsHeading">Widgets</h2>
+            <div class="row">
+              <button id="addTileBtn" class="btn small primary" type="button">+ Widget</button>
+              <button id="toggleWidgetsSection" class="btn small collapse-toggle" type="button" aria-expanded="true"
+                aria-controls="widgetsSectionBody">-</button>
+            </div>
+          </div>
+          <div id="widgetsSectionBody" class="section-body">
+            <!-- Hidden legacy add buttons (kept for event-handler compatibility) -->
+            <div class="legacy-hidden">
+              <button id="addSensorBtn" type="button">+ Sensor</button>
+              <button id="addButtonBtn" type="button">+ Button</button>
+              <button id="addSliderBtn" type="button">+ Slider</button>
+              <button id="addGaugeBtn" type="button">+ Gauge</button>
+              <button id="addGraphBtn" type="button">+ Graph</button>
+              <button id="addCarWidgetBtn" type="button">+ Car</button>
+              <button id="addEvccWallboxBtn" type="button">+ Wallbox</button>
+<button id="addBambuPrinterBtn" type="button">+ Bambu printer</button>
+              <button id="addEmptyTileBtn" type="button">+ Empty Tile</button>
+              <button id="addLightTileBtn" type="button">+ Light Tile</button>
+              <button id="addHeatingTileBtn" type="button">+ Heating Tile</button>
+              <button id="addWeatherTileBtn" type="button">+ Weather</button>
+              <button id="addWeather3DayBtn" type="button">+ Weather Forecast</button>
+              <button id="addSolarForecastBtn" type="button">+ Solar Forecast</button>
+              <button id="addTodoListBtn" type="button">+ Todo List</button>
+              <button id="addMediaPlayerBtn" type="button">+ Media Player</button>
+              <button id="addSonosFavoritesBtn" type="button">+ Sonos Favorites</button>
+              <button id="addVacuumTileBtn" type="button">+ Vacuum</button>
+              <button id="addCoverTileBtn" type="button">+ Cover</button>
+              <button id="addClimateTileBtn" type="button">+ Climate</button>
+              <button id="addRoomTileBtn" type="button">+ Room</button>
+              <button id="addSceneTileBtn" type="button">+ Scene</button>
+              <button id="addSelectTileBtn" type="button">+ Select</button>
+              <button id="addEnergyTimelineBtn" type="button">+ Energy timeline</button>
+              <button id="addDatetimeTileBtn" type="button">+ Date/Time</button>
+              <button id="addLockTileBtn" type="button">+ Lock</button>
+              <button id="addAlarmTileBtn" type="button">+ Alarm</button>
+              <button id="addScriptTileBtn" type="button">+ Script</button>
+              <button id="addDoorbellTileBtn" type="button">+ Event (doorbell, button)</button>
+              <button id="addBinaryTileBtn" type="button">+ Binary sensor</button>
+              <button id="addContactTileBtn" type="button">+ Door/Window</button>
+              <button id="addCameraTileBtn" type="button">+ Camera</button>
+              <button id="addFanTileBtn" type="button">+ Fan</button>
+              <button id="duplicateWidgetBtn" type="button">Duplicate Widget</button>
+              <button id="deleteWidgetBtn" type="button">Delete Widget</button>
+            </div>
+            <input id="widgetSearchInput" type="search" class="widget-search" placeholder="Search widgets..." />
+            <ul id="widgetsList" class="list"></ul>
+          </div>
+        </section>
+      </div>
+
+      <div id="settingsPane" class="pane hidden">
+        <section>
+          <h2 id="settingsDeviceHeading">Device</h2>
+          <div class="form">
+            <label class="field-md"><span id="settingsDeviceRoomLabel">Room (names this device)</span>
+              <input id="settingsDeviceRoom" type="text" placeholder="Arbeitszimmer" maxlength="31" />
+            </label>
+            <label class="field-md"><span id="settingsMqttDeviceNameLabel">Name override in Home Assistant (optional)</span>
+              <input id="settingsMqttDeviceName" type="text" placeholder="BETTA HA Panel" maxlength="47" />
+            </label>
+            <div class="meta" id="settingsDeviceRoomHint"></div>
+            <dl class="kv-list">
+              <dt id="settingsDeviceIdLabel">Device ID</dt>
+              <dd id="settingsDeviceIdValue">-</dd>
+              <dt id="settingsDeviceNameLabel">Name in Home Assistant</dt>
+              <dd id="settingsDeviceNameValue">-</dd>
+            </dl>
+          </div>
+
+          <h2 id="settingsStatusHeading">Device status</h2>
+          <div class="form">
+            <dl class="kv-list">
+              <dt id="settingsStatusCpuLabel">CPU load</dt>
+              <dd id="settingsStatusCpu">-</dd>
+              <dt id="settingsStatusRamLabel">Internal RAM</dt>
+              <dd>
+                <span id="settingsStatusRam">-</span>
+                <div class="mem-bar" id="settingsStatusRamBar" role="img">
+                  <div class="mem-bar-fill" id="settingsStatusRamBarFill"></div>
+                  <div class="mem-bar-min-marker" id="settingsStatusRamBarMin"></div>
+                </div>
+              </dd>
+              <dt id="settingsStatusPsramLabel">PSRAM (external RAM)</dt>
+              <dd>
+                <span id="settingsStatusPsram">-</span>
+                <div class="mem-bar" id="settingsStatusPsramBar" role="img">
+                  <div class="mem-bar-fill" id="settingsStatusPsramBarFill"></div>
+                </div>
+              </dd>
+              <dt id="settingsStatusUptimeLabel">Uptime</dt>
+              <dd id="settingsStatusUptime">-</dd>
+              <dt id="settingsStatusResetLabel">Last restart</dt>
+              <dd><span id="settingsStatusReset">-</span>
+                <details id="settingsRebootDetails" class="restart-history">
+                  <summary id="settingsRebootSummary">Restart history</summary>
+                  <div id="settingsRebootList" class="meta"></div>
+                </details>
+              </dd>
+              <dt id="settingsStatusChipLabel">Chip</dt>
+              <dd id="settingsStatusChip">-</dd>
+              <dt id="settingsStatusBootloaderLabel">Bootloader</dt>
+              <dd id="settingsStatusBootloader">-</dd>
+            </dl>
+            <div id="coredumpRow" class="form" hidden>
+              <strong id="coredumpHeading">Crash reports</strong>
+              <div id="coredumpList"></div>
+              <div id="coredumpError" class="meta" role="status"></div>
+            </div>
+            <div id="coredumpUnsupportedHint" class="meta" hidden></div>
+            <div class="row">
+              <button id="settingsRestartBtn" class="btn" type="button">Restart device</button>
+              <span id="settingsRestartMsg" class="meta"></span>
+            </div>
+            <details id="settingsLogDetails">
+              <summary id="settingsLogSummary">Device log</summary>
+              <div class="row">
+                <button id="settingsLogRefresh" type="button">Refresh</button>
+                <button id="settingsLogDownload" type="button">Download</button>
+              </div>
+              <pre id="settingsLogText" class="log-view"></pre>
+            </details>
+          </div>
+
+        </section>
+
+        <section>
+          <h2 id="settingsLanguageHeading">Language</h2>
+          <div class="form">
+            <div class="row settings-language-row">
+              <label class="field-md"><span id="settingsLanguageLabel">Language</span>
+                <select id="settingsLanguage" aria-describedby="settingsUiInfo"></select>
+              </label>
+              <button id="reloadLanguagesBtn" class="btn" type="button">Reload Languages</button>
+              <button id="downloadLanguageBtn" class="btn" type="button">Download JSON</button>
+            </div>
+            <div id="settingsUiInfo" class="meta"></div>
+            <details class="translation-manager">
+              <summary id="settingsTranslationManageSummary">Upload a custom translation</summary>
+              <div class="form">
+            <div class="row settings-upload-row">
+            <label class="field-xs"><span id="uploadLanguageCodeLabel">Upload language code</span>
+              <input id="uploadLanguageCode" type="text" maxlength="15" placeholder="nl" />
+            </label>
+              <label><span id="uploadLanguageFileLabel">Translation JSON File</span>
+                <input id="uploadLanguageFile" type="file" accept="application/json,.json" />
+              </label>
+              <button id="uploadLanguageBtn" class="btn" type="button">Upload / Add Language</button>
+            </div>
+            <div id="settingsTranslationInfo" class="meta"></div>
+              </div>
+            </details>
+          </div>
+
+          <h2 id="settingsTimeHeading">Time</h2>
+          <div class="form">
+            <label class="field-md"><span id="settingsTimezonePresetLabel">Timezone</span>
+              <select id="settingsTimezonePreset"></select>
+            </label>
+            <label class="field-lg" id="settingsTimezoneCustomRow" hidden><span id="settingsTimezoneLabel">Timezone (POSIX TZ)</span>
+              <input id="settingsTimezone" type="text" placeholder="CET-1CEST,M3.5.0/2,M10.5.0/3" maxlength="127" />
+            </label>
+            <label class="field-md"><span id="settingsNtpServerLabel">NTP Server</span>
+              <input id="settingsNtpServer" type="text" placeholder="pool.ntp.org" maxlength="127" />
+            </label>
+            <div id="settingsTimeInfo" class="meta"></div>
+          </div>
+
+        </section>
+
+        <section>
+          <h2 id="settingsWifiHeading">Wi-Fi</h2>
+          <div class="form">
+            <div class="field-row">
+              <label class="grow field-md"><span id="settingsWifiSsidLabel">SSID</span>
+                <input id="settingsWifiSsid" type="text" placeholder="MyWiFi" maxlength="32" />
+              </label>
+              <label class="field-xs"><span id="settingsWifiCountryCodeLabel">Country Code</span>
+                <input id="settingsWifiCountryCode" type="text" list="wifiCountryCodeList" placeholder="US" maxlength="2" />
+              </label>
+            </div>
+            <label class="field-md"><span id="settingsWifiBssidLabel">BSSID Lock (optional)</span>
+              <input id="settingsWifiBssid" type="text" placeholder="AA:BB:CC:DD:EE:FF" maxlength="17" />
+            </label>
+            <div class="row">
+              <button id="scanWifiBtn" class="btn small" type="button">Scan Wi-Fi</button>
+              <select id="settingsWifiScanResults">
+                <option value="">No scan yet</option>
+              </select>
+            </div>
+            <div id="settingsWifiScanInfo" class="meta">Click "Scan Wi-Fi" to list nearby networks.</div>
+            <label class="field-md"><span id="settingsWifiPasswordLabel">Password</span>
+              <input id="settingsWifiPassword" type="password" placeholder="Leave empty to keep the stored password" maxlength="64" data-secret-flag="wifi.password_set" />
+            </label>
+            <div id="settingsWifiInfo" class="meta"></div>
+          </div>
+
+        </section>
+
+        <section>
+          <h2 id="settingsHaHeading">Home Assistant</h2>
+          <div class="form">
+            <label><span id="settingsHaUrlLabel">WebSocket URL (ws:// or wss://)</span>
+              <input id="settingsHaUrl" type="text" placeholder="wss://homeassistant.local:8123/api/websocket" maxlength="255" />
+            </label>
+            <label><span id="settingsHaTokenLabel">Long-lived Access Token</span>
+              <textarea id="settingsHaToken" placeholder="Leave empty to keep the stored token" maxlength="511" data-secret-flag="ha.access_token_set"></textarea>
+            </label>
+            <label class="row">
+              <input id="settingsHaRestEnabled" type="checkbox" />
+              <span id="settingsHaRestEnabledLabel">Enable HA REST fallback (Default: Off, WS-only preferred)</span>
+            </label>
+            <div id="settingsHaInfo" class="meta"></div>
+          </div>
+
+          <h2 id="settingsMqttHeading">MQTT / Notifications</h2>
+          <div id="settingsMqttAboutText" class="meta">Optional: requires an MQTT broker and the Home Assistant MQTT integration. The panel automatically registers notification and online-status entities.</div>
+          <div class="form">
+            <label class="row row-inline">
+              <input id="settingsMqttEnabled" type="checkbox" />
+              <span id="settingsMqttEnabledLabel">Enable MQTT</span>
+            </label>
+            <div class="field-row">
+              <label class="grow field-md"><span id="settingsMqttHostLabel">Broker host</span>
+                <input id="settingsMqttHost" type="text" placeholder="mqtt.local or 192.168.1.10" maxlength="127" />
+              </label>
+              <label class="field-xs"><span id="settingsMqttPortLabel">Broker port</span>
+                <input id="settingsMqttPort" type="number" min="1" max="65535" step="1" placeholder="1883" />
+              </label>
+            </div>
+            <label class="row row-inline">
+              <input id="settingsMqttTls" type="checkbox" />
+              <span id="settingsMqttTlsLabel">Use TLS</span>
+            </label>
+            <div class="field-row">
+              <label class="grow"><span id="settingsMqttUsernameLabel">Username</span>
+                <input id="settingsMqttUsername" type="text" placeholder="Optional" maxlength="63" />
+              </label>
+              <label class="grow"><span id="settingsMqttPasswordLabel">Password</span>
+                <input id="settingsMqttPassword" type="password" placeholder="Leave empty to keep the stored password" maxlength="127" data-secret-flag="mqtt.password_set" />
+              </label>
+            </div>
+            <label class="field-md"><span id="settingsMqttTopicPrefixLabel">Topic prefix</span>
+              <input id="settingsMqttTopicPrefix" type="text" placeholder="betta_ha_panel" maxlength="31" />
+            </label>
+            <div class="meta" id="settingsMqttDeviceHint"></div>
+            <div id="settingsMqttInfo" class="meta"></div>
+          </div>
+
+          <details id="settingsMqttExampleBox" class="info-box"><summary id="settingsMqttExamplesSummary">Examples</summary>
+            <h2 id="settingsMqttExampleHeading">Sending a notification</h2>
+            <div id="settingsMqttExampleHint" class="meta"></div>
+            <pre class="code-block"><code id="settingsMqttExampleCode"></code></pre>
+            <div id="settingsMqttExampleNote" class="meta"></div>
+            <h2 id="settingsMqttAdvancedHeading">Title, timeout, or message_id</h2>
+            <div id="settingsMqttAdvancedHint" class="meta"></div>
+            <pre class="code-block"><code id="settingsMqttAdvancedCode"></code></pre>
+            <div id="settingsMqttAdvancedNote" class="meta"></div>
+          </details>
+
+          <div id="settingsMqttEmojiHint" class="meta">Supported emoji appear in monochrome; unsupported emoji or sequences become [Emoji]. Applies to MQTT and HTTP notifications.</div>
+        </section>
+
+        <section class="display-settings">
+          <h2 id="settingsHardwareHeading">Display</h2>
+          <div class="display-settings-grid">
+            <div class="display-settings-group form">
+              <h3 id="settingsBrightnessHeading" class="settings-subheading">While in use</h3>
+              <div class="row display-fields">
+                <label class="field-slider"><span id="settingsHardwareActiveBrightnessLabel">Normal brightness</span>
+                  <span class="range-field">
+                    <input id="settingsHardwareActiveBrightness" aria-labelledby="settingsHardwareActiveBrightnessLabel" type="range" min="1" max="100" step="1" />
+                    <output id="settingsHardwareActiveBrightnessValue" for="settingsHardwareActiveBrightness">100%</output>
+                    <button id="settingsActiveBrightnessTestBtn" class="btn small brightness-test-btn" type="button">Test</button>
+                  </span>
+                </label>
+                <span id="settingsActiveBrightnessTestStatus" class="meta brightness-test-status" role="status" hidden></span>
+              </div>
+              <div class="meta" id="settingsBrightnessRuleHint"></div>
+              <div class="meta" id="settingsBrightnessNow"></div>
+            </div>
+            <div class="display-settings-group form">
+              <h3 id="settingsNightHeading" class="settings-subheading">Night mode</h3>
+              <label class="row">
+                <input id="settingsHardwareNightEnabled" type="checkbox" checked />
+                <span id="settingsHardwareNightEnabledLabel">Enable night mode</span>
+              </label>
+              <div id="settingsNightFields" class="form display-dependent-fields">
+                <div class="row time-range">
+                  <label><span id="settingsNightStartLabel">From</span>
+                    <input id="settingsHardwareNightStart" type="time" value="22:00" />
+                  </label>
+                  <label><span id="settingsNightEndLabel">Until</span>
+                    <input id="settingsHardwareNightEnd" type="time" value="06:00" />
+                  </label>
+                </div>
+                <label class="field-slider"><span id="settingsHardwareNightBrightnessLabel">Night brightness (0% = off)</span>
+                  <span class="range-field">
+                    <input id="settingsHardwareNightBrightness" aria-labelledby="settingsHardwareNightBrightnessLabel" type="range" min="0" max="100" step="1" />
+                    <output id="settingsHardwareNightBrightnessValue" for="settingsHardwareNightBrightness">1%</output>
+                    <button id="settingsNightBrightnessTestBtn" class="btn small brightness-test-btn" type="button">Test</button>
+                  </span>
+                </label>
+                <span id="settingsNightBrightnessTestStatus" class="meta brightness-test-status" role="status" hidden></span>
+              </div>
+            </div>
+            <div class="display-settings-group form">
+              <h3 id="settingsSaverHeading" class="settings-subheading">Display protection</h3>
+              <div class="row display-fields">
+                <label class="field-slider"><span id="settingsHardwareDimBrightnessLabel">Reduced brightness</span>
+                  <span class="range-field">
+                    <input id="settingsHardwareDimBrightness" aria-labelledby="settingsHardwareDimBrightnessLabel" type="range" min="1" max="100" step="1" />
+                    <output id="settingsHardwareDimBrightnessValue" for="settingsHardwareDimBrightness">50%</output>
+                    <button id="settingsDimBrightnessTestBtn" class="btn small brightness-test-btn" type="button">Test</button>
+                  </span>
+                </label>
+                <span id="settingsDimBrightnessTestStatus" class="meta brightness-test-status" role="status" hidden></span>
+                <label class="field-sm display-short-field"><span id="settingsHardwareDimTimeoutLabel">Reduce after</span>
+                  <input id="settingsHardwareDimTimeout" type="number" min="5" max="3600" step="1" />
+                </label>
+                <label class="field-md"><span id="settingsSaverModeLabel">After inactivity</span>
+                  <select id="settingsSaverMode">
+                    <option value="disabled">Brightness settings only</option>
+                    <option value="off">Turn display off</option>
+                    <option value="weather">Moving weather, then off</option>
+                    <option value="pages">Cycle pages, then off</option>
+                  </select>
+                </label>
+                <div id="settingsSaverTiming" class="display-short-field">
+                  <label class="field-sm"><span id="settingsSaverTimeoutLabel">Start after (minutes)</span>
+                    <input id="settingsSaverTimeout" type="number" min="1" max="120" step="1" value="10" />
+                  </label>
+                </div>
+              </div>
+              <div id="settingsSaverWeatherFields" class="row display-fields">
+                <label><span id="settingsSaverWeatherEntityLabel">Weather entity</span>
+                  <span class="entity-input-row">
+                    <input id="settingsSaverWeatherEntity" type="text" list="settingsWeatherEntityOptions" placeholder="weather.home" maxlength="95" />
+                    <button id="settingsSaverWeatherSearchBtn" class="btn small entity-picker-btn" type="button">Search</button>
+                  </span>
+                </label>
+                <label class="field-sm"><span id="settingsSaverWeatherMinutesLabel">Show weather for (minutes)</span>
+                  <input id="settingsSaverWeatherMinutes" type="number" min="1" max="120" step="1" value="30" />
+                </label>
+                <label class="field-slider"><span id="settingsSaverWeatherBrightnessLabel">Weather brightness</span>
+                  <span class="range-field">
+                    <input id="settingsSaverWeatherBrightness" type="range" min="1" max="30" step="1" value="5" />
+                    <output id="settingsSaverWeatherBrightnessValue" for="settingsSaverWeatherBrightness">5%</output>
+                  </span>
+                </label>
+              </div>
+              <div id="settingsSaverPagesFields" class="row display-fields">
+                <label class="field-sm"><span id="settingsSaverPageIntervalLabel">Switch page every (minutes)</span>
+                  <input id="settingsSaverPageInterval" type="number" min="1" max="30" step="1" value="5" />
+                </label>
+                <label class="field-sm"><span id="settingsSaverPagesMinutesLabel">Cycle pages for (minutes)</span>
+                  <input id="settingsSaverPagesMinutes" type="number" min="1" max="120" step="1" value="30" />
+                </label>
+                <label class="field-md"><span id="settingsSaverPageWakeLabel">When woken</span>
+                  <select id="settingsSaverPageWake">
+                    <option value="home">Show the first page</option>
+                    <option value="stay">Stay on the displayed page</option>
+                  </select>
+                </label>
+              </div>
+              <div class="meta" id="settingsSaverHint"></div>
+              <details id="settingsSaverAdvanced" class="display-refinements" hidden>
+                <summary id="settingsSaverAdvancedSummary">More options</summary>
+                <div class="form">
+                  <label class="row" id="settingsSaverPixelRefreshRow">
+                    <input id="settingsSaverPixelRefresh" type="checkbox" checked />
+                    <span id="settingsSaverPixelRefreshLabel">Move LCD pixels while the display is off</span>
+                  </label>
+                </div>
+              </details>
+            </div>
+            <div class="display-settings-group form">
+              <h3 id="settingsCameraHeading" class="settings-subheading">Camera automation</h3>
+              <label class="row">
+                <input id="settingsHardwareAutoBrightness" type="checkbox" />
+                <span id="settingsHardwareAutoBrightnessLabel">Automatic brightness (built-in camera)</span>
+              </label>
+              <div class="meta" id="settingsCameraBrightnessStatus"></div>
+              <label class="row">
+                <input id="settingsHardwarePresenceWake" type="checkbox" />
+                <span id="settingsHardwarePresenceWakeLabel">Wake the display when someone approaches (built-in camera)</span>
+              </label>
+              <div id="settingsPresenceFields" class="form display-dependent-fields" hidden>
+                <label class="row" id="settingsNightPresenceRow">
+                  <input id="settingsHardwareNightPresenceWake" type="checkbox" />
+                  <span id="settingsHardwareNightPresenceWakeLabel">Also wake at night</span>
+                </label>
+                <details class="display-refinements">
+                  <summary id="settingsCameraAdvancedSummary">Sensitivity &amp; test</summary>
+                  <div class="form">
+                    <label class="field-slider"><span id="settingsHardwarePresenceSensitivityLabel">Presence sensitivity</span>
+                      <span class="range-field">
+                        <input id="settingsHardwarePresenceSensitivity" type="range" min="1" max="10" step="1" />
+                        <output id="settingsHardwarePresenceSensitivityValue" for="settingsHardwarePresenceSensitivity">5</output>
+                      </span>
+                    </label>
+                    <button id="settingsCameraTestBtn" class="btn small" type="button">Test now (30s)</button>
+                    <div class="meta" id="settingsCameraTestStatus"></div>
+                  </div>
+                </details>
+              </div>
+              <div class="meta" id="settingsHardwareCameraHint"></div>
+            </div>
+            <div id="settingsRotationGroup" class="display-settings-group form" hidden>
+              <h3 id="settingsRotationHeading" class="settings-subheading">Orientation</h3>
+              <label class="row" id="settingsRotationRow" hidden>
+                <input id="settingsHardwareAutoRotation" type="checkbox" />
+                <span id="settingsHardwareAutoRotationLabel">Rotate automatically (Tab5)</span>
+              </label>
+            </div>
+          </div>
+          <div class="display-settings-actions">
+            <button id="settingsHardwareResetBtn" class="btn small" type="button">Reset display settings</button>
+            <span id="settingsDisplayLiveHint" class="meta">Changes are saved automatically.</span>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="settingsAppearanceHeading">Appearance</h2>
+          <div class="form">
+            <div id="settingsAppearanceHint" class="meta">How buttons, bars and tiles are drawn. Independent of the theme colors below. Saving reboots the panel.</div>
+            <div id="settingsUiStyleCards" class="style-cards" role="radiogroup"></div>
+            <label class="visually-hidden"><span id="settingsUiStyleLabel">Appearance</span>
+              <select id="settingsUiStyle">
+                <option value="flat">Flat</option>
+                <option value="glow">Glow</option>
+                <option value="glass">Glass</option>
+                <option value="matte">Matte</option>
+              </select>
+            </label>
+            <div id="settingsUiStyleInfo" class="meta"></div>
+            <button id="settingsAppearanceResetBtn" class="btn small" type="button">Reset to defaults</button>
+          </div>
+
+          <h2 id="settingsThemeSubheading">Colour theme</h2>
+          <div class="form">
+            <label class="field-md"><span id="settingsThemeSelectLabel">Active theme</span>
+              <select id="settingsThemeSelect"></select>
+            </label>
+            <div class="row">
+              <button id="settingsThemeApplyBtn" class="btn small" type="button">Apply</button>
+              <button id="settingsThemeExportBtn" class="btn small" type="button">Export JSON</button>
+              <button id="settingsThemeDeleteBtn" class="btn small danger" type="button">Delete custom</button>
+            </div>
+            <div class="theme-preview-wrap">
+              <div id="settingsThemePreviewLabel" class="meta">Preview</div>
+              <canvas id="settingsThemePreviewCanvas" width="360" height="220"></canvas>
+            </div>
+            <div id="settingsThemeInfo" class="meta"></div>
+            <details id="settingsThemeEditor" class="info-details theme-editor">
+              <summary id="settingsThemeEditorSummary">Edit colors, create or import a theme</summary>
+              <label><span id="settingsThemeImportLabel">Import theme JSON</span>
+                <input id="settingsThemeImportFile" type="file" accept="application/json,.json" />
+              </label>
+              <button id="settingsThemeImportBtn" class="btn small" type="button">Import</button>
+              <hr />
+              <label class="field-md"><span id="settingsThemeNewIdLabel">Custom theme ID</span>
+                <input id="settingsThemeNewId" type="text" maxlength="31" placeholder="my_theme" />
+              </label>
+              <label class="field-md"><span id="settingsThemeNewNameLabel">Custom theme name</span>
+                <input id="settingsThemeNewName" type="text" maxlength="63" placeholder="My theme" />
+              </label>
+              <div id="settingsThemeBase" class="meta">Base palette: loaded from active theme. Edit colors below, then "Save as custom".</div>
+              <div id="settingsThemeColors" class="theme-color-grid"></div>
+              <div class="row">
+                <button id="settingsThemeSaveCustomBtn" class="btn" type="button">Save as custom</button>
+                <button id="settingsThemeResetBtn" class="btn small" type="button">Reset to active</button>
+              </div>
+            </details>
+          </div>
+
+        </section>
+
+        <section>
+          <h2 id="settingsTopbarHeading">Top bar</h2>
+          <div class="form">
+            <div class="row topbar-fields">
+            <label><span id="settingsTopbarSlot1Label">Left item 1</span>
+              <select id="settingsTopbarSlot1">
+                <option value="date">Date</option>
+                <option value="weather">Weather</option>
+                <option value="stock">Stock</option>
+                <option value="">None</option>
+              </select>
+            </label>
+            <label><span id="settingsTopbarSlot2Label">Left item 2</span>
+              <select id="settingsTopbarSlot2">
+                <option value="">None</option>
+                <option value="date">Date</option>
+                <option value="weather">Weather</option>
+                <option value="stock">Stock</option>
+              </select>
+            </label>
+            <label id="settingsTopbarSlot3Wrap" hidden><span id="settingsTopbarSlot3Label">Left item 3</span>
+              <select id="settingsTopbarSlot3">
+                <option value="">None</option>
+                <option value="date">Date</option>
+                <option value="weather">Weather</option>
+                <option value="stock">Stock</option>
+              </select>
+            </label>
+            </div>
+            <div class="row topbar-fields topbar-entities">
+            <label><span id="settingsTopbarWeatherEntityLabel">Weather entity</span>
+              <span class="entity-input-row">
+                <input id="settingsTopbarWeatherEntity" type="text" list="settingsWeatherEntityOptions" placeholder="weather.home" maxlength="95" />
+                <button id="settingsTopbarWeatherSearchBtn" class="btn small entity-picker-btn" type="button">Search</button>
+              </span>
+              <datalist id="settingsWeatherEntityOptions"></datalist>
+            </label>
+            <label><span id="settingsTopbarStockEntityLabel">Stock sensor</span>
+              <span class="entity-input-row">
+                <input id="settingsTopbarStockEntity" type="text" list="settingsStockEntityOptions" placeholder="sensor.yahoofinance_vwce_de" maxlength="95" />
+                <button id="settingsTopbarStockSearchBtn" class="btn small entity-picker-btn" type="button">Search</button>
+              </span>
+            </label>
+            </div>
+            <datalist id="settingsStockEntityOptions"></datalist>
+            <div id="settingsTopbarInfo" class="meta"></div>
+            <button id="settingsTopbarResetBtn" class="btn small" type="button">Reset to defaults</button>
+          </div>
+
+        </section>
+
+        <section>
+
+
+          <h2 id="settingsOtaHeading">Firmware Update</h2>
+          <div class="form">
+            <div class="row">
+              <button id="checkUpdateNowBtn" class="btn small" type="button">Check for updates</button>
+            </div>
+            <div id="settingsOtaUpdateCheck" class="meta" hidden></div>
+            <label class="row">
+              <input id="settingsOtaUpdateCheckEnabled" type="checkbox" checked />
+              <span id="settingsOtaUpdateCheckEnabledLabel">Check daily for new firmware</span>
+            </label>
+            <label class="row">
+              <input id="settingsOtaIncludePrereleases" type="checkbox" />
+              <span id="settingsOtaIncludePrereleasesLabel">Include pre-releases (release candidates)</span>
+            </label>
+            <label class="row">
+              <input id="settingsOtaAutoInstall" type="checkbox" />
+              <span id="settingsOtaAutoInstallLabel">Install updates automatically at night (03:00-04:00)</span>
+            </label>
+            <div id="settingsOtaAutoInstallHint" class="meta"></div>
+            <div id="settingsOtaAutoInstallStatus" class="meta" hidden></div>
+            <div class="ota-progress hidden" aria-hidden="true">
+              <div id="settingsOtaProgressBar" class="ota-progress-bar"></div>
+            </div>
+            <div id="settingsOtaInfo" class="meta"></div>
+            <details id="settingsOtaManual" class="ota-manual">
+              <summary id="settingsOtaManualSummary">Install manually</summary>
+              <div class="form">
+                <label><span id="settingsOtaUrlLabel">OTA URL</span>
+                  <input id="settingsOtaUrl" type="url" placeholder="https://github.com/andre68723/BETTA-HA-PANEL/releases/latest/download/..." maxlength="511" />
+                </label>
+                <button id="startOtaUrlBtn" class="btn small field-narrow" type="button">Flash from URL</button>
+                <label class="field-narrow"><span id="settingsOtaFileLabel">OTA .bin File</span>
+                  <input id="settingsOtaFile" type="file" accept=".bin,application/octet-stream" />
+                </label>
+                <button id="uploadOtaBtn" class="btn field-narrow" type="button">Upload + Flash</button>
+              </div>
+            </details>
+          </div>
+
+          <div id="settingsFirmwareInfoBox" class="info-box">
+            <h2 id="settingsFirmwareInfoHeading">Firmware Info</h2>
+            <div id="settingsFirmwareInfoMeta" class="meta"></div>
+            <details id="settingsFirmwareInfoDetails" class="firmware-info-details">
+            <summary id="settingsFirmwareInfoSummary">Components</summary>
+            <table id="settingsFirmwareInfoTable" class="firmware-info-table">
+              <thead>
+                <tr>
+                  <th id="settingsFirmwareInfoColComponent">Component</th>
+                  <th id="settingsFirmwareInfoColVersion">Version</th>
+                  <th id="settingsFirmwareInfoColDescription">Description</th>
+                </tr>
+              </thead>
+              <tbody id="settingsFirmwareInfoBody"></tbody>
+            </table>
+            </details>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="settingsSoundHeading">Sound</h2>
+          <div class="form" id="settingsSoundControls">
+            <label class="row"><input id="settingsSoundEnabled" type="checkbox" /><span id="settingsSoundEnabledLabel">Play alert and notification sounds</span></label>
+            <label class="field-slider"><span id="settingsSoundVolumeLabel">Volume</span><span class="range-field">
+              <input id="settingsSoundVolume" type="range" min="0" max="100" value="40" />
+              <output id="settingsSoundVolumeValue" for="settingsSoundVolume">40%</output>
+            </span></label>
+            <label class="row"><input id="settingsSoundNightMute" type="checkbox" checked /><span id="settingsSoundNightMuteLabel">Mute during night mode</span></label>
+            <button id="settingsSoundTestBtn" class="btn small" type="button">Test chime</button>
+            <div class="meta" id="settingsSoundHint">The test uses this volume, even if sounds are disabled or muted at night.</div>
+            <div class="meta" id="settingsSoundStatus"></div>
+          </div>
+        </section>
+        <section>
+          <h2 id="settingsAlertsHeading">Alerts</h2>
+          <div class="form">
+            <div class="alerts-intro">
+              <div class="meta" id="settingsAlertsInfo"></div>
+              <figure class="alerts-example">
+                <a href="img/doorbell-example.png" target="_blank" rel="noopener"><img src="img/doorbell-example.png" width="720" height="720" loading="lazy" alt="Doorbell alert with camera image and Open door button" /></a>
+                <figcaption id="settingsAlertsExample" class="meta">Gallery example (LVGL simulator)</figcaption>
+              </figure>
+            </div>
+            <div id="settingsAlertsList"></div>
+            <div class="row">
+              <button id="settingsAlertsAdd" type="button" class="btn small">Add alert</button>
+              <button id="settingsAlertsSave" type="button" class="btn small primary">Save alerts</button>
+            </div>
+            <div class="meta" id="settingsAlertsSaveNote"></div>
+            <div class="meta" id="settingsAlertsMsg"></div>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="settingsBackupHeading">Backup</h2>
+          <div class="form">
+            <div class="warning-box" id="settingsBackupInfo"></div>
+            <div class="row">
+              <button id="settingsBackupDownload" type="button" class="btn small primary">Download backup</button>
+            </div>
+            <label class="field-lg"><span id="settingsBackupFileLabel">Restore from a backup file</span>
+              <input id="settingsBackupFile" type="file" accept="application/json,.json" />
+            </label>
+            <div class="row">
+              <button id="settingsBackupRestore" type="button" class="btn small">Restore backup</button>
+            </div>
+            <div class="meta" id="settingsBackupMsg"></div>
+          </div>
+
+          <h2 id="settingsSecurityHeading">Admin password</h2>
+          <div class="form">
+            <div class="meta no-shorten" id="settingsSecurityStatus"></div>
+            <div class="meta no-shorten" id="settingsSecurityHint"></div>
+            <label class="field-md"><span id="settingsSecurityNewLabel">New password</span>
+              <input id="settingsSecurityNew" type="password" autocomplete="new-password" maxlength="64" />
+            </label>
+            <label class="field-md"><span id="settingsSecurityRepeatLabel">Repeat password</span>
+              <input id="settingsSecurityRepeat" type="password" autocomplete="new-password" maxlength="64" />
+            </label>
+            <div class="row">
+              <button id="settingsSecuritySet" type="button" class="btn small primary">Set password</button>
+              <button id="settingsSecurityClear" type="button" class="btn small danger">Remove password</button>
+            </div>
+            <div class="meta" id="settingsSecurityMsg"></div>
+          </div>
+
+          <h2 id="settingsFactoryHeading">Factory reset</h2>
+          <div class="form">
+            <div class="warning-box" id="settingsFactoryWarning"></div>
+            <div class="row">
+              <button id="settingsFactoryBtn" type="button" class="btn small danger">Erase all settings and restart</button>
+            </div>
+            <div class="meta" id="settingsFactoryMsg"></div>
+          </div>
+        </section>
+
+        <section>
+          <h2 id="settingsActionsHeading">Settings Actions</h2>
+          <div class="row">
+            <button id="reloadSettingsBtn" class="btn">Reload Settings</button>
+            <button id="saveSettingsBtn" class="btn primary">Save</button>
+          </div>
+          <div id="settingsActionsHint" class="meta">Many settings apply immediately. Save applies the remaining changes and restarts the device if needed.</div>
+        </section>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <div class="workspace-top">
+        <h2 id="canvasTitle">Canvas</h2>
+        <div id="status" class="status" role="status">Idle</div>
+        <div class="layout-text-size layout-toolbar-only">
+          <label for="settingsUiTextStep" id="settingsUiTextStepLabel">Text size</label>
+          <select id="settingsUiTextStep" aria-describedby="settingsUiTextStepInfo">
+            <option value="0">Standard</option>
+            <option value="1">Larger</option>
+            <option value="2">Largest</option>
+          </select>
+          <details id="layoutTextSizeDetails">
+            <summary id="layoutTextSizeInfoBtn" title="Text sizes on this panel" aria-label="Text sizes on this panel">&#9432;</summary>
+            <div id="settingsUiTextStepInfo" class="meta no-shorten" aria-live="polite"></div>
+          </details>
+        </div>
+        <div class="workspace-top-right">
+          <span id="unsavedBadge" class="unsaved-badge hidden" role="status">Unsaved changes</span>
+          <button id="stackedSaveBtn" class="btn small primary stacked-only" type="button">Save</button>
+          <div class="layout-toolbar-actions layout-toolbar-only">
+            <button id="layoutUndoBtn" class="btn small toolbar-icon" type="button" title="Undo (Ctrl/Cmd+Z)" aria-label="Undo (Ctrl/Cmd+Z)" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 4 10l5 5M4 10h10a6 6 0 0 1 6 6v3"></path></svg>
+            </button>
+            <button id="layoutRedoBtn" class="btn small toolbar-icon" type="button" title="Redo (Ctrl/Cmd+Shift+Z)" aria-label="Redo (Ctrl/Cmd+Shift+Z)" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 5 5-5 5M20 10H10a6 6 0 0 0-6 6v3"></path></svg>
+            </button>
+            <button id="reloadBtn" class="btn small toolbar-icon" type="button" title="Reload" aria-label="Reload">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"></path><path d="M20 12a8 8 0 1 0-2.3 5.7M20 7l-2.3-2.3"></path></svg>
+            </button>
+            <button id="saveBtn" class="btn small primary toolbar-icon" type="button" title="Save" aria-label="Save">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z"></path><path d="M7 3v6h9V3M7 21v-8h10v8"></path></svg>
+            </button>
+            <div class="dropdown">
+              <button id="layoutJsonMenuBtn" class="btn small toolbar-icon dropdown-toggle" type="button" title="JSON: import and export" aria-label="JSON: import and export" aria-expanded="false" aria-controls="layoutJsonMenu" aria-haspopup="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8ZM14 2v6h6M10 12H9v2l-1 1 1 1v2h1M14 12h1v2l1 1-1 1v2h-1"></path></svg>
+              </button>
+              <div id="layoutJsonMenu" class="dropdown-menu hidden">
+                <button id="exportBtn" class="btn" type="button">Export</button>
+                <details class="actions-import">
+                  <summary id="layoutImportSummary">Import JSON</summary>
+                  <input id="importFile" type="file" accept="application/json" aria-label="Import JSON" />
+                  <textarea id="jsonPaste" aria-label="Paste layout JSON here" placeholder="Paste layout JSON here"></textarea>
+                  <button id="importBtn" class="btn" type="button">Import JSON</button>
+                </details>
+              </div>
+            </div>
+          </div>
+          <button id="themeToggleBtn" class="btn small theme-toggle" type="button" title="Dark / light" aria-label="Dark / light">&#9788;</button>
+        </div>
+      </div>
+      <div id="restoreNoticeBanner" class="ha-diagnostics-banner" hidden>
+        <div class="ha-diagnostics-banner__icon" aria-hidden="true">&#9888;</div>
+        <div class="ha-diagnostics-banner__body">
+          <div class="ha-diagnostics-banner__title" id="restoreNoticeTitle"></div>
+          <ul class="ha-diagnostics-banner__list" id="restoreNoticeList"></ul>
+          <div class="ha-diagnostics-banner__hint" id="restoreNoticeHint"></div>
+        </div>
+      </div>
+      <div id="safeModeBanner" class="ha-diagnostics-banner" hidden>
+        <div class="ha-diagnostics-banner__icon" aria-hidden="true">&#9888;</div>
+        <div class="ha-diagnostics-banner__body">
+          <div class="ha-diagnostics-banner__title" id="safeModeTitle"></div>
+          <div class="ha-diagnostics-banner__hint" id="safeModeHint"></div>
+        </div>
+      </div>
+      <div id="haAuthBanner" class="ha-diagnostics-banner" hidden>
+        <div class="ha-diagnostics-banner__icon" aria-hidden="true">&#9888;</div>
+        <div class="ha-diagnostics-banner__body">
+          <div class="ha-diagnostics-banner__title" id="haAuthTitle"></div>
+          <div class="ha-diagnostics-banner__hint" id="haAuthHint"></div>
+        </div>
+      </div>
+      <div id="crashBanner" class="ha-diagnostics-banner" hidden>
+        <div class="ha-diagnostics-banner__icon" aria-hidden="true">&#9888;</div>
+        <div class="ha-diagnostics-banner__body">
+          <div class="ha-diagnostics-banner__title" id="crashBannerTitle"></div>
+          <div class="ha-diagnostics-banner__hint" id="crashBannerHint"></div>
+        </div>
+        <button type="button" class="btn small" id="crashBannerOpen">Show crash report</button>
+        <button type="button" class="ha-diagnostics-banner__close" id="crashBannerDismiss" aria-label="Dismiss">&times;</button>
+      </div>
+      <div id="updateBanner" class="ha-diagnostics-banner update-banner" hidden>
+        <div class="ha-diagnostics-banner__icon" aria-hidden="true">&#8679;</div>
+        <div class="ha-diagnostics-banner__body">
+          <div class="ha-diagnostics-banner__title" id="updateBannerTitle"></div>
+          <div class="ha-diagnostics-banner__hint" id="updateBannerHint"></div>
+        </div>
+        <button type="button" class="btn small" id="updateBannerOpen">Show update</button>
+        <button type="button" class="ha-diagnostics-banner__close" id="updateBannerDismiss" aria-label="Dismiss">&times;</button>
+      </div>
+      <div id="haDiagnosticsBanner" class="ha-diagnostics-banner" hidden>
+        <div class="ha-diagnostics-banner__icon" aria-hidden="true">&#9888;</div>
+        <div class="ha-diagnostics-banner__body">
+          <div class="ha-diagnostics-banner__title" id="haDiagnosticsTitle">
+            Some entities in this layout were not found in Home Assistant
+          </div>
+          <ul class="ha-diagnostics-banner__list" id="haDiagnosticsList"></ul>
+          <div class="ha-diagnostics-banner__hint" id="haDiagnosticsHint">
+            Open the affected widget, pick a valid entity and save the layout.
+          </div>
+        </div>
+        <button type="button" class="ha-diagnostics-banner__close" id="haDiagnosticsDismiss" aria-label="Dismiss">&times;</button>
+      </div>
+      <div class="workspace-body">
+        <div class="canvas-wrap">
+          <div id="canvasStage" class="canvas-stage">
+            <div id="canvas" class="canvas"></div>
+          </div>
+        </div>
+        <aside class="actions-panel">
+        <section id="pageInspectorSection" class="panel-section">
+          <div class="section-head">
+            <h2 id="pageInspectorHeading">Page</h2>
+          </div>
+          <div class="section-body">
+            <div class="meta" id="pageInspectorHint"></div>
+            <div class="form">
+              <label class="field-md"><span id="pageIconLabel">Navigation icon</span>
+                <select id="pageIconSelect"></select>
+              </label>
+              <div class="meta" id="pageIconHint"></div>
+              <div class="meta warn" id="pageNavWarning" hidden></div>
+              <label><span id="pageTitleLabel">Page title</span>
+                <div class="entity-input-row">
+                  <input id="pageTitleInput" type="text" />
+                  <button id="applyPageBtn" class="btn small" type="button">Apply page title</button>
+                </div>
+              </label>
+              <div id="housePageOptions" class="hidden">
+                <h2 id="houseHeading">House page</h2>
+                <details id="houseInfo" class="info-details">
+                  <summary id="houseInfoTitle">How the house page works</summary>
+                  <ul id="houseInfoList"></ul>
+                </details>
+                <button id="houseImportBtn" class="btn small" type="button">Import rooms from Home Assistant</button>
+                <div class="meta" id="houseStatus"></div>
+                <div id="houseRoomList"></div>
+              </div>
               <div id="energyPageOptions" class="energy-page-options hidden">
                 <h2 id="energyPageHeading">Energy Page</h2>
                 <div class="meta" id="energyPageHint">Choose the data source for the dedicated energy dashboard page.</div>
@@ -105,12 +963,16 @@
                   </select>
                 </label>
                 <div class="meta" id="energySourceHint">Uses the Energy dashboard configured in Home Assistant.</div>
+                <label><span id="energyDetailsLabel">Seven-day details</span>
+                  <select id="energyDetails">
+                    <option id="energyDetailsPopupOption" value="popup">Popup</option>
+                    <option id="energyDetailsSideOption" value="side">Right-hand panel</option>
+                  </select>
+                </label>
+                <div class="meta" id="energyDetailsHint">Tap Gas, Water or Solar for the last seven days. The right-hand panel needs a wide display; narrower ones open a popup.</div>
                 <div id="energyManualOptions" class="energy-manual-options hidden">
                   <label><span id="energyHomePowerLabel">Home power</span>
                     <input id="energyHomePower" type="text" list="energyEntityOptions" placeholder="sensor.home_power" />
-                  </label>
-                  <label><span id="energySolarPowerLabel">Solar power</span>
-                    <input id="energySolarPower" type="text" list="energyEntityOptions" placeholder="sensor.solar_power" />
                   </label>
                   <label><span id="energyGridPowerLabel">Grid power (signed)</span>
                     <input id="energyGridPower" type="text" list="energyEntityOptions" placeholder="sensor.grid_power" />
@@ -134,78 +996,30 @@
                       <input id="energyBatteryDischarge" type="text" list="energyEntityOptions" placeholder="sensor.battery_discharge_power" />
                     </label>
                   </div>
-                  <label><span id="energyBatterySocLabel">Battery state of charge</span>
-                    <input id="energyBatterySoc" type="text" list="energyEntityOptions" placeholder="sensor.battery_soc" />
+                  <label><span id="energyGasLabel">Gas</span>
+                    <input id="energyGas" type="text" list="energyEntityOptions" placeholder="sensor.gas_meter" />
                   </label>
+                  <label><span id="energyWaterLabel">Water</span>
+                    <input id="energyWater" type="text" list="energyEntityOptions" placeholder="sensor.water_meter" />
+                  </label>
+                  <div class="meta" id="energyGasWaterHint">Optional. Any sensor with a number (meter reading or flow); shown with its own unit.</div>
                 </div>
+                <label><span id="energySolarPowerLabel">Solar power</span>
+                <input id="energySolarPower" type="text" list="energyEntityOptions" placeholder="sensor.solar_power" />
+                </label>
+                <div class="meta" id="energySolarPowerHint">Optional with the Home Assistant source: current PV production in W, shown next to the solar node.</div>
+                <label><span id="energyBatterySocLabel">Battery state of charge</span>
+                  <input id="energyBatterySoc" type="text" list="energyEntityOptions" placeholder="sensor.battery_soc" />
+                </label>
+                <div class="meta" id="energyBatterySocHint">Optional. Shown next to the battery; not part of the Home Assistant energy dashboard.</div>
                 <button id="applyEnergyPageBtn" class="btn" type="button">Apply energy config</button>
               </div>
             </div>
           </div>
-          <div id="pagesMiniList" class="section-mini hidden"></div>
         </section>
-
-        <section id="widgetsSection" class="panel-section collapsible">
-          <div class="section-head">
-            <h2 id="widgetsHeading">Widgets</h2>
-            <div class="row">
-              <button id="openSetupWizardBtn" class="btn small primary" type="button">Quick Setup</button>
-              <div class="dropdown">
-                <button id="addWidgetMenuBtn" class="btn small primary dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">+ Add ▾</button>
-                <div id="addWidgetMenu" class="dropdown-menu hidden" role="menu">
-                  <div class="dropdown-group">
-                    <div class="dropdown-group-label">Control</div>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addButtonBtn">Button</button>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addSliderBtn">Slider</button>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addLightTileBtn">Light Tile</button>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addHeatingTileBtn">Heating Tile</button>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addMediaPlayerBtn">Media Player</button>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addRoborockTileBtn">Roborock</button>
-                  </div>
-                  <div class="dropdown-group">
-                    <div class="dropdown-group-label">Data</div>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addSensorBtn">Sensor</button>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addGraphBtn">Graph</button>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addTodoListBtn">Todo List</button>
-                  </div>
-                  <div class="dropdown-group">
-                    <div class="dropdown-group-label">Info</div>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addWeatherTileBtn">Weather</button>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addWeather3DayBtn">Weather Forecast</button>
-                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addEmptyTileBtn">Empty Tile</button>
-                  </div>
-                </div>
-              </div>
-              <button id="toggleWidgetsSection" class="btn small collapse-toggle" type="button" aria-expanded="true"
-                aria-controls="widgetsSectionBody">-</button>
-            </div>
-          </div>
-          <div id="widgetsSectionBody" class="section-body">
-            <!-- Hidden legacy add buttons (kept for event-handler compatibility) -->
-            <div class="legacy-hidden">
-              <button id="addSensorBtn" type="button">+ Sensor</button>
-              <button id="addButtonBtn" type="button">+ Button</button>
-              <button id="addSliderBtn" type="button">+ Slider</button>
-              <button id="addGraphBtn" type="button">+ Graph</button>
-              <button id="addEmptyTileBtn" type="button">+ Empty Tile</button>
-              <button id="addLightTileBtn" type="button">+ Light Tile</button>
-              <button id="addHeatingTileBtn" type="button">+ Heating Tile</button>
-              <button id="addWeatherTileBtn" type="button">+ Weather</button>
-              <button id="addWeather3DayBtn" type="button">+ Weather Forecast</button>
-              <button id="addTodoListBtn" type="button">+ Todo List</button>
-              <button id="addMediaPlayerBtn" type="button">+ Media Player</button>
-              <button id="addRoborockTileBtn" type="button">+ Roborock</button>
-              <button id="deleteWidgetBtn" type="button">Delete Widget</button>
-            </div>
-            <ul id="widgetsList" class="list"></ul>
-          </div>
-        </section>
-
         <section id="inspectorSection" class="panel-section collapsible">
           <div class="section-head">
             <h2 id="inspectorHeading">Inspector</h2>
-            <button id="toggleInspectorSection" class="btn small collapse-toggle" type="button" aria-expanded="true"
-              aria-controls="inspectorSectionBody">-</button>
           </div>
           <div id="inspectorSectionBody" class="section-body">
             <div class="form">
@@ -213,34 +1027,365 @@
               <details class="inspector-group" open>
                 <summary><span id="inspectorGroupDataLabel">Data</span></summary>
                 <div class="inspector-group-body">
-                  <label><span id="fTitleLabel">Title</span> <input id="fTitle" type="text" /></label>
+                  <label><span id="fTitleLabel">Name</span> <input id="fTitle" type="text" /></label>
+                    <label class="row">
+                      <input id="fShowName" type="checkbox" checked />
+                      <span id="fShowNameLabel">Show name</span>
+                    </label>
                   <select id="fType" hidden>
                     <option value="sensor">sensor</option>
                     <option value="button">button</option>
                     <option value="slider">slider</option>
+                    <option value="gauge">gauge</option>
                     <option value="graph">graph</option>
                     <option value="empty_tile">empty_tile</option>
                     <option value="light_tile">light_tile</option>
                     <option value="heating_tile">heating_tile</option>
                     <option value="weather_tile">weather_tile</option>
                     <option value="weather_3day">weather_3day</option>
+                    <option value="solar_forecast">solar_forecast</option>
+                    <option value="car_widget">car_widget</option>
+                    <option value="wallbox_evcc">wallbox_evcc</option>
+<option value="bambu_printer">bambu_printer</option>
                     <option value="todo_list">todo_list</option>
                     <option value="media_player">media_player</option>
-                    <option value="roborock_tile">roborock_tile</option>
+                    <option value="sonos_favorites">sonos_favorites</option>
+                    <option value="vacuum_tile">vacuum_tile</option>
+                    <option value="cover_tile">cover_tile</option>
+                    <option value="climate_tile">climate_tile</option>
+                    <option value="room_tile">room_tile</option>
+                    <option value="scene_tile">scene_tile</option>
+                    <option value="binary_tile">binary_tile</option>
+                    <option value="contact_tile">contact_tile</option>
+                    <option value="camera_tile">camera_tile</option>
+                    <option value="fan_tile">fan_tile</option>
                   </select>
                   <label id="fEntityWrap"><span id="fEntityLabel">Entity</span>
-                    <input id="fEntity" type="text" list="entityOptions" />
+                    <div class="entity-input-row">
+                      <input id="fEntity" type="text" list="entityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="primary">Search</button>
+                    </div>
                     <datalist id="entityOptions"></datalist>
                   </label>
                   <label id="fSecondaryEntityWrap" class="hidden"><span id="fSecondaryEntityLabel">Actual entity (sensor)</span>
-                    <input id="fSecondaryEntity" type="text" list="sensorEntityOptions" />
+                    <div class="entity-input-row">
+                      <input id="fSecondaryEntity" type="text" list="sensorEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="secondary">Search</button>
+                    </div>
                     <datalist id="sensorEntityOptions"></datalist>
+                    <datalist id="tertiaryEntityOptions"></datalist>
+                    <!-- Own list for the Haus page's room list (js/canvas.js renderHouseOptions): sensorEntityOptions
+                         above is repopulated from the currently selected widget's secondary-entity config, which is
+                         empty while no widget is selected (the normal state while editing that room list), so it
+                         cannot be reused here without going empty. -->
+                    <datalist id="houseSensorOptions"></datalist>
+                    <div id="weatherReportHint" class="field-hint hidden"></div>
+                    <div id="sonosFavoritesHint" class="field-hint hidden">The main entity is the Sonos media player. This field is usually sensor.sonos_favorites.</div>
                   </label>
+                  <label id="fTertiaryEntityWrap" class="hidden"><span id="fTertiaryEntityLabel">Range entity (sensor)</span>
+                    <div class="entity-input-row">
+                      <input id="fTertiaryEntity" type="text" list="tertiaryEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="tertiary">Search</button>
+                    </div>
+                  </label>
+                  <div id="vacuumOptions" class="hidden">
+                    <label><span id="fVacuumDefaultModeLabel">Default cleaning program</span>
+                      <select id="fVacuumDefaultMode"></select>
+                    </label>
+                    <div class="meta" id="fVacuumDefaultModeHint"></div>
+                    <label><span id="fVacuumBatteryLabel">Battery sensor (optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fVacuumBattery" type="text" list="bambuSensorOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="vacuum_battery">Search</button>
+                      </div>
+                    </label>
+                  </div>
+                  <div id="binaryOptions" class="hidden">
+                    <label><span id="fBinaryDisplayModeLabel">Display</span>
+                      <select id="fBinaryDisplayMode">
+                        <option value="">State and time since</option>
+                        <option value="since">Time since the change only</option>
+                        <option value="icon">Icon only</option>
+                        <option value="door">Door / window pictogram</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div id="roomEntitiesFields" class="hidden">
+                    <label><span id="fRoomEntitiesLabel">Room entities</span>
+                      <div class="entity-input-row">
+                        <textarea id="fRoomEntities" rows="6" spellcheck="false" placeholder="sensor.living_humidity&#10;binary_sensor.living_window&#10;light.living"></textarea>
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="room_entities">Search</button>
+                      </div>
+                    </label>
+                    <div class="meta" id="fRoomEntitiesHint"></div>
+                    <label><span id="fRoomExtraModeLabel">Extra field</span>
+                      <select id="fRoomExtraMode">
+                        <option id="fRoomExtraModeDefault" value="default">Default</option>
+                        <option id="fRoomExtraModeHumidity" value="humidity">Humidity</option>
+                        <option id="fRoomExtraModeCover" value="cover">Cover</option>
+                        <option id="fRoomExtraModeMedia" value="media_player">Media player</option>
+                      </select>
+                    </label>
+                    <label id="fRoomExtraEntityWrap" class="hidden"><span id="fRoomExtraEntityLabel">Entity</span>
+                      <div class="entity-input-row">
+                        <select id="fRoomExtraEntity"></select>
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="room_extra">Search</button>
+                      </div>
+                    </label>
+                    <div class="meta" id="fRoomExtraHint"></div>
+                    <label class="row">
+                      <input id="fRoomControls" type="checkbox" />
+                      <span id="fRoomControlsLabel">Controls on the card</span>
+                    </label>
+                    <div class="field-hint" id="fRoomControlsHint"></div>
+                  </div>
+                  <div id="carExtraFields" class="hidden">
+                    <label><span id="fCarPrecondLabel">Pre-conditioning (optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fCarPrecond" type="text" list="carPrecondOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="car_precond">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fCarLockLabel">Lock / door status (optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fCarLock" type="text" list="carLockOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="car_lock">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fCarTempLabel">Interior temperature (optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fCarTemp" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="car_temp">Search</button>
+                      </div>
+                    </label>
+                    <div class="meta" id="carExtraHint"></div>
+                    <datalist id="carPrecondOptions"></datalist>
+                    <datalist id="carLockOptions"></datalist>
+                  </div>
+                  <div id="evccFields" class="hidden">
+                    <label><span id="fEvccLoadpointLabel">Loadpoint</span><select id="fEvccLoadpoint"></select></label>
+                    <button id="fEvccDetectBtn" type="button" class="btn small">Find loadpoints</button>
+                    <div class="meta" id="evccStatus"></div>
+                    <details><summary id="evccDetailsSummary">Advanced entities</summary>
+                      <label><span id="fEvccModeLabel">Mode (select)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccMode" type="text" list="evccselectOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_mode">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccVehicleLabel">Vehicle (select)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccVehicle" type="text" list="evccselectOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_vehicle">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccTargetLabel">Target (number,select)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccTarget" type="text" list="evccnumberOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_target">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccPowerLabel">Power (sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccPower" type="text" list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_power">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccSocLabel">Soc (sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccSoc" type="text" list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_soc">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccConnectedLabel">Connected (binary_sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccConnected" type="text" list="evccbinary_sensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_connected">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccChargingLabel">Charging (binary_sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccCharging" type="text" list="evccbinary_sensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_charging">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccDisabledLabel">Disabled (binary_sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccDisabled" type="text" list="evccbinary_sensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_disabled">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccEffectiveLabel">Effective (sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccEffective" type="text" list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_effective">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccEnergyLabel">Charged energy (sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccEnergy" type="text" list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_energy">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccRemainingLabel">Remaining duration (sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccRemaining" type="text" list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_remaining">Search</button>
+                        </div>
+                      </label>
+                    </details>
+                    <div id="evccHint" class="field-hint"></div>
+                  </div>
+                    <datalist id="evccselectOptions"></datalist>
+                    <datalist id="evccnumberOptions"></datalist>
+                    <datalist id="evccsensorOptions"></datalist>
+                    <datalist id="evccbinary_sensorOptions"></datalist>
+                  <div id="bambuFields" class="hidden">
+                    <label><span id="fBambuPrinterLabel">Printer</span>
+                      <select id="fBambuPrinter"></select>
+                    </label>
+                    <button id="fBambuDetectBtn" type="button" class="btn small">Find printers</button>
+                    <div class="meta" id="bambuDetectStatus"></div>
+                    <details id="bambuDetails">
+                      <summary id="bambuDetailsSummary">Entities</summary>
+                    <label><span id="fBambuNozzleLabel">Nozzle temperature</span>
+                      <div class="entity-input-row">
+                        <input id="fBambuNozzle" type="text" list="bambuSensorOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="bambu_nozzle">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fBambuBedLabel">Bed temperature</span>
+                      <div class="entity-input-row">
+                        <input id="fBambuBed" type="text" list="bambuSensorOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="bambu_bed">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fBambuProgressLabel">Progress</span>
+                      <div class="entity-input-row">
+                        <input id="fBambuProgress" type="text" list="bambuSensorOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="bambu_progress">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fBambuRemainingLabel">Remaining time</span>
+                      <div class="entity-input-row">
+                        <input id="fBambuRemaining" type="text" list="bambuSensorOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="bambu_remaining">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fBambuStageLabel">Current step (optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fBambuStage" type="text" list="bambuSensorOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="bambu_stage">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fBambuJobLabel">Job name (optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fBambuJob" type="text" list="bambuSensorOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="bambu_job">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fBambuPauseLabel">Pause button (optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fBambuPause" type="text" list="bambuButtonOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="bambu_pause">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fBambuResumeLabel">Resume button (optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fBambuResume" type="text" list="bambuButtonOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="bambu_resume">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fBambuStopLabel">Stop button (optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fBambuStop" type="text" list="bambuButtonOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="bambu_stop">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fBambuCameraLabel">Live camera (optional, MJPEG)</span>
+                      <div class="entity-input-row">
+                        <input id="fBambuCamera" type="text" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="bambu_camera">Search</button>
+                      </div>
+                    </label>
+                    </details>
+                    <div class="meta" id="bambuHint"></div>
+                    <datalist id="bambuSensorOptions"></datalist>
+                    <datalist id="bambuButtonOptions"></datalist>
+                  </div>
+                  <div id="energyTimelineFields" class="hidden">
+                    <label><span id="fEtlStyleLabel">Look</span>
+                      <select id="fEtlStyle">
+                        <option id="fEtlStyleRows" value="">Rings in a row, timeline below</option>
+                        <option id="fEtlStyleNested" value="nested">Nested rings with values (style 4)</option>
+                      </select>
+                    </label>
+                    <label><span id="fEtlChargeLabel">Battery charge energy counter (kWh, optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fEtlCharge" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="etl_charge">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fEtlDischargeLabel">Battery discharge energy counter (kWh, optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fEtlDischarge" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="etl_discharge">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fEtlSocLabel">Battery level (%, optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fEtlSoc" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="etl_soc">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fEtlForecastLabel">Solar forecast (Solcast sensor, optional)</span>
+                      <div class="entity-input-row">
+                        <input id="fEtlForecast" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="etl_forecast">Search</button>
+                      </div>
+                    </label>
+                    <div class="meta" id="energyTimelineHint"></div>
+                  </div>
+                  <div id="solarForecastFields" class="hidden">
+                    <label><span id="fSolarForecastTodayLabel">Today forecast</span>
+                      <div class="entity-input-row">
+                        <input id="fSolarForecastToday" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="solar_today">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fSolarForecastTomorrowLabel">Tomorrow forecast</span>
+                      <div class="entity-input-row">
+                        <input id="fSolarForecastTomorrow" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="solar_tomorrow">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fSolarForecastDay3Label">Day 3 forecast</span>
+                      <div class="entity-input-row">
+                        <input id="fSolarForecastDay3" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="solar_day_3">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fSolarForecastDay4Label">Day 4 forecast</span>
+                      <div class="entity-input-row">
+                        <input id="fSolarForecastDay4" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="solar_day_4">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fSolarForecastDay5Label">Day 5 forecast</span>
+                      <div class="entity-input-row">
+                        <input id="fSolarForecastDay5" type="text" list="sensorEntityOptions" />
+                        <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="solar_day_5">Search</button>
+                      </div>
+                    </label>
+                    <label><span id="fSolarForecastBarMaxLabel">Bar max (kWh)</span>
+                      <input id="fSolarForecastBarMax" type="number" min="0" step="0.1" placeholder="auto" />
+                    </label>
+                  </div>
                 </div>
               </details>
 
               <!-- Style group -->
-              <details class="inspector-group" open>
+              <details id="inspectorGroupStyle" class="inspector-group" open>
                 <summary><span id="inspectorGroupStyleLabel">Style</span></summary>
                 <div class="inspector-group-body">
                   <div id="buttonOptions" class="slider-options hidden">
@@ -302,8 +1447,140 @@
                     <label><span id="fGraphTimeWindowMinLabel">Time window (minutes)</span>
                       <input id="fGraphTimeWindowMin" type="number" min="1" max="1440" step="1" value="120" />
                     </label>
+                    <label class="row"><input id="fGraphHaHistory" type="checkbox" /><span id="fGraphHaHistoryLabel">History from Home Assistant</span></label>
+                    <div class="meta" id="fGraphHaHistoryHint">The last 24 hours come from Home Assistant, also right after a restart, and are refreshed every 15 minutes while the page is shown. Nothing is stored on the panel.</div>
                     <label id="fGraphPointCountWrap"><span id="fGraphPointCountLabel">Render points (empty = auto)</span>
                       <input id="fGraphPointCount" type="number" min="16" max="64" step="1" placeholder="auto" />
+                    </label>
+                  </div>
+                  <div id="solarForecastStyleOptions" class="slider-options hidden">
+                    <label><span id="fSolarForecastBarOrientationLabel">Bar orientation</span>
+                      <select id="fSolarForecastBarOrientation">
+                        <option value="horizontal">Horizontal</option>
+                        <option value="vertical">Vertical</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div id="gaugeOptions" class="slider-options hidden">
+                    <label><span id="fGaugeStyleLabel">Gauge style</span>
+                      <select id="fGaugeStyle">
+                        <option value="linear">Linear (bar)</option>
+                        <option value="horizontal">Horizontal (bar)</option>
+                        <option value="radial">Radial (arc)</option>
+                      </select>
+                    </label>
+                    <label id="fGaugeBarStyleWrap"><span id="fGaugeBarStyleLabel">Bar look</span>
+                      <select id="fGaugeBarStyle">
+                        <option value="smooth">Smooth fill</option>
+                        <option value="segmented">Segmented (LED blocks)</option>
+                      </select>
+                    </label>
+                    <label id="fGaugeSegmentCountWrap"><span id="fGaugeSegmentCountLabel">LED blocks (4-30, empty = 10)</span>
+                      <input id="fGaugeSegmentCount" type="number" min="4" max="30" step="1" placeholder="10" />
+                    </label>
+                    <div class="grid-2">
+                      <label><span id="fGaugeMinLabel">Range minimum</span>
+                        <input id="fGaugeMin" type="number" step="any" value="0" />
+                      </label>
+                      <label><span id="fGaugeMaxLabel">Range maximum</span>
+                        <input id="fGaugeMax" type="number" step="any" value="100" />
+                      </label>
+                    </div>
+                    <div class="meta" id="fGaugeHint">The bar/arc fills between these two values; the number shown is always the entity's real state.</div>
+                    <label><span id="fGaugeColorModeLabel">Color by value</span>
+                      <select id="fGaugeColorMode">
+                        <option value="">Fill level (gold to green)</option>
+                        <option value="gradient">Gradient between two colors</option>
+                        <option value="range">Target range (three colors)</option>
+                      </select>
+                    </label>
+                    <div id="fGaugeTargetRangeWrap" class="grid-2 hidden">
+                      <label><span id="fGaugeTargetLowLabel">Target range start</span>
+                        <input id="fGaugeTargetLow" type="number" step="any" />
+                      </label>
+                      <label><span id="fGaugeTargetHighLabel">Target range end</span>
+                        <input id="fGaugeTargetHigh" type="number" step="any" />
+                      </label>
+                    </div>
+                    <div id="fGaugeColorLowHighWrap" class="grid-2 hidden">
+                      <label><span id="fGaugeColorLowLabel">Color at minimum</span>
+                        <input id="fGaugeColorLow" type="color" value="#3b82f6" />
+                      </label>
+                      <label><span id="fGaugeColorHighLabel">Color at maximum</span>
+                        <input id="fGaugeColorHigh" type="color" value="#ef4444" />
+                      </label>
+                    </div>
+                    <label id="fGaugeTargetColorWrap" class="hidden"><span id="fGaugeTargetColorLabel">Color within the target range</span>
+                      <input id="fGaugeTargetColor" type="color" value="#4fcb7e" />
+                    </label>
+                  </div>
+                  <div id="sensorOptions" class="slider-options hidden">
+                    <label class="row">
+                      <input id="fSensorShowAge" type="checkbox" checked />
+                      <span id="fSensorShowAgeLabel">Show last-updated time</span>
+                    </label>
+                  </div>
+                  <div id="cameraOptions" class="slider-options hidden">
+                    <label class="row"><input id="fCameraLive" type="checkbox" />
+                      <span id="fCameraLiveLabel">Live picture (MJPEG)</span>
+                    </label>
+                    <div id="cameraLiveHint" class="meta">Streams while visible. Tap to enlarge. MJPEG cameras only.</div>
+                  </div>
+                  <div id="lockOptions" class="slider-options hidden">
+                    <label class="row">
+                      <input id="fLockConfirm" type="checkbox" />
+                      <span id="fLockConfirmLabel">Ask before unlocking or opening</span>
+                    </label>
+                  </div>
+                  <div id="alarmOptions" class="slider-options hidden">
+                    <span id="alarmActionsLabel">Actions offered on tap</span>
+                    <label class="row">
+                      <input id="fAlarmDisarm" type="checkbox" checked />
+                      <span id="fAlarmDisarmLabel">disarm</span>
+                    </label>
+                    <label class="row">
+                      <input id="fAlarmArmHome" type="checkbox" checked />
+                      <span id="fAlarmArmHomeLabel">arm_home</span>
+                    </label>
+                    <label class="row">
+                      <input id="fAlarmArmAway" type="checkbox" checked />
+                      <span id="fAlarmArmAwayLabel">arm_away</span>
+                    </label>
+                    <label class="row">
+                      <input id="fAlarmArmNight" type="checkbox" checked />
+                      <span id="fAlarmArmNightLabel">arm_night</span>
+                    </label>
+                    <label class="row">
+                      <input id="fAlarmArmVacation" type="checkbox" checked />
+                      <span id="fAlarmArmVacationLabel">arm_vacation</span>
+                    </label>
+                    <label class="row">
+                      <input id="fAlarmArmCustom" type="checkbox" checked />
+                      <span id="fAlarmArmCustomLabel">arm_custom_bypass</span>
+                    </label>
+                  </div>
+                  <div id="historyOptions" class="slider-options hidden">
+                    <label class="row">
+                      <input id="fHistoryPopup" type="checkbox" />
+                      <span id="fHistoryPopupLabel">Show history on tap</span>
+                    </label>
+                  </div>
+                  <div id="forecastReadabilityOptions" class="slider-options hidden">
+                    <label><span id="fForecastDaysLabel">Visible days</span>
+                      <select id="fForecastDays">
+                        <option value="">Keep existing day count</option>
+                        <option value="0">Auto (readable columns)</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                      </select>
+                    </label>
+                    <label class="row"><input id="fAlignForecast" type="checkbox" /><span id="fAlignForecastLabel">Align dated solar columns</span></label>
+                    <div class="meta" id="fReadabilityHint"></div>
+                  </div>
+                  <div id="weatherForecastOptions" class="slider-options hidden">
+                    <label class="row">
+                      <input id="fWeatherShowPrecip" type="checkbox" checked />
+                      <span id="fWeatherShowPrecipLabel">Show rain chance and amount</span>
                     </label>
                   </div>
                   <div id="heatingOptions" class="slider-options hidden">
@@ -322,6 +1599,18 @@
                       </select>
                     </label>
                   </div>
+                  <div id="energyTimelineColorOptions" class="slider-options hidden">
+                    <details class="energy-colors">
+                      <summary>Colors</summary>
+                      <div class="energy-color-row"><span>Grid import</span><button type="button" class="energy-color-swatch" data-energy-color="grid" aria-haspopup="dialog"></button></div>
+                      <div class="energy-color-row"><span>Solar</span><button type="button" class="energy-color-swatch" data-energy-color="solar" aria-haspopup="dialog"></button></div>
+                      <div class="energy-color-row"><span>Feed-in</span><button type="button" class="energy-color-swatch" data-energy-color="export" aria-haspopup="dialog"></button></div>
+                      <div class="energy-color-row"><span>Battery discharge</span><button type="button" class="energy-color-swatch" data-energy-color="battery_out" aria-haspopup="dialog"></button></div>
+                      <div class="energy-color-row"><span>Battery charge</span><button type="button" class="energy-color-swatch" data-energy-color="battery_in" aria-haspopup="dialog"></button></div>
+                      <div class="energy-color-row"><span>Forecast</span><button type="button" class="energy-color-swatch" data-energy-color="forecast" aria-haspopup="dialog"></button></div>
+                      <button type="button" class="btn small energy-colors-reset">Reset to defaults</button>
+                    </details>
+                  </div>
                   <div id="inspectorStyleEmpty" class="meta hidden" data-i18n-key="inspector.style.empty">No style options for this widget.</div>
                 </div>
               </details>
@@ -336,203 +1625,15 @@
                     <label>W <input id="fW" type="number" /></label>
                     <label>H <input id="fH" type="number" /></label>
                   </div>
+                  <label><span id="fMovePageLabel">Move to page</span>
+                    <select id="fMovePage"></select>
+                  </label>
                 </div>
               </details>
               <button id="applyInspectorBtn" class="btn hidden" type="button" hidden>Apply</button>
             </div>
           </div>
         </section>
-      </div>
-
-      <div id="settingsPane" class="pane hidden">
-        <section>
-          <h2 id="settingsWifiHeading">Wi-Fi</h2>
-          <div class="form">
-            <label><span id="settingsWifiSsidLabel">SSID</span>
-              <input id="settingsWifiSsid" type="text" placeholder="MyWiFi" maxlength="32" />
-            </label>
-            <label><span id="settingsWifiCountryCodeLabel">Country Code</span>
-              <input id="settingsWifiCountryCode" type="text" list="wifiCountryCodeList" placeholder="US" maxlength="2" />
-            </label>
-            <label><span id="settingsWifiBssidLabel">BSSID Lock (optional)</span>
-              <input id="settingsWifiBssid" type="text" placeholder="AA:BB:CC:DD:EE:FF" maxlength="17" />
-            </label>
-            <div class="row">
-              <button id="scanWifiBtn" class="btn small" type="button">Scan Wi-Fi</button>
-              <select id="settingsWifiScanResults">
-                <option value="">No scan yet</option>
-              </select>
-            </div>
-            <div id="settingsWifiScanInfo" class="meta">Click "Scan Wi-Fi" to list nearby networks.</div>
-            <label><span id="settingsWifiPasswordLabel">Password</span>
-              <input id="settingsWifiPassword" type="password" placeholder="Leave empty to keep the stored password" maxlength="64" />
-            </label>
-            <div id="settingsWifiInfo" class="meta"></div>
-          </div>
-        </section>
-
-        <section>
-          <h2 id="settingsHaHeading">Home Assistant</h2>
-          <div class="form">
-            <label><span id="settingsHaUrlLabel">WebSocket URL (ws:// or wss://)</span>
-              <input id="settingsHaUrl" type="text" placeholder="wss://homeassistant.local:8123/api/websocket" maxlength="255" />
-            </label>
-            <label><span id="settingsHaTokenLabel">Long-lived Access Token</span>
-              <textarea id="settingsHaToken" placeholder="Leave empty to keep the stored token" maxlength="511"></textarea>
-            </label>
-            <label class="row">
-              <input id="settingsHaRestEnabled" type="checkbox" />
-              <span id="settingsHaRestEnabledLabel">Enable HA REST fallback (Default: Off, WS-only preferred)</span>
-            </label>
-            <div id="settingsHaInfo" class="meta"></div>
-          </div>
-        </section>
-
-        <section>
-          <h2 id="settingsTimeHeading">Time</h2>
-          <div class="form">
-            <label><span id="settingsNtpServerLabel">NTP Server</span>
-              <input id="settingsNtpServer" type="text" placeholder="pool.ntp.org" maxlength="127" />
-            </label>
-            <label><span id="settingsTimezoneLabel">Timezone (POSIX TZ)</span>
-              <input id="settingsTimezone" type="text" placeholder="CET-1CEST,M3.5.0/2,M10.5.0/3" maxlength="127" />
-            </label>
-            <div id="settingsTimeInfo" class="meta"></div>
-          </div>
-        </section>
-
-        <section>
-          <h2 id="settingsUiHeading">UI</h2>
-          <div class="form">
-            <label><span id="settingsLanguageLabel">Language</span>
-              <select id="settingsLanguage"></select>
-            </label>
-            <div id="settingsUiInfo" class="meta"></div>
-            <div class="row">
-              <button id="reloadLanguagesBtn" class="btn small" type="button">Reload Languages</button>
-              <button id="downloadLanguageBtn" class="btn small" type="button">Download JSON</button>
-            </div>
-            <label><span id="uploadLanguageCodeLabel">Language Code</span>
-              <input id="uploadLanguageCode" type="text" maxlength="15" placeholder="fr" />
-            </label>
-            <label><span id="uploadLanguageFileLabel">Translation JSON File</span>
-              <input id="uploadLanguageFile" type="file" accept="application/json,.json" />
-            </label>
-            <button id="uploadLanguageBtn" class="btn" type="button">Upload / Add Language</button>
-            <div id="settingsTranslationInfo" class="meta"></div>
-          </div>
-        </section>
-
-        <section>
-          <h2 id="settingsThemeHeading">Theme</h2>
-          <div class="form">
-            <label><span id="settingsThemeSelectLabel">Active theme</span>
-              <select id="settingsThemeSelect"></select>
-            </label>
-            <div class="row">
-              <button id="settingsThemeApplyBtn" class="btn small" type="button">Apply</button>
-              <button id="settingsThemeExportBtn" class="btn small" type="button">Export JSON</button>
-              <button id="settingsThemeDeleteBtn" class="btn small danger" type="button">Delete custom</button>
-            </div>
-            <label><span id="settingsThemeImportLabel">Import theme JSON</span>
-              <input id="settingsThemeImportFile" type="file" accept="application/json,.json" />
-            </label>
-            <button id="settingsThemeImportBtn" class="btn small" type="button">Import</button>
-            <hr />
-            <label><span id="settingsThemeNewIdLabel">Custom theme ID</span>
-              <input id="settingsThemeNewId" type="text" maxlength="31" placeholder="my_theme" />
-            </label>
-            <label><span id="settingsThemeNewNameLabel">Custom theme name</span>
-              <input id="settingsThemeNewName" type="text" maxlength="63" placeholder="My theme" />
-            </label>
-            <div id="settingsThemeBase" class="meta">Base palette: loaded from active theme. Edit colors below, then "Save as custom".</div>
-            <div id="settingsThemeColors" class="theme-color-grid"></div>
-            <div class="row">
-              <button id="settingsThemeSaveCustomBtn" class="btn" type="button">Save as custom</button>
-              <button id="settingsThemeResetBtn" class="btn small" type="button">Reset to active</button>
-            </div>
-            <div class="theme-preview-wrap">
-              <div id="settingsThemePreviewLabel" class="meta">Preview</div>
-              <canvas id="settingsThemePreviewCanvas" width="360" height="220"></canvas>
-            </div>
-            <div id="settingsThemeInfo" class="meta"></div>
-          </div>
-        </section>
-
-        <section>
-          <h2 id="settingsApHeading">Setup AP</h2>
-          <div id="settingsApInfo" class="meta"></div>
-          <div id="settingsApHint" class="meta">If setup AP is active, connect to it and open <code>http://192.168.4.1</code>.</div>
-        </section>
-
-        <section>
-          <h2 id="settingsOtaHeading">Firmware Update</h2>
-          <div class="form">
-            <label><span id="settingsOtaUrlLabel">OTA URL</span>
-              <input id="settingsOtaUrl" type="url" placeholder="https://github.com/cptkirki/BETTA-HA-PANEL/releases/latest/download/..." maxlength="511" />
-            </label>
-            <div class="row">
-              <button id="startOtaUrlBtn" class="btn small" type="button">Flash URL</button>
-              <button id="refreshOtaStatusBtn" class="btn small" type="button">Refresh Status</button>
-            </div>
-            <label><span id="settingsOtaFileLabel">OTA .bin File</span>
-              <input id="settingsOtaFile" type="file" accept=".bin,application/octet-stream" />
-            </label>
-            <button id="uploadOtaBtn" class="btn" type="button">Upload + Flash</button>
-            <div class="ota-progress" aria-hidden="true">
-              <div id="settingsOtaProgressBar" class="ota-progress-bar"></div>
-            </div>
-            <div id="settingsOtaInfo" class="meta"></div>
-          </div>
-        </section>
-
-        <section>
-          <h2 id="settingsActionsHeading">Settings Actions</h2>
-          <div class="row">
-            <button id="reloadSettingsBtn" class="btn">Reload Settings</button>
-            <button id="saveSettingsBtn" class="btn primary">Save + Reboot</button>
-          </div>
-          <div id="settingsActionsHint" class="meta">After save, the device reboots and may switch from setup AP to your home Wi-Fi.</div>
-        </section>
-      </div>
-    </aside>
-
-    <main class="workspace">
-      <div class="workspace-top">
-        <h2 id="canvasTitle">Canvas</h2>
-        <div id="status" class="status">Idle</div>
-      </div>
-      <div id="haDiagnosticsBanner" class="ha-diagnostics-banner" hidden>
-        <div class="ha-diagnostics-banner__icon" aria-hidden="true">&#9888;</div>
-        <div class="ha-diagnostics-banner__body">
-          <div class="ha-diagnostics-banner__title" id="haDiagnosticsTitle">
-            Some entities in this layout were not found in Home Assistant
-          </div>
-          <ul class="ha-diagnostics-banner__list" id="haDiagnosticsList"></ul>
-          <div class="ha-diagnostics-banner__hint" id="haDiagnosticsHint">
-            Open the affected widget, pick a valid entity and save the layout.
-          </div>
-        </div>
-        <button type="button" class="ha-diagnostics-banner__close" id="haDiagnosticsDismiss" aria-label="Dismiss">&times;</button>
-      </div>
-      <div class="workspace-body">
-        <div class="canvas-wrap">
-          <div id="canvas" class="canvas"></div>
-        </div>
-        <aside class="actions-panel">
-          <section class="panel-section">
-            <h2 id="layoutActionsHeading">Actions</h2>
-            <div class="row">
-              <button id="reloadBtn" class="btn">Reload</button>
-              <button id="saveBtn" class="btn primary">Save</button>
-              <button id="exportBtn" class="btn">Export</button>
-            </div>
-            <div class="row">
-              <button id="importBtn" class="btn">Import JSON</button>
-              <input id="importFile" type="file" accept="application/json" />
-            </div>
-            <textarea id="jsonPaste" placeholder="Paste layout JSON here"></textarea>
-          </section>
         </aside>
       </div>
     </main>
@@ -560,35 +1661,99 @@
       </div>
     </div>
   </div>
-  <div id="setupWizardOverlay" class="modal-overlay setup-wizard-overlay hidden">
-    <div class="modal-card setup-wizard-dialog">
+  <div id="roomImportOverlay" class="modal-overlay hidden">
+    <div id="roomImportCard" class="modal-card">
       <div class="section-head">
-        <h2 id="setupWizardTitle">Quick Setup</h2>
-        <button id="setupWizardCloseBtn" class="btn small" type="button">Close</button>
+        <h2 id="roomImportTitle">Import a room</h2>
+        <div class="row">
+          <button id="roomImportCloseBtn" class="btn small" type="button">X</button>
+        </div>
       </div>
-      <div class="setup-wizard-steps" aria-hidden="true">
-        <span id="setupWizardStepHa" class="setup-wizard-step done">HA connected</span>
-        <span id="setupWizardStepTiles" class="setup-wizard-step active">Add tiles</span>
-        <span id="setupWizardStepSave" class="setup-wizard-step">Save layout</span>
+      <p id="roomImportHint" class="meta">Pick a Home Assistant area. The next step shows its entities by role and a preview of the new page.</p>
+      <div id="roomImportStatus" class="meta"></div>
+      <div id="roomImportStepRoom">
+        <select id="roomImportSelect"></select>
       </div>
-      <p id="setupWizardSubtitle" class="meta">Pick a few Home Assistant entities for your first dashboard.</p>
-      <label><span id="setupWizardPageLabel">First page title</span>
-        <input id="setupWizardPageTitle" type="text" placeholder="Living Room" maxlength="31" />
-      </label>
-      <div class="setup-wizard-actions-grid">
-        <button id="setupWizardAddLightBtn" class="btn setup-widget-btn" type="button">+ Light</button>
-        <button id="setupWizardAddHeatingBtn" class="btn setup-widget-btn" type="button">+ Heating</button>
-        <button id="setupWizardAddWeatherBtn" class="btn setup-widget-btn" type="button">+ Weather</button>
-        <button id="setupWizardAddButtonBtn" class="btn setup-widget-btn" type="button">+ Switch</button>
-        <button id="setupWizardAddSensorBtn" class="btn setup-widget-btn" type="button">+ Sensor</button>
+      <div id="roomImportStepAssign" class="room-import-assign hidden">
+        <div id="roomImportRoles" class="room-import-roles"></div>
+        <div class="room-import-preview-wrap">
+          <div id="roomImportPreview" class="room-import-preview"></div>
+          <div id="roomImportFit" class="meta"></div>
+        </div>
       </div>
-      <div id="setupWizardCount" class="setup-wizard-count">No tiles added yet.</div>
-      <div id="setupWizardStatus" class="meta"></div>
-      <div class="row setup-wizard-footer">
-        <button id="setupWizardSkipBtn" class="btn" type="button">Skip</button>
-        <button id="setupWizardSaveBtn" class="btn primary" type="button">Save Layout</button>
-        <button id="setupWizardDoneBtn" class="btn" type="button">Save + Done</button>
+      <div class="row">
+        <button id="roomImportBackBtn" class="btn hidden" type="button">Back</button>
+        <button id="roomImportConfirmBtn" class="btn primary" type="button" disabled>Next</button>
       </div>
+    </div>
+  </div>
+  <div id="addTileOverlay" class="modal-overlay hidden">
+    <div class="modal-card add-tile-dialog">
+      <div class="section-head">
+        <h2 id="addTileTitle">Add a tile</h2>
+        <button id="addTileCloseBtn" class="btn small" type="button">X</button>
+      </div>
+      <input id="addTileSearch" class="light-picker-search" type="search" placeholder="Search a tile type or a Home Assistant entity" maxlength="63" />
+      <div id="addTileTypes" class="add-tile-types">
+        <div class="add-tile-group">
+          <div class="add-tile-group-label">Control</div>
+          <button class="btn small add-tile-type" type="button" data-add-target="addButtonBtn">Button</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addSliderBtn">Slider</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addLightTileBtn">Light Tile</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addHeatingTileBtn">Heating Tile</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addMediaPlayerBtn">Media Player</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addSonosFavoritesBtn">Sonos Favorites</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addVacuumTileBtn">Vacuum</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addCoverTileBtn">Cover</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addClimateTileBtn">Climate</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addEvccWallboxBtn">Wallbox</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addRoomTileBtn">Room</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addSceneTileBtn">Scene</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addSelectTileBtn">Select (options)</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addEnergyTimelineBtn">Energy timeline (24 h)</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addDatetimeTileBtn">Date/Time</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addLockTileBtn">Lock</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addAlarmTileBtn">Alarm</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addScriptTileBtn">Script</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addDoorbellTileBtn">Event (doorbell, button)</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addBinaryTileBtn">Binary sensor</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addContactTileBtn">Door/Window</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addCameraTileBtn">Camera</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addFanTileBtn">Fan</button>
+        </div>
+        <div class="add-tile-group">
+          <div class="add-tile-group-label">Data</div>
+          <button class="btn small add-tile-type" type="button" data-add-target="addSensorBtn">Sensor</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addGaugeBtn">Gauge</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addGraphBtn">Graph</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addCarWidgetBtn">Car</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addBambuPrinterBtn">Bambu printer</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addTodoListBtn">Todo List</button>
+        </div>
+        <div class="add-tile-group">
+          <div class="add-tile-group-label">Info</div>
+          <button class="btn small add-tile-type" type="button" data-add-target="addWeatherTileBtn">Weather</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addWeather3DayBtn">Weather Forecast</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addSolarForecastBtn">Solar Forecast</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addEmptyTileBtn">Empty Tile</button>
+        </div>
+      </div>
+      <div id="addTileSearchStatus" class="meta add-tile-ha-heading"></div>
+      <div id="addTileResults" class="add-tile-results"></div>
+    </div>
+  </div>
+  <div id="undoToast" class="undo-toast hidden" role="status">
+    <span id="undoToastText"></span>
+    <button id="undoToastBtn" class="btn small" type="button">Undo</button>
+  </div>
+  <div id="widgetActionsMenu" class="hidden" role="menu" aria-label="Widget actions"></div>
+  <div id="widgetTransferDialog" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="widgetTransferTitle" aria-describedby="widgetTransferName">
+    <div class="modal-card widget-transfer-card">
+      <h2 id="widgetTransferTitle">Copy to page</h2>
+      <p id="widgetTransferName"></p>
+      <label><span id="widgetTransferPageLabel">Destination page</span><select id="widgetTransferPage"></select></label>
+      <p id="widgetTransferError" role="alert"></p>
+      <div class="row"><button id="widgetTransferCancel" type="button" class="btn small">Cancel</button><button id="widgetTransferConfirm" type="button" class="btn small primary">Copy</button></div>
     </div>
   </div>
   <datalist id="wifiCountryCodeList">
@@ -617,6 +1782,31 @@
     <option value="CA"></option>
   </datalist>
   <datalist id="energyEntityOptions"></datalist>
-  <script src="/app.js"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/i18n.js"></script>
+  <script src="/js/state.js"></script>
+  <script src="/js/util.js"></script>
+  <script src="/js/ui-basics.js"></script>
+  <script src="/js/inspector-hints.js"></script>
+  <script src="/js/translations.js"></script>
+  <script src="/js/settings.js"></script>
+  <script src="/js/brightness-test.js"></script>
+  <script src="/js/update-check.js"></script>
+  <script src="/js/layout-model.js"></script>
+  <script src="/js/pickers.js"></script>
+  <script src="/js/readability.js"></script>
+  <script src="/js/bambu-printer.js"></script>
+  <script src="/js/evcc-wallbox.js"></script>
+  <script src="/js/energy-timeline-colors.js"></script>
+  <script src="/js/tile-previews.js"></script>
+  <script src="/js/layout-history.js"></script>
+  <script src="/js/widget-actions.js"></script>
+  <script src="/js/canvas.js"></script>
+  <script src="/js/inspector-layout.js"></script>
+  <script src="/js/room-import.js"></script>
+  <script src="/js/bind.js"></script>
+  <script src="/js/theme.js"></script>
+  <script src="/js/menus.js"></script>
+  <script src="/js/main.js"></script>
 </body>
 </html>

@@ -1,0 +1,23 @@
+{
+  "_comment": "Whole-page demo layouts for generate_simulator_gallery.py --variant: the structure of a living-room page on the 10-inch panel (content box 1280x680), and the same page fitted to the Tab5 (1280x600). 'ref' names a tile of the widget gallery (its entities and options); only the rectangles differ.",
+  "wide": [
+    {"ref": "Weather forecast", "rect": {"x": 0, "y": 0, "w": 630, "h": 360}},
+    {"ref": "Media player", "rect": {"x": 640, "y": 0, "w": 350, "h": 410}},
+    {"ref": "Sonos favorites", "rect": {"x": 1000, "y": 0, "w": 280, "h": 410}},
+    {"ref": "Solar forecast", "rect": {"x": 0, "y": 370, "w": 280, "h": 310}},
+    {"ref": "Car", "rect": {"x": 290, "y": 420, "w": 220, "h": 260}},
+    {"ref": "Car", "rect": {"x": 520, "y": 420, "w": 220, "h": 260}},
+    {"ref": "Smooth", "rect": {"x": 750, "y": 420, "w": 100, "h": 260}},
+    {"ref": "Vacuum", "rect": {"x": 1020, "y": 440, "w": 240, "h": 230}}
+  ],
+  "tab5": [
+    {"ref": "Weather forecast", "rect": {"x": 0, "y": 0, "w": 630, "h": 320}},
+    {"ref": "Media player", "rect": {"x": 640, "y": 0, "w": 350, "h": 320}},
+    {"ref": "Sonos favorites", "rect": {"x": 1000, "y": 0, "w": 280, "h": 320}},
+    {"ref": "Solar forecast", "rect": {"x": 0, "y": 330, "w": 420, "h": 270}},
+    {"ref": "Car", "rect": {"x": 430, "y": 330, "w": 220, "h": 270}},
+    {"ref": "Car", "rect": {"x": 660, "y": 330, "w": 220, "h": 270}},
+    {"ref": "Smooth", "rect": {"x": 890, "y": 330, "w": 100, "h": 270}},
+    {"ref": "Vacuum", "rect": {"x": 1000, "y": 340, "w": 240, "h": 250}}
+  ]
+}

@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "layout/layout_store.h"
 
 #include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,6 +13,7 @@
 
 #include "app_config.h"
 #include "layout/layout_validate.h"
+#include "util/atomic_file.h"
 #include "util/log_tags.h"
 
 static const char *s_default_layout =
@@ -31,18 +34,9 @@ esp_err_t layout_store_save(const char *json)
         return ESP_ERR_INVALID_ARG;
     }
 
-    FILE *f = fopen(APP_LAYOUT_PATH, "wb");
-    if (f == NULL) {
-        ESP_LOGE(TAG_LAYOUT, "Cannot open layout file for writing: %s", APP_LAYOUT_PATH);
-        return ESP_FAIL;
-    }
-
     size_t len = strlen(json);
-    size_t written = fwrite(json, 1U, len, f);
-    fclose(f);
-
-    if (written != len) {
-        ESP_LOGE(TAG_LAYOUT, "Failed to write layout file");
+    if (atomic_file_write(APP_LAYOUT_PATH, json, len) != ESP_OK) {
+        ESP_LOGE(TAG_LAYOUT, "Failed to write layout file: %s", APP_LAYOUT_PATH);
         return ESP_FAIL;
     }
 
@@ -59,7 +53,7 @@ esp_err_t layout_store_load(char **json_out)
 
     FILE *f = fopen(APP_LAYOUT_PATH, "rb");
     if (f == NULL) {
-        return ESP_ERR_NOT_FOUND;
+        return errno == ENOENT ? ESP_ERR_NOT_FOUND : ESP_FAIL;
     }
 
     if (fseek(f, 0, SEEK_END) != 0) {
@@ -99,9 +93,14 @@ esp_err_t layout_store_init(void)
 {
     char *existing = NULL;
     esp_err_t err = layout_store_load(&existing);
-    if (err != ESP_OK || existing == NULL) {
-        ESP_LOGW(TAG_LAYOUT, "Layout file missing or invalid, writing defaults");
+    if (err == ESP_ERR_NOT_FOUND) {
+        ESP_LOGW(TAG_LAYOUT, "Layout file absent, writing defaults");
         return layout_store_save(s_default_layout);
+    }
+    if (err != ESP_OK || existing == NULL) {
+        ESP_LOGW(TAG_LAYOUT, "Layout read failed, preserving stored file");
+        free(existing);
+        return err != ESP_OK ? err : ESP_FAIL;
     }
 
     layout_validation_result_t *validation = calloc(1, sizeof(layout_validation_result_t));
@@ -119,6 +118,23 @@ esp_err_t layout_store_init(void)
         return ESP_OK;
     }
 
-    ESP_LOGW(TAG_LAYOUT, "Stored layout failed validation, writing defaults");
-    return layout_store_save(s_default_layout);
+    /* A false validation result may also be caused by cJSON allocation failure.
+     * Never destroy the source file as an implicit recovery action. */
+    ESP_LOGW(TAG_LAYOUT, "Stored layout failed validation, preserving file");
+    return ESP_OK;
+}
+
+cJSON *layout_store_load_parsed(void)
+{
+    char *json = NULL;
+    if (layout_store_load(&json) != ESP_OK || json == NULL) {
+        free(json);
+        json = strdup(layout_store_default_json());
+        if (json == NULL) {
+            return NULL;
+        }
+    }
+    cJSON *root = cJSON_Parse(json);
+    free(json);
+    return root;
 }

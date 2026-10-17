@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+#
+# Overlay that turns the betta fish easter egg on (7 taps on the navigation home button). Append it to
+# SDKCONFIG_DEFAULTS, delete sdkconfig.<variant> once, and rebuild. Costs about 460 KB of flash.
+CONFIG_APP_BETTA_EASTER_EGG=y
+CONFIG_LV_USE_VECTOR_GRAPHIC=y
+CONFIG_LV_USE_THORVG=y
+CONFIG_LV_USE_THORVG_INTERNAL=y
+CONFIG_LV_USE_LOTTIE=y

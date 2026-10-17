@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
+ * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+ */
+#pragma once
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+/* Open on the UI task. The worker fetches Recorder history and delivers a reduced snapshot. */
+void ui_history_popup_open(const char *entity_id, const char *title, const char *current,
+                           bool numeric, const char *device_class);
+
+/* Daily consumption of cumulative counters (the Water or Gas source of the Energy page): seven bars for the last
+ * seven local days, from Home Assistant statistics. ids are statistic IDs (up to four, summed); bar_color is 0xRRGGBB. */
+void ui_history_popup_open_days(const char *title, uint32_t bar_color, const char *const *ids, size_t count);
+
+/* evcc completed charging sessions, using the same activity popup frame. */
+void ui_history_popup_open_evcc(const char *mode_entity);
+void ui_history_popup_close_evcc(const char *mode_entity);

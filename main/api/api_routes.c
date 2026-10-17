@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "api/api_routes.h"
 #include "api/http_guard.h"
@@ -76,6 +77,61 @@ static esp_err_t guarded_api_version_get(httpd_req_t *req)
     return http_guard_handle(req, api_version_get_handler);
 }
 
+static esp_err_t guarded_api_restart_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_restart_post_handler);
+}
+
+static esp_err_t guarded_api_factory_reset_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_factory_reset_post_handler);
+}
+
+static esp_err_t guarded_api_navigate_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_navigate_post_handler);
+}
+
+static esp_err_t guarded_api_reboot_log_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_reboot_log_get_handler);
+}
+
+static esp_err_t guarded_api_ui_tap_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_ui_tap_post_handler);
+}
+
+static esp_err_t guarded_api_display_test_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_display_test_get_handler);
+}
+
+static esp_err_t guarded_api_display_test_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_display_test_post_handler);
+}
+
+static esp_err_t guarded_api_camera_test_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_camera_test_post_handler);
+}
+
+static esp_err_t guarded_api_log_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_log_get_handler);
+}
+
+static esp_err_t guarded_api_coredump_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_coredump_get_handler);
+}
+
+static esp_err_t guarded_api_coredump_erase_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_coredump_erase_post_handler);
+}
+
 static esp_err_t guarded_api_screenshot_bmp_get(httpd_req_t *req)
 {
     return http_guard_handle(req, api_screenshot_bmp_get_handler);
@@ -91,14 +147,46 @@ static esp_err_t guarded_api_ota_url_post(httpd_req_t *req)
     return http_guard_handle(req, api_ota_url_post_handler);
 }
 
+static esp_err_t guarded_api_ota_check_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_ota_check_post_handler);
+}
+
+#if CONFIG_APP_AUTO_UPDATE_TEST_HOOK
+static esp_err_t guarded_api_ota_auto_test_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_ota_auto_test_post_handler);
+}
+#endif
+
 static esp_err_t guarded_api_ota_upload_post(httpd_req_t *req)
 {
     return http_guard_handle(req, api_ota_upload_post_handler);
 }
 
+static esp_err_t guarded_api_ha_evcc_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_ha_evcc_get_handler);
+}
+
+static esp_err_t guarded_api_ha_printers_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_ha_printers_get_handler);
+}
+
 static esp_err_t guarded_api_ha_diagnostics_get(httpd_req_t *req)
 {
     return http_guard_handle(req, api_ha_diagnostics_get_handler);
+}
+
+static esp_err_t guarded_api_sound_test_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_sound_test_post_handler);
+}
+
+static esp_err_t guarded_api_notifications_post(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_notifications_post_handler);
 }
 
 static esp_err_t guarded_api_themes_list_get(httpd_req_t *req)
@@ -216,6 +304,66 @@ esp_err_t api_routes_register(httpd_handle_t server)
         .handler = guarded_api_version_get,
         .user_ctx = NULL,
     };
+    httpd_uri_t post_restart = {
+        .uri = "/api/restart",
+        .method = HTTP_POST,
+        .handler = guarded_api_restart_post,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t post_factory_reset = {
+        .uri = "/api/factory-reset",
+        .method = HTTP_POST,
+        .handler = guarded_api_factory_reset_post,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t post_navigate = {
+        .uri = "/api/navigate",
+        .method = HTTP_POST,
+        .handler = guarded_api_navigate_post,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t get_reboot_log = {
+        .uri = "/api/reboot-log",
+        .method = HTTP_GET,
+        .handler = guarded_api_reboot_log_get,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t post_ui_tap = {
+        .uri = "/api/ui/tap",
+        .method = HTTP_POST,
+        .handler = guarded_api_ui_tap_post,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t get_display_test = {
+        .uri = "/api/display/test", .method = HTTP_GET, .handler = guarded_api_display_test_get,
+    };
+    httpd_uri_t post_display_test = {
+        .uri = "/api/display/test", .method = HTTP_POST, .handler = guarded_api_display_test_post,
+    };
+    httpd_uri_t post_camera_test = {
+        .uri = "/api/camera/test",
+        .method = HTTP_POST,
+        .handler = guarded_api_camera_test_post,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t get_log = {
+        .uri = "/api/log",
+        .method = HTTP_GET,
+        .handler = guarded_api_log_get,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t get_coredump = {
+        .uri = "/api/coredump",
+        .method = HTTP_GET,
+        .handler = guarded_api_coredump_get,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t post_coredump_erase = {
+        .uri = "/api/coredump/erase",
+        .method = HTTP_POST,
+        .handler = guarded_api_coredump_erase_post,
+        .user_ctx = NULL,
+    };
     httpd_uri_t get_screenshot_bmp = {
         .uri = "/api/screenshot.bmp",
         .method = HTTP_GET,
@@ -234,10 +382,33 @@ esp_err_t api_routes_register(httpd_handle_t server)
         .handler = guarded_api_ota_url_post,
         .user_ctx = NULL,
     };
+    httpd_uri_t post_ota_check = {
+        .uri = "/api/ota/check",
+        .method = HTTP_POST,
+        .handler = guarded_api_ota_check_post,
+        .user_ctx = NULL,
+    };
+#if CONFIG_APP_AUTO_UPDATE_TEST_HOOK
+    httpd_uri_t post_ota_auto_test = {
+        .uri = "/api/ota/auto-update-test",
+        .method = HTTP_POST,
+        .handler = guarded_api_ota_auto_test_post,
+        .user_ctx = NULL,
+    };
+#endif
     httpd_uri_t post_ota_upload = {
         .uri = "/api/ota/upload",
         .method = HTTP_POST,
         .handler = guarded_api_ota_upload_post,
+        .user_ctx = NULL,
+    };
+    httpd_uri_t post_sound_test = {
+        .uri = "/api/sound/test", .method = HTTP_POST, .handler = guarded_api_sound_test_post,
+    };
+    httpd_uri_t post_notifications = {
+        .uri = "/api/notifications",
+        .method = HTTP_POST,
+        .handler = guarded_api_notifications_post,
         .user_ctx = NULL,
     };
 
@@ -278,6 +449,13 @@ esp_err_t api_routes_register(httpd_handle_t server)
         .user_ctx = NULL,
     };
 
+    httpd_uri_t get_ha_evcc = {.uri = "/api/ha/evcc", .method = HTTP_GET, .handler = guarded_api_ha_evcc_get};
+    httpd_uri_t get_ha_printers = {
+        .uri = "/api/ha/printers",
+        .method = HTTP_GET,
+        .handler = guarded_api_ha_printers_get,
+        .user_ctx = NULL,
+    };
     httpd_uri_t get_ha_diagnostics = {
         .uri = "/api/ha/diagnostics",
         .method = HTTP_GET,
@@ -293,6 +471,8 @@ esp_err_t api_routes_register(httpd_handle_t server)
     ESP_RETURN_ON_ERROR(
         httpd_register_uri_handler(server, &delete_light_entities), "api_routes", "DELETE /api/ha/light_entities");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_ha_energy), "api_routes", "GET /api/ha/energy");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_ha_evcc), "api_routes", "GET /api/ha/evcc");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_ha_printers), "api_routes", "GET /api/ha/printers");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_state), "api_routes", "GET /api/state");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_settings), "api_routes", "GET /api/settings");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &put_settings), "api_routes", "PUT /api/settings");
@@ -303,10 +483,26 @@ esp_err_t api_routes_register(httpd_handle_t server)
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &put_i18n_custom), "api_routes", "PUT /api/i18n/custom");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_wifi_scan), "api_routes", "GET /api/wifi/scan");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_version), "api_routes", "GET /api/version");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_log), "api_routes", "GET /api/log");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_coredump), "api_routes", "GET /api/coredump");
+    ESP_RETURN_ON_ERROR(
+        httpd_register_uri_handler(server, &post_coredump_erase), "api_routes", "POST /api/coredump/erase");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_navigate), "api_routes", "POST /api/navigate");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_ui_tap), "api_routes", "POST /api/ui/tap");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_reboot_log), "api_routes", "GET /api/reboot-log");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_display_test), "api_routes", "GET /api/display/test");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_display_test), "api_routes", "POST /api/display/test");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_camera_test), "api_routes", "POST /api/camera/test");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_restart), "api_routes", "POST /api/restart");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_factory_reset), "api_routes", "POST /api/factory-reset");
     ESP_RETURN_ON_ERROR(
         httpd_register_uri_handler(server, &get_screenshot_bmp), "api_routes", "GET /api/screenshot.bmp");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_ota_status), "api_routes", "GET /api/ota/status");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_ota_url), "api_routes", "POST /api/ota/url");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_ota_check), "api_routes", "POST /api/ota/check");
+#if CONFIG_APP_AUTO_UPDATE_TEST_HOOK
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_ota_auto_test), "api_routes", "POST /api/ota/auto-update-test");
+#endif
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_ota_upload), "api_routes", "POST /api/ota/upload");
 
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_themes_list), "api_routes", "GET /api/themes");
@@ -323,6 +519,10 @@ esp_err_t api_routes_register(httpd_handle_t server)
 
     ESP_RETURN_ON_ERROR(
         httpd_register_uri_handler(server, &get_ha_diagnostics), "api_routes", "GET /api/ha/diagnostics");
+
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_sound_test), "api_routes", "POST /api/sound/test");
+    ESP_RETURN_ON_ERROR(
+        httpd_register_uri_handler(server, &post_notifications), "api_routes", "POST /api/notifications");
 
     return ESP_OK;
 }

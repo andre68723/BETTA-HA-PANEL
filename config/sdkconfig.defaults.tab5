@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+#
+# Panel variant overlay: M5Stack Tab5 (ESP32-P4 + ESP32-C6, 5" 1280x720). PLANNED: builds, NOT YET RUN ON HARDWARE.
+# Apply together with the common sdkconfig.defaults via
+#   tools/build.sh tab5 build
+# Display and touch come from Espressif's m5stack_tab5 BSP (ILI9881C + GT911, or the integrated ST7123/ST7121, depending on the
+# unit); native portrait 720x1280, rotated to landscape by LVGL (display_init_tab5.c). Wi-Fi: ESP-Hosted over SDIO.
+
+CONFIG_APP_PANEL_VARIANT_TAB5_1280=y
+
+# Built-in SC2356 (SC202CS driver): duty-cycled ambient light and presence sensing.
+# The feature is available in Settings, but defaults off until calibrated on hardware.
+CONFIG_APP_FEATURE_AMBIENT_CAMERA=y
+CONFIG_CAMERA_SC202CS=y
+CONFIG_CAMERA_SC202CS_MIPI_RAW8_1280X720_30FPS=y
+CONFIG_CAMERA_SC202CS_MIPI_DEFAULT_FMT_RAW8_1280X720_30FPS=y
+# CONFIG_APP_PANEL_VARIANT_4INCH_720 is not set
+# CONFIG_APP_PANEL_VARIANT_10INCH_1280 is not set
+# CONFIG_APP_PANEL_VARIANT_10INCH_JC is not set
+
+# --- Flash sizing and partitions (16 MB, same layout as the paneljc) ---
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+# CONFIG_ESPTOOLPY_FLASHSIZE_32MB is not set
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="config/partitions.tab5.csv"
+CONFIG_PARTITION_TABLE_FILENAME="config/partitions.tab5.csv"
+
+CONFIG_ESP_LCD_TOUCH_MAX_POINTS=5
+
+# ESP32-P4 silicon: HomeTiles ships its Tab5 build for "pre_v3" chips (rev v1.x), so build for the v1.x family like the other boards.
+# Check a unit with `esptool chip-id` first; a v3.x chip needs a separate build (ESP-IDF cannot mix them).
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+CONFIG_ESP32P4_REV_MIN_100=y
+# CONFIG_ESP32P4_REV_MIN_300 is not set
+# CONFIG_ESP32P4_REV_MIN_301 is not set
+
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=60
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=10240
+
+# --- ESP-Hosted SDIO to the on-board ESP32-C6 (pins from esp_hosted's own Tab5 board entry, ESP32P4_TAB5_C6_BOARD) ---
+# CLK 12, CMD 13, D0 11, D1 10, D2 9, D3 8, C6 reset 15 (active low). This matches M5Stack's pin table
+# (https://docs.m5stack.com/en/core/Tab5, checked 2026-10-02; IO2 = G14 is the C6 wake line, unused here). The C6's enable sits behind an I/O expander pin (BSP_WIFI_EN),
+# switched on in display_init_tab5.c before ESP-Hosted starts.
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CLK_SLOT_1=12
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CMD_SLOT_1=13
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D0_SLOT_1=11
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D1_4BIT_BUS_SLOT_1=10
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D2_4BIT_BUS_SLOT_1=9
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D3_4BIT_BUS_SLOT_1=8
+CONFIG_ESP_HOSTED_SDIO_GPIO_RESET_SLAVE=15
+# The Tab5 resets the C6 with an active-high pulse on GPIO15, like the other boards (ESPHome lists the Tab5 with active_high: true);
+# the first try with active-low left the C6 in reset (SDIO card init timed out, 2026-10-05).
+CONFIG_ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH=y
+# CONFIG_ESP_HOSTED_SDIO_RESET_ACTIVE_LOW is not set
+CONFIG_ESP_HOSTED_SDIO_CLOCK_FREQ_KHZ=40000
+# CONFIG_ESP_HOSTED_USE_MEMPOOL is not set
+CONFIG_ESP_HOSTED_MEMPOOL_PREFER_SPIRAM=y
+CONFIG_ESP_HOSTED_SDIO_TX_Q_SIZE=26
+CONFIG_ESP_HOSTED_SDIO_RX_Q_SIZE=26
+
+# --- Image support and LVGL caches (as on the other P4 boards) ---
+CONFIG_LV_USE_LODEPNG=y
+# CONFIG_LV_BUILD_EXAMPLES is not set
+CONFIG_LV_DRAW_SW_SHADOW_CACHE_SIZE=64
+CONFIG_LV_DRAW_SW_CIRCLE_CACHE_SIZE=32
+CONFIG_LV_CACHE_DEF_SIZE=786432
+CONFIG_LV_IMAGE_HEADER_CACHE_DEF_CNT=64
+
+# --- MIPI-CSI/ISP video path for the built-in camera ---
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+CONFIG_VFS_MAX_COUNT=16
+CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE=y
+CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE=y
+CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER=y
+CONFIG_ESP_VIDEO_ENABLE_DATA_PREPROCESSING=n
+CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER=y
+CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT=n
+CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE=n

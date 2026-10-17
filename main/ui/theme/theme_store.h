@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #pragma once
 
@@ -23,12 +24,13 @@ extern "C" {
 #define APP_THEME_MAX_JSON_LEN 4096
 #endif
 
-/* Initialises the theme store: ensures directory exists and activates the
- * persisted active theme id (if any). Falls back to dark_v2. */
+/* Ensures the theme directory exists. The UI applies the persisted palette under its display lock. */
 esp_err_t theme_store_init(void);
 
 /* Persists the active theme id so it is re-applied on next boot. */
 esp_err_t theme_store_set_active_id(const char *id);
+/* Snapshot of the persisted choice; does not access or change LVGL state. */
+esp_err_t theme_store_load_active(theme_entry_t *out);
 
 /* Loads (copies) a custom theme from littlefs. Returns ESP_ERR_NOT_FOUND if
  * the id does not exist. Built-in ids always return ESP_ERR_NOT_FOUND. */

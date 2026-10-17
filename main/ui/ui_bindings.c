@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ui/ui_bindings.h"
 
@@ -10,6 +11,7 @@
 #include <inttypes.h>
 #include <limits.h>
 
+#include "cJSON.h"
 #include "esp_timer.h"
 #include "esp_log.h"
 
@@ -310,6 +312,9 @@ esp_err_t ui_bindings_set_slider_value(const char *entity_id, int value)
     } else if (strcmp(domain, HA_DOMAIN_MEDIA_PLAYER) == 0) {
         service = "volume_set";
         snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\",\"volume_level\":%.2f}", entity_id, (float)value / 100.0f);
+    } else if (strcmp(domain, "cover") == 0) {
+        service = "set_cover_position"; /* blinds and shutters: 0 closed, 100 open */
+        snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\",\"position\":%d}", entity_id, value);
     } else if (strcmp(domain, HA_DOMAIN_CLIMATE) == 0) {
         service = "set_temperature";
         snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\",\"temperature\":%d}", entity_id, value);
@@ -461,6 +466,69 @@ esp_err_t ui_bindings_media_player_action(const char *entity_id, ui_bindings_med
         } else {
             ui_bindings_apply_optimistic_state_text(entity_id, "playing");
         }
+    }
+    return err;
+}
+
+static bool media_player_entity_valid(const char *entity_id)
+{
+    char domain[32] = {0};
+    return entity_id != NULL && entity_id[0] != '\0' && split_entity_id(entity_id, domain, sizeof(domain)) &&
+           strcmp(domain, HA_DOMAIN_MEDIA_PLAYER) == 0;
+}
+
+esp_err_t ui_bindings_media_player_set_shuffle(const char *entity_id, bool shuffle)
+{
+    if (!media_player_entity_valid(entity_id)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    char payload[192] = {0};
+    snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\",\"shuffle\":%s}", entity_id, shuffle ? "true" : "false");
+    return ha_client_call_service(HA_DOMAIN_MEDIA_PLAYER, "shuffle_set", payload);
+}
+
+esp_err_t ui_bindings_media_player_set_repeat(const char *entity_id, const char *repeat_mode)
+{
+    if (!media_player_entity_valid(entity_id) || repeat_mode == NULL ||
+        (strcmp(repeat_mode, "off") != 0 && strcmp(repeat_mode, "all") != 0 && strcmp(repeat_mode, "one") != 0)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    char payload[192] = {0};
+    snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\",\"repeat\":\"%s\"}", entity_id, repeat_mode);
+    return ha_client_call_service(HA_DOMAIN_MEDIA_PLAYER, "repeat_set", payload);
+}
+
+esp_err_t ui_bindings_media_player_play_favorite(const char *entity_id, const char *favorite_item_id)
+{
+    if (entity_id == NULL || entity_id[0] == '\0' || favorite_item_id == NULL || favorite_item_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain))) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (strcmp(domain, HA_DOMAIN_MEDIA_PLAYER) != 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    cJSON *payload_root = cJSON_CreateObject();
+    if (payload_root == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+    cJSON_AddStringToObject(payload_root, "entity_id", entity_id);
+    cJSON_AddStringToObject(payload_root, "media_content_type", "favorite_item_id");
+    cJSON_AddStringToObject(payload_root, "media_content_id", favorite_item_id);
+    char *payload = cJSON_PrintUnformatted(payload_root);
+    cJSON_Delete(payload_root);
+    if (payload == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    esp_err_t err = ha_client_call_service(domain, "play_media", payload);
+    cJSON_free(payload);
+    if (err == ESP_OK) {
+        ui_bindings_apply_optimistic_state_text(entity_id, "playing");
     }
     return err;
 }

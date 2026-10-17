@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "pages": [{"id": "alarm", "title": "Alarm", "widgets": [
+    {"id": "disarmed", "type": "alarm_tile", "title": "Test Alarm", "entity_id": "alarm_control_panel.test_alarm", "x": 16, "y": 16, "w": 320, "h": 100},
+    {"id": "home", "type": "alarm_tile", "title": "House", "entity_id": "alarm_control_panel.house", "x": 352, "y": 16, "w": 320, "h": 100},
+    {"id": "triggered", "type": "alarm_tile", "title": "Garage", "entity_id": "alarm_control_panel.garage", "x": 16, "y": 132, "w": 320, "h": 100},
+    {"id": "pending", "type": "alarm_tile", "title": "Shed (compact)", "entity_id": "alarm_control_panel.shed", "x": 352, "y": 132, "w": 200, "h": 80}
+  ]}],
+  "states": [
+    {"entity_id": "alarm_control_panel.test_alarm", "state": "disarmed", "attributes": {"supported_features": 7, "code_format": null}},
+    {"entity_id": "alarm_control_panel.house", "state": "armed_home", "attributes": {"supported_features": 63, "code_format": "number"}},
+    {"entity_id": "alarm_control_panel.garage", "state": "triggered", "attributes": {"supported_features": 7, "code_format": "number"}},
+    {"entity_id": "alarm_control_panel.shed", "state": "pending", "attributes": {"supported_features": 7}}
+  ]
+}

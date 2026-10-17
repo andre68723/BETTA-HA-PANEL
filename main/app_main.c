@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include <stdio.h>
 #include <string.h>
@@ -8,6 +9,7 @@
 #include "esp_event.h"
 #include "esp_app_desc.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "esp_littlefs.h"
 #include "esp_netif.h"
 #include "nvs_flash.h"
@@ -23,14 +25,33 @@
 #include "ha/ha_energy_model.h"
 #include "ha/ha_model.h"
 #include "layout/layout_store.h"
+#include "net/mqtt_mgr.h"
 #include "net/time_sync.h"
+#include "net/update_check.h"
+#include "net/auto_update_task.h"
 #include "net/wifi_mgr.h"
+#include "drivers/ambient_camera.h"
+#include "drivers/display_orientation.h"
+#include "drivers/chime.h"
+#include "settings/device_identity.h"
+#include "settings/night_mode.h"
 #include "settings/runtime_settings.h"
+#include "settings/admin_auth.h"
+#include "util/log_buffer.h"
+#include "ui/text_font.h"
+#include "ui/theme/ui_style.h"
 #include "ui/ui_boot_splash.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_runtime.h"
 #include "ui/theme/theme_store.h"
+#include "util/boot_guard.h"
+#include "util/coredump_report.h"
+#include "util/coredump_archive.h"
 #include "util/log_tags.h"
+#include "util/ota_validate.h"
+#include "util/reboot_log_esp.h"
+#include "util/net_watchdog_esp.h"
+#include "util/ui_watchdog_esp.h"
 
 #if CONFIG_IDF_TARGET_ESP32P4 && CONFIG_ESP32P4_SELECTS_REV_LESS_V3 && (CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ > 360)
 #error "ESP32-P4 rev<3 supports up to 360 MHz in this IDF; lower CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ."
@@ -57,8 +78,11 @@ static void app_show_wifi_setup_screen(bool had_wifi_credentials)
     }
 
     char ssid_line[64] = {0};
+    char password_line[64] = {0};
     char url_line[64] = {0};
     snprintf(ssid_line, sizeof(ssid_line), "%s: %s", ui_i18n_get("topbar.ap", "AP"), ap_ssid);
+    snprintf(password_line, sizeof(password_line), "%s: %s", ui_i18n_get("boot.setup_ap_password", "Password"),
+             wifi_mgr_get_setup_ap_password());
     snprintf(url_line, sizeof(url_line), "http://%s", ap_ip);
 
     ui_boot_splash_set_title(ui_i18n_get("boot.wifi_setup_title", "Wi-Fi Setup"));
@@ -69,6 +93,7 @@ static void app_show_wifi_setup_screen(bool had_wifi_credentials)
         had_wifi_credentials ? ui_i18n_get("boot.wifi_connect_failed", "Wi-Fi connect failed")
                              : ui_i18n_get("boot.wifi_credentials_missing", "Wi-Fi credentials missing"));
     ui_boot_splash_set_status(ssid_line);
+    ui_boot_splash_set_status(password_line);
     ui_boot_splash_set_status(ui_i18n_get("boot.open_editor", "Open BETTA Editor:"));
     ui_boot_splash_set_status(url_line);
 }
@@ -134,25 +159,48 @@ void app_main(void)
     const esp_app_desc_t *app_desc = esp_app_get_description();
     const char *app_version = (app_desc != NULL && app_desc->version[0] != '\0') ? app_desc->version : "unknown";
 
+    log_buffer_init();
     ESP_LOGI(TAG_APP, "Booting %s", APP_NAME);
+    ESP_LOGI(TAG_APP, "Last reset reason: %d (1 power on, 3 software, 4 panic, 5 interrupt wdt, 6 task wdt, 7 other wdt, 9 brownout)", (int)esp_reset_reason());
+    coredump_report_log_at_boot();
+    boot_guard_init();
     ESP_LOGI("app_init", "App version: %s", app_version);
 
     ESP_ERROR_CHECK(init_nvs());
+    reboot_log_init(); /* why the previous run ended: needs NVS, before anything else can restart */
     ESP_ERROR_CHECK(init_littlefs());
+    coredump_archive_init(); /* preserve the previous panic before network/UI can fail again */
     ESP_ERROR_CHECK(init_net_stack());
     ESP_ERROR_CHECK(app_events_init());
     ESP_ERROR_CHECK(ha_model_init());
     ESP_ERROR_CHECK(ha_energy_model_init());
-    ESP_ERROR_CHECK(runtime_settings_init());
+    esp_err_t settings_init_err = runtime_settings_init();
+    if (settings_init_err != ESP_OK) ESP_LOGW(TAG_APP, "Settings initialization deferred: %s", esp_err_to_name(settings_init_err));
+    ESP_ERROR_CHECK(admin_auth_init());
 
     esp_err_t settings_err = runtime_settings_load(&s_runtime_settings);
     if (settings_err != ESP_OK) {
         ESP_LOGW(TAG_APP, "Failed to load runtime settings (%s), continuing with defaults", esp_err_to_name(settings_err));
         runtime_settings_set_defaults(&s_runtime_settings);
+        s_runtime_settings.wifi_password[0] = s_runtime_settings.ha_access_token[0] = s_runtime_settings.mqtt_password[0] = '\0';
     }
     (void)ui_i18n_init(s_runtime_settings.ui_language);
+    ui_style_set(ui_style_from_name(s_runtime_settings.ui_style));
+    ui_fonts_set_user_step(s_runtime_settings.ui_text_step);
     (void)time_sync_set_timezone(s_runtime_settings.time_tz);
+    display_orientation_configure(s_runtime_settings.hardware_auto_rotation);
     ESP_ERROR_CHECK(display_init());
+    display_configure_brightness(
+        s_runtime_settings.hardware_active_brightness_percent,
+        s_runtime_settings.hardware_dim_brightness_percent,
+        s_runtime_settings.hardware_dim_timeout_seconds);
+    night_mode_configure(s_runtime_settings.hardware_night_enabled, s_runtime_settings.hardware_night_start_min,
+        s_runtime_settings.hardware_night_end_min, s_runtime_settings.hardware_night_brightness_percent);
+    chime_configure(s_runtime_settings.sound_enabled, s_runtime_settings.sound_volume, s_runtime_settings.sound_night_mute);
+    device_identity_set_room(s_runtime_settings.device_room);
+    ambient_camera_configure(s_runtime_settings.hardware_auto_brightness, s_runtime_settings.hardware_presence_wake,
+        s_runtime_settings.hardware_presence_sensitivity, s_runtime_settings.hardware_night_presence_wake);
+    ambient_camera_start();
     (void)ui_boot_splash_show();
 
     ui_boot_splash_set_status(ui_i18n_get("boot.initializing_wifi", "Initializing Wi-Fi"));
@@ -189,7 +237,7 @@ void app_main(void)
     if (!wifi_ready) {
         wifi_mgr_ap_config_t ap_cfg = {
             .ssid = NULL,
-            .password = APP_SETUP_AP_PASSWORD,
+            .password = NULL, /* a random password, shown on the setup screen */
             .country_code = s_runtime_settings.wifi_country_code,
             .channel = APP_SETUP_AP_CHANNEL,
             .max_connection = APP_SETUP_AP_MAX_CONNECTIONS,
@@ -222,9 +270,18 @@ void app_main(void)
         boot_screen_mode = BOOT_SCREEN_HA_SETUP;
     }
 
-    ESP_ERROR_CHECK(layout_store_init());
+    esp_err_t layout_init_err = layout_store_init();
+    if (layout_init_err != ESP_OK) ESP_LOGW(TAG_APP, "Layout initialization deferred: %s", esp_err_to_name(layout_init_err));
     ESP_ERROR_CHECK(theme_store_init());
     ESP_ERROR_CHECK(http_server_start());
+    if (wifi_ready) {
+        esp_err_t update_err =
+            update_check_start(s_runtime_settings.ota_update_check, s_runtime_settings.ota_include_prereleases);
+        if (update_err != ESP_OK) {
+            ESP_LOGW(TAG_APP, "Update check not started: %s", esp_err_to_name(update_err));
+        }
+        auto_update_task_start(s_runtime_settings.ota_auto_install);
+    }
 
     if (boot_screen_mode == BOOT_SCREEN_DASHBOARD) {
         ui_boot_splash_set_status(ui_i18n_get("boot.initializing_touch", "Initializing touch"));
@@ -235,9 +292,15 @@ void app_main(void)
 
         ui_boot_splash_set_status(ui_i18n_get("boot.loading_dashboard", "Loading dashboard"));
         ESP_ERROR_CHECK(ui_runtime_init());
-        ESP_ERROR_CHECK(ui_runtime_reload_layout());
+        esp_err_t reload_err = ui_runtime_reload_layout();
+        if (reload_err != ESP_OK) {
+            ESP_LOGW(TAG_APP, "Initial layout reload deferred: %s", esp_err_to_name(reload_err));
+            app_event_t reload = {.type = EV_LAYOUT_UPDATED};
+            (void)app_events_publish(&reload, 0);
+        }
         ESP_ERROR_CHECK(ui_runtime_start());
         ui_boot_splash_hide();
+        ESP_ERROR_CHECK(display_orientation_start());
 
         ha_client_config_t ha_cfg = {
             .ws_url = s_runtime_settings.ha_ws_url,
@@ -252,6 +315,22 @@ void app_main(void)
         if (cover_err != ESP_OK) {
             ESP_LOGW(TAG_HA_CLIENT, "HA cover fetcher init failed: %s", esp_err_to_name(cover_err));
         }
+
+        if (runtime_settings_has_mqtt(&s_runtime_settings)) {
+            mqtt_mgr_config_t mqtt_cfg = {
+                .broker_host = s_runtime_settings.mqtt_broker_host,
+                .broker_port = s_runtime_settings.mqtt_broker_port,
+                .tls_enabled = s_runtime_settings.mqtt_tls_enabled,
+                .username = s_runtime_settings.mqtt_username,
+                .password = s_runtime_settings.mqtt_password,
+                .topic_prefix = s_runtime_settings.mqtt_topic_prefix,
+                .device_name = s_runtime_settings.mqtt_device_name,
+            };
+            esp_err_t mqtt_err = mqtt_mgr_start(&mqtt_cfg);
+            if (mqtt_err != ESP_OK) {
+                ESP_LOGW(TAG_MQTT, "MQTT client start failed: %s", esp_err_to_name(mqtt_err));
+            }
+        }
     } else if (boot_screen_mode == BOOT_SCREEN_WIFI_SETUP) {
         app_show_wifi_setup_screen(has_wifi_credentials);
         ESP_LOGW(TAG_APP, "Provisioning screen active: Wi-Fi setup required");
@@ -259,4 +338,9 @@ void app_main(void)
         app_show_ha_setup_screen();
         ESP_LOGW(TAG_HA_CLIENT, "HA settings missing, showing setup screen with web editor URL");
     }
+
+    /* Everything is up: a freshly installed image may now cancel the rollback once it proves healthy. */
+    ota_validate_start();
+    net_watchdog_start(has_wifi_credentials, runtime_settings_has_ha(&s_runtime_settings));
+    ui_watchdog_start();
 }

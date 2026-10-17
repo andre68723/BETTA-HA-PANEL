@@ -1,0 +1,445 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "id": "p_sensor",
+      "title": "sensor",
+      "widgets": [
+        {
+          "id": "w_sensor",
+          "type": "sensor",
+          "title": "sensor",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 220,
+            "h": 120
+          },
+          "entity_id": "sensor.t",
+          "sensor_show_age": false,
+          "history_popup": true
+        },
+        {
+          "id": "w_camera",
+          "type": "camera_tile",
+          "title": "Camera",
+          "entity_id": "camera.test",
+          "camera_live": true,
+          "rect": {
+            "x": 20,
+            "y": 200,
+            "w": 320,
+            "h": 180
+          }
+        }
+      ]
+    },
+    {
+      "id": "p_button",
+      "title": "button",
+      "widgets": [
+        {
+          "id": "w_button",
+          "type": "button",
+          "title": "button",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 220,
+            "h": 160
+          },
+          "entity_id": "media_player.t",
+          "button_mode": "play_pause",
+          "button_accent_color": "#112233"
+        }
+      ]
+    },
+    {
+      "id": "p_slider",
+      "title": "slider",
+      "widgets": [
+        {
+          "id": "w_slider",
+          "type": "slider",
+          "title": "slider",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 220,
+            "h": 160
+          },
+          "entity_id": "light.t",
+          "slider_direction": "bottom_to_top",
+          "slider_accent_color": "#112233",
+          "slider_entity_domain": "light"
+        }
+      ]
+    },
+    {
+      "id": "p_gauge",
+      "title": "gauge",
+      "widgets": [
+        {
+          "id": "w_gauge",
+          "type": "gauge",
+          "title": "gauge",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 240,
+            "h": 200
+          },
+          "entity_id": "sensor.a",
+          "secondary_entity_id": "sensor.b",
+          "tertiary_entity_id": "sensor.c",
+          "style_variant": "radial",
+          "gauge_bar_style": "segmented",
+          "gauge_segment_count": 12,
+          "gauge_min": 5,
+          "gauge_max": 50,
+          "gauge_color_mode": "range",
+          "gauge_color_low": "#112233",
+          "gauge_color_high": "#223344",
+          "gauge_target_low": 10,
+          "gauge_target_high": 20,
+          "gauge_target_color": "#334455",
+          "arc_opening": "bottom"
+        }
+      ]
+    },
+    {
+      "id": "p_graph",
+      "title": "graph",
+      "widgets": [
+        {
+          "id": "w_graph",
+          "type": "graph",
+          "title": "graph",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 320,
+            "h": 200
+          },
+          "entity_id": "sensor.t",
+          "graph_line_color": "#112233",
+          "graph_time_window_min": 60,
+          "graph_display_mode": "bars",
+          "graph_bar_bucket_min": 30,
+          "graph_ha_history": true,
+          "graph_point_count": 40
+        }
+      ]
+    },
+    {
+      "id": "p_energy_timeline",
+      "title": "energy_timeline",
+      "widgets": [
+        {
+          "id": "w_energy_timeline",
+          "type": "energy_timeline",
+          "title": "energy_timeline",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 420,
+            "h": 260
+          },
+          "entity_id": "sensor.import",
+          "secondary_entity_id": "sensor.export",
+          "tertiary_entity_id": "sensor.solar",
+          "battery_charge_entity_id": "sensor.charge",
+          "battery_discharge_entity_id": "sensor.discharge",
+          "battery_soc_entity_id": "sensor.soc",
+          "forecast_today_entity_id": "sensor.forecast",
+          "style_variant": "nested"
+        }
+      ]
+    },
+    {
+      "id": "p_vacuum_tile",
+      "title": "vacuum_tile",
+      "widgets": [
+        {
+          "id": "w_vacuum_tile",
+          "type": "vacuum_tile",
+          "title": "vacuum_tile",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 360,
+            "h": 300
+          },
+          "entity_id": "vacuum.t",
+          "tertiary_entity_id": "select.t",
+          "default_mode": "mop",
+          "battery_entity_id": "sensor.t",
+          "history_popup": true
+        }
+      ]
+    },
+    {
+      "id": "p_car_widget",
+      "title": "car_widget",
+      "widgets": [
+        {
+          "id": "w_car_widget",
+          "type": "car_widget",
+          "title": "car_widget",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 280,
+            "h": 340
+          },
+          "entity_id": "sensor.soc",
+          "secondary_entity_id": "sensor.charging",
+          "tertiary_entity_id": "sensor.range",
+          "interior_temp_entity_id": "sensor.temp",
+          "precond_entity_id": "switch.pre",
+          "lock_entity_id": "lock.car"
+        }
+      ]
+    },
+    {
+      "id": "p_lock_tile",
+      "title": "lock_tile",
+      "widgets": [
+        {
+          "id": "w_lock_tile",
+          "type": "lock_tile",
+          "title": "lock_tile",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 300,
+            "h": 100
+          },
+          "entity_id": "lock.t",
+          "lock_confirm": true
+        }
+      ]
+    },
+    {
+      "id": "p_alarm_tile",
+      "title": "alarm_tile",
+      "widgets": [
+        {
+          "id": "w_alarm_tile",
+          "type": "alarm_tile",
+          "title": "alarm_tile",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 300,
+            "h": 100
+          },
+          "entity_id": "alarm_control_panel.t",
+          "alarm_actions": [
+            "arm_home",
+            "arm_away"
+          ],
+          "history_popup": true
+        }
+      ]
+    },
+    {
+      "id": "p_binary_tile",
+      "title": "binary_tile",
+      "widgets": [
+        {
+          "id": "w_binary_tile",
+          "type": "binary_tile",
+          "title": "binary_tile",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 260,
+            "h": 90
+          },
+          "entity_id": "binary_sensor.t",
+          "display_mode": "door"
+        }
+      ]
+    },
+    {
+      "id": "p_room_tile",
+      "title": "room_tile",
+      "widgets": [
+        {
+          "id": "w_room_tile",
+          "type": "room_tile",
+          "title": "room_tile",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 400,
+            "h": 200
+          },
+          "entity_id": "sensor.room_temp",
+          "room_entities": [
+            "light.a"
+          ],
+          "room_controls": true,
+          "room_extra_mode": "humidity",
+          "room_extra_entity_id": "sensor.room_temp"
+        }
+      ]
+    },
+    {
+      "id": "p_weather_3day",
+      "title": "weather_3day",
+      "widgets": [
+        {
+          "id": "w_weather_3day",
+          "type": "weather_3day",
+          "title": "weather_3day",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 360,
+            "h": 260
+          },
+          "entity_id": "weather.t",
+          "forecast_days": 5,
+          "show_precipitation": false,
+          "align_forecast": true
+        }
+      ]
+    },
+    {
+      "id": "p_solar_forecast",
+      "title": "solar_forecast",
+      "widgets": [
+        {
+          "id": "w_solar_forecast",
+          "type": "solar_forecast",
+          "title": "solar_forecast",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 460,
+            "h": 250
+          },
+          "entity_id": "sensor.rem",
+          "forecast_today_entity_id": "sensor.a",
+          "forecast_tomorrow_entity_id": "sensor.b",
+          "forecast_day_3_entity_id": "sensor.c",
+          "forecast_day_4_entity_id": "sensor.d",
+          "forecast_day_5_entity_id": "sensor.e",
+          "solar_forecast_bar_orientation": "horizontal",
+          "solar_forecast_bar_max_kwh": 20
+        }
+      ]
+    },
+    {
+      "id": "p_wallbox_evcc",
+      "title": "wallbox_evcc",
+      "widgets": [
+        {
+          "id": "w_wallbox_evcc",
+          "type": "wallbox_evcc",
+          "title": "wallbox_evcc",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 360,
+            "h": 360
+          },
+          "entity_id": "select.mode",
+          "evcc_vehicle_entity_id": "select.v",
+          "evcc_target_soc_entity_id": "number.t",
+          "evcc_power_entity_id": "sensor.p",
+          "evcc_soc_entity_id": "sensor.s",
+          "evcc_connected_entity_id": "binary_sensor.c",
+          "evcc_charging_entity_id": "binary_sensor.ch",
+          "evcc_disabled_entity_id": "binary_sensor.d",
+          "evcc_effective_soc_entity_id": "sensor.e",
+          "evcc_energy_entity_id": "sensor.en",
+          "evcc_remaining_entity_id": "sensor.r"
+        }
+      ]
+    },
+    {
+      "id": "p_bambu_printer",
+      "title": "bambu_printer",
+      "widgets": [
+        {
+          "id": "w_bambu_printer",
+          "type": "bambu_printer",
+          "camera_entity_id": "camera.printer",
+          "title": "bambu_printer",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 360,
+            "h": 420
+          },
+          "entity_id": "sensor.status",
+          "nozzle_temp_entity_id": "sensor.n",
+          "bed_temp_entity_id": "sensor.b",
+          "progress_entity_id": "sensor.p",
+          "remaining_time_entity_id": "sensor.r",
+          "stage_entity_id": "sensor.st",
+          "job_name_entity_id": "sensor.j",
+          "pause_entity_id": "button.pa",
+          "resume_entity_id": "button.re",
+          "stop_entity_id": "button.sto"
+        }
+      ]
+    },
+    {
+      "id": "house",
+      "type": "house_dashboard",
+      "title": "House",
+      "widgets": [],
+      "house": {
+        "rooms": [
+          {
+            "name": "Kitchen",
+            "floor": "EG",
+            "entity_id": "sensor.kitchen_temp",
+            "room_entities": [
+              "light.k"
+            ],
+            "room_extra_mode": "humidity",
+            "room_extra_entity_id": "sensor.kitchen_temp"
+          }
+        ]
+      }
+    },
+    {
+      "id": "energy",
+      "type": "energy_dashboard",
+      "title": "Energy",
+      "widgets": [],
+      "energy": {
+        "source": "manual_live",
+        "home_power_entity_id": "sensor.home",
+        "solar_power_entity_id": "sensor.solar",
+        "grid_power_entity_id": "sensor.grid",
+        "grid_import_power_entity_id": "sensor.gi",
+        "grid_export_power_entity_id": "sensor.ge",
+        "battery_power_entity_id": "sensor.bp",
+        "battery_charge_power_entity_id": "sensor.bc",
+        "battery_discharge_power_entity_id": "sensor.bd",
+        "battery_soc_entity_id": "sensor.soc",
+        "gas_entity_id": "sensor.gas",
+        "water_entity_id": "sensor.water",
+        "details": "side"
+      }
+    }
+  ],
+  "alerts": [
+    {
+      "entity_id": "event.bell",
+      "title": "Door",
+      "message": "Ding",
+      "timeout_sec": 30,
+      "sound": "chime",
+      "action_entity_id": "button.open",
+      "action_label": "Open",
+      "camera_entity_id": "camera.door"
+    }
+  ]
+}

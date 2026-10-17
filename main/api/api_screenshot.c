@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "api/api_routes.h"
 
@@ -16,7 +17,6 @@
 
 static void set_common_headers(httpd_req_t *req)
 {
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
 }
 
@@ -54,6 +54,36 @@ esp_err_t api_screenshot_bmp_get_handler(httpd_req_t *req)
     }
 
     snapshot = lv_snapshot_take(lv_screen_active(), LV_COLOR_FORMAT_RGB888);
+    if (snapshot != NULL) {
+        /* Popups, notifications and the update overlay live on the top layer,
+         * which a snapshot of the active screen does not include. Blend it on. */
+        lv_draw_buf_t *top = lv_snapshot_take(lv_layer_top(), LV_COLOR_FORMAT_ARGB8888);
+        if (top != NULL && top->data != NULL && snapshot->data != NULL &&
+            top->header.w == snapshot->header.w && top->header.h == snapshot->header.h) {
+            for (uint32_t y = 0; y < snapshot->header.h; y++) {
+                uint8_t *dst = (uint8_t *)snapshot->data + (size_t)y * snapshot->header.stride;
+                const uint8_t *src = (const uint8_t *)top->data + (size_t)y * top->header.stride;
+                for (uint32_t x = 0; x < snapshot->header.w; x++, dst += 3, src += 4) {
+                    const uint32_t a = src[3]; /* straight alpha, bytes are B, G, R, A */
+                    if (a == 0U) {
+                        continue;
+                    }
+                    if (a == 255U) {
+                        dst[0] = src[0];
+                        dst[1] = src[1];
+                        dst[2] = src[2];
+                    } else {
+                        dst[0] = (uint8_t)((src[0] * a + dst[0] * (255U - a)) / 255U);
+                        dst[1] = (uint8_t)((src[1] * a + dst[1] * (255U - a)) / 255U);
+                        dst[2] = (uint8_t)((src[2] * a + dst[2] * (255U - a)) / 255U);
+                    }
+                }
+            }
+        }
+        if (top != NULL) {
+            lv_draw_buf_destroy(top);
+        }
+    }
     display_unlock();
 
     if (snapshot == NULL) {

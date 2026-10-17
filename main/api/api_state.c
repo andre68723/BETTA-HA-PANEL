@@ -14,7 +14,6 @@ static void set_json_headers(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 }
 
 static cJSON *state_to_json(const ha_state_t *state)

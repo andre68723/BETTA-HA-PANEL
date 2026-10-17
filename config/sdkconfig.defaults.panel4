@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+# Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+#
+# Panel variant overlay: 4" 720x720 (original smart86 hardware).
+# Apply together with the common sdkconfig.defaults via
+#   idf.py -D SDKCONFIG_DEFAULTS="config/sdkconfig.defaults;config/sdkconfig.defaults.panel4" ...
+# or the CMake preset "panel4" (see CMakePresets.json).
+CONFIG_APP_PANEL_VARIANT_4INCH_720=y
+# CONFIG_APP_PANEL_VARIANT_10INCH_1280 is not set
+
+# --- BSP display/touch: Waveshare ESP32-P4-WIFI6-Touch-LCD-4B (720x720 4") ---
+CONFIG_BSP_LCD_TYPE_720_720_4_INCH=y
+# CONFIG_BSP_LCD_TYPE_800_800_3_4_INCH is not set
+CONFIG_ESP_LCD_TOUCH_MAX_POINTS=5
+CONFIG_LV_USE_LODEPNG=y
+
+# Waveshare ESP32-P4-WIFI6-Touch-LCD-4B boards in the wild are commonly
+# ESP32-P4 rev v1.x engineering samples. ESP-IDF treats P4 rev <3 and rev >=3
+# images as mutually exclusive, so build this variant for the v1.x silicon
+# family (same reasoning as the paneljc overlay).
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+CONFIG_ESP32P4_REV_MIN_100=y
+# CONFIG_ESP32P4_REV_MIN_300 is not set
+# CONFIG_ESP32P4_REV_MIN_301 is not set
+
+# ESP-Hosted static mempool can exhaust internal DMA memory before display
+# init on this board too (same reasoning as the paneljc overlay).
+# CONFIG_ESP_HOSTED_USE_MEMPOOL is not set
+
+# Faster UI: cache what LVGL would recompute on every draw (shadow blur,
+# rounded corners, decoded PNG icons).
+CONFIG_LV_DRAW_SW_SHADOW_CACHE_SIZE=64
+CONFIG_LV_DRAW_SW_CIRCLE_CACHE_SIZE=32
+CONFIG_LV_CACHE_DEF_SIZE=786432
+CONFIG_LV_IMAGE_HEADER_CACHE_DEF_CNT=64
+
+# LVGL allocates from PSRAM first: set in the common sdkconfig.defaults for every variant.

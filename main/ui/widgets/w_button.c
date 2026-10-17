@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ui/ui_widget_factory.h"
 
@@ -8,8 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ui/fonts/app_text_fonts.h"
+#include "ui/fonts/app_symbols.h"
+#include "ui/theme/ui_typography.h"
 #include "ui/theme/theme_default.h"
+#include "ui/theme/ui_style.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_bindings.h"
 #include "ui/ui_memory.h"
@@ -158,13 +161,13 @@ static const char *button_icon_symbol(w_button_mode_t mode, bool is_on)
 {
     switch (mode) {
     case W_BUTTON_MODE_PLAY_PAUSE:
-        return is_on ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY;
+        return is_on ? APP_SYMBOL_PAUSE : APP_SYMBOL_PLAY;
     case W_BUTTON_MODE_STOP:
-        return LV_SYMBOL_STOP;
+        return APP_SYMBOL_STOP;
     case W_BUTTON_MODE_NEXT:
-        return LV_SYMBOL_NEXT;
+        return APP_SYMBOL_NEXT;
     case W_BUTTON_MODE_PREVIOUS:
-        return LV_SYMBOL_PREV;
+        return APP_SYMBOL_PREV;
     case W_BUTTON_MODE_AUTO:
     default:
         return "";
@@ -173,7 +176,7 @@ static const char *button_icon_symbol(w_button_mode_t mode, bool is_on)
 
 static bool button_label_visible(lv_obj_t *obj)
 {
-    return obj != NULL && !lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    return obj != NULL && !lv_obj_is_hidden(obj);
 }
 
 static const char *button_translate_status_text(const char *status_text)
@@ -201,48 +204,10 @@ static const char *button_translate_status_text(const char *status_text)
 
 static const lv_font_t *button_pick_icon_font(lv_coord_t available_h)
 {
-#if LV_FONT_MONTSERRAT_72
-    if (available_h >= 92) {
-        return &lv_font_montserrat_72;
-    }
-#endif
-#if LV_FONT_MONTSERRAT_56
-    if (available_h >= 74) {
-        return &lv_font_montserrat_56;
-    }
-#endif
-#if LV_FONT_MONTSERRAT_48
-    if (available_h >= 64) {
-        return &lv_font_montserrat_48;
-    }
-#endif
-#if LV_FONT_MONTSERRAT_44
-    if (available_h >= 58) {
-        return &lv_font_montserrat_44;
-    }
-#endif
-#if LV_FONT_MONTSERRAT_40
-    if (available_h >= 52) {
-        return &lv_font_montserrat_40;
-    }
-#endif
-#if LV_FONT_MONTSERRAT_36
-    if (available_h >= 46) {
-        return &lv_font_montserrat_36;
-    }
-#endif
-#if LV_FONT_MONTSERRAT_32
-    if (available_h >= 40) {
-        return &lv_font_montserrat_32;
-    }
-#endif
-#if LV_FONT_MONTSERRAT_28
-    if (available_h >= 34) {
-        return &lv_font_montserrat_28;
-    }
-#endif
-    return LV_FONT_DEFAULT;
+    return available_h >= 34 ? APP_FONT_SYMBOL_LARGE : APP_FONT_SYMBOL_SMALL;
 }
+
+static bool button_card_is_compact(lv_obj_t *card);
 
 static void button_calc_action_area(lv_obj_t *card, w_button_ctx_t *ctx, lv_coord_t top_gap, lv_coord_t bottom_gap,
     lv_coord_t min_height, lv_coord_t *out_content_w, lv_coord_t *out_top, lv_coord_t *out_area_h)
@@ -262,6 +227,12 @@ static void button_calc_action_area(lv_obj_t *card, w_button_ctx_t *ctx, lv_coor
         content_h = 48;
     }
 
+    /* The title's bottom margin is air on a large tile but a third of a compact one. */
+    if (button_label_visible(ctx->title_label) && button_card_is_compact(card)) {
+        lv_obj_align(ctx->title_label, LV_ALIGN_BOTTOM_MID, 0, 0);
+        lv_obj_update_layout(ctx->title_label);
+    }
+
     lv_coord_t top = top_gap / 2;
     if (button_label_visible(ctx->state_label)) {
         top = lv_obj_get_y(ctx->state_label) + lv_obj_get_height(ctx->state_label) + top_gap;
@@ -270,6 +241,12 @@ static void button_calc_action_area(lv_obj_t *card, w_button_ctx_t *ctx, lv_coor
     lv_coord_t bottom = content_h - (bottom_gap / 2);
     if (button_label_visible(ctx->title_label)) {
         bottom = lv_obj_get_y(ctx->title_label) - bottom_gap;
+    }
+    /* Too little room between the state line and the title (a tile near its 100x100 minimum):
+     * drop the state line, the control itself shows the state, instead of covering the title. */
+    if (bottom < top + min_height && button_label_visible(ctx->state_label)) {
+        lv_obj_set_hidden(ctx->state_label, true);
+        top = top_gap / 2;
     }
 
     if (top < 0) {
@@ -314,11 +291,7 @@ static bool button_card_is_compact(lv_obj_t *card)
         card_h = lv_obj_get_style_height(card, LV_PART_MAIN);
     }
 
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-    return card_w <= 130 || card_h <= 130;
-#else
     return card_w <= 120 || card_h <= 120;
-#endif
 }
 
 static void button_set_switch_checked(w_button_ctx_t *ctx, bool checked)
@@ -479,33 +452,36 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
 
     lv_obj_set_style_bg_color(card, card_bg, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
+    ui_style_card_set_active(card, is_on && !unavailable);
     if (ctx->show_title) {
-        lv_obj_clear_flag(ctx->title_label, LV_OBJ_FLAG_HIDDEN);
+        ui_widget_name_set_hidden(ctx->title_label, false);
         lv_obj_set_style_text_color(ctx->title_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     } else {
-        lv_obj_add_flag(ctx->title_label, LV_OBJ_FLAG_HIDDEN);
+        ui_widget_name_set_hidden(ctx->title_label, true);
     }
     if (ctx->show_status) {
-        lv_obj_clear_flag(ctx->state_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(ctx->state_label, false);
         lv_obj_set_style_text_color(ctx->state_label, state_color, LV_PART_MAIN);
     } else {
-        lv_obj_add_flag(ctx->state_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(ctx->state_label, true);
     }
 
     if (button_mode_uses_switch(ctx->mode)) {
         if (ctx->action_switch != NULL) {
             const lv_color_t track_off =
-                unavailable ? lv_color_hex(APP_UI_COLOR_CARD_BORDER) : lv_color_hex(W_BUTTON_SWITCH_TRACK_OFF_HEX);
+                unavailable ? lv_color_hex(APP_UI_COLOR_CARD_BORDER) : ui_style_control_bg(lv_color_hex(W_BUTTON_SWITCH_TRACK_OFF_HEX));
             const lv_color_t track_on =
                 unavailable ? lv_color_hex(APP_UI_COLOR_CARD_BORDER) : ctx->accent_color;
             const lv_color_t knob_color =
-                unavailable ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED) : lv_color_hex(W_BUTTON_SWITCH_KNOB_HEX);
+                unavailable ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED) : ui_style_switch_knob(lv_color_hex(W_BUTTON_SWITCH_KNOB_HEX));
 
-            lv_obj_clear_flag(ctx->action_switch, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_hidden(ctx->action_switch, false);
 
-            lv_obj_set_style_radius(ctx->action_switch, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_radius(ctx->action_switch, LV_RADIUS_CIRCLE, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-            lv_obj_set_style_radius(ctx->action_switch, LV_RADIUS_CIRCLE, LV_PART_KNOB | LV_STATE_DEFAULT);
+            /* Some styles keep a pill switch although their ordinary fill tracks have softer ends. */
+            const int32_t switch_radius = ui_style_traits()->round_switches ? LV_RADIUS_CIRCLE : ui_style_track_radius();
+            lv_obj_set_style_radius(ctx->action_switch, switch_radius, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_radius(ctx->action_switch, switch_radius, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+            lv_obj_set_style_radius(ctx->action_switch, switch_radius, LV_PART_KNOB | LV_STATE_DEFAULT);
 
             lv_obj_set_style_bg_color(ctx->action_switch, track_off, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_bg_opa(ctx->action_switch, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -524,6 +500,8 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
             lv_obj_set_style_bg_opa(ctx->action_switch, LV_OPA_COVER, LV_PART_KNOB | LV_STATE_DEFAULT);
             lv_obj_set_style_border_width(ctx->action_switch, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
             lv_obj_set_style_pad_all(ctx->action_switch, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
+            ui_style_inset_effects(ctx->action_switch);
+            ui_style_drop_shadow(ctx->action_switch, LV_PART_KNOB);
 
             if (unavailable) {
                 lv_obj_add_state(ctx->action_switch, LV_STATE_DISABLED);
@@ -535,15 +513,15 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
         }
 
         if (ctx->action_icon != NULL) {
-            lv_obj_add_flag(ctx->action_icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_hidden(ctx->action_icon, true);
         }
     } else {
         if (ctx->action_switch != NULL) {
-            lv_obj_add_flag(ctx->action_switch, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_hidden(ctx->action_switch, true);
         }
 
         if (ctx->action_icon != NULL) {
-            lv_obj_clear_flag(ctx->action_icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_hidden(ctx->action_icon, false);
             lv_label_set_text(ctx->action_icon, button_icon_symbol(ctx->mode, is_on && !unavailable));
             lv_obj_set_style_text_color(ctx->action_icon, unavailable ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED) : ctx->accent_color,
                 LV_PART_MAIN);
@@ -650,7 +628,7 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_t *card = lv_obj_create(parent);
     lv_obj_set_pos(card, def->x, def->y);
     lv_obj_set_size(card, def->w, def->h);
-    lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(card, false);
     lv_obj_set_style_radius(card, APP_UI_CARD_RADIUS, LV_PART_MAIN);
 #if APP_UI_REWORK_V2
     lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
@@ -670,11 +648,19 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
         title_text = "";
     }
 
-    lv_obj_t *title = lv_label_create(card);
+    lv_obj_t *title = ui_widget_name_create(card, !def->hide_name);
     lv_label_set_text(title, title_text);
     lv_obj_set_width(title, def->w - 32);
-    lv_obj_set_style_text_font(title, APP_FONT_TEXT_20, LV_PART_MAIN);
+    lv_obj_set_style_text_font(title, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    /* No long-mode was ever set here (LVGL's default is LV_LABEL_LONG_WRAP), so a one-word title
+     * too wide for the button (a switch/scene entity named e.g. "Schwenken") wrapped mid-word --
+     * there is no space to break at -- into "Schwe"/"nken" instead of a clean single-line
+     * truncation, found on a real device, the same bug found and fixed this way in the slider,
+     * gauge and fan widgets. The label is bottom-aligned at a fixed offset below, so constraining
+     * it to one line does not otherwise change its position. */
+    lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
+    lv_obj_set_height(title, lv_font_get_line_height(ui_font_role(UI_TEXT_META)));
 #if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, -12);
 #else
@@ -683,7 +669,11 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
 
     lv_obj_t *state_label = lv_label_create(card);
     lv_label_set_text(state_label, ui_i18n_get("common.off", "OFF"));
-    lv_obj_set_style_text_font(state_label, APP_FONT_TEXT_20, LV_PART_MAIN);
+    lv_obj_set_style_text_font(state_label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
+    /* One line within the tile: a long translated state ("niet beschikbaar") ran past its edge. */
+    lv_obj_set_width(state_label, def->w - 32);
+    lv_obj_set_height(state_label, lv_font_get_line_height(ui_font_role(UI_TEXT_META)));
+    lv_label_set_long_mode(state_label, LV_LABEL_LONG_DOT);
 #if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, 2);
 #else
@@ -691,15 +681,15 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
 #endif
 
     lv_obj_t *action_switch = lv_switch_create(card);
-    lv_obj_clear_flag(action_switch, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_set_event_bubble(action_switch, false);
     lv_obj_set_size(action_switch, 88, 40);
     lv_switch_set_orientation(action_switch, LV_SWITCH_ORIENTATION_HORIZONTAL);
 
     lv_obj_t *action_icon = lv_label_create(card);
-    lv_obj_set_style_text_font(action_icon, LV_FONT_DEFAULT, LV_PART_MAIN);
+    lv_obj_set_style_text_font(action_icon, APP_FONT_SYMBOL_SMALL, LV_PART_MAIN);
     lv_obj_set_style_text_align(action_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_label_set_text(action_icon, "");
-    lv_obj_add_flag(action_icon, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_hidden(action_icon, true);
 
     w_button_ctx_t *ctx = ui_calloc_prefer_psram(1, sizeof(w_button_ctx_t));
     if (ctx == NULL) {
@@ -712,9 +702,9 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     ctx->state_label = state_label;
     ctx->action_switch = action_switch;
     ctx->action_icon = action_icon;
-    ctx->accent_color = lv_color_hex(W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX);
+    ctx->accent_color = ui_style_accent(lv_color_hex(W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX));
     ctx->mode = button_mode_from_text(def->button_mode);
-    ctx->show_title = title_text[0] != '\0';
+    ctx->show_title = !def->hide_name && title_text[0] != '\0';
     ctx->show_status = !is_media_player;
     if (ctx->mode != W_BUTTON_MODE_AUTO && !is_media_player) {
         ctx->mode = W_BUTTON_MODE_AUTO;
@@ -729,10 +719,10 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     }
 
     if (!ctx->show_title) {
-        lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(title, true);
     }
     if (!ctx->show_status) {
-        lv_obj_add_flag(state_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(state_label, true);
     }
 
     lv_obj_add_event_cb(card, w_button_card_event_cb, LV_EVENT_CLICKED, ctx);

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "id": "history",
+      "title": "History",
+      "widgets": []
+    }
+  ],
+  "states": [],
+  "history_popup": {
+    "entity_id": "binary_sensor.history_readability",
+    "title": "Haustür – Verlauf",
+    "current": "Geschlossen",
+    "numeric": false,
+    "device_class": "door"
+  }
+}

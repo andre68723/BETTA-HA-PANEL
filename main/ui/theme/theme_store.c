@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ui/theme/theme_store.h"
 
@@ -12,9 +13,9 @@
 
 #include "esp_log.h"
 
+#include "util/atomic_file.h"
 #include "util/log_tags.h"
 
-static const char *TAG = "theme_store";
 
 static bool theme_store_is_valid_id(const char *id)
 {
@@ -62,10 +63,12 @@ static esp_err_t theme_store_read_active_id(char *out, size_t out_len)
     out[0] = '\0';
     FILE *f = fopen(APP_THEME_ACTIVE_PATH, "rb");
     if (f == NULL) {
-        return ESP_ERR_NOT_FOUND;
+        return errno == ENOENT ? ESP_ERR_NOT_FOUND : ESP_FAIL;
     }
     size_t n = fread(out, 1U, out_len - 1U, f);
+    bool failed = ferror(f) != 0;
     fclose(f);
+    if (failed) return ESP_FAIL;
     out[n] = '\0';
     /* trim whitespace/newline */
     while (n > 0 && (out[n - 1] == '\n' || out[n - 1] == '\r' || out[n - 1] == ' ')) {
@@ -82,30 +85,24 @@ esp_err_t theme_store_set_active_id(const char *id)
     if (!theme_store_ensure_dir()) {
         return ESP_FAIL;
     }
-    FILE *f = fopen(APP_THEME_ACTIVE_PATH, "wb");
-    if (f == NULL) {
-        return ESP_FAIL;
-    }
-    size_t len = strlen(id);
-    size_t w = fwrite(id, 1U, len, f);
-    fclose(f);
-    return (w == len) ? ESP_OK : ESP_FAIL;
+    return atomic_file_write(APP_THEME_ACTIVE_PATH, id, strlen(id));
+}
+
+esp_err_t theme_store_load_active(theme_entry_t *out)
+{
+    char id[APP_MAX_THEME_ID_LEN];
+    esp_err_t err = theme_store_read_active_id(id, sizeof(id));
+    if (err == ESP_ERR_NOT_FOUND) return theme_palette_resolve_by_id("dark_v2", out);
+    if (err != ESP_OK) return err;
+    err = theme_palette_resolve_by_id(id, out);
+    if (err == ESP_ERR_NOT_FOUND) return theme_palette_resolve_by_id("dark_v2", out);
+    return err;
 }
 
 esp_err_t theme_store_init(void)
 {
     (void)theme_store_ensure_dir();
-
-    char id[APP_MAX_THEME_ID_LEN] = {0};
-    if (theme_store_read_active_id(id, sizeof(id)) == ESP_OK && id[0] != '\0') {
-        esp_err_t err = theme_palette_activate_by_id(id);
-        if (err == ESP_OK) {
-            ESP_LOGI(TAG, "active theme: %s", id);
-            return ESP_OK;
-        }
-        ESP_LOGW(TAG, "persisted theme %s not found, using default", id);
-    }
-    /* default already active (dark_v2) */
+    /* Palette application belongs to the UI task under the display lock. */
     return ESP_OK;
 }
 
@@ -123,7 +120,7 @@ esp_err_t theme_store_load_custom(const char *id, theme_entry_t *out_entry)
     }
     FILE *f = fopen(path, "rb");
     if (f == NULL) {
-        return ESP_ERR_NOT_FOUND;
+        return errno == ENOENT ? ESP_ERR_NOT_FOUND : ESP_FAIL;
     }
     if (fseek(f, 0, SEEK_END) != 0) {
         fclose(f);
@@ -191,16 +188,9 @@ esp_err_t theme_store_save_custom(const theme_entry_t *entry)
         free(json);
         return ESP_ERR_INVALID_ARG;
     }
-    FILE *f = fopen(path, "wb");
-    if (f == NULL) {
-        free(json);
-        return ESP_FAIL;
-    }
-    size_t len = strlen(json);
-    size_t w = fwrite(json, 1U, len, f);
-    fclose(f);
+    esp_err_t write_err = atomic_file_write(path, json, strlen(json));
     free(json);
-    return (w == len) ? ESP_OK : ESP_FAIL;
+    return write_err;
 }
 
 esp_err_t theme_store_delete_custom(const char *id)

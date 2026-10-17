@@ -1,47 +1,76 @@
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1
 # Copyright (c) 2026 Cpt_Kirk
+# Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
 .vscode/
+.cache/
 build/
-build_*/
-build-panel*/
+site/
+.venv/
+__pycache__/
+*.pyc
 lvgl_design/
 sdkconfig
 sdkconfig.panel*
 sdkconfig.old
 
-# Internal merge / porting notes - never publish.
-portieren.md
-portieren-s3.md
-MERGE-PROTOCOL.md
+# Local plans, review notes and personal skills - never publish.
+.local/
 managed_components/
-tools/
+tools/*
+!tools/generate_component_versions.py
+!tools/ota_flash.sh
+!tools/package_release.sh
+!tools/vendor_cam_sensor.py
+!tools/auto_update_device_test.sh
+!tools/check_component_updates.py
+!tools/screenshot.sh
+!tools/simulator.sh
+!tools/build.sh
+!tools/clean.sh
+!tools/check.sh
+!tools/check_web.py
+!tools/editor_local.py
+!tools/editor_local_demo.py
+!tools/editor_local/
+!tools/editor_local/**
+!tools/check_source_sizes.py
+!tools/check_docs_size.py
+!tools/test_host.sh
+!tools/apply_component_patches.py
+!tools/generate_gallery.py
+!tools/gallery_content.py
+!tools/generate_simulator_gallery.py
+!tools/generate_notification_emoji.py
+!tools/generate_widget_fonts.py
+!tools/check_widget_layout.py
+!tools/compare_editor_previews.py
+!tools/check_readability.py
+!tools/calibrate_text_caps.py
+!tools/capture_device_pages.py
+!tools/style_diff.py
+!tools/gallery_freshness.py
+!tools/check_gallery_fresh.py
+!tools/import_device_captures.py
+!tools/ui_styles.py
+!tools/generate_docs_examples.py
+!tools/generate_widget_docs.py
+!tools/generate_check_diagram.py
+!tools/gallery_entities.example.json
+!tools/stress_test.py
+!tools/lfs_repack.py
+!tools/README.md
 release/network_adapter_esp32c6*.bin
-release/archive/
-release/ota/archive/
+release/out/
 main/ui/weather_icons/**
 !main/ui/weather_icons/
 !main/ui/weather_icons/UPSTREAM_LINK.txt
 
-# Local generated font files
-main/ui/fonts/mditop50icons.c
-main/ui/fonts/mditop50icons42.c
-main/ui/fonts/mditop50icons56.c
-main/ui/fonts/mditop50icons72.c
-main/ui/fonts/mdiweatherIcons20.c
-main/ui/fonts/poppins_regular_12.c
-main/ui/fonts/poppins_regular_14.c
-main/ui/fonts/poppins_regular_16.c
-main/ui/fonts/poppins_regular_18.c
-main/ui/fonts/poppins_regular_20.c
-main/ui/fonts/poppins_regular_22.c
-main/ui/fonts/poppins_regular_24.c
-main/ui/fonts/poppins_regular_28.c
-main/ui/fonts/poppins_regular_34.c
-main/ui/fonts/poppins_regular_36.c
-main/ui/fonts/poppins_regular_38.c
-main/ui/fonts/poppins_regular_40.c
-main/ui/fonts/materialdesignicons-webfont.ttf
-
 # Panel variant manifest is generated from main/idf_component.panel{4,10}.yml
 # by the top-level CMakeLists.txt on every configure. Do not edit or commit.
 main/idf_component.yml
+
+# Claude Code local state (settings, permissions, backups and agent worktrees)
+.claude/
+
+# macOS
+.DS_Store

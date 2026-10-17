@@ -29,12 +29,15 @@ typedef struct {
     char state[APP_MAX_STATE_LEN];
     char attributes_json[APP_HA_ATTRS_MAX_LEN];
     int64_t last_changed_unix_ms;
+    int64_t ha_changed_s; /* Home Assistant "last changed" as Unix seconds, 0 = unknown */
 } ha_state_t;
 
 esp_err_t ha_model_init(void);
 void ha_model_reset(void);
 esp_err_t ha_model_upsert_entity(const ha_entity_info_t *entity);
 esp_err_t ha_model_upsert_state(const ha_state_t *state);
+/* Copies the HA-computed friendly name when available; leaves out unchanged otherwise. */
+bool ha_model_get_entity_name(const char *entity_id, char *out, size_t out_len);
 bool ha_model_get_state(const char *entity_id, ha_state_t *out_state);
 uint32_t ha_model_state_revision(void);
 size_t ha_model_list_entities(

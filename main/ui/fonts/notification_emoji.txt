@@ -1,0 +1,41 @@
+# Emoji that the notification popup draws in color (ui/notification_emoji.c). Every other emoji stays monochrome through the text font's
+# fallback. Each codepoint must also be in emoji_codepoints.txt, or the sanitizer would replace it before it reaches the label.
+# tools/generate_notification_emoji.py renders these from the pinned Noto Emoji images into notification_emoji_data.c.
+# One U+ codepoint per line, in any order.
+U+2197   # north east arrow
+U+2600   # sun
+U+2615   # hot beverage
+U+26A0   # warning
+U+26A1   # high voltage
+U+2705   # check mark button
+U+2744   # snowflake
+U+274C   # cross mark
+U+1F305  # sunrise
+U+1F319  # crescent moon
+U+1F31F  # glowing star
+U+1F321  # thermometer
+U+1F324  # sun behind small cloud
+U+1F325  # sun behind large cloud
+U+1F327  # cloud with rain
+U+1F3E0  # house
+U+1F4A1  # light bulb
+U+1F4A7  # droplet
+U+1F4AC  # speech balloon
+U+1F4E2  # loudspeaker
+U+1F4E6  # package
+U+1F4F6  # antenna bars
+U+1F50B  # battery
+U+1F50C  # electric plug
+U+1F512  # locked
+U+1F513  # unlocked
+U+1F514  # bell
+U+1F525  # fire
+U+1F5D1  # wastebasket
+U+1F697  # automobile
+U+1F6A8  # police car light
+U+1F6AA  # door
+U+1F6B6  # person walking
+U+1F6D1  # stop sign
+U+1F916  # robot
+U+1FA9F  # window
+U+1FAAB  # low battery

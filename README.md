@@ -1,111 +1,101 @@
-<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk -->
-<img src="images/BETTAOS.jpg" alt="BETTA OS Logo" width="10%" />
+<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk | Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md -->
+<img src="docs/img/brand/BETTAOS.jpg" alt="BETTA OS logo" width="72" />
 
 # BETTA HA Panel
 
-A runtime-configurable Home Assistant wall panel for ESP32-P4 and ESP32-S3 touchscreen devices. Build your dashboard directly on the device — no YAML edits, no firmware rebuilds.
+A Home Assistant dashboard for ESP32-P4 touchscreens. Arrange widgets, import rooms and
+choose your appearance in the panel's browser editor. Everyday layout changes need no
+YAML and no firmware rebuild.
 
-<p float="left">
-  <img width="32%" alt="Page settings" src="https://github.com/user-attachments/assets/9caf6e2b-6ea9-4b76-b404-1b58da822712" />
-  <img width="32%" alt="Media Player & Roborock" src="https://github.com/user-attachments/assets/c31df7b8-f7e7-461a-98af-80070eac0392" />
-  <img width="32%" alt="Widget inspector" src="https://github.com/user-attachments/assets/97be77c3-0716-4641-994c-efe90c929953" />
-</p>
----
+[Documentation site](https://andre68723.github.io/BETTA-HA-PANEL/) · [Guides](docs/README.md) · [Getting started](docs/getting-started.md) ·
+[Features](docs/features.md) · [Release notes](docs/release-notes.md)
 
-## Supported hardware
+![A living-room dashboard with lights, heating, weather, music and solar power, rendered by the current LVGL simulator](docs/img/examples/dashboard-wide.png)
 
-BETTA HA Panel ships as **three firmware variants**, one per supported device:
+The panel image uses public demo data rendered by the firmware's LVGL simulator.
+See the [feature tour](docs/features.md) for controls and the [web editor](docs/editor.md) for configuration.
 
-| Variant    | Device                                                  | Resolution | Factory image                                                                     |
-|------------|---------------------------------------------------------|------------|-----------------------------------------------------------------------------------|
-| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")          | 720 × 720  | [betta86-ha-panel-v0.8.2-panel4.factory.bin](release/betta86-ha-panel-v0.8.2-panel4.factory.bin)   |
-| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel**    | 1280 × 800 | [betta86-ha-panel-v0.8.2-panel10.factory.bin](release/betta86-ha-panel-v0.8.2-panel10.factory.bin) |
-| `panels3`  | Guition **ESP32-S3-4848S040** (4")                      | 480 × 480  | [betta86-ha-panel-v0.8.2-panels3.factory.bin](release/betta86-ha-panel-v0.8.2-panels3.factory.bin) |
+## Why this fork
 
-All variants share the same dashboard engine, web editor, and Home Assistant integration. Pick the image that matches your board.
+I found BETTA, Cpt_Kirk's firmware for Home Assistant touch panels, interesting because
+it needs no YAML and no code: you lay out the dashboard in a browser editor on the panel
+itself. I started with the 4-inch Waveshare panel. Then I bought a larger display that
+BETTA did not support yet, and added it. Along the way I added widgets I was missing for my own
+use: solar forecast, evcc wallbox, Bambu printer, Matter-based vacuums and more weather
+information. A few other things changed with them. The list of what is
+different from upstream v0.8.2 is in the [release notes](docs/release-notes.md).
 
----
+This is a personal project, built around the panels I own. All of them are ESP32-P4
+devices, so I removed the ESP32-S3 variant of upstream: I have no test device for it, and
+its 480 px screen cannot hold the newer widgets. Use the fork as it is; the hardware table
+below says what has been tried on a device.
 
-## Main features
+## What you can do
 
-- **Live Home Assistant link** — WebSocket connection with REST fallback for forecasts and long-poll states.
-- **On-device editor** — BETTA Editor in the browser at `http://<panel-ip>`; drag-and-drop widgets, multi-page layouts, room-grouped entity picker.
-- **Widget library** — sensor, button, slider, graph, light, heating, weather, up to 5 day weather forecast, media player, todo list, Roborock, energy dashboard, empty tile.
-- **Advanced light control** — brightness, color temperature, RGB — exposed only when Home Assistant reports the capability.
-- **Energy dashboard** — automatic grid / solar / battery / gas / water flow visualization driven by the Home Assistant energy model.
-- **Graphs** — line, smoothed line, or bar-chart modes; event-rate sampling up to 4096 points with progressive decimation.
-- **First-run provisioning** — `BETTA-Setup` Wi-Fi AP, guided Wi-Fi + Home Assistant setup, Quick Setup flow for a starter dashboard.
-- **OTA updates** — upload an `.ota.bin` or point to an OTA URL from the web editor; no reflash required after v0.7.1.
-- **Multilingual** — built-in English, German, Spanish, French; custom translation JSON upload/download.
-- **Touch-friendly UX** — auto-dimming backlight after idle, pointer-capture drag/resize, stable GT911 touch startup.
+- **Build your dashboard:** drag, resize and configure widgets across multiple pages;
+  start with a Home Assistant room or a room overview grouped by floor.
+- **Control your home:** lights, heating, blinds, fans, media players, vacuums,
+  scenes and locks, with controls matched to each entity's capabilities.
+- **See what matters:** sensor values, Recorder history, weather, solar forecasts,
+  energy flows and a 24-hour energy timeline.
+- **Make it yours:** Flat, Glow, Glass or Matte appearance, six color themes,
+  English/German UI and custom themes or translations.
+- **Manage the panel:** brightness and night mode, HTTP/MQTT notifications,
+  backup/restore, OTA updates and device diagnostics from the editor.
 
----
+The [feature guide](docs/features.md), [widget library](docs/widgets/README.md) and
+[integration guide](docs/home-assistant.md) cover the details.
 
-## Getting started
+## Hardware
 
-1. **Download** the factory image for your board from the table above.
-2. **Flash** it with any ESP32 flasher — for example the browser-based [esptool-js](https://espressif.github.io/esptool-js/):
-   - Use the outer USB-C port.
-   - Baud rate `115200`, flash offset `0x0`.
-   - The factory image includes the ESP32-C6 network coprocessor firmware.
-3. **Reboot** the device. It opens a Wi-Fi AP called `BETTA-Setup`.
-4. Connect to `BETTA-Setup`, open `http://192.168.4.1`, pick your country, scan for your network and save.
-5. After reboot the panel joins your LAN. Open its IP in a browser, link Home Assistant via long-lived access token, and build your first page with **Quick Setup**.
+| Variant | Device | Screen | Fork verification |
+| --- | --- | --- | --- |
+| `panel4` | Waveshare ESP32-P4-WIFI6-Touch-LCD-4B, 4-inch | 720 × 720 | Runs on hardware |
+| `tab5` | **M5Stack Tab5**, 5-inch | 1280 × 720 / 720 × 1280, automatic rotation | ST7121/v1.3 device trial on 2026-10-05 |
+| `panel10` | Waveshare ESP32-P4-WIFI6-Touch-LCD-10.1 | 1280 × 800 | Profile compile checked with Nano BSP; LCD-X trial pending |
+| `paneljc` | Guition JC8012P4A1, 10.1-inch, original/V1 panel | 1280 × 800 | Runs on hardware |
+| `paneljc-v2` | Guition JC8012P4A1, 10.1-inch, V2 panel | 1280 × 800 | Compile checked |
 
-Future updates install via OTA from the editor — no cable needed.
+All five variants share the dashboard engine and web editor. Choose the build for
+your exact display device and panel revision. Ports, memory limits, revision identification
+and Tab5's pending hardware checks are in [the hardware guide](docs/choose-display.md).
 
-<img width="1080" alt="image" src="https://github.com/user-attachments/assets/cda02fa3-8270-48c2-bde8-987ebf069c36" />
-<img width="1080" alt="image" src="https://github.com/user-attachments/assets/5d72053d-2889-413f-bc8a-f2170ea1e889" />
-<img width="1080" alt="image" src="https://github.com/user-attachments/assets/9cbd3880-07da-4e14-b81c-d3e52cfd8dad" />
+## Get started
 
+Follow [Install and set up](docs/getting-started.md) to choose the matching factory image,
+install it over USB in desktop Chrome or Edge, connect Wi-Fi and link Home Assistant.
+The guide ends with adding and operating your first light. No ESP-IDF installation or compiling is needed.
+Read the [upgrade notes](docs/release-notes.md#upgrading-from-upstream-v082) before changing an existing panel.
 
+Daily layout changes use the panel's browser editor. MQTT is optional; HTTP notification setup uses YAML.
+Use the panel on a trusted LAN; the editor uses HTTP, with an optional admin password.
 
----
+## Development
 
-## What's new in v0.8.2
+Firmware builds, the simulator, checks and documentation maintenance are in
+[Development](docs/development.md). To contribute code, start with
+[Build and flash](docs/development/build.md) and the [contribution guide](docs/contributing.md).
 
-- **ESP32-S3 support** — new `panels3` variant for the Guition ESP32-S3-4848S040 (4.8" 480×480 RGB panel, 16 MB flash, 8 MB PSRAM).
-- **Three-variant release** — factory and OTA images now ship for `panel4`, `panel10`, and `panels3`.
-- **MDI weather icons on S3** — clean Material Design Icon weather display on the S3 panel.
-- **Release tooling** — `make_factory_bin.ps1` extended; `-Variant both` now packages all three variants in one run.
+## Contributing
 
-Full history: [release-notes.md](release-notes.md).
+You are welcome to fork this project and adapt it to your own setup, just as this
+fork grew from the upstream project. Found a bug, missing feature or unclear guide?
+[Open an issue](https://github.com/andre68723/BETTA-HA-PANEL/issues) or
+[send a pull request](https://github.com/andre68723/BETTA-HA-PANEL/pulls).
+Code, documentation, translations and device feedback are all welcome.
+Please follow the project's non-commercial [license](LICENSE) and retain its notices;
+see [Contributing](docs/contributing.md) for a few practical tips.
 
----
+## Fork and license
 
-## Building from source
+Maintained by [andre68723](https://github.com/andre68723/BETTA-HA-PANEL), based on
+[cptkirki/BETTA-HA-PANEL](https://github.com/cptkirki/BETTA-HA-PANEL) at upstream
+v0.8.2 (`420df764`). Changes are grouped in the
+[v0.9.0 release notes](docs/release-notes.md#v090-fork-unreleased), as required by
+the license's change-marking clause. Added or substantially modified fork files
+carry corresponding notices.
 
-Prerequisites: **ESP-IDF v5.5.2**, Python 3.11+, the Smart86 / Waveshare BSP components (pulled automatically via the component manager).
-
-```powershell
-# Pick a variant preset
-idf.py -B build-panel4   -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.panel4"                              build
-idf.py -B build-panel10  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.panel10"                             build
-idf.py -B build-panels3  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults.s3;sdkconfig.defaults.panels3" -DSDKCONFIG=sdkconfig.panels3  build
-
-# Package release images (factory + OTA) for one or both variants
-pwsh tools/make_factory_bin.ps1 -Variant both
-```
-
-Build artifacts land in `release/` and `release/ota/`. Previous versions are moved to `release/archive/`.
-
----
-
-## Editor preview
-
-
-<p>
-  <img width="49%" alt="Energy dashboard" src="https://github.com/user-attachments/assets/96d51c1d-743a-4c7a-b2c6-29f2cff1e41f" />
-  <img width="49%" alt="languages" src="https://github.com/user-attachments/assets/93702c1a-994c-4390-bfbc-6b4eb6b9d779" />
-</p>
-<p>
-  <img width="49%" alt="theme editor" src="https://github.com/user-attachments/assets/2c016e94-bd7e-4c4e-a4e5-2826e6ba6269" />
-  <img width="49%" alt="OTA firmware" alt="image" src="https://github.com/user-attachments/assets/f655f102-47dc-4881-aed1-3e6a8cd451a4" />
-
-</p>
-
----
-
-## License
-
-Source released under [LicenseRef-FNCL-1.1](LICENSE). See [release-notes.md](release-notes.md) for per-version changes.
+Source is released under [LicenseRef-FNCL-1.1](LICENSE). Vendored components and
+fonts retain their own licenses and attribution; see the license's Third-Party
+Components section and the individual file headers. The original BETTA OS logo is
+retained unchanged; see [image attribution](docs/img/brand/README.md).

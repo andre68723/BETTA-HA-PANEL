@@ -1,0 +1,163 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+[project]
+site_name = "BETTA HA Panel"
+site_description = "A Home Assistant touchscreen dashboard for ESP32-P4 panels."
+site_author = "andre68723"
+site_url = "https://andre68723.github.io/BETTA-HA-PANEL/"
+repo_url = "https://github.com/andre68723/BETTA-HA-PANEL"
+repo_name = "andre68723/BETTA-HA-PANEL"
+edit_uri = "edit/main/docs/"
+docs_dir = "docs"
+site_dir = "site"
+# Direct HTML links also work when opening site/index.html via file://.
+use_directory_urls = false
+extra_css = ["stylesheets/extra.css"]
+extra_javascript = ["javascripts/image-viewer.js"]
+copyright = "Copyright &copy; 2026 Cpt_Kirk and andre68723 · LicenseRef-FNCL-1.1"
+nav = [
+  { "Home" = "README.md" },
+  { "Get started" = [
+    { "Install and set up" = "getting-started.md" },
+    { "Choose your display" = "choose-display.md" },
+    { "Display guides" = [
+      { 'Waveshare 4-inch panel' = "hardware/panel4.md" },
+      { 'M5Stack Tab5' = "hardware/tab5.md" },
+      { 'Waveshare 10.1-inch panel' = "hardware/panel10.md" },
+      { 'Guition JC8012P4A1' = "hardware/paneljc.md" },
+    ] },
+  ] },
+  { "Use the panel" = [
+    { "Feature tour" = "features.md" },
+    { "Dashboard" = [
+      { "Web editor" = "editor.md" },
+      { "Pages and layouts" = "pages.md" },
+      { "Top bar" = "top-bar.md" },
+    ] },
+    { "Widgets" = [
+      { "Overview" = "widgets/README.md" },
+      { "Alarm" = "widgets/alarm_tile.md" },
+      { "Bambu printer" = "widgets/bambu_printer.md" },
+      { "Binary sensor" = "widgets/binary_tile.md" },
+      { "Button" = "widgets/button.md" },
+      { "Camera" = "widgets/camera_tile.md" },
+      { "Car" = "widgets/car_widget.md" },
+      { "Wallbox" = "widgets/wallbox.md" },
+      { "Climate" = "widgets/climate_tile.md" },
+      { "Contact" = "widgets/contact_tile.md" },
+      { "Cover" = "widgets/cover_tile.md" },
+      { "Date/Time" = "widgets/datetime_tile.md" },
+      { "Empty spacer" = "widgets/empty_tile.md" },
+      { "Energy timeline" = "widgets/energy_timeline.md" },
+      { "Fan" = "widgets/fan_tile.md" },
+      { "Gauge" = "widgets/gauge.md" },
+      { "Graph" = "widgets/graph.md" },
+      { "Heating" = "widgets/heating_tile.md" },
+      { "Light" = "widgets/light_tile.md" },
+      { "Lock" = "widgets/lock_tile.md" },
+      { "Media player" = "widgets/media_player.md" },
+      { "Room card" = "widgets/room_tile.md" },
+      { "Scene" = "widgets/scene_tile.md" },
+      { "Select" = "widgets/select_tile.md" },
+      { "Sensor" = "widgets/sensor.md" },
+      { "Slider" = "widgets/slider.md" },
+      { "Solar forecast" = "widgets/solar_forecast.md" },
+      { "Sonos favorites" = "widgets/sonos_favorites.md" },
+      { "Todo list" = "widgets/todo_list.md" },
+      { "Vacuum" = "widgets/vacuum_tile.md" },
+      { "Weather (now)" = "widgets/weather_tile.md" },
+      { "Weather forecast" = "widgets/weather_3day.md" },
+    ] },
+    { "Look and behaviour" = [
+      { "Appearance" = "appearance.md" },
+      { "Display and brightness" = "display.md" },
+    ] },
+    { "Home Assistant" = [
+      { "Home Assistant setup" = "home-assistant.md" },
+      { "Notifications" = "notifications.md" },
+      { "HTTP notifications" = "http-notifications.md" },
+      { "History popups" = "history.md" },
+    ] },
+  ] },
+  { "Development" = [
+    { "Overview" = "development.md" },
+    { "Build and release" = [
+      { "Build and flash" = "development/build.md" },
+      { "Releases, OTA and rollback" = "development/release.md" },
+    ] },
+    { "Quality" = [
+      { "Checks and device tests" = "development/testing.md" },
+      { "Code conventions" = "development/conventions.md" },
+      { "Working practices" = "development/learnings.md" },
+      { "Scripts in tools/" = "development/tools.md" },
+    ] },
+    { "Components and patches" = "development/components.md" },
+    { "Internals" = [
+      { "Web editor source" = "editor-source.md" },
+      { "Appearance implementation" = "appearance-implementation.md" },
+      { "Text size and readability" = "text-size-readability.md" },
+      { "Notification implementation" = "notifications-implementation.md" },
+      { "Camera streaming" = "development/camera-streaming.md" },
+      { "UI performance" = "development/ui-performance.md" },
+      { "Security implementation" = "security-implementation.md" },
+      { "Widget anatomy" = "widget-anatomy.md" },
+      { "Desktop simulator" = "simulator.md" },
+      { "Crash dumps" = "coredump.md" },
+    ] },
+    { "Hardware reference" = [
+      { "CPU, memory and rendering" = "hardware/resources.md" },
+      { "Flash partitions and storage" = "hardware/storage.md" },
+      { "Cameras and chimes" = "hardware/peripherals.md" },
+      { "Tab5 orientation" = "hardware/tab5-orientation.md" },
+      { "Device notes" = "hardware/device-notes.md" },
+    ] },
+    { "Visual comparisons" = [
+      { "Gallery" = "gallery.md" },
+      { '5" M5Stack Tab5 (simulator)' = "gallery-sim-tab5.md" },
+      { '10.1" Guition (simulator)' = "gallery-sim-paneljc.md" },
+    ] },
+    { "Documentation site" = "documentation.md" },
+  ] },
+  { "Project" = [
+    { "Contributing" = "contributing.md" },
+    { "Release notes" = "release-notes.md" },
+    { "Upstream release notes" = "release-notes-upstream.md" },
+    { "Security" = "SECURITY.md" },
+    { "Security fixes" = "security-fixes.md" },
+    { "License" = "https://github.com/andre68723/BETTA-HA-PANEL/blob/main/LICENSE" },
+  ] },
+]
+
+[project.theme]
+language = "en"
+logo = "img/brand/BETTAOS.jpg"
+features = ["navigation.tabs", "navigation.top", "navigation.footer", "content.code.copy", "search.highlight"]
+
+[project.plugins.search]
+enabled = true
+
+# Bundle the supported worker shim so file:// search needs no CDN.
+[project.plugins.offline]
+enabled = true
+
+[project.extra]
+polyfills = [{ path = "javascripts/vendor/iframe-worker-shim.js", type = "text/javascript", async = false, defer = false }]
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "teal"
+accent = "teal"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+primary = "teal"
+accent = "teal"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to light mode"
+
+# Working notes and capture metadata are not public documentation. Local plans
+# and skills live outside docs/ in .local/. Zensical renders the Markdown galleries.
+[project.plugins.exclude]
+glob = ["**/sources.json", "**/manifest.json", "img/hardware/README.md"]

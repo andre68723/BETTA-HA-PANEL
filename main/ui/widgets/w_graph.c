@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ui/ui_widget_factory.h"
 
@@ -21,9 +22,20 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
-#include "ui/fonts/app_text_fonts.h"
+#include "ha/ha_history_reduce.h"
+#include "ui/graph_history_feed.h"
+#include "ui/graph_history_merge.h"
+#include "ui/theme/ui_typography.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
+#include "util/flash_gate.h"
+#include "ui/graph_history_store.h"
+#include "layout/layout_store.h"
+#include <stdatomic.h>
+#if !defined(BETTA_SIMULATOR)
+#include "esp_littlefs.h"
+#endif
+#include "util/flash_trace.h"
 #include "ui/theme/theme_default.h"
 
 #define GRAPH_POINTS_MIN 16
@@ -59,21 +71,23 @@
 #define GRAPH_HISTORY_MAX_SAMPLES 4096
 #define GRAPH_HISTORY_SAVE_INTERVAL_SEC 120U
 #define GRAPH_HISTORY_PERSIST_QUEUE_LEN 4U
+#define GRAPH_HISTORY_FLASH_GATE_WAIT_MS 10000U
 #define GRAPH_HISTORY_PERSIST_TASK_STACK 4096
 #define GRAPH_HISTORY_PERSIST_TASK_PRIO 2
 
 #define GRAPH_HISTORY_FILE_MAGIC 0x47525048U
 #define GRAPH_HISTORY_FILE_VERSION 1U
+#if defined(BETTA_SIMULATOR)
+#define GRAPH_HISTORY_DIR ""
+#else
 #define GRAPH_HISTORY_DIR "/littlefs/graphs"
+#endif
 #define GRAPH_HISTORY_PATH_MAX 128
 
 #define GRAPH_VALUE_SCALE 10
 #define GRAPH_VALID_EPOCH_MIN 1609459200U
 
-typedef struct {
-    uint32_t bucket_ts;
-    float value;
-} graph_sample_t;
+typedef graph_history_sample_t graph_sample_t;
 
 typedef struct {
     uint32_t magic;
@@ -93,11 +107,17 @@ typedef struct {
     lv_obj_t *card;
     lv_obj_t *title_label;
     lv_obj_t *value_label;
+    char value_text[96];
     lv_obj_t *meta_label;
     lv_obj_t *chart;
     lv_chart_series_t *series;
 
     char unit[16];
+    /* graph_ha_history: the 24 h come from the Home Assistant Recorder (ui/graph_history_feed.h) instead of a file on the
+       panel; nothing is persisted, and the history is complete again after every restart. */
+    bool ha_history;
+    uint32_t first_live_ts; /* imported Recorder samples are never live samples */
+    void *feed;
     char history_path[GRAPH_HISTORY_PATH_MAX];
     graph_sample_t history[GRAPH_HISTORY_MAX_SAMPLES];
     int history_count;
@@ -128,7 +148,7 @@ typedef struct {
 } w_graph_ctx_t;
 
 static const char *TAG = "w_graph";
-static bool s_graph_history_dir_ready = false;
+static atomic_uint s_graph_cleanup_revision;
 static QueueHandle_t s_graph_persist_queue = NULL;
 static TaskHandle_t s_graph_persist_task = NULL;
 
@@ -356,65 +376,16 @@ static uint32_t graph_display_now_bucket_ts(const w_graph_ctx_t *ctx)
     return 0U;
 }
 
-static void graph_sanitize_widget_id(const char *widget_id, char *dst, size_t dst_size)
-{
-    if (dst == NULL || dst_size == 0) {
-        return;
-    }
-
-    size_t out = 0;
-    if (widget_id != NULL) {
-        for (size_t i = 0; widget_id[i] != '\0' && out < (dst_size - 1U); i++) {
-            unsigned char c = (unsigned char)widget_id[i];
-            if (isalnum(c) || c == '_' || c == '-') {
-                dst[out++] = (char)c;
-            } else {
-                dst[out++] = '_';
-            }
-        }
-    }
-
-    if (out == 0U) {
-        snprintf(dst, dst_size, "graph");
-    } else {
-        dst[out] = '\0';
-    }
-}
-
-static bool graph_ensure_history_dir(void)
-{
-    if (s_graph_history_dir_ready) {
-        return true;
-    }
-
-    struct stat st = {0};
-    if (stat(GRAPH_HISTORY_DIR, &st) == 0 && S_ISDIR(st.st_mode)) {
-        s_graph_history_dir_ready = true;
-        return true;
-    }
-
-    (void)mkdir(GRAPH_HISTORY_DIR, 0775);
-    if (stat(GRAPH_HISTORY_DIR, &st) == 0 && S_ISDIR(st.st_mode)) {
-        s_graph_history_dir_ready = true;
-        return true;
-    }
-
-    return false;
-}
-
 static void graph_build_history_path(const char *widget_id, char *dst, size_t dst_size)
 {
     if (dst == NULL || dst_size == 0) {
         return;
     }
     dst[0] = '\0';
-
-    if (!graph_ensure_history_dir()) {
-        return;
-    }
+    if (GRAPH_HISTORY_DIR[0] == '\0') return;
 
     char safe_id[APP_MAX_WIDGET_ID_LEN] = {0};
-    graph_sanitize_widget_id(widget_id, safe_id, sizeof(safe_id));
+    graph_history_store_id(widget_id, safe_id, sizeof(safe_id));
     snprintf(dst, dst_size, "%s/%s.grph", GRAPH_HISTORY_DIR, safe_id);
 }
 
@@ -512,58 +483,64 @@ static esp_err_t graph_history_load(w_graph_ctx_t *ctx)
     return ESP_OK;
 }
 
-static esp_err_t graph_history_save_buffer(const char *history_path, const graph_sample_t *history, int history_count)
+static esp_err_t graph_history_maintain(const graph_history_persist_job_t *job)
 {
-    if (history_path == NULL || history_path[0] == '\0' || history_count < 0 || history_count > GRAPH_HISTORY_MAX_SAMPLES) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    FILE *f = fopen(history_path, "wb");
-    if (f == NULL) {
-        return ESP_FAIL;
-    }
-
-    graph_history_file_header_t header = {
-        .magic = GRAPH_HISTORY_FILE_MAGIC,
-        .version = GRAPH_HISTORY_FILE_VERSION,
-        .reserved = 0U,
-        .count = (uint32_t)history_count,
-    };
-
-    size_t written = fwrite(&header, 1U, sizeof(header), f);
-    if (written != sizeof(header)) {
-        fclose(f);
-        return ESP_FAIL;
-    }
-
-    if (history_count > 0) {
-        written = fwrite(history, sizeof(graph_sample_t), (size_t)history_count, f);
-        if (written != (size_t)history_count) {
-            fclose(f);
-            return ESP_FAIL;
-        }
-    }
-
-    fclose(f);
+    if (job != NULL && (job->history_count < 0 || job->history_count > GRAPH_HISTORY_MAX_SAMPLES)) return ESP_ERR_INVALID_ARG;
+#if defined(BETTA_SIMULATOR)
+    (void)job;
     return ESP_OK;
+#else
+    char *json = NULL;
+    esp_err_t err = layout_store_load(&json);
+    if (err != ESP_OK) return err;
+    cJSON *layout = cJSON_Parse(json);
+    free(json);
+    if (layout == NULL) return ESP_ERR_NO_MEM;
+    err = graph_history_store_cleanup(GRAPH_HISTORY_DIR, layout);
+    if (err == ESP_OK && job != NULL) {
+        size_t total = 0, used = 0;
+        err = esp_littlefs_info(NULL, &total, &used);
+        size_t length = sizeof(graph_history_file_header_t) + sizeof(graph_sample_t) * (size_t)job->history_count;
+        void *payload = err == ESP_OK ? heap_caps_malloc(length, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) : NULL;
+        if (err == ESP_OK && payload == NULL) err = ESP_ERR_NO_MEM;
+        if (err == ESP_OK) {
+            graph_history_file_header_t header = {GRAPH_HISTORY_FILE_MAGIC, GRAPH_HISTORY_FILE_VERSION, 0, (uint32_t)job->history_count};
+            memcpy(payload, &header, sizeof(header));
+            memcpy((char *)payload + sizeof(header), job->history, length - sizeof(header));
+            err = graph_history_store_save(GRAPH_HISTORY_DIR, job->history_path, layout, payload, length, total, used);
+            if (err == ESP_ERR_NOT_FOUND) err = ESP_OK; /* removed graph: discard its queued save */
+        }
+        free(payload);
+    }
+    cJSON_Delete(layout);
+    return err;
+#endif
 }
 
 static void graph_persist_task(void *arg)
 {
     (void)arg;
+    unsigned cleaned_revision = 0;
     while (true) {
         graph_history_persist_job_t *job = NULL;
-        if (xQueueReceive(s_graph_persist_queue, &job, portMAX_DELAY) != pdTRUE) {
+        if (xQueueReceive(s_graph_persist_queue, &job, pdMS_TO_TICKS(1000)) != pdTRUE && atomic_load(&s_graph_cleanup_revision) == cleaned_revision) {
             continue;
         }
-        if (job == NULL) {
-            continue;
-        }
+        if (job == NULL && atomic_load(&s_graph_cleanup_revision) == cleaned_revision) continue;
 
-        esp_err_t err = graph_history_save_buffer(job->history_path, job->history, job->history_count);
+        unsigned revision = atomic_load(&s_graph_cleanup_revision);
+        /* Not while esp_ota_end() remaps flash; a skipped save is retried at the next interval. */
+        esp_err_t err = ESP_ERR_TIMEOUT;
+        if (flash_gate_enter(GRAPH_HISTORY_FLASH_GATE_WAIT_MS)) {
+            FLASH_TRACE_BEGIN(trace_start);
+            err = graph_history_maintain(job);
+            if (err == ESP_OK) cleaned_revision = revision;
+            FLASH_TRACE_END(trace_start, GRAPH_HISTORY_DIR, job != NULL ? sizeof(graph_sample_t) * (size_t)job->history_count : 0);
+            flash_gate_leave();
+        }
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "async history save failed (%s, count=%d): %s",
-                job->history_path, job->history_count, esp_err_to_name(err));
+                job != NULL ? job->history_path : GRAPH_HISTORY_DIR, job != NULL ? job->history_count : 0, esp_err_to_name(err));
         }
         free(job);
     }
@@ -593,6 +570,13 @@ static void graph_persist_start_once(void)
             return;
         }
     }
+}
+
+void w_graph_request_history_cleanup(void)
+{
+    if (GRAPH_HISTORY_DIR[0] == '\0') return;
+    graph_persist_start_once();
+    atomic_fetch_add(&s_graph_cleanup_revision, 1U);
 }
 
 static bool graph_history_enqueue_persist(const w_graph_ctx_t *ctx, uint32_t bucket_ts)
@@ -1165,7 +1149,7 @@ static void graph_rebuild_chart(w_graph_ctx_t *ctx)
     graph_sync_chart_to_mode(ctx);
 
     if (ctx->point_count <= 0) {
-        lv_obj_add_flag(ctx->chart, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(ctx->chart, true);
         return;
     }
 
@@ -1184,7 +1168,7 @@ static void graph_rebuild_chart(w_graph_ctx_t *ctx)
     graph_format_duration(offset_text, sizeof(offset_text), ctx->history_offset_min);
 
     if (now_bucket == 0U || ctx->history_count <= 0) {
-        lv_obj_add_flag(ctx->chart, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(ctx->chart, true);
         char meta_text[64] = {0};
         snprintf(meta_text, sizeof(meta_text), "%s | %s", ui_i18n_get("graph.no_history", "no history"), window_text);
         lv_label_set_text(ctx->meta_label, meta_text);
@@ -1201,7 +1185,7 @@ static void graph_rebuild_chart(w_graph_ctx_t *ctx)
     bool has_values = graph_populate_series(ctx, start_ts, window_sec, &min_v, &max_v);
 
     if (!has_values) {
-        lv_obj_add_flag(ctx->chart, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(ctx->chart, true);
         char meta_text[64] = {0};
         if (ctx->history_offset_min > 0) {
             snprintf(
@@ -1218,7 +1202,7 @@ static void graph_rebuild_chart(w_graph_ctx_t *ctx)
         return;
     }
 
-    lv_obj_clear_flag(ctx->chart, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_hidden(ctx->chart, false);
 
     float span = max_v - min_v;
     float pad = (span < 0.5f) ? 0.5f : (span * 0.12f);
@@ -1284,6 +1268,7 @@ static void graph_apply_layout(w_graph_ctx_t *ctx)
     if (title_w > content_w - 30) {
         title_w = content_w - 30;
     }
+    if (!ui_widget_name_enabled(ctx->title_label)) title_w = 0;
     lv_coord_t value_w = content_w - title_w;
     if (value_w < 30) {
         value_w = 30;
@@ -1291,8 +1276,22 @@ static void graph_apply_layout(w_graph_ctx_t *ctx)
     }
 
     lv_obj_set_width(ctx->title_label, title_w);
+    /* One line like the stats below it: a wrapped title pushed them onto the chart. */
+    lv_obj_set_height(ctx->title_label, lv_font_get_line_height(lv_obj_get_style_text_font(ctx->title_label, LV_PART_MAIN)));
+    lv_label_set_long_mode(ctx->title_label, LV_LABEL_LONG_DOT);
+    lv_label_set_text(ctx->value_label, ctx->value_text);
     lv_obj_set_width(ctx->value_label, value_w);
+#if UI_TEXT_ADAPTIVE
+    const lv_font_t *fit = ui_text_fit(ctx->value_text, ui_font_role(UI_TEXT_VALUE), value_w, 35);
+    lv_obj_set_style_text_font(ctx->value_label, fit, LV_PART_MAIN);
+    lv_obj_set_height(ctx->value_label, fit->line_height);
+    lv_label_set_long_mode(ctx->value_label, LV_LABEL_LONG_DOT);
+#endif
     lv_obj_set_width(ctx->meta_label, content_w);
+    /* One line, dotted when too long: the chart is placed below the label's height, and the text
+     * is set after this layout, so a wrapped second line used to land on the chart. */
+    lv_obj_set_height(ctx->meta_label, lv_font_get_line_height(lv_obj_get_style_text_font(ctx->meta_label, LV_PART_MAIN)));
+    lv_label_set_long_mode(ctx->meta_label, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_align(ctx->title_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     lv_obj_set_style_text_align(ctx->value_label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     lv_obj_set_style_text_align(ctx->meta_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
@@ -1300,7 +1299,11 @@ static void graph_apply_layout(w_graph_ctx_t *ctx)
     lv_obj_align(ctx->title_label, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_obj_align(ctx->value_label, LV_ALIGN_TOP_RIGHT, 0, 0);
 
-    lv_obj_align_to(ctx->meta_label, ctx->title_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 2);
+    lv_obj_update_layout(ctx->value_label);
+    lv_coord_t header_h = lv_obj_get_height(ctx->value_label);
+    if (ui_widget_name_enabled(ctx->title_label) && lv_obj_get_height(ctx->title_label) > header_h)
+        header_h = lv_obj_get_height(ctx->title_label);
+    lv_obj_align(ctx->meta_label, LV_ALIGN_TOP_LEFT, 0, header_h + 2);
     lv_coord_t chart_y = lv_obj_get_y(ctx->meta_label) + lv_obj_get_height(ctx->meta_label) + 4;
     if (chart_y < 20) {
         chart_y = 20;
@@ -1328,7 +1331,8 @@ static void graph_apply_unavailable(w_graph_ctx_t *ctx)
     }
 
     ctx->unavailable = true;
-    lv_label_set_text(ctx->value_label, ui_i18n_get("common.unavailable", "unavailable"));
+    snprintf(ctx->value_text, sizeof(ctx->value_text), "%s", ui_i18n_get("common.unavailable", "unavailable"));
+    lv_label_set_text(ctx->value_label, ctx->value_text);
     graph_rebuild_chart(ctx);
 }
 
@@ -1363,6 +1367,27 @@ static void graph_pan_history(w_graph_ctx_t *ctx, bool older)
     }
 }
 
+/* The Recorder's 24 h arrive as 5-minute blocks (the empty ones of a slow sensor already carry the last value). They
+   replace everything older than the first live sample, so the finer live values stay and nothing is drawn twice. */
+static void graph_ha_history_cb(void *user, const ha_history_snapshot_t *snapshot)
+{
+    w_graph_ctx_t *ctx = (w_graph_ctx_t *)user;
+    if (ctx == NULL || snapshot == NULL || !snapshot->numeric || snapshot->end_epoch <= snapshot->start_epoch) {
+        return;
+    }
+    graph_history_merge_result_t merged = graph_history_merge(ctx->history, (size_t)ctx->history_count,
+        GRAPH_HISTORY_MAX_SAMPLES, &ctx->first_live_ts, snapshot, GRAPH_VALID_EPOCH_MIN);
+    if (!merged.applied) {
+        return; /* an empty/invalid refresh does not erase a previously usable graph */
+    }
+    ctx->history_count = (int)(merged.recorder_count + merged.live_count);
+    ESP_LOGI(TAG, "history of the Recorder: %u blocks, %u live values",
+             (unsigned)merged.recorder_count, (unsigned)merged.live_count);
+    if (!ctx->unavailable) {
+        graph_rebuild_chart(ctx);
+    }
+}
+
 static void w_graph_event_cb(lv_event_t *event)
 {
     if (event == NULL) {
@@ -1376,6 +1401,7 @@ static void w_graph_event_cb(lv_event_t *event)
 
     lv_event_code_t code = lv_event_get_code(event);
     if (code == LV_EVENT_DELETE) {
+        graph_history_feed_unregister(ctx->feed);
         graph_history_try_persist(ctx, graph_display_now_bucket_ts(ctx), true);
         free(ctx);
     } else if (code == LV_EVENT_SIZE_CHANGED) {
@@ -1403,28 +1429,28 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     lv_obj_t *card = lv_obj_create(parent);
     lv_obj_set_pos(card, def->x, def->y);
     lv_obj_set_size(card, def->w, def->h);
-    lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(card, false);
     theme_default_style_card(card);
 
-    lv_obj_t *title = lv_label_create(card);
+    lv_obj_t *title = ui_widget_name_create(card, !def->hide_name);
     lv_label_set_text(title, def->title[0] ? def->title : def->id);
     lv_obj_set_style_text_color(title, theme_default_color_text_muted(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(title, APP_FONT_TEXT_20, LV_PART_MAIN);
+    ui_text_set(title, UI_TEXT_LABEL, false);
 
     lv_obj_t *value = lv_label_create(card);
     lv_label_set_text(value, "--");
     lv_obj_set_style_text_color(value, theme_default_color_text_primary(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(value, APP_FONT_TEXT_20, LV_PART_MAIN);
+    ui_text_set(value, UI_TEXT_VALUE, true);
 
     lv_obj_t *meta = lv_label_create(card);
     lv_label_set_text(meta, "");
     lv_obj_set_style_text_color(meta, theme_default_color_text_muted(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(meta, APP_FONT_TEXT_20, LV_PART_MAIN);
+    ui_text_set(meta, UI_TEXT_META, false);
 
     lv_obj_t *chart = lv_chart_create(card);
-    lv_obj_clear_flag(chart, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_clear_flag(chart, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_flag(chart, LV_OBJ_FLAG_GESTURE_BUBBLE);
+    lv_obj_set_scrollable(chart, false);
+    lv_obj_set_clickable(chart, false);
+    lv_obj_set_gesture_bubble(chart, true);
     lv_obj_set_style_bg_opa(chart, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_border_width(chart, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(chart, 0, LV_PART_MAIN);
@@ -1445,6 +1471,7 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     ctx->card = card;
     ctx->title_label = title;
     ctx->value_label = value;
+    snprintf(ctx->value_text, sizeof(ctx->value_text), "--");
     ctx->meta_label = meta;
     ctx->chart = chart;
     ctx->history_count = 0;
@@ -1466,7 +1493,10 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     }
     ctx->unavailable = true;
     ctx->unit[0] = '\0';
-    graph_build_history_path(def->id, ctx->history_path, sizeof(ctx->history_path));
+    ctx->ha_history = def->graph_ha_history && def->entity_id[0] != '\0';
+    if (!ctx->ha_history) {
+        graph_build_history_path(def->id, ctx->history_path, sizeof(ctx->history_path));
+    }
     if (ctx->history_path[0] != '\0') {
         (void)graph_history_load(ctx);
         if (ctx->history_count > 0) {
@@ -1489,6 +1519,12 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
 
     graph_apply_unavailable(ctx);
     graph_apply_layout(ctx);
+    if (ctx->ha_history) {
+        ctx->feed = graph_history_feed_register(def->entity_id, card, graph_ha_history_cb, ctx);
+        if (ctx->feed == NULL) {
+            ESP_LOGW(TAG, "%s: no free history slot, showing the live values only", def->id);
+        }
+    }
 
     out_instance->obj = card;
     out_instance->ctx = ctx;
@@ -1533,7 +1569,8 @@ void w_graph_apply_state(ui_widget_instance_t *instance, const ha_state_t *state
     ctx->unavailable = false;
 
     if (!parsed) {
-        lv_label_set_text(ctx->value_label, state->state);
+        snprintf(ctx->value_text, sizeof(ctx->value_text), "%s", state->state);
+        lv_label_set_text(ctx->value_label, ctx->value_text);
         if (was_unavailable) {
             graph_rebuild_chart(ctx);
         }
@@ -1542,11 +1579,16 @@ void w_graph_apply_state(ui_widget_instance_t *instance, const ha_state_t *state
 
     char value_text[48] = {0};
     graph_format_value(value_text, sizeof(value_text), numeric, ctx->unit);
-    lv_label_set_text(ctx->value_label, value_text);
+    snprintf(ctx->value_text, sizeof(ctx->value_text), "%s", value_text);
+    lv_label_set_text(ctx->value_label, ctx->value_text);
+    graph_apply_layout(ctx);
 
     uint32_t bucket_ts = graph_current_bucket_ts();
     bool history_changed = graph_history_append_or_update(ctx, bucket_ts, numeric, NULL);
     if (history_changed) {
+        if (ctx->ha_history && ctx->first_live_ts == 0U) {
+            ctx->first_live_ts = bucket_ts;
+        }
         ctx->history_dirty = true;
         graph_history_try_persist(ctx, bucket_ts, false);
     }
@@ -1569,3 +1611,22 @@ void w_graph_mark_unavailable(ui_widget_instance_t *instance)
 
     graph_apply_unavailable(ctx);
 }
+
+#if defined(BETTA_SIMULATOR)
+/* Populate a deterministic history supplied by a desktop fixture. The device
+ * uses LittleFS or Recorder according to its configured history source. */
+void w_graph_sim_seed(ui_widget_instance_t *instance, const float *values, size_t count, uint32_t step_min)
+{
+    if (instance == NULL || instance->ctx == NULL || values == NULL || count == 0) return;
+    w_graph_ctx_t *ctx = (w_graph_ctx_t *)instance->ctx;
+    uint32_t now = graph_current_bucket_ts();
+    ctx->history_count = 0;
+    if (count > GRAPH_POINTS_MAX) count = GRAPH_POINTS_MAX;
+    for (size_t i = 0; i < count; i++) {
+        uint32_t ts = now - (uint32_t)((count - i - 1) * step_min * 60U);
+        graph_history_append_or_update(ctx, ts, values[i], NULL);
+    }
+    ctx->unavailable = false;
+    graph_rebuild_chart(ctx);
+}
+#endif

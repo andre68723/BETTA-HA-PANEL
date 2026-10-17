@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "api/api_routes.h"
 
@@ -20,7 +21,6 @@ static void api_theme_set_headers(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 }
 
 static esp_err_t api_theme_send_error(httpd_req_t *req, const char *status, const char *message)
@@ -133,8 +133,10 @@ static esp_err_t api_themes_list_get(httpd_req_t *req)
             cJSON_AddItemToArray(arr, item);
         }
     }
-    cJSON_AddStringToObject(root, "active_id", theme_palette_active_id());
-    cJSON_AddStringToObject(root, "active_name", theme_palette_active_name());
+    theme_entry_t active;
+    if (theme_store_load_active(&active) != ESP_OK) { cJSON_Delete(root); return httpd_resp_send_500(req); }
+    cJSON_AddStringToObject(root, "active_id", active.id);
+    cJSON_AddStringToObject(root, "active_name", active.name);
 
     char *payload = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -151,10 +153,7 @@ static esp_err_t api_themes_list_get(httpd_req_t *req)
 static esp_err_t api_themes_active_get(httpd_req_t *req)
 {
     theme_entry_t entry = {0};
-    snprintf(entry.id, sizeof(entry.id), "%s", theme_palette_active_id());
-    snprintf(entry.name, sizeof(entry.name), "%s", theme_palette_active_name());
-    entry.builtin = theme_palette_find_builtin(entry.id) != NULL;
-    entry.palette = *theme_palette_active();
+    if (theme_store_load_active(&entry) != ESP_OK) return httpd_resp_send_500(req);
     char *json = theme_palette_to_json(&entry);
     if (json == NULL) {
         return httpd_resp_send_500(req);
@@ -186,11 +185,12 @@ static esp_err_t api_themes_active_put(httpd_req_t *req)
     snprintf(id_copy, sizeof(id_copy), "%s", id->valuestring);
     cJSON_Delete(root);
 
-    esp_err_t err = theme_palette_activate_by_id(id_copy);
+    theme_entry_t selected;
+    esp_err_t err = theme_palette_resolve_by_id(id_copy, &selected);
     if (err != ESP_OK) {
         return api_theme_send_error(req, "404 Not Found", "theme not found");
     }
-    (void)theme_store_set_active_id(id_copy);
+    if (theme_store_set_active_id(id_copy) != ESP_OK) return api_theme_send_error(req, "500 Internal Server Error", "save failed");
     {
         app_event_t event = {.type = EV_LAYOUT_UPDATED};
         (void)app_events_publish(&event, pdMS_TO_TICKS(20));
@@ -199,7 +199,7 @@ static esp_err_t api_themes_active_put(httpd_req_t *req)
 
     cJSON *resp = cJSON_CreateObject();
     cJSON_AddBoolToObject(resp, "ok", true);
-    cJSON_AddStringToObject(resp, "active_id", theme_palette_active_id());
+    cJSON_AddStringToObject(resp, "active_id", id_copy);
     char *payload = cJSON_PrintUnformatted(resp);
     cJSON_Delete(resp);
     api_theme_set_headers(req);
@@ -260,8 +260,8 @@ static esp_err_t api_themes_custom_put(httpd_req_t *req)
     ESP_LOGI(TAG, "custom theme saved: %s", entry.id);
 
     /* If the active theme is being updated, re-apply it. */
-    if (strcmp(entry.id, theme_palette_active_id()) == 0) {
-        theme_palette_set_active(&entry.palette, entry.id, entry.name);
+    theme_entry_t active;
+    if (theme_store_load_active(&active) == ESP_OK && strcmp(entry.id, active.id) == 0) {
         app_event_t event = {.type = EV_LAYOUT_UPDATED};
         (void)app_events_publish(&event, pdMS_TO_TICKS(20));
     }
@@ -289,20 +289,17 @@ static esp_err_t api_themes_custom_delete(httpd_req_t *req)
     if (theme_palette_find_builtin(id) != NULL) {
         return api_theme_send_error(req, "409 Conflict", "cannot delete builtin");
     }
+    theme_entry_t active;
+    if (theme_store_load_active(&active) != ESP_OK) return httpd_resp_send_500(req);
+    bool was_active = strcmp(id, active.id) == 0;
+    if (was_active && theme_store_set_active_id("dark_v2") != ESP_OK) return httpd_resp_send_500(req);
     esp_err_t err = theme_store_delete_custom(id);
-    if (err == ESP_ERR_NOT_FOUND) {
-        return api_theme_send_error(req, "404 Not Found", "theme not found");
-    }
-    if (err != ESP_OK) {
-        return api_theme_send_error(req, "500 Internal Server Error", "delete failed");
-    }
-    /* If the deleted theme was active, fall back to the default. */
-    if (strcmp(id, theme_palette_active_id()) == 0) {
-        (void)theme_palette_activate_by_id("dark_v2");
-        (void)theme_store_set_active_id("dark_v2");
+    if (was_active) {
         app_event_t event = {.type = EV_LAYOUT_UPDATED};
-        (void)app_events_publish(&event, pdMS_TO_TICKS(20));
+        (void)app_events_publish(&event, 0);
     }
+    if (err == ESP_ERR_NOT_FOUND) return api_theme_send_error(req, "404 Not Found", "theme not found");
+    if (err != ESP_OK) return api_theme_send_error(req, "500 Internal Server Error", "delete failed");
 
     api_theme_set_headers(req);
     return httpd_resp_sendstr(req, "{\"ok\":true}");

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #pragma once
 
@@ -22,3 +23,7 @@ esp_err_t ui_bindings_set_climate_target_c(const char *entity_id, float celsius)
 esp_err_t ui_bindings_set_light_color_temp_kelvin(const char *entity_id, int kelvin);
 esp_err_t ui_bindings_set_light_rgb_color(const char *entity_id, uint8_t r, uint8_t g, uint8_t b);
 esp_err_t ui_bindings_media_player_action(const char *entity_id, ui_bindings_media_action_t action);
+/* media_player.shuffle_set / repeat_set; repeat_mode is "off", "all" or "one". */
+esp_err_t ui_bindings_media_player_set_shuffle(const char *entity_id, bool shuffle);
+esp_err_t ui_bindings_media_player_set_repeat(const char *entity_id, const char *repeat_mode);
+esp_err_t ui_bindings_media_player_play_favorite(const char *entity_id, const char *favorite_item_id);

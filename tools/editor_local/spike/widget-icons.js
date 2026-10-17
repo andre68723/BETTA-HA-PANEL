@@ -1,0 +1,35 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723
+ * Original SVG line drawings for the local widget library; no external assets.
+ */
+const SPIKE_WIDGET_ICONS = {
+  sensor: '<path d="M10 14.5V5a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0Z"/><path d="M12 8v9m5-10h2m-2 4h2"/><circle cx="12" cy="18" r="1"/>',
+  gauge: '<path d="M4 19a9 9 0 1 1 16 0M5 13H3m18 0h-2M7 7 5 5m14 0-2 2M12 4V2m-7 19h14M12 13l5-5"/><circle cx="12" cy="13" r="2"/>',
+  graph: '<path d="M3 3v18h18M5 17l5-7 5 3 6-8"/><circle cx="10" cy="10" r="1"/><circle cx="15" cy="13" r="1"/>',
+  binary_tile: '<rect x="3" y="6" width="18" height="12" rx="6"/><circle cx="9" cy="12" r="3"/><path d="M16 10v4"/>',
+  contact_tile: '<path d="M4 3h10v18H4zM18 7h3v10h-3zM8 5v14"/><circle cx="11" cy="12" r=".5"/>',
+  light_tile: '<path d="M8 15C1 7 8 2 12 3s11 4 4 12v3H8v-3M9 21h6M9 15h6"/>',
+  button: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 6v6M8 9a5 5 0 1 0 8 0"/>',
+  slider: '<path d="M5 3v5m0 4v9M12 3v11m0 4v3M19 3v2m0 4v12"/><circle cx="5" cy="10" r="2"/><circle cx="12" cy="16" r="2"/><circle cx="19" cy="7" r="2"/>',
+  heating_tile: '<path d="M4 8v12m16-12v12M4 10h16M4 18h16M8 8v12m4-12v12m4-12v12M7 5c-2-2 2-2 0-4M12 5c-2-2 2-2 0-4M17 5c-2-2 2-2 0-4"/>',
+  climate_tile: '<path d="M7 14.5V5a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0ZM9 9v9M18 3v10m-4-7 8 4m0-4-8 4M18 3l-2 2m2-2 2 2m-2 8-2-2m2 2 2-2"/>',
+  cover_tile: '<path d="M3 3h18v18H3zM3 6h18M3 9h18M3 12h18M3 15h18M7 18v3m10-3v3"/>',
+  fan_tile: '<circle cx="12" cy="12" r="2"/><path d="M12 10C7 8 7 2 11 2s6 4 3 8M14 12c4-3 10 0 8 4s-7 4-9-2M11 14c1 5-4 9-7 6s-2-8 5-8"/>',
+  lock_tile: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 15v3"/><circle cx="12" cy="14" r="1"/>',
+  select_tile: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M6 9h7m-7 5h5m5-4 2 3 2-3"/>',
+  datetime_tile: '<path d="M8 2v4m8-4v4M3 8h18M20 11V4H3v17h7"/><circle cx="16" cy="17" r="5"/><path d="M16 14v3l2 1"/>',
+  scene_tile: '<path d="m9 3 2 6 6 2-6 2-2 6-2-6-6-2 6-2zM18 2v5m-2-2h5m-2 12v5m-2-2h5"/>',
+  room_tile: '<path d="m2 11 10-8 10 8M5 10v11h14V10M9 21v-7h6v7M2 3h4m14 0h2v4"/>',
+  weather_tile: '<circle cx="8" cy="8" r="4"/><path d="M8 1V0M1 8H0M3 3 2 2M15 8h1M8 15v1M10 21H7a4 4 0 1 1 2-7 5 5 0 1 1 9 7Z"/>',
+  weather_3day: '<path d="M4 3v3m6-3v3m6-3v3M2 8h20M2 5h20v16H2zM5 12v5m5-5v5m5-5v5m4-5v5"/><circle cx="5" cy="13" r="1"/><path d="m9 15 1-2 1 2m3 0 1 2 1-2"/>',
+  solar_forecast: '<circle cx="17" cy="5" r="3"/><path d="M17 0v1m5 4h1m-2-4-1 1M3 12h15l3 9H1zM3 16h16M7 12l-1 9m7-9 1 9M12 8v1m10 0-1-1"/>',
+  energy_timeline: '<path d="m12 1-7 11h6l-1 8 9-12h-6l2-7M2 22h20M3 18v4m4-2v2m10-5v5m4-9v9"/>',
+  media_player: '<rect x="2" y="3" width="20" height="15" rx="2"/><path d="m10 7 5 4-5 4zM8 22h8M12 18v4"/>',
+  sonos_favorites: '<rect x="3" y="2" width="18" height="20" rx="3"/><path d="m12 5 1.4 2.8 3.1.5-2.2 2.1.5 3.1-2.8-1.4-2.8 1.4.5-3.1L7.5 8.3l3.1-.5z"/><circle cx="12" cy="18" r="1.5"/>',
+  bambu_printer: '<path d="M3 7h18v13H3zM1 20h22v2H1zM3 11h18M9 11v4h6v-4M12 15v2M7 18h10M4 7V4h4"/><circle cx="18" cy="4" r="3"/>',
+  vacuum_tile: '<circle cx="12" cy="13" r="8"/><path d="M8 6V3h8v3M6 16h12M9 12h.1m6 0h.1M2 21l3-3m17 3-3-3"/><circle cx="12" cy="8" r="1"/>',
+  camera_tile: '<path d="M3 7h4l2-3h6l2 3h4v14H3z"/><circle cx="12" cy="14" r="4"/><path d="M18 10h.1"/>',
+  car_widget: '<path d="m4 8 2-5h12l2 5M2 9h20v9H2zM4 18v3h3v-3m10 0v3h3v-3M5 13h3m8 0h3M4 8h16"/>',
+  wallbox_evcc: '<rect x="4" y="2" width="12" height="20" rx="2"/><path d="m11 5-4 7h4l-1 5 5-8h-4l1-4M16 6h3v10a2 2 0 0 0 4 0V9m-2-3v3m2-3v3"/>',
+  todo_list: '<path d="m3 5 2 2 3-4m-5 9 2 2 3-4m-5 9 2 2 3-4M11 5h10M11 12h10M11 19h10"/>',
+  empty_tile: '<rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 3"/><path d="M7 12h10m-8-2-2 2 2 2m6-4 2 2-2 2"/>'
+};

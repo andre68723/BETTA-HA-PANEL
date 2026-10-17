@@ -1,0 +1,861 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "id": "page_1",
+      "title": "Old School",
+      "widgets": [
+        {
+          "id": "page_1_weather_3day_1",
+          "type": "weather_3day",
+          "title": "Regional weather",
+          "entity_id": "weather.readability_16",
+          "secondary_entity_id": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 540,
+            "h": 220
+          },
+          "show_precipitation": false
+        },
+        {
+          "id": "page_1_solar_forecast_1",
+          "type": "solar_forecast",
+          "title": "Solar Forecast",
+          "entity_id": "sensor.readability_15",
+          "rect": {
+            "x": 10,
+            "y": 220,
+            "w": 520,
+            "h": 230
+          },
+          "forecast_today_entity_id": "sensor.readability_10",
+          "forecast_tomorrow_entity_id": "sensor.readability_11",
+          "forecast_day_3_entity_id": "sensor.readability_12",
+          "forecast_day_4_entity_id": "sensor.readability_13",
+          "forecast_day_5_entity_id": "sensor.readability_14",
+          "solar_forecast_bar_orientation": "vertical",
+          "solar_forecast_bar_max_kwh": 70
+        },
+        {
+          "id": "page_1_gauge_1",
+          "type": "gauge",
+          "title": "Charging power",
+          "entity_id": "sensor.readability_0",
+          "secondary_entity_id": "",
+          "style_variant": "linear",
+          "gauge_min": 0,
+          "gauge_max": 11,
+          "rect": {
+            "x": 630,
+            "y": 10,
+            "w": 80,
+            "h": 580
+          },
+          "gauge_bar_style": "segmented",
+          "gauge_color_mode": "",
+          "gauge_segment_count": 25
+        },
+        {
+          "id": "page_1_gauge_2",
+          "type": "gauge",
+          "title": "Smart Batterie",
+          "entity_id": "sensor.readability_8",
+          "secondary_entity_id": "sensor.readability_9",
+          "rect": {
+            "x": 10,
+            "y": 530,
+            "w": 530,
+            "h": 70
+          },
+          "style_variant": "horizontal",
+          "gauge_bar_style": "smooth",
+          "gauge_min": 0,
+          "gauge_max": 100,
+          "gauge_color_mode": ""
+        },
+        {
+          "id": "page_1_gauge_3",
+          "type": "gauge",
+          "title": "ID.4 Ladezustand",
+          "entity_id": "sensor.readability_3",
+          "secondary_entity_id": "sensor.readability_2",
+          "rect": {
+            "x": 10,
+            "y": 460,
+            "w": 540,
+            "h": 70
+          },
+          "style_variant": "horizontal",
+          "gauge_bar_style": "smooth",
+          "gauge_min": 0,
+          "gauge_max": 100,
+          "gauge_color_mode": ""
+        },
+        {
+          "id": "page_1_gauge_4",
+          "type": "gauge",
+          "title": "Solar power",
+          "entity_id": "sensor.readability_7",
+          "secondary_entity_id": "",
+          "rect": {
+            "x": 550,
+            "y": 10,
+            "w": 80,
+            "h": 570
+          },
+          "style_variant": "linear",
+          "gauge_bar_style": "segmented",
+          "gauge_min": 0,
+          "gauge_max": 11000,
+          "gauge_color_mode": "",
+          "gauge_segment_count": 30
+        }
+      ]
+    },
+    {
+      "id": "page_esp",
+      "title": "Kitchen",
+      "widgets": [
+        {
+          "id": "page_esp_weather",
+          "type": "weather_3day",
+          "title": "Regional weather",
+          "entity_id": "weather.readability_16",
+          "secondary_entity_id": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 340,
+            "h": 290
+          },
+          "show_precipitation": false
+        },
+        {
+          "id": "page_esp_solar",
+          "type": "solar_forecast",
+          "title": "Solar Forecast",
+          "entity_id": "sensor.readability_15",
+          "rect": {
+            "x": 0,
+            "y": 290,
+            "w": 340,
+            "h": 310
+          },
+          "forecast_today_entity_id": "sensor.readability_10",
+          "forecast_tomorrow_entity_id": "sensor.readability_11",
+          "forecast_day_3_entity_id": "sensor.readability_12",
+          "forecast_day_4_entity_id": "sensor.readability_13",
+          "forecast_day_5_entity_id": "sensor.readability_14",
+          "solar_forecast_bar_orientation": "vertical"
+        },
+        {
+          "id": "page_esp_sensor0",
+          "type": "sensor",
+          "title": "Solar",
+          "entity_id": "sensor.readability_7",
+          "rect": {
+            "x": 340,
+            "y": 0,
+            "w": 180,
+            "h": 150
+          },
+          "sensor_show_age": true
+        },
+        {
+          "id": "page_esp_sensor1",
+          "type": "sensor",
+          "title": "Verbrauch",
+          "entity_id": "sensor.readability_6",
+          "rect": {
+            "x": 340,
+            "y": 150,
+            "w": 180,
+            "h": 150
+          },
+          "sensor_show_age": true
+        },
+        {
+          "id": "page_esp_sensor2",
+          "type": "sensor",
+          "title": "Wallbox",
+          "entity_id": "sensor.readability_0",
+          "rect": {
+            "x": 340,
+            "y": 300,
+            "w": 180,
+            "h": 150
+          },
+          "sensor_show_age": true
+        },
+        {
+          "id": "page_esp_sensor3",
+          "type": "sensor",
+          "title": "heute noch",
+          "entity_id": "sensor.readability_15",
+          "rect": {
+            "x": 340,
+            "y": 450,
+            "w": 180,
+            "h": 150
+          },
+          "sensor_show_age": true
+        },
+        {
+          "id": "page_esp_car1",
+          "type": "car_widget",
+          "title": "ID.4",
+          "entity_id": "sensor.readability_3",
+          "secondary_entity_id": "",
+          "rect": {
+            "x": 520,
+            "y": 0,
+            "w": 200,
+            "h": 200
+          },
+          "tertiary_entity_id": "sensor.readability_2"
+        },
+        {
+          "id": "page_esp_car2",
+          "type": "car_widget",
+          "title": "smart",
+          "entity_id": "sensor.readability_8",
+          "secondary_entity_id": "",
+          "rect": {
+            "x": 520,
+            "y": 200,
+            "w": 200,
+            "h": 200
+          },
+          "tertiary_entity_id": "sensor.readability_9"
+        },
+        {
+          "id": "page_esp_home",
+          "type": "gauge",
+          "title": "Home",
+          "entity_id": "sensor.readability_4",
+          "secondary_entity_id": "",
+          "style_variant": "radial",
+          "gauge_min": 0,
+          "gauge_max": 100,
+          "rect": {
+            "x": 520,
+            "y": 400,
+            "w": 200,
+            "h": 200
+          },
+          "gauge_bar_style": "smooth"
+        }
+      ]
+    },
+    {
+      "id": "energy_2",
+      "type": "energy_dashboard",
+      "title": "Energy",
+      "energy": {
+        "source": "ha_energy",
+        "home_power_entity_id": "",
+        "solar_power_entity_id": "sensor.readability_7",
+        "grid_power_entity_id": "",
+        "grid_import_power_entity_id": "",
+        "grid_export_power_entity_id": "",
+        "battery_power_entity_id": "",
+        "battery_charge_power_entity_id": "",
+        "battery_discharge_power_entity_id": "",
+        "battery_soc_entity_id": "sensor.readability_5",
+        "gas_entity_id": "",
+        "water_entity_id": ""
+      },
+      "widgets": []
+    },
+    {
+      "id": "readable_oldschool",
+      "title": "Old School comparison",
+      "widgets": [
+        {
+          "id": "page_1_weather_3day_1",
+          "type": "weather_3day",
+          "title": "Regional weather",
+          "entity_id": "weather.readability_16",
+          "secondary_entity_id": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 540,
+            "h": 300
+          },
+          "show_precipitation": true,
+          "forecast_days": 3,
+          "show_name": false
+        },
+        {
+          "id": "page_1_solar_forecast_1",
+          "type": "solar_forecast",
+          "title": "Solar Forecast",
+          "entity_id": "sensor.readability_15",
+          "rect": {
+            "x": 0,
+            "y": 300,
+            "w": 540,
+            "h": 160
+          },
+          "forecast_today_entity_id": "sensor.readability_10",
+          "forecast_tomorrow_entity_id": "sensor.readability_11",
+          "forecast_day_3_entity_id": "sensor.readability_12",
+          "forecast_day_4_entity_id": "sensor.readability_13",
+          "forecast_day_5_entity_id": "sensor.readability_14",
+          "solar_forecast_bar_orientation": "vertical",
+          "solar_forecast_bar_max_kwh": 70,
+          "align_forecast": true,
+          "forecast_days": 3,
+          "show_name": false
+        },
+        {
+          "id": "page_1_gauge_1",
+          "type": "gauge",
+          "title": "Wallbox",
+          "entity_id": "sensor.readability_0",
+          "secondary_entity_id": "",
+          "style_variant": "linear",
+          "gauge_min": 0,
+          "gauge_max": 11,
+          "rect": {
+            "x": 540,
+            "y": 300,
+            "w": 180,
+            "h": 300
+          },
+          "gauge_bar_style": "segmented",
+          "gauge_color_mode": "",
+          "gauge_segment_count": 12
+        },
+        {
+          "id": "page_1_gauge_2",
+          "type": "gauge",
+          "title": "Smart Batterie",
+          "entity_id": "sensor.readability_8",
+          "secondary_entity_id": "sensor.readability_9",
+          "rect": {
+            "x": 10,
+            "y": 530,
+            "w": 520,
+            "h": 70
+          },
+          "style_variant": "horizontal",
+          "gauge_bar_style": "smooth",
+          "gauge_min": 0,
+          "gauge_max": 100,
+          "gauge_color_mode": ""
+        },
+        {
+          "id": "page_1_gauge_3",
+          "type": "gauge",
+          "title": "ID.4 Ladezustand",
+          "entity_id": "sensor.readability_3",
+          "secondary_entity_id": "sensor.readability_2",
+          "rect": {
+            "x": 10,
+            "y": 460,
+            "w": 520,
+            "h": 70
+          },
+          "style_variant": "horizontal",
+          "gauge_bar_style": "smooth",
+          "gauge_min": 0,
+          "gauge_max": 100,
+          "gauge_color_mode": ""
+        },
+        {
+          "id": "page_1_gauge_4",
+          "type": "gauge",
+          "title": "Solar",
+          "entity_id": "sensor.readability_7",
+          "secondary_entity_id": "",
+          "rect": {
+            "x": 540,
+            "y": 0,
+            "w": 180,
+            "h": 300
+          },
+          "style_variant": "linear",
+          "gauge_bar_style": "segmented",
+          "gauge_min": 0,
+          "gauge_max": 11000,
+          "gauge_color_mode": "",
+          "gauge_segment_count": 12
+        }
+      ]
+    },
+    {
+      "id": "readable_kitchen",
+      "title": "Kitchen comparison",
+      "widgets": [
+        {
+          "id": "page_esp_weather",
+          "type": "weather_3day",
+          "title": "Regional weather",
+          "entity_id": "weather.readability_16",
+          "secondary_entity_id": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 340,
+            "h": 330
+          },
+          "show_precipitation": true,
+          "forecast_days": 2,
+          "show_name": false
+        },
+        {
+          "id": "page_esp_solar",
+          "type": "solar_forecast",
+          "title": "Solar Forecast",
+          "entity_id": "sensor.readability_15",
+          "rect": {
+            "x": 0,
+            "y": 330,
+            "w": 340,
+            "h": 270
+          },
+          "forecast_today_entity_id": "sensor.readability_10",
+          "forecast_tomorrow_entity_id": "sensor.readability_11",
+          "forecast_day_3_entity_id": "sensor.readability_12",
+          "forecast_day_4_entity_id": "sensor.readability_13",
+          "forecast_day_5_entity_id": "sensor.readability_14",
+          "solar_forecast_bar_orientation": "vertical",
+          "forecast_days": 2,
+          "align_forecast": true,
+          "show_name": false
+        },
+        {
+          "id": "page_esp_sensor0",
+          "type": "sensor",
+          "title": "Solar",
+          "entity_id": "sensor.readability_7",
+          "rect": {
+            "x": 340,
+            "y": 0,
+            "w": 180,
+            "h": 150
+          },
+          "sensor_show_age": true
+        },
+        {
+          "id": "page_esp_sensor1",
+          "type": "sensor",
+          "title": "Verbrauch",
+          "entity_id": "sensor.readability_6",
+          "rect": {
+            "x": 340,
+            "y": 150,
+            "w": 180,
+            "h": 150
+          },
+          "sensor_show_age": true
+        },
+        {
+          "id": "page_esp_sensor2",
+          "type": "sensor",
+          "title": "Wallbox",
+          "entity_id": "sensor.readability_0",
+          "rect": {
+            "x": 340,
+            "y": 300,
+            "w": 180,
+            "h": 150
+          },
+          "sensor_show_age": true
+        },
+        {
+          "id": "page_esp_sensor3",
+          "type": "sensor",
+          "title": "heute noch",
+          "entity_id": "sensor.readability_15",
+          "rect": {
+            "x": 340,
+            "y": 450,
+            "w": 180,
+            "h": 150
+          },
+          "sensor_show_age": true
+        },
+        {
+          "id": "page_esp_car1",
+          "type": "car_widget",
+          "title": "ID.4",
+          "entity_id": "sensor.readability_3",
+          "secondary_entity_id": "",
+          "rect": {
+            "x": 520,
+            "y": 0,
+            "w": 200,
+            "h": 200
+          },
+          "tertiary_entity_id": "sensor.readability_2"
+        },
+        {
+          "id": "page_esp_car2",
+          "type": "car_widget",
+          "title": "smart",
+          "entity_id": "sensor.readability_8",
+          "secondary_entity_id": "",
+          "rect": {
+            "x": 520,
+            "y": 200,
+            "w": 200,
+            "h": 200
+          },
+          "tertiary_entity_id": "sensor.readability_9"
+        },
+        {
+          "id": "page_esp_home",
+          "type": "gauge",
+          "title": "Home",
+          "entity_id": "sensor.readability_4",
+          "secondary_entity_id": "",
+          "style_variant": "radial",
+          "gauge_min": 0,
+          "gauge_max": 100,
+          "rect": {
+            "x": 520,
+            "y": 400,
+            "w": 200,
+            "h": 200
+          },
+          "gauge_bar_style": "smooth"
+        }
+      ]
+    },
+    {
+      "id": "edge_values",
+      "title": "Readability edge cases",
+      "widgets": [
+        {
+          "id": "edge_weather",
+          "type": "weather_3day",
+          "title": "Längere Wetterbezeichnung für die Küche",
+          "entity_id": "weather.edge",
+          "secondary_entity_id": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 540,
+            "h": 330
+          },
+          "show_precipitation": true,
+          "forecast_days": 3,
+          "show_name": true
+        },
+        {
+          "id": "edge_sensor_0",
+          "type": "sensor",
+          "entity_id": "sensor.edge_0",
+          "title": "Lange deutsche Sensorbezeichnung mit Außenfühler",
+          "show_name": true,
+          "rect": {
+            "x": 0,
+            "y": 360,
+            "w": 240,
+            "h": 180
+          }
+        },
+        {
+          "id": "edge_sensor_1",
+          "type": "sensor",
+          "entity_id": "sensor.edge_1",
+          "title": "Lange deutsche Sensorbezeichnung mit Außenfühler",
+          "show_name": true,
+          "rect": {
+            "x": 240,
+            "y": 360,
+            "w": 240,
+            "h": 180
+          }
+        },
+        {
+          "id": "edge_sensor_2",
+          "type": "sensor",
+          "entity_id": "sensor.edge_2",
+          "title": "Lange deutsche Sensorbezeichnung mit Außenfühler",
+          "show_name": false,
+          "rect": {
+            "x": 480,
+            "y": 360,
+            "w": 240,
+            "h": 180
+          }
+        }
+      ]
+    }
+  ],
+  "states": [
+    {
+      "entity_id": "sensor.readability_0",
+      "state": "0.00",
+      "attributes": {
+        "unit_of_measurement": "kW"
+      },
+      "display_precision": 2,
+      "age_seconds": 34
+    },
+    {
+      "entity_id": "sensor.readability_1",
+      "state": "Samstag, 26.09.26, 10:30",
+      "attributes": {},
+      "age_seconds": 13429
+    },
+    {
+      "entity_id": "sensor.readability_2",
+      "state": "66000",
+      "attributes": {
+        "unit_of_measurement": "m",
+        "device_class": "distance"
+      },
+      "age_seconds": 65
+    },
+    {
+      "entity_id": "sensor.readability_3",
+      "state": "20",
+      "attributes": {
+        "unit_of_measurement": "%"
+      },
+      "age_seconds": 65
+    },
+    {
+      "entity_id": "sensor.readability_4",
+      "state": "57.6",
+      "attributes": {
+        "unit_of_measurement": "%"
+      },
+      "age_seconds": 109
+    },
+    {
+      "entity_id": "sensor.readability_6",
+      "state": "382",
+      "attributes": {
+        "unit_of_measurement": "W"
+      },
+      "age_seconds": 43
+    },
+    {
+      "entity_id": "sensor.readability_7",
+      "state": "0",
+      "attributes": {
+        "unit_of_measurement": "W"
+      },
+      "age_seconds": 44
+    },
+    {
+      "entity_id": "sensor.readability_8",
+      "state": "36",
+      "attributes": {
+        "unit_of_measurement": "%"
+      },
+      "age_seconds": 745
+    },
+    {
+      "entity_id": "sensor.readability_9",
+      "state": "151",
+      "attributes": {
+        "unit_of_measurement": "km"
+      },
+      "age_seconds": 80
+    },
+    {
+      "entity_id": "sensor.readability_10",
+      "state": "40",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "dayname": "Saturday"
+      },
+      "age_seconds": 4049
+    },
+    {
+      "entity_id": "sensor.readability_11",
+      "state": "45",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "dayname": "Sunday"
+      },
+      "age_seconds": 4049
+    },
+    {
+      "entity_id": "sensor.readability_12",
+      "state": "48",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "dayname": "Monday"
+      },
+      "age_seconds": 4049
+    },
+    {
+      "entity_id": "sensor.readability_13",
+      "state": "9",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "dayname": "Tuesday"
+      },
+      "age_seconds": 4049
+    },
+    {
+      "entity_id": "sensor.readability_14",
+      "state": "21",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "dayname": "Wednesday"
+      },
+      "age_seconds": 4049
+    },
+    {
+      "entity_id": "sensor.readability_15",
+      "state": "0.00",
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      },
+      "display_precision": 2,
+      "age_seconds": 240
+    },
+    {
+      "entity_id": "weather.readability_16",
+      "state": "cloudy",
+      "attributes": {
+        "temperature": 19.7,
+        "temperature_unit": "°C",
+        "humidity": 63,
+        "precipitation_unit": "mm",
+        "forecast": [
+          {
+            "temperature": 28,
+            "templow": 13,
+            "condition": "cloudy",
+            "precipitation_probability": 5,
+            "precipitation": 0,
+            "day_offset": 0
+          },
+          {
+            "temperature": 28,
+            "templow": 12,
+            "condition": "cloudy",
+            "precipitation_probability": 15,
+            "precipitation": 0.2,
+            "day_offset": 1
+          },
+          {
+            "temperature": 27,
+            "templow": 15,
+            "condition": "partlycloudy",
+            "precipitation_probability": 30,
+            "precipitation": 1.2,
+            "day_offset": 2
+          },
+          {
+            "temperature": 21,
+            "templow": 14,
+            "condition": "rainy",
+            "precipitation_probability": 80,
+            "precipitation": 6.4,
+            "day_offset": 3
+          },
+          {
+            "temperature": 21,
+            "templow": 13,
+            "condition": "cloudy",
+            "precipitation_probability": 20,
+            "precipitation": 0.6,
+            "day_offset": 4
+          },
+          {
+            "temperature": 22,
+            "templow": 14,
+            "condition": "partlycloudy",
+            "precipitation_probability": 10,
+            "precipitation": 0,
+            "day_offset": 5
+          }
+        ]
+      },
+      "age_seconds": 26578
+    },
+    {
+      "entity_id": "sensor.readability_5",
+      "state": "53",
+      "attributes": {
+        "unit_of_measurement": "%"
+      }
+    },
+    {
+      "entity_id": "sensor.edge_0",
+      "state": "-12345.67",
+      "display_precision": 2,
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      }
+    },
+    {
+      "entity_id": "sensor.edge_1",
+      "state": "unavailable",
+      "display_precision": 2,
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      }
+    },
+    {
+      "entity_id": "sensor.edge_2",
+      "state": "unknown",
+      "display_precision": 2,
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      }
+    },
+    {
+      "entity_id": "weather.edge",
+      "state": "cloudy",
+      "attributes": {
+        "temperature": -12.4,
+        "temperature_unit": "°C",
+        "humidity": 98,
+        "precipitation_unit": "mm",
+        "forecast": [
+          {
+            "day_offset": 0,
+            "temperature": -12,
+            "templow": -18,
+            "precipitation": 12,
+            "precipitation_probability": 100,
+            "condition": "snowy"
+          },
+          {
+            "day_offset": 2,
+            "temperature": -4,
+            "templow": -16,
+            "precipitation": 0.2,
+            "precipitation_probability": 50,
+            "condition": "cloudy"
+          }
+        ]
+      }
+    }
+  ],
+  "frame": {
+    "date": "28.09.2026",
+    "time": "22:57"
+  },
+  "energy_snapshot": {
+    "available": true,
+    "has_grid": true,
+    "has_solar": true,
+    "has_battery": true,
+    "has_gas": true,
+    "has_water": true,
+    "from_grid_kwh": 0.429,
+    "to_grid_kwh": 16.7,
+    "solar_kwh": 42.6,
+    "to_battery_kwh": 9.2,
+    "from_battery_kwh": 7.6,
+    "gas_value": 0.78,
+    "gas_unit": "m³",
+    "water_value": 190,
+    "water_unit": "L"
+  }
+}

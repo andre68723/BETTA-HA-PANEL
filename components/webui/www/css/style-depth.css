@@ -1,0 +1,48 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
+ * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+ *
+ * Editor preview surfaces shared by the Glow and Glass appearance styles (raised, with depth).
+ * Loaded after styles.css in the order of index.html and WEBUI_CSS_SOURCES (docs/editor-source.md). Only
+ * rules that exist for this style belong here, so removing the style removes the file.
+ */
+
+/* Raised preview surfaces shared by Glow and Glass, never Matte. */
+body:is([data-ui-style="glow"], [data-ui-style="glass"]) .sonos-preview-list div {
+  border-color: rgba(120, 150, 180, 0.5);
+  background: linear-gradient(180deg, rgba(60, 88, 114, 0.95) 0%, rgba(20, 36, 52, 0.95) 100%);
+  border-radius: 9px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
+}
+
+body:is([data-ui-style="glow"], [data-ui-style="glass"]) .solar-preview-row {
+  padding: 3px 8px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+body:is([data-ui-style="glow"], [data-ui-style="glass"]) .solar-preview-col {
+  padding: 6px 2px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+body:is([data-ui-style="glow"], [data-ui-style="glass"]) .solar-preview-hbar,
+body:is([data-ui-style="glow"], [data-ui-style="glass"]) .solar-preview-vbar {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+body:is([data-ui-style="glow"], [data-ui-style="glass"]) .solar-preview-hbar i {
+  background: linear-gradient(90deg, #f2c14e 0%, #4fcb7e 100%);
+}
+
+body:is([data-ui-style="glow"], [data-ui-style="glass"]) .solar-preview-vbar i {
+  background: linear-gradient(0deg, #f2c14e 0%, #4fcb7e 100%);
+}
+
+body:is([data-ui-style="glow"], [data-ui-style="glass"]) .car-preview-gauge {
+  border-width: 13px;
+  border-color: rgba(255, 255, 255, 0.14);
+  border-left-color: var(--accent);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}

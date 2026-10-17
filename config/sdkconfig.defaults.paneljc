@@ -1,0 +1,105 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+# Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+#
+# Panel variant overlay: Guition JC8012P4A1 (ESP32-P4 + JD9365 MIPI-DSI 800x1280).
+# Apply together with the common sdkconfig.defaults via
+#   idf.py -D SDKCONFIG_DEFAULTS="config/sdkconfig.defaults;config/sdkconfig.defaults.paneljc" ...
+# or the CMake preset "paneljc" (see CMakePresets.json).
+#
+# Wi-Fi: ESP-Hosted (P4 host + C6 coprocessor over SDIO) — shared with panel4/panel10.
+# Display: JD9365, 2-lane MIPI-DSI, 800x1280 native portrait.
+#   LVGL rotation 90° yields 1280x800 landscape (same content box as panel10).
+# Touch: GSL3680 (Silead), I2C, vendored driver.
+
+# --- Panel variant selector (drives app_config.h + display/touch init) ---
+CONFIG_APP_PANEL_VARIANT_10INCH_JC=y
+# CONFIG_APP_PANEL_VARIANT_4INCH_720 is not set
+# CONFIG_APP_PANEL_VARIANT_10INCH_1280 is not set
+
+# --- Flash sizing and partitions ---
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+# CONFIG_ESPTOOLPY_FLASHSIZE_32MB is not set
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="config/partitions.paneljc.csv"
+CONFIG_PARTITION_TABLE_FILENAME="config/partitions.paneljc.csv"
+
+# --- Touch ---
+CONFIG_ESP_LCD_TOUCH_MAX_POINTS=5
+
+# --- JC8012P4A1 stability tuning ---
+# CPU rotation bypasses the recurring PPA completion stall on the original
+# panel (352x68 RGB565, 90 degrees). Long-run stability is under observation.
+# CONFIG_APP_DISPLAY_PPA is not set
+
+# Guition JC8012P4A1 boards in the wild are still commonly ESP32-P4 rev v1.x
+# engineering samples. ESP-IDF treats P4 rev <3 and rev >=3 images as mutually
+# exclusive, so build this variant for the v1.x silicon family.
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+CONFIG_ESP32P4_REV_MIN_100=y
+# CONFIG_ESP32P4_REV_MIN_300 is not set
+# CONFIG_ESP32P4_REV_MIN_301 is not set
+
+# The GSL3680 firmware upload and native OTA preparation can block long enough
+# to trip the default 10s task watchdog on this panel.
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=60
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=10240
+# 40 MHz like panel4 and the Guition demos. The earlier 20 MHz came from ESPHome's
+# profile; at 40 MHz the queues drain faster and the two-editor load test kept
+# 18 KB internal RAM instead of 5.6 KB (docs/development.md).
+CONFIG_ESP_HOSTED_SDIO_CLOCK_FREQ_KHZ=40000
+# ESP-Hosted static mempool can exhaust internal DMA memory before display init.
+# CONFIG_ESP_HOSTED_USE_MEMPOOL is not set
+# Reproduced editor-open outage: repeated STA TX aligned 1536-byte allocations
+# failed while PSRAM still had >12 MB free. ESP32-P4 can allocate DMA-capable
+# PSRAM for these transient transport buffers; the component falls back to
+# internal DMA RAM if that pool is unavailable. Keep the static mempool off.
+CONFIG_ESP_HOSTED_MEMPOOL_PREFER_SPIRAM=y
+# The SDIO transport's own TX/RX queues (a separate pool from the one above, still active with it
+# off) are 20 deep by default -- reproduced live (tools/stress_test.py) that a burst of simultaneous
+# page navigation + Room/House-import discovery calls can exceed that during normal runtime
+# (H_SDIO_DRV: mempool OOM, one dropped packet, self-recovered in ms; a more sustained version of
+# this burst is what originally showed multi-second packet loss and a WebSocket disconnect). Modest
+# increase, not the aggressive tuning the comment above warns against: 20 -> 26 costs
+# 2 * 6 * ESP_TRANSPORT_MAX_BUF_SIZE (1600 bytes) =~ 19 KB more permanently reserved internal RAM,
+# against ~80-100 KB normally free at runtime on this variant -- a real but modest trade against a
+# genuine, reproduced burst-capacity shortfall, not blind tuning.
+CONFIG_ESP_HOSTED_SDIO_TX_Q_SIZE=26
+CONFIG_ESP_HOSTED_SDIO_RX_Q_SIZE=26
+# Avoid long native OTA flash preparation stalls before upload progress starts.
+# CONFIG_SPI_FLASH_YIELD_DURING_ERASE is not set
+
+# --- Image support ---
+CONFIG_LV_USE_LODEPNG=y
+
+# The production firmware does not call LVGL examples; keeping them enabled
+# compiles hundreds of unused sources and slows paneljc builds noticeably.
+# CONFIG_LV_BUILD_EXAMPLES is not set
+
+# Faster UI: cache what LVGL would recompute on every draw (shadow blur,
+# rounded corners, decoded PNG icons). Multi-threaded drawing was tried and is
+# not possible here: with ThorVG enabled every draw thread needs a 32 KB
+# internal-RAM stack, which the panel cannot spare.
+CONFIG_LV_DRAW_SW_SHADOW_CACHE_SIZE=64
+CONFIG_LV_DRAW_SW_CIRCLE_CACHE_SIZE=32
+CONFIG_LV_CACHE_DEF_SIZE=786432
+CONFIG_LV_IMAGE_HEADER_CACHE_DEF_CNT=64
+
+# --- Built-in OV02C10 camera as ambient light / presence sensor ---
+# Only 1288x728 RAW10 (native 16:9 crop) is enabled: half the MIPI bandwidth
+# and PSRAM of 1080p, the same mode the kruzio project found stable next to
+# ESP-Hosted Wi-Fi. The camera never streams continuously.
+CONFIG_APP_FEATURE_AMBIENT_CAMERA=y
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+CONFIG_CAMERA_OV02C10=y
+CONFIG_CAMERA_OV02C10_MIPI_RAW10_1288X728_30FPS=y
+CONFIG_CAMERA_OV02C10_MIPI_DEFAULT_FMT_RAW10_1288X728_30FPS=y
+CONFIG_VFS_MAX_COUNT=16
+CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE=y
+CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE=y
+CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER=y
+CONFIG_ESP_VIDEO_ENABLE_DATA_PREPROCESSING=n
+CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER=y
+CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT=n
+CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE=n
+
+# LVGL allocates from PSRAM first: set in the common sdkconfig.defaults for every variant.

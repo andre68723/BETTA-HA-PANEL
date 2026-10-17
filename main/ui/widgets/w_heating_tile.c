@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ui/ui_widget_factory.h"
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,23 +12,17 @@
 
 #include "cJSON.h"
 
-#include "ui/fonts/app_text_fonts.h"
+#include "ui/fonts/app_symbols.h"
+#include "ui/theme/ui_typography.h"
 #include "ui/ui_bindings.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
 #include "ui/theme/theme_default.h"
+#include "ui/theme/ui_style.h"
 
-#define HEATING_ACTUAL_FONT APP_FONT_DISPLAY_38
+#define HEATING_ACTUAL_FONT ui_font_role(UI_TEXT_KEY)
 
-#if LV_FONT_MONTSERRAT_20
-#define HEATING_TARGET_FONT APP_FONT_TEXT_16
-#elif LV_FONT_MONTSERRAT_18
-#define HEATING_TARGET_FONT APP_FONT_TEXT_16
-#elif LV_FONT_MONTSERRAT_16
-#define HEATING_TARGET_FONT APP_FONT_TEXT_16
-#else
-#define HEATING_TARGET_FONT APP_FONT_TEXT_16
-#endif
+#define HEATING_TARGET_FONT ui_font_role(UI_TEXT_META)
 
 typedef struct {
     char climate_entity_id[APP_MAX_ENTITY_ID_LEN];
@@ -57,28 +53,9 @@ typedef struct {
     char status_text[32];
 } heating_values_t;
 
-#define HEATING_ICON_SYMBOL_CP 0xF011U
 #define HEATING_ARC_SIZE_MIN 140
 #define HEATING_ARC_SIZE_MAX 340
 
-static bool heating_icon_symbol_available(void)
-{
-    static bool checked = false;
-    static bool available = false;
-
-    if (!checked) {
-        checked = true;
-        lv_font_glyph_dsc_t dsc = {0};
-        available = lv_font_get_glyph_dsc(LV_FONT_DEFAULT, &dsc, HEATING_ICON_SYMBOL_CP, 0);
-    }
-
-    return available;
-}
-
-static const char *heating_icon_text(void)
-{
-    return heating_icon_symbol_available() ? LV_SYMBOL_POWER : "H";
-}
 
 static bool heating_parse_float_relaxed(const char *text, float *out_value)
 {
@@ -223,7 +200,7 @@ static void heating_set_target_label(lv_obj_t *label, float value)
         return;
     }
     char text[20] = {0};
-    snprintf(text, sizeof(text), ui_i18n_get("heating.target_format", "Target %.1f C"), (double)clamp_temp(value));
+    snprintf(text, sizeof(text), ui_i18n_get("heating.target_format", "Target %.1f°C"), (double)clamp_temp(value));
     lv_label_set_text(label, text);
 }
 
@@ -235,15 +212,14 @@ static void heating_set_actual_label(lv_obj_t *label, bool has_current_temp, flo
 
     if (has_current_temp) {
         char text[20] = {0};
-        snprintf(text, sizeof(text), "%.1f C", (double)clamp_temp(current_temp));
+        ui_format_temp_c(text, sizeof(text), true, clamp_temp(current_temp));
         lv_label_set_text(label, text);
         return;
     }
-    if (status_text != NULL && status_text[0] != '\0') {
-        lv_label_set_text(label, status_text);
-    } else {
-        lv_label_set_text(label, "--.- C");
-    }
+    /* No reading: the placeholder, not the raw Home Assistant state ("unavailable", untranslated
+     * and far too wide for the large font); the status line below already shows it translated. */
+    (void)status_text;
+    lv_label_set_text(label, "--.-°C"); /* matches ui_format_temp_c()'s own unavailable text */
 }
 
 static void heating_set_status_label(lv_obj_t *label, bool is_on, const char *status_text)
@@ -275,13 +251,81 @@ static void heating_set_status_label(lv_obj_t *label, bool is_on, const char *st
         } else if (strcmp(text, "heating") == 0) {
             lv_label_set_text(label, ui_i18n_get("heating.active", "heating active"));
         } else {
-            lv_label_set_text(label, text);
+            /* Any other Home Assistant hvac_action ("cooling", "drying", "idle", "fan", ...) or, when
+             * hvac_action is absent, the hvac_mode used as a fallback status ("cool", "heat", "auto",
+             * "dry", "fan_only") -- shares the climate tile's own "climate.mode.<value>" keys
+             * (w_climate.c's climate_mode_text()) instead of a second word list, and falls back the
+             * same way it does there (capitalized raw name) when even that has no translation. Note
+             * "text" here already lowercased/space-converted for the switch above; the key itself
+             * needs the original underscore form ("fan_only", not "fan only"). */
+            char key_value[40] = {0};
+            size_t kn = 0;
+            for (size_t i = 0; status_text[i] != '\0' && kn + 1 < sizeof(key_value); i++) {
+                char c = status_text[i];
+                if (c >= 'A' && c <= 'Z') {
+                    c = (char)(c + ('a' - 'A'));
+                }
+                key_value[kn++] = c;
+            }
+            key_value[kn] = '\0';
+            char key[64]; /* "climate.mode." (13) + key_value's full capacity (39) + NUL: comfortably under 64 */
+            snprintf(key, sizeof(key), "climate.mode.%s", key_value);
+            const char *translated = ui_i18n_get(key, "");
+            lv_label_set_text(label, translated[0] != '\0' ? translated : text);
         }
         return;
     }
 
     lv_label_set_text(
         label, is_on ? ui_i18n_get("heating.active", "heating active") : ui_i18n_get("common.off", "OFF"));
+}
+
+/* Places a label with its center at (cx, top + its own height / 2), in the card's content coordinates. */
+static void heating_place_centered(lv_obj_t *label, int cx, int top)
+{
+    lv_obj_align(label, LV_ALIGN_TOP_LEFT, cx - lv_obj_get_width(label) / 2, top);
+}
+
+/* Target, actual and (when given) status stacked and centered on (cx, cy). */
+static void heating_place_stack(w_heating_tile_ctx_t *ctx, int cx, int cy, bool with_status)
+{
+    const int gap = 2;
+    const int h_target = lv_obj_get_height(ctx->target_label);
+    const int h_actual = lv_obj_get_height(ctx->actual_label);
+    const int h_status = with_status ? lv_obj_get_height(ctx->status_label) : 0;
+    const int total = h_target + gap + h_actual + (with_status ? gap + h_status : 0);
+    int y = cy - total / 2;
+    heating_place_centered(ctx->target_label, cx, y);
+    y += h_target + gap;
+    heating_place_centered(ctx->actual_label, cx, y);
+    if (with_status) {
+        y += h_actual + gap;
+        heating_place_centered(ctx->status_label, cx, y);
+    }
+}
+
+/* Next to one end of the semi arc, pushed out towards the opening so it never sits on the ring. */
+static void heating_place_end_label(lv_obj_t *label, int cx, int cy, int radius, int angle_deg, int dir_x, int dir_y,
+                                    int clearance)
+{
+    const float rad = (float)angle_deg * 3.14159265f / 180.0f;
+    const int ex = cx + (int)((float)radius * cosf(rad));
+    const int ey = cy + (int)((float)radius * sinf(rad));
+    const int w = lv_obj_get_width(label);
+    const int h = lv_obj_get_height(label);
+    const int lx = ex + dir_x * (clearance + w / 2);
+    const int ly = ey + dir_y * (clearance + h / 2);
+    /* Stay inside the tile's content area: the label then rests against the edge instead of reaching out of the card. */
+    lv_obj_t *parent = lv_obj_get_parent(label);
+    int x = lx - w / 2;
+    int y = ly - h / 2;
+    if (parent != NULL) {
+        const int max_x = lv_obj_get_content_width(parent) - w;
+        const int max_y = lv_obj_get_content_height(parent) - h;
+        x = x > max_x ? max_x : x;
+        y = y > max_y ? max_y : y;
+    }
+    lv_obj_align(label, LV_ALIGN_TOP_LEFT, x < 0 ? 0 : x, y < 0 ? 0 : y);
 }
 
 static void heating_apply_layout(lv_obj_t *card, w_heating_tile_ctx_t *ctx)
@@ -291,110 +335,165 @@ static void heating_apply_layout(lv_obj_t *card, w_heating_tile_ctx_t *ctx)
         return;
     }
 
-    int card_w = lv_obj_get_width(card);
-    int card_h = lv_obj_get_height(card);
+    /* The card's and the labels' sizes are only known once LVGL has laid them out: right after
+     * creation (and before the first refresh) they read as 0, which left the arc at its minimum
+     * size and pushed the reading and status above the tile. All positions below are in the
+     * card's content coordinates, derived from those sizes instead of fixed offsets. */
+    lv_obj_update_layout(card);
+    const int cw = lv_obj_get_content_width(card);
+    const int ch = lv_obj_get_content_height(card);
+    const int title_reserve = ui_widget_name_enabled(ctx->title_label) ? lv_obj_get_y(ctx->title_label) + lv_obj_get_height(ctx->title_label) + 6 : 0;
+    const int arc_w = lv_obj_get_style_arc_width(ctx->arc, LV_PART_MAIN);
 
     if (ctx->arc_semi) {
-        /* Semi arc variant: big semicircle filling card with opening on one side. */
-        int arc_size = (card_w < card_h ? card_w : card_h) - 24;
-        if (arc_size < HEATING_ARC_SIZE_MIN) {
-            arc_size = HEATING_ARC_SIZE_MIN;
-        }
-        lv_obj_set_size(ctx->arc, arc_size, arc_size);
-        lv_obj_align(ctx->arc, LV_ALIGN_CENTER, 0, 0);
-
-        /* Center labels: target above actual. */
-        lv_obj_align(ctx->target_label, LV_ALIGN_CENTER, 0, -14);
-        lv_obj_align(ctx->actual_label, LV_ALIGN_CENTER, 0, 22);
-        lv_obj_align(ctx->status_label, LV_ALIGN_BOTTOM_MID, 0, -8);
-
-        /* +/- buttons positioned opposite the opening. */
-        int pad = 10;
+        /* Semi arc: +/- buttons on the open side, the ring on the other, and the target/actual/
+         * status block in between -- never on top of the buttons or the ring. */
         const char *op = ctx->arc_opening;
-        if (ctx->minus_btn != NULL && ctx->plus_btn != NULL) {
-            if (strcmp(op, "left") == 0) {
-                lv_obj_align(ctx->minus_btn, LV_ALIGN_LEFT_MID, pad, 40);
-                lv_obj_align(ctx->plus_btn, LV_ALIGN_LEFT_MID, pad, -40);
-            } else if (strcmp(op, "right") == 0) {
-                lv_obj_align(ctx->minus_btn, LV_ALIGN_RIGHT_MID, -pad, 40);
-                lv_obj_align(ctx->plus_btn, LV_ALIGN_RIGHT_MID, -pad, -40);
-            } else if (strcmp(op, "top") == 0) {
-                lv_obj_align(ctx->minus_btn, LV_ALIGN_TOP_MID, -40, pad);
-                lv_obj_align(ctx->plus_btn, LV_ALIGN_TOP_MID, 40, pad);
-            } else { /* bottom */
-                lv_obj_align(ctx->minus_btn, LV_ALIGN_BOTTOM_MID, -40, -pad);
-                lv_obj_align(ctx->plus_btn, LV_ALIGN_BOTTOM_MID, 40, -pad);
-            }
+        const bool open_left = strcmp(op, "left") == 0;
+        const bool open_right = strcmp(op, "right") == 0;
+        const bool open_top = strcmp(op, "top") == 0;
+        const bool sideways = open_left || open_right;
+        const int btn = ctx->minus_btn != NULL ? lv_obj_get_width(ctx->minus_btn) : 0;
+        const int gap = 8;
+        const int avail_h = ch - title_reserve;
+        int arc_size = cw < avail_h ? cw : avail_h;
+        if (arc_size > HEATING_ARC_SIZE_MAX) {
+            arc_size = HEATING_ARC_SIZE_MAX;
         }
-        /* Min / max labels near arc ends (opposite opening). */
-        if (ctx->min_label != NULL && ctx->max_label != NULL) {
-            if (strcmp(op, "left") == 0) {
-                lv_obj_align(ctx->min_label, LV_ALIGN_TOP_RIGHT, -14, 24);
-                lv_obj_align(ctx->max_label, LV_ALIGN_BOTTOM_RIGHT, -14, -24);
-            } else if (strcmp(op, "right") == 0) {
-                lv_obj_align(ctx->min_label, LV_ALIGN_TOP_LEFT, 14, 24);
-                lv_obj_align(ctx->max_label, LV_ALIGN_BOTTOM_LEFT, 14, -24);
-            } else if (strcmp(op, "top") == 0) {
-                lv_obj_align(ctx->min_label, LV_ALIGN_BOTTOM_LEFT, 24, -14);
-                lv_obj_align(ctx->max_label, LV_ALIGN_BOTTOM_RIGHT, -24, -14);
-            } else {
-                lv_obj_align(ctx->min_label, LV_ALIGN_TOP_LEFT, 24, 14);
-                lv_obj_align(ctx->max_label, LV_ALIGN_TOP_RIGHT, -24, 14);
+        /* The ring sits against the edge opposite its opening, which leaves the text between it and
+         * the buttons as much room as the tile has. */
+        const bool open_bottom = !sideways && !open_top;
+        const int cx = open_left ? cw - arc_size / 2 : (open_right ? arc_size / 2 : cw / 2);
+        const int cy = open_bottom ? title_reserve + arc_size / 2
+                                   : (open_top ? ch - arc_size / 2 : title_reserve + avail_h / 2);
+        lv_obj_set_size(ctx->arc, arc_size, arc_size);
+        lv_obj_align(ctx->arc, LV_ALIGN_TOP_LEFT, cx - arc_size / 2, cy - arc_size / 2);
+        /* Keep text clear of the ring and of the knob riding on it (about the ring's width). */
+        const int r_inner = arc_size / 2 - arc_w - arc_w / 2;
+
+        int text_cx = cx;
+        int text_cy = cy;
+        int text_w = 2 * r_inner;
+        int text_h = 2 * r_inner;
+        if (sideways) {
+            const int bx = open_left ? 0 : cw - btn;
+            if (ctx->minus_btn != NULL && ctx->plus_btn != NULL) {
+                lv_obj_align(ctx->plus_btn, LV_ALIGN_TOP_LEFT, bx, cy - gap / 2 - btn);
+                lv_obj_align(ctx->minus_btn, LV_ALIGN_TOP_LEFT, bx, cy + gap / 2);
             }
+            /* Between the button column and the ring's inner edge on the far side. */
+            const int lo = open_left ? btn + gap : cx - r_inner + gap;
+            const int hi = open_left ? cx + r_inner - gap : cw - btn - gap;
+            text_cx = (lo + hi) / 2;
+            text_w = hi - lo;
+            text_h = 2 * r_inner;
+        } else {
+            const int by = open_top ? title_reserve : ch - btn;
+            if (ctx->minus_btn != NULL && ctx->plus_btn != NULL) {
+                lv_obj_align(ctx->minus_btn, LV_ALIGN_TOP_LEFT, cx - gap / 2 - btn, by);
+                lv_obj_align(ctx->plus_btn, LV_ALIGN_TOP_LEFT, cx + gap / 2, by);
+            }
+            const int lo = open_top ? by + btn + gap : cy - r_inner + gap;
+            const int hi = open_top ? cy + r_inner - gap : by - gap;
+            text_cy = (lo + hi) / 2;
+            text_w = (r_inner * 3) / 2; /* the ring's chord a little off its center */
+            text_h = hi - lo;
+        }
+        /* The large reading drops to the next size, and the target and status lines to a smaller
+         * one, when they do not fit between the buttons and the ring. */
+        lv_obj_set_style_text_font(ctx->actual_label, HEATING_ACTUAL_FONT, LV_PART_MAIN);
+        lv_obj_update_layout(ctx->actual_label);
+        if (lv_obj_get_width(ctx->actual_label) > text_w) {
+            lv_obj_set_style_text_font(ctx->actual_label, ui_font_role(UI_TEXT_VALUE), LV_PART_MAIN);
+            lv_obj_update_layout(ctx->actual_label);
+        }
+        const lv_font_t *small = HEATING_TARGET_FONT;
+        lv_obj_set_style_text_font(ctx->target_label, small, LV_PART_MAIN);
+        lv_obj_set_style_text_font(ctx->status_label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
+        heating_set_target_label(ctx->target_label, ctx->target_temp);
+        lv_obj_set_hidden(ctx->status_label, false);
+        lv_obj_update_layout(ctx->target_label);
+        lv_obj_update_layout(ctx->status_label);
+        /* 20 px is the smallest text on the 4-inch class. A status line wider than the room between the buttons and
+         * the ring is dropped first; a block that still does not fit loses the word "Target" too, keeping the two
+         * temperatures. */
+        bool with_status = lv_obj_get_width(ctx->status_label) <= text_w;
+        const int stack_h = lv_obj_get_height(ctx->target_label) + 2 + lv_obj_get_height(ctx->actual_label) +
+                            (with_status ? 2 + lv_obj_get_height(ctx->status_label) : 0);
+        if (lv_obj_get_width(ctx->target_label) > text_w || stack_h > text_h) {
+            char compact[16];
+            snprintf(compact, sizeof(compact), "%.1f°C", (double)clamp_temp(ctx->target_temp));
+            lv_label_set_text(ctx->target_label, compact);
+            lv_obj_update_layout(ctx->target_label);
+            with_status = false;
+        }
+        lv_obj_set_hidden(ctx->status_label, !with_status);
+        heating_place_stack(ctx, text_cx, text_cy, with_status);
+
+        /* Min / max next to the ring's two ends, moved out towards the opening. */
+        if (ctx->min_label != NULL && ctx->max_label != NULL) {
+            const int start = (int)lv_arc_get_bg_angle_start(ctx->arc);
+            const int stop = (int)lv_arc_get_bg_angle_end(ctx->arc);
+            const int dir_x = open_left ? -1 : (open_right ? 1 : 0);
+            const int dir_y = open_top ? -1 : (sideways ? 0 : 1);
+            const int r_mid = arc_size / 2 - arc_w / 2;
+            /* With the opening on top or bottom the +/- buttons span the middle of the opening and a label
+             * centred on the ring's end can reach under them (20 px digits): move each to its own side. */
+            const int min_dx = sideways ? dir_x : (cosf((float)start * 3.14159265f / 180.0f) >= 0.0f ? 1 : -1);
+            const int max_dx = sideways ? dir_x : (cosf((float)stop * 3.14159265f / 180.0f) >= 0.0f ? 1 : -1);
+            heating_place_end_label(ctx->min_label, cx, cy, r_mid, start, min_dx, dir_y, arc_w / 2 + 4);
+            heating_place_end_label(ctx->max_label, cx, cy, r_mid, stop, max_dx, dir_y, arc_w / 2 + 4);
         }
         return;
     }
 
-    /* Keep arc fully inside the card to avoid expensive clipping/mask paths on rounded tiles. */
-    int arc_size = card_w - 38;
-    int max_arc_h = card_h - 70;
-    if (arc_size > max_arc_h) {
-        arc_size = max_arc_h;
+    /* Default: the ring is open at the bottom (it ends at 20 and 160 degrees, sin 20 = 0.342 of the
+     * radius below its center), so only its top and its two ends have to stay clear of the title
+     * and the status line; its unused bottom may reach down beside the status. The target and the
+     * large actual reading sit centered in it, slightly low, the reading partly in the opening. */
+    const int status_h = lv_obj_get_height(ctx->status_label);
+    const int area_top = title_reserve;
+    const int area_bottom = ch - status_h - 4;
+    int radius = (int)((float)(area_bottom - area_top - arc_w / 2) / 1.342f);
+    if (radius * 2 > cw) {
+        radius = cw / 2;
     }
-    if (arc_size < HEATING_ARC_SIZE_MIN) {
-        arc_size = HEATING_ARC_SIZE_MIN;
+    if (radius * 2 > HEATING_ARC_SIZE_MAX) {
+        radius = HEATING_ARC_SIZE_MAX / 2;
     }
-    if (arc_size > HEATING_ARC_SIZE_MAX) {
-        arc_size = HEATING_ARC_SIZE_MAX;
+    /* The arc object's square must still end inside the card (its padding may take the unused
+     * bottom): LVGL clips children that leave a rounded card through a costly mask. */
+    const int card_bottom = ch + lv_obj_get_style_pad_bottom(card, LV_PART_MAIN) - 1;
+    int used = 0;
+    int cy = 0;
+    for (;;) {
+        used = radius + (int)((float)radius * 0.342f) + arc_w / 2;
+        cy = area_top + (area_bottom - area_top - used) / 2 + radius;
+        if (cy + radius <= card_bottom || radius <= HEATING_ARC_SIZE_MIN / 4) {
+            break;
+        }
+        radius--;
     }
-
-    int arc_y = 16;
-    if (card_h >= 320) {
-        arc_y = 22;
-    } else if (card_h >= 280) {
-        arc_y = 18;
+    const int cx = cw / 2;
+    lv_obj_set_size(ctx->arc, radius * 2, radius * 2);
+    lv_obj_align(ctx->arc, LV_ALIGN_TOP_LEFT, cx - radius, cy - radius);
+    /* Slightly low in the ring, but never down onto the status line; a smaller reading when the
+     * ring's inside is too short for the full size. */
+    const int status_top = ch - status_h;
+    lv_obj_set_style_text_font(ctx->actual_label, HEATING_ACTUAL_FONT, LV_PART_MAIN);
+    lv_obj_update_layout(ctx->actual_label);
+    int stack_h = lv_obj_get_height(ctx->target_label) + 2 + lv_obj_get_height(ctx->actual_label);
+    if (cy - radius + arc_w + stack_h > status_top - 2) {
+        lv_obj_set_style_text_font(ctx->actual_label, ui_font_role(UI_TEXT_VALUE), LV_PART_MAIN);
+        lv_obj_update_layout(ctx->actual_label);
+        stack_h = lv_obj_get_height(ctx->target_label) + 2 + lv_obj_get_height(ctx->actual_label);
     }
-
-    /* Clamp Y offset so the arc never spills out of the card. */
-    int arc_y_max = (card_h / 2) - 8 - (arc_size / 2);
-    if (arc_y > arc_y_max) {
-        arc_y = arc_y_max;
+    int stack_cy = cy + radius / 6;
+    if (stack_cy + stack_h / 2 > status_top - 2) {
+        stack_cy = status_top - 2 - stack_h / 2;
     }
-    if (arc_y < -arc_y_max) {
-        arc_y = -arc_y_max;
-    }
-
-    lv_obj_set_size(ctx->arc, arc_size, arc_size);
-    lv_obj_align(ctx->arc, LV_ALIGN_CENTER, 0, arc_y);
-
-    int center_y = (card_h / 2) + arc_y;
-    int target_y = center_y + ((card_h >= 300) ? 8 : 6);
-    int actual_y = target_y + ((card_h >= 300) ? 46 : 40);
-    int status_y = card_h - 34;
-
-    if (actual_y > (status_y - 30)) {
-        actual_y = status_y - 30;
-    }
-    if (target_y > (actual_y - 36)) {
-        target_y = actual_y - 36;
-    }
-    if (target_y < 90) {
-        target_y = 90;
-    }
-
-    lv_obj_align(ctx->target_label, LV_ALIGN_TOP_MID, 0, target_y);
-    lv_obj_align(ctx->actual_label, LV_ALIGN_TOP_MID, 0, actual_y);
-    lv_obj_align(ctx->status_label, LV_ALIGN_TOP_MID, 0, status_y);
+    heating_place_stack(ctx, cx, stack_cy, false);
+    heating_place_centered(ctx->status_label, cx, status_top);
 }
 
 static void heating_apply_visual(lv_obj_t *card, w_heating_tile_ctx_t *ctx, bool allow_status_fallback)
@@ -421,6 +520,7 @@ static void heating_apply_visual(lv_obj_t *card, w_heating_tile_ctx_t *ctx, bool
     lv_obj_set_style_bg_color(
         card, is_on ? lv_color_hex(APP_UI_COLOR_CARD_BG_ON) : lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
+    ui_style_card_set_active(card, is_on);
     lv_obj_set_style_text_color(
         icon, is_on ? lv_color_hex(APP_UI_COLOR_HEAT_ICON_ON) : lv_color_hex(APP_UI_COLOR_CARD_ICON_OFF), LV_PART_MAIN);
     lv_obj_set_style_text_color(title, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
@@ -445,12 +545,21 @@ static void heating_apply_visual(lv_obj_t *card, w_heating_tile_ctx_t *ctx, bool
     lv_obj_set_style_bg_opa(arc, LV_OPA_COVER, LV_PART_KNOB);
 
     if (ctx->arc_semi) {
-        uint32_t btn_color = is_on ? APP_UI_COLOR_HEAT_IND_ON : APP_UI_COLOR_HEAT_IND_OFF;
+        const lv_color_t btn_bg = lv_color_hex(is_on ? APP_UI_COLOR_HEAT_IND_ON : APP_UI_COLOR_HEAT_IND_OFF);
+        const lv_color_t btn_icon = ui_style_button_icon_color(btn_bg);
         if (ctx->minus_btn != NULL) {
-            lv_obj_set_style_bg_color(ctx->minus_btn, lv_color_hex(btn_color), LV_PART_MAIN);
+            ui_style_button_auto(ctx->minus_btn, btn_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
+            lv_obj_t *minus_lbl = lv_obj_get_child(ctx->minus_btn, 0);
+            if (minus_lbl != NULL) {
+                lv_obj_set_style_text_color(minus_lbl, btn_icon, LV_PART_MAIN);
+            }
         }
         if (ctx->plus_btn != NULL) {
-            lv_obj_set_style_bg_color(ctx->plus_btn, lv_color_hex(btn_color), LV_PART_MAIN);
+            ui_style_button_auto(ctx->plus_btn, btn_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
+            lv_obj_t *plus_lbl = lv_obj_get_child(ctx->plus_btn, 0);
+            if (plus_lbl != NULL) {
+                lv_obj_set_style_text_color(plus_lbl, btn_icon, LV_PART_MAIN);
+            }
         }
         if (ctx->min_label != NULL) {
             lv_obj_set_style_text_color(ctx->min_label, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
@@ -559,7 +668,7 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_t *card = lv_obj_create(parent);
     lv_obj_set_pos(card, def->x, def->y);
     lv_obj_set_size(card, def->w, def->h);
-    lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(card, false);
     lv_obj_set_style_radius(card, APP_UI_CARD_RADIUS, LV_PART_MAIN);
 #if APP_UI_REWORK_V2
     lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
@@ -571,18 +680,21 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
 
     lv_obj_t *icon = lv_label_create(card);
-    lv_label_set_text(icon, heating_icon_text());
-    lv_obj_set_style_text_font(icon, LV_FONT_DEFAULT, LV_PART_MAIN);
+    lv_label_set_text(icon, APP_SYMBOL_POWER);
+    lv_obj_set_style_text_font(icon, APP_FONT_SYMBOL_SMALL, LV_PART_MAIN);
 #if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(icon, LV_ALIGN_TOP_LEFT, 0, 2);
 #else
     lv_obj_align(icon, LV_ALIGN_TOP_LEFT, 0, 0);
 #endif
 
-    lv_obj_t *title = lv_label_create(card);
+    lv_obj_t *title = ui_widget_name_create(card, !def->hide_name);
     lv_label_set_text(title, def->title[0] ? def->title : def->id);
-    lv_obj_set_width(title, def->w - 32);
-    lv_obj_set_style_text_font(title, APP_FONT_TEXT_16, LV_PART_MAIN);
+    /* Centered, one line, and clear of the power icon on the left (mirrored on the right). */
+    lv_obj_set_width(title, def->w - 32 - 2 * 26);
+    lv_obj_set_height(title, lv_font_get_line_height(ui_font_role(UI_TEXT_META)));
+    lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
+    lv_obj_set_style_text_font(title, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 #if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 2);
@@ -600,7 +712,7 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 #else
     lv_obj_align(arc, LV_ALIGN_CENTER, 0, 20);
 #endif
-    lv_obj_clear_flag(arc, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_set_event_bubble(arc, false);
 
     lv_obj_t *target_label = lv_label_create(card);
     heating_set_target_label(target_label, 20.0f);
@@ -622,7 +734,7 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 
     lv_obj_t *status_label = lv_label_create(card);
     lv_label_set_text(status_label, ui_i18n_get("common.off", "OFF"));
-    lv_obj_set_style_text_font(status_label, APP_FONT_TEXT_14, LV_PART_MAIN);
+    lv_obj_set_style_text_font(status_label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_obj_set_style_text_align(status_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(status_label, LV_ALIGN_BOTTOM_MID, 0, -12);
 
@@ -670,12 +782,12 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
         /* Min/Max labels at arc ends. */
         ctx->min_label = lv_label_create(card);
         lv_label_set_text(ctx->min_label, "5");
-        lv_obj_set_style_text_font(ctx->min_label, APP_FONT_TEXT_14, LV_PART_MAIN);
+        lv_obj_set_style_text_font(ctx->min_label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
         lv_obj_set_style_text_color(ctx->min_label, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
 
         ctx->max_label = lv_label_create(card);
         lv_label_set_text(ctx->max_label, "30");
-        lv_obj_set_style_text_font(ctx->max_label, APP_FONT_TEXT_14, LV_PART_MAIN);
+        lv_obj_set_style_text_font(ctx->max_label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
         lv_obj_set_style_text_color(ctx->max_label, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
 
         /* +/- buttons. */

@@ -1,0 +1,38 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 */
+#widgetActionsMenu {
+  position: fixed;
+  z-index: 1001;
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  box-shadow: 0 8px 24px var(--overlay-2);
+}
+.widget-action-item {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.widget-action-item:hover, .widget-action-item:focus-visible { background: var(--surf-2); }
+.widget-action-item:disabled { opacity: .45; cursor: default; }
+.widget-actions-toggle { font-size: 18px; }
+.widget-transfer-card { width: min(420px, 100%); }
+.widget-transfer-card h2 { margin: 0 0 10px; font-size: 18px; }
+#widgetTransferName { overflow-wrap: anywhere; margin: 0 0 12px; }
+.widget-transfer-card label { display: grid; gap: 5px; }
+.widget-transfer-card select { width: 100%; }
+.widget-transfer-card .row { justify-content: flex-end; margin-top: 14px; }
+#widgetTransferError { color: var(--danger, #d9534f); overflow-wrap: anywhere; }
+
+@media (pointer: coarse) {
+  .widget-action-item { min-height: 44px; }
+}

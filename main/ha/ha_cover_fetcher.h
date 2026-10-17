@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  *
  * Global, single-worker cover-art fetcher.
  *
@@ -59,6 +60,12 @@ void ha_cover_fetcher_cancel(void *user);
 
 /* Free an image buffer obtained through a ha_cover_cb_t callback. */
 void ha_cover_result_release(ha_cover_result_t *result);
+
+/* Worker-only baseline JPEG decode, serialized with the still-image worker.
+ * Input is borrowed for this call. On success the caller owns out->image.data.
+ * Never call while holding the display lock. */
+bool ha_cover_fetcher_decode_jpeg(const uint8_t *jpeg, size_t length, int width, int height,
+                                 ha_cover_result_t *out);
 
 #ifdef __cplusplus
 }

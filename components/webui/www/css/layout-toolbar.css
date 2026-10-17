@@ -1,0 +1,125 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 */
+/* Layout title, status and text size share the header; actions stay at the right. */
+.workspace-top {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px 12px;
+}
+.workspace-top > h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workspace-top > .status {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workspace-top-right {
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.layout-text-size {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.layout-text-size > label {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.layout-text-size > select {
+  width: auto;
+  min-width: 100px;
+  padding: 6px 8px;
+}
+.layout-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.toolbar-icon,
+.workspace-top .theme-toggle,
+#layoutTextSizeInfoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 7px;
+}
+.toolbar-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#layoutTextSizeInfoBtn {
+  list-style: none;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--surf-2);
+  color: var(--text);
+  font-size: 16px;
+}
+#layoutTextSizeInfoBtn::-webkit-details-marker {
+  display: none;
+}
+#layoutTextSizeInfoBtn:hover {
+  background: var(--panel-2);
+}
+#layoutTextSizeDetails > .meta,
+#layoutJsonMenu {
+  z-index: 40;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  box-shadow: 0 8px 24px var(--overlay-2);
+}
+#layoutTextSizeDetails > .meta {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 300px;
+  max-width: 100%;
+}
+#layoutJsonMenu {
+  width: 320px;
+  min-width: 0;
+  max-width: calc(100vw - 96px);
+  max-height: 70vh;
+  overflow-y: auto;
+  gap: 10px;
+}
+#layoutJsonMenu .actions-import > summary {
+  cursor: pointer;
+  padding: 6px 0;
+}
+#layoutJsonMenu .actions-import > input,
+#layoutJsonMenu .actions-import > textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 8px 0;
+}
+#layoutJsonMenu textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+@media (pointer: coarse) {
+  .toolbar-icon,
+  .workspace-top .theme-toggle,
+  #layoutTextSizeInfoBtn {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+}

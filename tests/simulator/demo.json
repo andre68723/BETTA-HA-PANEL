@@ -1,0 +1,68 @@
+{
+  "pages": [
+    {
+      "id": "demo",
+      "title": "Widget preview",
+      "widgets": [
+        {
+          "id": "temperature",
+          "type": "sensor",
+          "title": "Living room temperature",
+          "entity_id": "sensor.living_room_temperature",
+          "sensor_show_label": true,
+          "sensor_show_age": true,
+          "x": 16, "y": 16, "w": 320, "h": 150
+        },
+        {
+          "id": "power",
+          "type": "gauge",
+          "title": "Charging power",
+          "entity_id": "sensor.charging_power",
+          "style_variant": "radial",
+          "gauge_min": 0,
+          "gauge_max": 11000,
+          "x": 352, "y": 16, "w": 320, "h": 300
+        },
+        {
+          "id": "humidity",
+          "type": "gauge",
+          "title": "Humidity",
+          "entity_id": "sensor.living_room_humidity",
+          "gauge_min": 0,
+          "gauge_max": 100,
+          "gauge_bar_style": "segmented",
+          "x": 16, "y": 182, "w": 150, "h": 300
+        },
+        {
+          "id": "solar",
+          "type": "solar_forecast",
+          "title": "Solar forecast",
+          "entity_id": "sensor.solar_today",
+          "forecast_today_entity_id": "sensor.solar_today",
+          "forecast_tomorrow_entity_id": "sensor.solar_tomorrow",
+          "forecast_day_3_entity_id": "sensor.solar_day_3",
+          "forecast_day_4_entity_id": "sensor.solar_day_4",
+          "forecast_day_5_entity_id": "sensor.solar_day_5",
+          "solar_forecast_bar_max_kwh": 12,
+          "x": 182, "y": 332, "w": 490, "h": 250
+        },
+        {
+          "id": "empty",
+          "type": "empty_tile",
+          "title": "Free space",
+          "x": 182, "y": 182, "w": 150, "h": 134
+        }
+      ]
+    }
+  ],
+  "states": [
+    {"entity_id": "sensor.living_room_temperature", "state": "21.8", "attributes": {"unit_of_measurement": "°C"}},
+    {"entity_id": "sensor.charging_power", "state": "4230", "attributes": {"unit_of_measurement": "W"}},
+    {"entity_id": "sensor.living_room_humidity", "state": "48", "attributes": {"unit_of_measurement": "%"}},
+    {"entity_id": "sensor.solar_today", "state": "8.4", "attributes": {"unit_of_measurement": "kWh"}},
+    {"entity_id": "sensor.solar_tomorrow", "state": "6.7", "attributes": {"unit_of_measurement": "kWh"}},
+    {"entity_id": "sensor.solar_day_3", "state": "10.2", "attributes": {"unit_of_measurement": "kWh"}},
+    {"entity_id": "sensor.solar_day_4", "state": "4.1", "attributes": {"unit_of_measurement": "kWh"}},
+    {"entity_id": "sensor.solar_day_5", "state": "7.6", "attributes": {"unit_of_measurement": "kWh"}}
+  ]
+}

@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
+#include "ui/display_geometry.h"
 #include "ui/ui_energy_page.h"
 
 #include <math.h>
@@ -12,22 +14,25 @@
 #include "cJSON.h"
 #include "esp_timer.h"
 
+#include "ha/ha_client.h"
 #include "ha/ha_energy_model.h"
-#include "ui/fonts/app_text_fonts.h"
+#include "ha/ha_history_week.h"
+#include "ui/fonts/mdi_font_registry.h"
+#include "ui/theme/ui_typography.h"
 #include "ui/theme/theme_default.h"
+#include "ui/theme/ui_style.h"
+#include "ui/ui_days_view.h"
+#include "ui/ui_history_popup.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
 
-#if APP_HAVE_MDI_ENERGY_FONT_42
-LV_FONT_DECLARE(mdi_energy_42);
-#define ENERGY_ICON_FONT (&mdi_energy_42)
-#else
-#define ENERGY_ICON_FONT APP_FONT_TEXT_24
+#ifdef BETTA_SIMULATOR
+#define ha_history_days_free free /* the simulator has no worker: its synthetic results are plain allocations */
 #endif
 
-#if APP_HAVE_MDI_ARROWS_FONT_20
-LV_FONT_DECLARE(mdi_arrows_20);
-/* Arrow codepoints in mdi_arrows_20: U+F0045 arrow-down, U+F004D arrow-left, U+F0054 arrow-right, U+F005D arrow-up */
+#define ENERGY_ICON_FONT (mdi_font_energy_42())
+
+/* Arrow codepoints of the arrow font (mdi_font_arrows_20): U+F0045 arrow-down, U+F004D arrow-left, U+F0054 arrow-right, U+F005D arrow-up */
 #define ENERGY_ARROW_DOWN  "\xF3\xB0\x81\x85"  /* U+F0045 */
 #define ENERGY_ARROW_LEFT  "\xF3\xB0\x81\x8D"  /* U+F004D */
 #define ENERGY_ARROW_RIGHT "\xF3\xB0\x81\x94"  /* U+F0054 */
@@ -35,12 +40,23 @@ LV_FONT_DECLARE(mdi_arrows_20);
 /* Non-const wrapper so we can chain a fallback at runtime */
 static lv_font_t s_arrow_value_font;
 static bool s_arrow_value_font_ready = false;
-#else
-#define ENERGY_ARROW_DOWN  "\xE2\x86\x93"
-#define ENERGY_ARROW_UP    "\xE2\x86\x91"
-#define ENERGY_ARROW_LEFT  "\xE2\x86\x90"
-#define ENERGY_ARROW_RIGHT "\xE2\x86\x92"
-#endif
+
+/* The value font of the battery and grid nodes: the arrow glyphs of the arrow font followed by the value font as its fallback (the
+ * struct copy shares the lv_tiny_ttf descriptor). Rebuilt for the current text step, which may change between UI builds. */
+static int s_arrow_value_font_px;
+static void energy_arrow_value_font_prepare(void)
+{
+    const lv_font_t *value_font = ui_font_role(UI_TEXT_VALUE);
+    const lv_font_t *arrows = mdi_font_arrows_20();
+    if (arrows == NULL) return;
+    if (s_arrow_value_font_ready && s_arrow_value_font_px == ui_font_text_px_of(value_font)) return;
+    s_arrow_value_font = *arrows;
+    s_arrow_value_font.fallback = value_font;
+    s_arrow_value_font.line_height = value_font->line_height;
+    s_arrow_value_font.base_line = value_font->base_line;
+    s_arrow_value_font_px = ui_font_text_px_of(value_font);
+    s_arrow_value_font_ready = true;
+}
 
 /* MDI codepoints for energy node icons */
 #define ENERGY_ICON_HOME      "\xF3\xB0\x8B\x9C"  /* U+F02DC home */
@@ -74,63 +90,47 @@ static bool s_arrow_value_font_ready = false;
 #define ENERGY_ARC_BATTERY 1
 #define ENERGY_ARC_GRID 2
 
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-#define ENERGY_NODE_GRID_X 76
-#define ENERGY_NODE_GRID_Y 205
-#define ENERGY_NODE_SOLAR_X 240
-#define ENERGY_NODE_SOLAR_Y 82
-#define ENERGY_NODE_HOME_X 404
-#define ENERGY_NODE_HOME_Y 205
-#define ENERGY_NODE_BATTERY_X 240
-#define ENERGY_NODE_BATTERY_Y 290
-#define ENERGY_NODE_SIZE 86
-#define ENERGY_HOME_SIZE 96
-#define ENERGY_DOT_SIZE 10
-#define ENERGY_ARC_RADIUS 24.0f
-#define ENERGY_NODE_TITLE_WIDTH 118
-#define ENERGY_NODE_TITLE_TOP_OFFSET 22
-#define ENERGY_NODE_TITLE_BOTTOM_OFFSET 6
-#define ENERGY_NODE_BORDER_WIDTH 2
-#define ENERGY_VALUE_INSET 8
-#define ENERGY_HOME_ARC_PAD 10
-#define ENERGY_HOME_ARC_WIDTH 4
-#define ENERGY_FLOW_LINE_WIDTH 2
-#define ENERGY_VALUE_FONT APP_FONT_TEXT_14
-#define ENERGY_TITLE_FONT APP_FONT_TEXT_14
-#define ENERGY_STATS_FONT APP_FONT_TEXT_14
-#define ENERGY_STATS_X 16
-#define ENERGY_STATS_WIDTH 150
-#define ENERGY_STATS_TODAY_Y (APP_CONTENT_BOX_HEIGHT - 52)
-#define ENERGY_STATS_AUTARKY_Y (APP_CONTENT_BOX_HEIGHT - 28)
-#else
 #define ENERGY_NODE_GRID_X 130
-#define ENERGY_NODE_GRID_Y 300
 #define ENERGY_NODE_SOLAR_X 360
-#define ENERGY_NODE_SOLAR_Y 100
 #define ENERGY_NODE_HOME_X 560
-#define ENERGY_NODE_HOME_Y 300
 #define ENERGY_NODE_BATTERY_X 360
+#if defined(CONFIG_APP_PANEL_VARIANT_TAB5_1280) /* the screen is 720 high instead of 800: the nodes sit closer together */
+#define ENERGY_NODE_GRID_Y 281
+#define ENERGY_NODE_SOLAR_Y 102 /* 98 before the node titles were placed by their line height: the title above needs the room */
+#define ENERGY_NODE_HOME_Y 281
+#define ENERGY_NODE_BATTERY_Y 462
+#else
+#define ENERGY_NODE_GRID_Y 300
+#define ENERGY_NODE_SOLAR_Y 100
+#define ENERGY_NODE_HOME_Y 300
 #define ENERGY_NODE_BATTERY_Y 500
+#endif
 #define ENERGY_NODE_SIZE 128
 #define ENERGY_HOME_SIZE 139
 #define ENERGY_DOT_SIZE 16
 #define ENERGY_ARC_RADIUS 50.0f
+#if defined(CONFIG_APP_PANEL_VARIANT_4INCH_720) || defined(CONFIG_APP_PANEL_VARIANT_TAB5_1280)
+#define ENERGY_NODE_TITLE_WIDTH 190
+#define ENERGY_NODE_TITLE_TOP_OFFSET 34
+#define ENERGY_NODE_TITLE_BOTTOM_OFFSET 4
+#else
 #define ENERGY_NODE_TITLE_WIDTH 146
 #define ENERGY_NODE_TITLE_TOP_OFFSET 26
 #define ENERGY_NODE_TITLE_BOTTOM_OFFSET 8
+#endif
 #define ENERGY_NODE_BORDER_WIDTH 3
-#define ENERGY_VALUE_INSET 18
+#define ENERGY_VALUE_INSET (APP_VIEW_WIDTH == 720 ? 8 : 18)
 #define ENERGY_HOME_ARC_PAD 14
 #define ENERGY_HOME_ARC_WIDTH 6
 #define ENERGY_FLOW_LINE_WIDTH 3
-#define ENERGY_VALUE_FONT APP_FONT_TEXT_18
-#define ENERGY_TITLE_FONT APP_FONT_TEXT_18
-#define ENERGY_STATS_FONT APP_FONT_TEXT_18
+#define ENERGY_VALUE_FONT ui_font_role(UI_TEXT_VALUE)
+#define ENERGY_EXPONENT_FONT ui_font_role(UI_TEXT_META)
+#define ENERGY_TITLE_FONT ui_font_role(UI_TEXT_LABEL)
+#define ENERGY_STATS_FONT ui_font_role(UI_TEXT_META)
 #define ENERGY_STATS_X 24
 #define ENERGY_STATS_WIDTH 300
-#define ENERGY_STATS_TODAY_Y (APP_CONTENT_BOX_HEIGHT - 56)
-#define ENERGY_STATS_AUTARKY_Y (APP_CONTENT_BOX_HEIGHT - 32)
-#endif
+#define ENERGY_STATS_TODAY_Y (APP_VIEW_CONTENT_HEIGHT - 56)
+#define ENERGY_STATS_AUTARKY_Y (APP_VIEW_CONTENT_HEIGHT - 32)
 
 #define ENERGY_NODE_GAS_X    ENERGY_NODE_HOME_X
 #define ENERGY_NODE_GAS_Y    ENERGY_NODE_SOLAR_Y
@@ -163,6 +163,8 @@ typedef enum {
     ENERGY_SLOT_BATTERY_CHARGE_POWER,
     ENERGY_SLOT_BATTERY_DISCHARGE_POWER,
     ENERGY_SLOT_BATTERY_SOC,
+    ENERGY_SLOT_GAS,
+    ENERGY_SLOT_WATER,
     ENERGY_SLOT_COUNT,
 } energy_slot_id_t;
 
@@ -177,7 +179,9 @@ typedef struct {
     lv_obj_t *circle;
     lv_obj_t *icon_label;
     lv_obj_t *value_label;
+    lv_obj_t *value_exponent_label;
     lv_obj_t *title_label;
+    lv_font_t fitted_font; /* Per-node MDI wrapper: text fallback changes independently. */
 } energy_node_t;
 
 typedef struct {
@@ -219,6 +223,13 @@ typedef struct {
     energy_value_slot_t slots[ENERGY_SLOT_COUNT];
     lv_timer_t *anim_timer;
     int64_t last_anim_ms;
+    /* seven-day details of Gas, Water and Solar: a popup, or (wide displays, config details "side") this panel */
+    lv_obj_t *detail_panel;
+    lv_obj_t *detail_title;
+    lv_obj_t *detail_status;
+    lv_obj_t *detail_body;
+    int detail_node;            /* selected node, -1 for none */
+    uint32_t detail_generation; /* the request whose answer may still be drawn */
 } energy_page_ctx_t;
 
 static bool energy_state_is_unavailable(const char *state_text)
@@ -331,8 +342,6 @@ static void energy_format_kwh(char *dst, size_t dst_size, float kwh)
     }
 }
 
-
-
 static void energy_format_value_unit(char *dst, size_t dst_size, float value, const char *unit)
 {
     if (dst == NULL || dst_size == 0) {
@@ -346,6 +355,21 @@ static void energy_format_value_unit(char *dst, size_t dst_size, float value, co
         snprintf(dst, dst_size, "%.1f %s", (double)value, u);
     } else {
         snprintf(dst, dst_size, "%.2f %s", (double)value, u);
+    }
+}
+
+static void energy_format_cubic_meter_value(char *dst, size_t dst_size, float value)
+{
+    if (dst == NULL || dst_size == 0) {
+        return;
+    }
+    float abs_val = fabsf(value);
+    if (abs_val >= 100.0f) {
+        snprintf(dst, dst_size, "%.0f m", (double)value);
+    } else if (abs_val >= 10.0f) {
+        snprintf(dst, dst_size, "%.1f m", (double)value);
+    } else {
+        snprintf(dst, dst_size, "%.2f m", (double)value);
     }
 }
 
@@ -373,6 +397,10 @@ static const char *energy_entity_for_slot(const energy_page_ctx_t *ctx, energy_s
         return ctx->config.battery_discharge_power_entity_id;
     case ENERGY_SLOT_BATTERY_SOC:
         return ctx->config.battery_soc_entity_id;
+    case ENERGY_SLOT_GAS:
+        return ctx->config.gas_entity_id;
+    case ENERGY_SLOT_WATER:
+        return ctx->config.water_entity_id;
     case ENERGY_SLOT_COUNT:
     default:
         return "";
@@ -381,7 +409,13 @@ static const char *energy_entity_for_slot(const energy_page_ctx_t *ctx, energy_s
 
 static bool energy_slot_is_configured(const energy_page_ctx_t *ctx, energy_slot_id_t slot_id)
 {
-    if (ctx == NULL || strcmp(ctx->config.source, ENERGY_SOURCE_MANUAL) != 0) {
+    if (ctx == NULL) {
+        return false;
+    }
+    /* With the Home Assistant energy source only the battery state of charge and
+     * the live solar power are used (the flows come from HA's energy dashboard). */
+    if (strcmp(ctx->config.source, ENERGY_SOURCE_MANUAL) != 0 && slot_id != ENERGY_SLOT_BATTERY_SOC &&
+        slot_id != ENERGY_SLOT_SOLAR_POWER) {
         return false;
     }
     const char *entity_id = energy_entity_for_slot(ctx, slot_id);
@@ -414,10 +448,36 @@ static void energy_set_obj_hidden(lv_obj_t *obj, bool hidden)
         return;
     }
     if (hidden) {
-        lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(obj, true);
     } else {
-        lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(obj, false);
     }
+}
+
+/* State of charge next to the battery node title ("Battery 87 %"). */
+static void energy_update_battery_title(energy_page_ctx_t *ctx)
+{
+    char title[48];
+    const energy_value_slot_t *soc = &ctx->slots[ENERGY_SLOT_BATTERY_SOC];
+    if (soc->configured && soc->valid) {
+        snprintf(title, sizeof(title), "%s %.0f %%", ui_i18n_get("energy.battery", "Battery"), (double)soc->value);
+    } else {
+        snprintf(title, sizeof(title), "%s", ui_i18n_get("energy.battery", "Battery"));
+    }
+    lv_label_set_text(ctx->nodes[ENERGY_NODE_BATTERY].title_label, title);
+}
+
+/* Live PV production next to the solar node title ("Solar 4230 W"), Home Assistant source only. */
+static void energy_update_solar_title(energy_page_ctx_t *ctx)
+{
+    char title[48];
+    const energy_value_slot_t *pv = &ctx->slots[ENERGY_SLOT_SOLAR_POWER];
+    if (pv->configured && pv->valid) {
+        snprintf(title, sizeof(title), "%s %.0f W", ui_i18n_get("energy.solar", "Solar"), (double)fmaxf(pv->value, 0.0f));
+    } else {
+        snprintf(title, sizeof(title), "%s", ui_i18n_get("energy.solar", "Solar"));
+    }
+    lv_label_set_text(ctx->nodes[ENERGY_NODE_SOLAR].title_label, title);
 }
 
 static void energy_set_node_hidden(energy_node_t *node, bool hidden)
@@ -427,6 +487,11 @@ static void energy_set_node_hidden(energy_node_t *node, bool hidden)
     }
     energy_set_obj_hidden(node->circle, hidden);
     energy_set_obj_hidden(node->title_label, hidden);
+}
+
+static bool energy_unit_is_cubic_meter(const char *unit)
+{
+    return unit != NULL && (strcmp(unit, "m\xC2\xB3") == 0 || strcmp(unit, "m3") == 0);
 }
 
 static void energy_style_text(lv_obj_t *label, lv_color_t color, const lv_font_t *font, lv_text_align_t align)
@@ -440,6 +505,49 @@ static void energy_style_text(lv_obj_t *label, lv_color_t color, const lv_font_t
     lv_obj_set_style_bg_opa(label, LV_OPA_TRANSP, LV_PART_MAIN);
 }
 
+/* The energy page never went through any of the three rendering styles at all (found via the
+ * widget gallery: Flat and Glow rendered pixel-identical, Glass differed only by the shared
+ * page-background gradient every special page picks up, not by anything of its own) -- this is
+ * the one place that matters most, since the node circles are the dominant visual element. Flat
+ * keeps its original flat fill and plain border; Glow gets a raised look (a light-to-dark
+ * gradient fill and a drop shadow, the same visual language as ui_style_button()); Glass
+ * gets a white-tinted translucent fill and a soft shadow, matching the Glass card frosting of
+ * ui_style_apply_card(). The accent color border that identifies which node this is (grid, solar, ...) stays
+ * the same color in all styles -- only the fill/shadow treatment around it changes. */
+static void energy_style_node_circle(lv_obj_t *circle, lv_color_t color)
+{
+    switch (ui_style_get()) {
+    case UI_STYLE_FLAT:
+    case UI_STYLE_MATTE:
+        lv_obj_set_style_bg_color(circle, lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(circle, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_dir(circle, LV_GRAD_DIR_NONE, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(circle, 0, LV_PART_MAIN);
+        break;
+    case UI_STYLE_GLASS:
+        lv_obj_set_style_bg_color(circle, lv_color_mix(lv_color_white(), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), 40), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(circle, LV_OPA_70, LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_dir(circle, LV_GRAD_DIR_NONE, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(circle, 14, LV_PART_MAIN);
+        lv_obj_set_style_shadow_offset_y(circle, 4, LV_PART_MAIN);
+        lv_obj_set_style_shadow_color(circle, lv_color_black(), LV_PART_MAIN);
+        lv_obj_set_style_shadow_opa(circle, LV_OPA_30, LV_PART_MAIN);
+        break;
+    case UI_STYLE_GLOW:
+        lv_obj_set_style_bg_color(circle, lv_color_mix(lv_color_white(), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), 40), LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_color(circle, lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_dir(circle, LV_GRAD_DIR_VER, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(circle, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(circle, 10, LV_PART_MAIN);
+        lv_obj_set_style_shadow_offset_y(circle, 3, LV_PART_MAIN);
+        lv_obj_set_style_shadow_color(circle, lv_color_black(), LV_PART_MAIN);
+        lv_obj_set_style_shadow_opa(circle, LV_OPA_40, LV_PART_MAIN);
+        break;
+    }
+    lv_obj_set_style_border_color(circle, color, LV_PART_MAIN);
+    lv_obj_set_style_border_opa(circle, LV_OPA_COVER, LV_PART_MAIN);
+}
+
 static void energy_create_node(energy_page_ctx_t *ctx, int node_id, int cx, int cy, int size, const char *title,
     const char *icon_text, lv_color_t color)
 {
@@ -449,14 +557,11 @@ static void energy_create_node(energy_page_ctx_t *ctx, int node_id, int cx, int 
     lv_obj_set_size(circle, size, size);
     lv_obj_set_pos(circle, cx - (size / 2), cy - (size / 2));
     lv_obj_set_style_radius(circle, size / 2, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(circle, lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(circle, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(circle, ENERGY_NODE_BORDER_WIDTH, LV_PART_MAIN);
-    lv_obj_set_style_border_color(circle, color, LV_PART_MAIN);
-    lv_obj_set_style_border_opa(circle, LV_OPA_COVER, LV_PART_MAIN);
+    energy_style_node_circle(circle, color);
     lv_obj_set_style_pad_all(circle, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(circle, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_clear_flag(circle, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_scrollable(circle, false);
+    lv_obj_set_clickable(circle, false);
 
     /* Layout icon and value as a vertically centered group inside the circle. */
     lv_obj_set_flex_flow(circle, LV_FLEX_FLOW_COLUMN);
@@ -465,25 +570,18 @@ static void energy_create_node(energy_page_ctx_t *ctx, int node_id, int cx, int 
 
     lv_obj_t *icon = lv_label_create(circle);
     lv_label_set_text(icon, icon_text);
-#if APP_HAVE_MDI_ENERGY_FONT_42
     lv_obj_set_width(icon, size - 8);
     energy_style_text(icon, color, ENERGY_ICON_FONT, LV_TEXT_ALIGN_CENTER);
-#else
-    lv_obj_set_width(icon, size - 16);
-    energy_style_text(icon, color, APP_FONT_TEXT_24, LV_TEXT_ALIGN_CENTER);
-#endif
 
     lv_obj_t *value = lv_label_create(circle);
     lv_label_set_text(value, "--");
+    ui_text_record(value, UI_TEXT_VALUE, true);
     lv_label_set_long_mode(value, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(value, size - ENERGY_VALUE_INSET);
-#if APP_HAVE_MDI_ARROWS_FONT_20
+    energy_arrow_value_font_prepare();
     const lv_font_t *value_font = (node_id == ENERGY_NODE_BATTERY || node_id == ENERGY_NODE_GRID)
         ? &s_arrow_value_font
         : ENERGY_VALUE_FONT;
-#else
-    const lv_font_t *value_font = ENERGY_VALUE_FONT;
-#endif
     energy_style_text(value, theme_default_color_text_primary(), value_font, LV_TEXT_ALIGN_CENTER);
     /* Battery and Grid values use per-line recolor markup to color the
      * direction arrow + value independently (HA-style). */
@@ -491,18 +589,110 @@ static void energy_create_node(energy_page_ctx_t *ctx, int node_id, int cx, int 
         lv_label_set_recolor(value, true);
     }
 
+    lv_obj_t *exponent = lv_label_create(circle);
+    lv_label_set_text(exponent, "");
+    lv_obj_set_ignore_layout(exponent, true);
+    lv_obj_set_hidden(exponent, true);
+    energy_style_text(exponent, theme_default_color_text_primary(), ENERGY_EXPONENT_FONT, LV_TEXT_ALIGN_CENTER);
+
     lv_obj_t *title_label = lv_label_create(ctx->root);
     lv_label_set_text(title_label, title);
+    ui_text_record(title_label, UI_TEXT_LABEL, true);
     lv_obj_set_width(title_label, ENERGY_NODE_TITLE_WIDTH);
     energy_style_text(title_label, theme_default_color_text_muted(), ENERGY_TITLE_FONT, LV_TEXT_ALIGN_CENTER);
-    int title_y = (cy < ENERGY_NODE_HOME_Y) ? (cy - (size / 2) - ENERGY_NODE_TITLE_TOP_OFFSET)
+    /* a title above its node sits one line plus 2 px higher (34 px at the former 32 px line), so larger text never touches the circle */
+    const int title_above = (int)lv_font_get_line_height(ENERGY_TITLE_FONT) + 2 > ENERGY_NODE_TITLE_TOP_OFFSET
+                                ? (int)lv_font_get_line_height(ENERGY_TITLE_FONT) + 2 : ENERGY_NODE_TITLE_TOP_OFFSET;
+    int title_y = (cy < ENERGY_NODE_HOME_Y) ? (cy - (size / 2) - title_above)
                                             : (cy + (size / 2) + ENERGY_NODE_TITLE_BOTTOM_OFFSET);
+    if (title_y < 0) title_y = 0; /* on the 720 px screen of the Tab5 the top nodes sit close to the edge: the title may touch its circle, it never leaves the page */
     lv_obj_set_pos(title_label, cx - (ENERGY_NODE_TITLE_WIDTH / 2), title_y);
 
     node->circle = circle;
     node->icon_label = icon;
     node->value_label = value;
+    node->value_exponent_label = exponent;
     node->title_label = title_label;
+}
+
+static void energy_fit_node_value(energy_node_t *node, const char *text)
+{
+    /* fits on every board: the value shrinks from the value size through label and meta down to the board's minimum text size, which is below the meta size
+     * of the Tab5 and the larger user steps (the former ladder ended at 20 px) */
+    char plain[160]; size_t out = 0;
+    for (size_t i = 0; text[i] && out + 1 < sizeof(plain); i++) {
+        if (text[i] == '#') { if (strlen(text + i) >= 8 && text[i + 7] == ' ') i += 7; continue; }
+        plain[out++] = text[i];
+    }
+    plain[out] = '\0';
+    const lv_font_t *current = lv_obj_get_style_text_font(node->value_label, LV_PART_MAIN);
+    const bool arrows = current == &s_arrow_value_font || current == &node->fitted_font;
+    const lv_font_t *fonts[] = {ui_font_role(UI_TEXT_VALUE), ui_font_role(UI_TEXT_LABEL), ui_font_role(UI_TEXT_META),
+                                ui_font_text_px(text_scale_floor_px(ui_fonts_board()))};
+    const lv_font_t *chosen = ui_font_role(UI_TEXT_META);
+    for (unsigned i = 0; i < sizeof(fonts) / sizeof(fonts[0]); i++) {
+        const lv_font_t *font = fonts[i];
+        if (arrows) {
+            node->fitted_font = s_arrow_value_font;
+            node->fitted_font.fallback = font;
+            node->fitted_font.line_height = font->line_height;
+            node->fitted_font.base_line = font->base_line;
+            font = &node->fitted_font;
+        }
+        lv_point_t size; lv_text_get_size(&size, plain, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        chosen = fonts[i];
+        if (size.x <= lv_obj_get_width(node->circle) - ENERGY_VALUE_INSET &&
+            size.y <= lv_obj_get_height(node->circle) - 54) break;
+    }
+    if (arrows) {
+        node->fitted_font.fallback = chosen;
+        node->fitted_font.line_height = chosen->line_height;
+        node->fitted_font.base_line = chosen->base_line;
+    }
+    lv_obj_set_style_text_font(node->value_label, arrows ? &node->fitted_font : chosen, LV_PART_MAIN);
+    ui_text_compact(node->value_label, ui_font_at_floor(chosen));
+}
+
+static void energy_set_node_value_text(energy_node_t *node, const char *text)
+{
+    if (node == NULL || node->value_label == NULL) {
+        return;
+    }
+    energy_fit_node_value(node, text != NULL ? text : "");
+    lv_label_set_text(node->value_label, text != NULL ? text : "");
+    energy_set_obj_hidden(node->value_exponent_label, true);
+}
+
+static void energy_set_node_value_text_with_exponent(energy_node_t *node, const char *text, const char *exponent)
+{
+    if (node == NULL || node->value_label == NULL) {
+        return;
+    }
+    if (text == NULL) {
+        text = "";
+    }
+    energy_fit_node_value(node, text);
+    lv_label_set_text(node->value_label, text);
+    if (node->value_exponent_label == NULL || exponent == NULL || exponent[0] == '\0') {
+        energy_set_obj_hidden(node->value_exponent_label, true);
+        return;
+    }
+
+    lv_label_set_text(node->value_exponent_label, exponent);
+    energy_set_obj_hidden(node->value_exponent_label, false);
+
+    lv_obj_update_layout(node->circle);
+    lv_obj_update_layout(node->value_label);
+
+    lv_point_t text_size = {0};
+    lv_text_get_size(&text_size, text, ENERGY_VALUE_FONT, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+
+    int32_t label_x = lv_obj_get_x(node->value_label);
+    int32_t label_y = lv_obj_get_y(node->value_label);
+    int32_t label_w = lv_obj_get_width(node->value_label);
+    int32_t x = label_x + ((label_w - text_size.x) / 2) + text_size.x - 1;
+    int32_t y = label_y - (ENERGY_VALUE_FONT->line_height / 4);
+    lv_obj_set_pos(node->value_exponent_label, x, y);
 }
 
 static void energy_create_home_arc(energy_page_ctx_t *ctx, int index, lv_color_t color)
@@ -513,8 +703,8 @@ static void energy_create_home_arc(energy_page_ctx_t *ctx, int index, lv_color_t
                    ENERGY_NODE_HOME_Y - ((ENERGY_HOME_SIZE + ENERGY_HOME_ARC_PAD) / 2));
     lv_arc_set_bg_angles(arc, 0, 360);
     lv_arc_set_angles(arc, 0, 0);
-    lv_obj_clear_flag(arc, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_clear_flag(arc, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_clickable(arc, false);
+    lv_obj_set_scrollable(arc, false);
     lv_obj_set_style_arc_opa(arc, LV_OPA_0, LV_PART_MAIN);
     lv_obj_set_style_arc_color(arc, color, LV_PART_INDICATOR);
     lv_obj_set_style_arc_opa(arc, LV_OPA_COVER, LV_PART_INDICATOR);
@@ -550,10 +740,10 @@ static void energy_set_flow_points(energy_flow_t *flow, lv_point_precise_t p0, l
         lv_line_set_points(flow->line, flow->points, point_count);
     }
     if (flow->arc != NULL) {
-        lv_obj_add_flag(flow->arc, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(flow->arc, true);
     }
     if (flow->post_line != NULL) {
-        lv_obj_add_flag(flow->post_line, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(flow->post_line, true);
     }
 }
 
@@ -628,7 +818,7 @@ static void energy_set_L_path(energy_flow_t *flow,
     flow->post_points[1] = end;
     if (flow->post_line != NULL) {
         lv_line_set_points(flow->post_line, flow->post_points, 2);
-        lv_obj_clear_flag(flow->post_line, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(flow->post_line, false);
     }
 
     /* Configure the lv_arc widget to render the corner.
@@ -655,7 +845,7 @@ static void energy_set_L_path(energy_flow_t *flow,
         int start_deg = ((int)lroundf(start_rad * rad_to_deg) % 360 + 360) % 360;
         int end_deg = start_deg + (int)lroundf(sweep_rad * rad_to_deg);
         lv_arc_set_bg_angles(flow->arc, (uint32_t)start_deg, (uint32_t)end_deg);
-        lv_obj_clear_flag(flow->arc, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(flow->arc, false);
     }
 }
 
@@ -663,10 +853,10 @@ static void energy_create_flow(energy_page_ctx_t *ctx, int flow_id, lv_color_t c
 {
     energy_flow_t *flow = &ctx->flows[flow_id];
     lv_obj_t *line = lv_line_create(ctx->root);
-    lv_obj_set_size(line, APP_CONTENT_BOX_WIDTH, APP_CONTENT_BOX_HEIGHT);
+    lv_obj_set_size(line, APP_VIEW_CONTENT_WIDTH, APP_VIEW_CONTENT_HEIGHT);
     lv_obj_set_pos(line, 0, 0);
-    lv_obj_clear_flag(line, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_clear_flag(line, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_clickable(line, false);
+    lv_obj_set_scrollable(line, false);
     lv_obj_set_style_line_width(line, ENERGY_FLOW_LINE_WIDTH, LV_PART_MAIN);
     lv_obj_set_style_line_color(line, color, LV_PART_MAIN);
     lv_obj_set_style_line_opa(line, LV_OPA_40, LV_PART_MAIN);
@@ -676,24 +866,24 @@ static void energy_create_flow(energy_page_ctx_t *ctx, int flow_id, lv_color_t c
      * Created as a zero-sized line widget; will be positioned/shown by
      * energy_set_L_path when the static paths are applied. */
     lv_obj_t *post_line = lv_line_create(ctx->root);
-    lv_obj_set_size(post_line, APP_CONTENT_BOX_WIDTH, APP_CONTENT_BOX_HEIGHT);
+    lv_obj_set_size(post_line, APP_VIEW_CONTENT_WIDTH, APP_VIEW_CONTENT_HEIGHT);
     lv_obj_set_pos(post_line, 0, 0);
-    lv_obj_clear_flag(post_line, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_clear_flag(post_line, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_clickable(post_line, false);
+    lv_obj_set_scrollable(post_line, false);
     lv_obj_set_style_line_width(post_line, ENERGY_FLOW_LINE_WIDTH, LV_PART_MAIN);
     lv_obj_set_style_line_color(post_line, color, LV_PART_MAIN);
     lv_obj_set_style_line_opa(post_line, LV_OPA_40, LV_PART_MAIN);
     lv_obj_set_style_line_rounded(post_line, false, LV_PART_MAIN);
-    lv_obj_add_flag(post_line, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_hidden(post_line, true);
 
     /* Real arc widget for the corner (used only for L-flows).
      * We use the MAIN part as the actual drawn arc (background arc in LVGL
      * terminology) and hide the INDICATOR and KNOB parts. */
     lv_obj_t *arc = lv_arc_create(ctx->root);
     lv_obj_set_pos(arc, 0, 0);
-    lv_obj_clear_flag(arc, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_clear_flag(arc, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_remove_flag(arc, LV_OBJ_FLAG_GESTURE_BUBBLE);
+    lv_obj_set_clickable(arc, false);
+    lv_obj_set_scrollable(arc, false);
+    lv_obj_set_gesture_bubble(arc, false);
     lv_obj_set_style_pad_all(arc, 0, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(arc, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_border_width(arc, 0, LV_PART_MAIN);
@@ -709,7 +899,7 @@ static void energy_create_flow(energy_page_ctx_t *ctx, int flow_id, lv_color_t c
     lv_arc_set_value(arc, 0);
     lv_arc_set_rotation(arc, 0);
     lv_arc_set_bg_angles(arc, 0, 0);
-    lv_obj_add_flag(arc, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_hidden(arc, true);
 
     lv_obj_t *dot = lv_obj_create(ctx->root);
     lv_obj_set_size(dot, ENERGY_DOT_SIZE, ENERGY_DOT_SIZE);
@@ -717,9 +907,9 @@ static void energy_create_flow(energy_page_ctx_t *ctx, int flow_id, lv_color_t c
     lv_obj_set_style_bg_color(dot, color, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(dot, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(dot, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_clear_flag(dot, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(dot, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_clickable(dot, false);
+    lv_obj_set_scrollable(dot, false);
+    lv_obj_set_hidden(dot, true);
 
     flow->line = line;
     flow->arc = arc;
@@ -848,8 +1038,8 @@ static bool energy_apply_slot_state(energy_page_ctx_t *ctx, energy_slot_id_t slo
 
     energy_copy_unit_from_attrs(slot->unit, sizeof(slot->unit), state->attributes_json);
     slot->valid = true;
-    if (slot_id == ENERGY_SLOT_BATTERY_SOC) {
-        slot->value = parsed;
+    if (slot_id == ENERGY_SLOT_BATTERY_SOC || slot_id == ENERGY_SLOT_GAS || slot_id == ENERGY_SLOT_WATER) {
+        slot->value = parsed; /* percent, or a meter reading shown in its own unit */
     } else {
         slot->value = energy_normalize_power_w(parsed, slot->unit);
     }
@@ -1037,9 +1227,9 @@ static void energy_set_flow_active(energy_flow_t *flow, bool line_visible, float
     }
 
     if (!active) {
-        lv_obj_add_flag(flow->dot, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(flow->dot, true);
     } else {
-        lv_obj_clear_flag(flow->dot, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(flow->dot, false);
     }
 }
 
@@ -1100,6 +1290,7 @@ static void energy_update_bidir_node(energy_node_t *node,
         "#%06X %s %s#\n#%06X %s %s#",
         (unsigned int)(color_in_hex & 0xFFFFFFu), arrow_in, in_text,
         (unsigned int)(color_out_hex & 0xFFFFFFu), arrow_out, out_text);
+    energy_fit_node_value(node, buf);
     lv_label_set_text(node->value_label, buf);
 
     /* Dominant direction determines the ring color. */
@@ -1130,7 +1321,7 @@ static void energy_update_node_values(energy_page_ctx_t *ctx, float solar_w, flo
     } else {
         energy_format_power(buf, sizeof(buf), fmaxf(display_home_w, 0.0f));
     }
-    lv_label_set_text(ctx->nodes[ENERGY_NODE_HOME].value_label, buf);
+    energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_HOME], buf);
 
     if (energy_has_solar_config(ctx)) {
         if (!ctx->slots[ENERGY_SLOT_SOLAR_POWER].valid) {
@@ -1138,7 +1329,7 @@ static void energy_update_node_values(energy_page_ctx_t *ctx, float solar_w, flo
         } else {
             energy_format_power(buf, sizeof(buf), solar_w);
         }
-        lv_label_set_text(ctx->nodes[ENERGY_NODE_SOLAR].value_label, buf);
+        energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_SOLAR], buf);
     }
 
     if (energy_has_grid_config(ctx)) {
@@ -1180,10 +1371,10 @@ static void energy_recompute_ha_energy_placeholder(energy_page_ctx_t *ctx)
     energy_set_node_hidden(&ctx->nodes[ENERGY_NODE_GAS], true);
     energy_set_node_hidden(&ctx->nodes[ENERGY_NODE_WATER], true);
 
-    lv_label_set_text(ctx->nodes[ENERGY_NODE_HOME].value_label, "-- kWh");
-    lv_label_set_text(ctx->nodes[ENERGY_NODE_SOLAR].value_label, "-- kWh");
-    lv_label_set_text(ctx->nodes[ENERGY_NODE_GRID].value_label, "-- kWh");
-    lv_label_set_text(ctx->nodes[ENERGY_NODE_BATTERY].value_label, "-- kWh");
+    energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_HOME], "-- kWh");
+    energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_SOLAR], "-- kWh");
+    energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_GRID], "-- kWh");
+    energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_BATTERY], "-- kWh");
 
     for (int i = 0; i < ENERGY_HOME_ARC_COUNT; i++) {
         energy_set_obj_hidden(ctx->home_arcs[i], true);
@@ -1243,11 +1434,11 @@ static void energy_recompute_ha_energy(energy_page_ctx_t *ctx)
 
     char buf[96] = {0};
     energy_format_kwh(buf, sizeof(buf), fmaxf(flows.used_total, 0.0f));
-    lv_label_set_text(ctx->nodes[ENERGY_NODE_HOME].value_label, buf);
+    energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_HOME], buf);
 
     if (has_solar) {
         energy_format_kwh(buf, sizeof(buf), fmaxf(snapshot.solar_kwh, 0.0f));
-        lv_label_set_text(ctx->nodes[ENERGY_NODE_SOLAR].value_label, buf);
+        energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_SOLAR], buf);
     }
 
     if (has_grid) {
@@ -1278,18 +1469,25 @@ static void energy_recompute_ha_energy(energy_page_ctx_t *ctx)
             in_kwh, out_kwh,
             ENERGY_COLOR_BATTERY_IN, ENERGY_COLOR_BATTERY_OUT,
             ENERGY_KWH_MIN_VISIBLE);
+        energy_update_battery_title(ctx);
     }
+    energy_update_solar_title(ctx);
 
     if (snapshot.has_gas) {
         const char *gas_unit = snapshot.gas_unit[0] ? snapshot.gas_unit : "m\xC2\xB3";
-        energy_format_value_unit(buf, sizeof(buf), snapshot.gas_value, gas_unit);
-        lv_label_set_text(ctx->nodes[ENERGY_NODE_GAS].value_label, buf);
+        if (energy_unit_is_cubic_meter(gas_unit)) {
+            energy_format_cubic_meter_value(buf, sizeof(buf), snapshot.gas_value);
+            energy_set_node_value_text_with_exponent(&ctx->nodes[ENERGY_NODE_GAS], buf, "3");
+        } else {
+            energy_format_value_unit(buf, sizeof(buf), snapshot.gas_value, gas_unit);
+            energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_GAS], buf);
+        }
     }
 
     if (snapshot.has_water) {
         const char *water_unit = snapshot.water_unit[0] ? snapshot.water_unit : "L";
         energy_format_value_unit(buf, sizeof(buf), snapshot.water_value, water_unit);
-        lv_label_set_text(ctx->nodes[ENERGY_NODE_WATER].value_label, buf);
+        energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_WATER], buf);
     }
 
     energy_flow_values_t visual_flows = energy_scale_flow_values(&flows, ENERGY_KWH_VISUAL_SCALE);
@@ -1301,12 +1499,13 @@ static void energy_recompute_ha_energy(energy_page_ctx_t *ctx)
     snprintf(buf, sizeof(buf), "%s %s", ui_i18n_get("energy.today", "Today"), home_text);
     lv_label_set_text(ctx->stat_today_label, buf);
 
-    /* Autarky: percentage of home consumption from non-grid sources */
+    /* Autarky (self-sufficiency): share of the home's consumption covered by solar and
+     * battery, not to be confused with self-consumption (share of solar production used). */
     if (has_solar && flows.used_total > ENERGY_KWH_MIN_VISIBLE) {
         float self_produced = flows.used_solar + flows.used_battery;
         float autarky_pct = (self_produced / flows.used_total) * 100.0f;
         if (autarky_pct > 100.0f) { autarky_pct = 100.0f; }
-        snprintf(buf, sizeof(buf), "%s %d%%", ui_i18n_get("energy.autarky", "Self-use"), (int)(autarky_pct + 0.5f));
+        snprintf(buf, sizeof(buf), "%s %d%%", ui_i18n_get("energy.autarky", "Autarky"), (int)(autarky_pct + 0.5f));
         lv_label_set_text(ctx->stat_autarky_label, buf);
     } else {
         lv_label_set_text(ctx->stat_autarky_label, "");
@@ -1331,8 +1530,34 @@ static void energy_recompute(energy_page_ctx_t *ctx)
     energy_set_node_hidden(&ctx->nodes[ENERGY_NODE_GRID], !has_grid);
     energy_set_node_hidden(&ctx->nodes[ENERGY_NODE_SOLAR], !has_solar);
     energy_set_node_hidden(&ctx->nodes[ENERGY_NODE_BATTERY], !has_battery);
-    energy_set_node_hidden(&ctx->nodes[ENERGY_NODE_GAS], true);
-    energy_set_node_hidden(&ctx->nodes[ENERGY_NODE_WATER], true);
+    const bool has_gas = energy_slot_is_configured(ctx, ENERGY_SLOT_GAS);
+    const bool has_water = energy_slot_is_configured(ctx, ENERGY_SLOT_WATER);
+    energy_set_node_hidden(&ctx->nodes[ENERGY_NODE_GAS], !has_gas);
+    energy_set_node_hidden(&ctx->nodes[ENERGY_NODE_WATER], !has_water);
+    if (has_gas) {
+        const energy_value_slot_t *gas = &ctx->slots[ENERGY_SLOT_GAS];
+        char text[48] = "-";
+        if (gas->valid) {
+            const char *unit = gas->unit[0] ? gas->unit : "m\xC2\xB3";
+            if (energy_unit_is_cubic_meter(unit)) {
+                energy_format_cubic_meter_value(text, sizeof(text), gas->value);
+                energy_set_node_value_text_with_exponent(&ctx->nodes[ENERGY_NODE_GAS], text, "3");
+            } else {
+                energy_format_value_unit(text, sizeof(text), gas->value, unit);
+                energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_GAS], text);
+            }
+        } else {
+            energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_GAS], text);
+        }
+    }
+    if (has_water) {
+        const energy_value_slot_t *water = &ctx->slots[ENERGY_SLOT_WATER];
+        char text[48] = "-";
+        if (water->valid) {
+            energy_format_value_unit(text, sizeof(text), water->value, water->unit[0] ? water->unit : "L");
+        }
+        energy_set_node_value_text(&ctx->nodes[ENERGY_NODE_WATER], text);
+    }
 
     float solar_w = energy_positive_slot_value(ctx, ENERGY_SLOT_SOLAR_POWER);
 
@@ -1369,7 +1594,8 @@ static void energy_recompute(energy_page_ctx_t *ctx)
 
     energy_update_node_values(ctx, solar_w, grid_import_w, grid_export_w, battery_charge_w, battery_discharge_w, display_home_w);
     energy_update_home_arcs(ctx, &flows, display_home_w);
-    energy_update_flow_visuals(ctx, &flows, has_grid, has_solar, has_battery, false, false);
+    energy_update_flow_visuals(ctx, &flows, has_grid, has_solar, has_battery, has_gas, has_water);
+    energy_update_battery_title(ctx);
 
     char subtitle[96] = {0};
     char home_text[32] = {0};
@@ -1425,7 +1651,7 @@ static void energy_anim_timer_cb(lv_timer_t *timer)
         return;
     }
     lv_obj_t *parent = lv_obj_get_parent(ctx->root);
-    if (parent != NULL && lv_obj_has_flag(parent, LV_OBJ_FLAG_HIDDEN)) {
+    if (parent != NULL && lv_obj_is_hidden(parent)) {
         return;
     }
 
@@ -1472,6 +1698,196 @@ static void energy_anim_timer_cb(lv_timer_t *timer)
     }
 }
 
+/* ---- Seven-day details of Gas, Water and Solar ---- */
+
+#define ENERGY_DETAIL_X (ENERGY_NODE_HOME_X + ENERGY_NODE_TITLE_WIDTH / 2 + 30) /* right of the Gas/Water titles */
+#define ENERGY_DETAIL_PAD 20
+#define ENERGY_DETAIL_MIN_COLUMN_TENTHS 22 /* a bar's value label ("3.01", "1210") needs about 2.2 line heights of width */
+
+/* The page whose right-hand panel awaits an answer, or NULL. Answers carry only a generation, never the page. */
+static energy_page_ctx_t *s_detail_ctx;
+static uint32_t s_detail_generation_counter;
+
+static bool energy_node_has_details(int node_id)
+{
+    return node_id == ENERGY_NODE_GAS || node_id == ENERGY_NODE_WATER || node_id == ENERGY_NODE_SOLAR;
+}
+
+static uint32_t energy_node_color(int node_id)
+{
+    return node_id == ENERGY_NODE_GAS ? ENERGY_COLOR_GAS : node_id == ENERGY_NODE_WATER ? ENERGY_COLOR_WATER
+                                                                                          : ENERGY_COLOR_SOLAR;
+}
+
+/* The statistic IDs behind a node: the Energy dashboard's sources (Home Assistant source) or the configured Gas/Water
+ * entity (manual source: its Solar value is a power sensor and has no consumption history). */
+static size_t energy_node_sources(const energy_page_ctx_t *ctx, int node_id, char ids[][APP_MAX_ENTITY_ID_LEN],
+    size_t max_ids)
+{
+    if (ctx == NULL || !energy_node_has_details(node_id) || max_ids == 0) {
+        return 0;
+    }
+    if (strcmp(ctx->config.source, ENERGY_SOURCE_MANUAL) == 0) {
+        const char *entity = node_id == ENERGY_NODE_GAS ? ctx->config.gas_entity_id
+                             : node_id == ENERGY_NODE_WATER ? ctx->config.water_entity_id : "";
+        if (entity[0] == '\0') {
+            return 0;
+        }
+        snprintf(ids[0], APP_MAX_ENTITY_ID_LEN, "%s", entity);
+        return 1;
+    }
+    const ha_energy_resource_t resource = node_id == ENERGY_NODE_GAS ? HA_ENERGY_RES_GAS
+                                          : node_id == ENERGY_NODE_WATER ? HA_ENERGY_RES_WATER : HA_ENERGY_RES_SOLAR;
+    return ha_client_energy_source_ids(resource, ids, max_ids);
+}
+
+/* Is there room for the right-hand panel? Decided from the page's content width and height and the text metrics, never
+ * from the board name: a narrow page (4-inch, Tab5 portrait) keeps the popup. */
+static bool energy_side_panel_fits(void)
+{
+    const int width = APP_VIEW_CONTENT_WIDTH - ENERGY_DETAIL_X - ENERGY_DETAIL_PAD;
+    const int column = ENERGY_DETAIL_MIN_COLUMN_TENTHS * (int)lv_font_get_line_height(ui_font_role(UI_TEXT_META)) / 10;
+    return width >= 7 * column + 16 && APP_VIEW_CONTENT_HEIGHT >= 420;
+}
+
+static void energy_days_received(uint32_t generation, ha_history_days_t *result)
+{
+    energy_page_ctx_t *ctx = s_detail_ctx;
+    if (ctx == NULL || ctx->detail_generation != generation || ctx->detail_body == NULL || result == NULL) {
+        ha_history_days_free(result); /* an answer for a closed page or an older selection */
+        return;
+    }
+    const ui_days_view_t view = {.body = ctx->detail_body, .status = ctx->detail_status,
+        .color = energy_node_color(ctx->detail_node)};
+    ui_days_view_show(&view, result);
+    ha_history_days_free(result);
+}
+
+static void energy_detail_mark_selected(energy_page_ctx_t *ctx)
+{
+    for (int i = 0; i < ENERGY_NODE_COUNT; i++) {
+        if (ctx->nodes[i].circle == NULL) {
+            continue;
+        }
+        const bool selected = i == ctx->detail_node;
+        lv_obj_set_style_outline_width(ctx->nodes[i].circle, selected ? 4 : 0, LV_PART_MAIN);
+        lv_obj_set_style_outline_color(ctx->nodes[i].circle, theme_default_color_text_primary(), LV_PART_MAIN);
+        lv_obj_set_style_outline_pad(ctx->nodes[i].circle, 3, LV_PART_MAIN);
+    }
+}
+
+static void energy_detail_select(energy_page_ctx_t *ctx, int node_id, char ids[][APP_MAX_ENTITY_ID_LEN], size_t count)
+{
+    ctx->detail_node = node_id;
+    ctx->detail_generation = ++s_detail_generation_counter;
+    s_detail_ctx = ctx;
+    energy_detail_mark_selected(ctx);
+    lv_label_set_text(ctx->detail_title, lv_label_get_text(ctx->nodes[node_id].title_label));
+    lv_obj_clean(ctx->detail_body);
+    lv_label_set_text(ctx->detail_status, ui_i18n_get("history.loading", "Loading history..."));
+#ifdef BETTA_SIMULATOR
+    ha_history_days_t *result = ui_days_view_simulated(node_id == ENERGY_NODE_GAS);
+    if (result != NULL) {
+        energy_days_received(ctx->detail_generation, result);
+    }
+    (void)ids;
+    (void)count;
+#else
+    const char *list[HA_DAYS_MAX_SOURCES];
+    for (size_t i = 0; i < count; i++) {
+        list[i] = ids[i];
+    }
+    if (ha_history_request_days(list, count, ctx->detail_generation, energy_days_received) != ESP_OK) {
+        lv_label_set_text(ctx->detail_status, ui_i18n_get("history.week_error", "Could not load statistics"));
+    }
+#endif
+}
+
+static void energy_node_clicked(lv_event_t *event)
+{
+    energy_page_ctx_t *ctx = (energy_page_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL) {
+        return;
+    }
+    int node_id = -1;
+    for (int i = 0; i < ENERGY_NODE_COUNT; i++) {
+        if (ctx->nodes[i].circle == lv_event_get_target(event)) {
+            node_id = i;
+        }
+    }
+    char ids[HA_DAYS_MAX_SOURCES][APP_MAX_ENTITY_ID_LEN];
+    const size_t count = energy_node_sources(ctx, node_id, ids, HA_DAYS_MAX_SOURCES);
+    if (count == 0) {
+        return; /* no source behind this node: it stays informational */
+    }
+    if (ctx->detail_panel != NULL) {
+        energy_detail_select(ctx, node_id, ids, count);
+        return;
+    }
+    const char *list[HA_DAYS_MAX_SOURCES];
+    for (size_t i = 0; i < count; i++) {
+        list[i] = ids[i];
+    }
+    ui_history_popup_open_days(lv_label_get_text(ctx->nodes[node_id].title_label), energy_node_color(node_id), list, count);
+}
+
+static void energy_create_detail_panel(energy_page_ctx_t *ctx)
+{
+    const int x = ENERGY_DETAIL_X;
+    const int w = APP_VIEW_CONTENT_WIDTH - x - ENERGY_DETAIL_PAD;
+    const int h = APP_VIEW_CONTENT_HEIGHT - 2 * ENERGY_DETAIL_PAD;
+    lv_obj_t *panel = lv_obj_create(ctx->root);
+    lv_obj_remove_style_all(panel);
+    lv_obj_set_pos(panel, x, ENERGY_DETAIL_PAD);
+    lv_obj_set_size(panel, w, h);
+    lv_obj_set_scrollable(panel, false);
+    lv_obj_set_style_bg_color(panel, lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_radius(panel, ui_style_radius(18), LV_PART_MAIN);
+    lv_obj_set_style_pad_all(panel, 14, LV_PART_MAIN);
+    ctx->detail_panel = panel;
+
+    ctx->detail_title = lv_label_create(panel);
+    lv_label_set_text(ctx->detail_title, "");
+    lv_label_set_long_mode(ctx->detail_title, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(ctx->detail_title, w - 28);
+    energy_style_text(ctx->detail_title, theme_default_color_text_primary(), ENERGY_TITLE_FONT, LV_TEXT_ALIGN_LEFT);
+    ui_text_record(ctx->detail_title, UI_TEXT_LABEL, true);
+    lv_obj_set_pos(ctx->detail_title, 0, 0);
+
+    const int title_h = (int)lv_font_get_line_height(ENERGY_TITLE_FONT);
+    ctx->detail_status = lv_label_create(panel);
+    lv_label_set_text(ctx->detail_status, ui_i18n_get("energy.details_prompt", "Select Gas, Water or Solar"));
+    lv_label_set_long_mode(ctx->detail_status, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(ctx->detail_status, w - 28);
+    energy_style_text(ctx->detail_status, theme_default_color_text_muted(), ENERGY_STATS_FONT, LV_TEXT_ALIGN_LEFT);
+    ui_text_record(ctx->detail_status, UI_TEXT_META, true);
+    lv_obj_set_pos(ctx->detail_status, 0, title_h + 2);
+
+    const int body_y = title_h + 2 + (int)lv_font_get_line_height(ENERGY_STATS_FONT) + 8;
+    ctx->detail_body = lv_obj_create(panel);
+    lv_obj_remove_style_all(ctx->detail_body);
+    lv_obj_set_pos(ctx->detail_body, 0, body_y);
+    lv_obj_set_size(ctx->detail_body, w - 28, h - 28 - body_y);
+    lv_obj_set_scrollable(ctx->detail_body, false);
+    lv_obj_update_layout(panel);
+}
+
+/* Makes the Gas, Water and Solar circles tappable and, on a wide display with the "side" choice, adds the panel. */
+static void energy_setup_details(energy_page_ctx_t *ctx)
+{
+    ctx->detail_node = -1;
+    for (int i = 0; i < ENERGY_NODE_COUNT; i++) {
+        if (energy_node_has_details(i) && ctx->nodes[i].circle != NULL) {
+            lv_obj_set_clickable(ctx->nodes[i].circle, true);
+            lv_obj_add_event_cb(ctx->nodes[i].circle, energy_node_clicked, LV_EVENT_CLICKED, ctx);
+        }
+    }
+    if (ctx->config.details_side && energy_side_panel_fits()) {
+        energy_create_detail_panel(ctx);
+    }
+}
+
 static void energy_page_event_cb(lv_event_t *event)
 {
     if (event == NULL) {
@@ -1486,11 +1902,89 @@ static void energy_page_event_cb(lv_event_t *event)
             lv_timer_del(ctx->anim_timer);
             ctx->anim_timer = NULL;
         }
+        if (s_detail_ctx == ctx) {
+            s_detail_ctx = NULL; /* a late answer finds no page and is freed */
+        }
         free(ctx);
     }
 }
 
-esp_err_t ui_energy_page_create(
+static void energy_copy_json_string(const cJSON *obj, const char *key, char *dst, size_t dst_size)
+{
+    if (dst == NULL || dst_size == 0) {
+        return;
+    }
+    dst[0] = '\0';
+    const cJSON *item = (obj != NULL) ? cJSON_GetObjectItemCaseSensitive(obj, key) : NULL;
+    if (cJSON_IsString(item) && item->valuestring != NULL) {
+        snprintf(dst, dst_size, "%s", item->valuestring);
+    }
+}
+
+void ui_energy_page_config_from_json(const cJSON *page_json, const char *page_id, const char *page_title,
+    ui_energy_page_config_t *out)
+{
+    if (out == NULL) {
+        return;
+    }
+
+    memset(out, 0, sizeof(*out));
+    snprintf(out->page_id, sizeof(out->page_id), "%s", page_id != NULL ? page_id : "");
+    snprintf(out->title, sizeof(out->title), "%s", (page_title != NULL && page_title[0] != '\0') ? page_title : "Energy");
+    snprintf(out->source, sizeof(out->source), "%s", "ha_energy");
+
+    const cJSON *energy = (page_json != NULL) ? cJSON_GetObjectItemCaseSensitive(page_json, "energy") : NULL;
+    if (!cJSON_IsObject(energy)) {
+        return;
+    }
+
+    const cJSON *source_item = cJSON_GetObjectItemCaseSensitive(energy, "source");
+    bool source_was_configured =
+        cJSON_IsString(source_item) && source_item->valuestring != NULL && source_item->valuestring[0] != '\0';
+    energy_copy_json_string(energy, "source", out->source, sizeof(out->source));
+    if (strcmp(out->source, "manual_live") != 0 && strcmp(out->source, "ha_energy") != 0) {
+        snprintf(out->source, sizeof(out->source), "%s", "ha_energy");
+    }
+
+    energy_copy_json_string(
+        energy, "home_power_entity_id", out->home_power_entity_id, sizeof(out->home_power_entity_id));
+    energy_copy_json_string(
+        energy, "solar_power_entity_id", out->solar_power_entity_id, sizeof(out->solar_power_entity_id));
+    energy_copy_json_string(
+        energy, "grid_power_entity_id", out->grid_power_entity_id, sizeof(out->grid_power_entity_id));
+    energy_copy_json_string(
+        energy, "grid_import_power_entity_id", out->grid_import_power_entity_id, sizeof(out->grid_import_power_entity_id));
+    energy_copy_json_string(
+        energy, "grid_export_power_entity_id", out->grid_export_power_entity_id, sizeof(out->grid_export_power_entity_id));
+    energy_copy_json_string(
+        energy, "battery_power_entity_id", out->battery_power_entity_id, sizeof(out->battery_power_entity_id));
+    energy_copy_json_string(energy,
+        "battery_charge_power_entity_id",
+        out->battery_charge_power_entity_id,
+        sizeof(out->battery_charge_power_entity_id));
+    energy_copy_json_string(energy,
+        "battery_discharge_power_entity_id",
+        out->battery_discharge_power_entity_id,
+        sizeof(out->battery_discharge_power_entity_id));
+    energy_copy_json_string(
+        energy, "battery_soc_entity_id", out->battery_soc_entity_id, sizeof(out->battery_soc_entity_id));
+    energy_copy_json_string(energy, "gas_entity_id", out->gas_entity_id, sizeof(out->gas_entity_id));
+    energy_copy_json_string(energy, "water_entity_id", out->water_entity_id, sizeof(out->water_entity_id));
+    const cJSON *details = cJSON_GetObjectItemCaseSensitive(energy, "details");
+    out->details_side = cJSON_IsString(details) && details->valuestring != NULL && strcmp(details->valuestring, "side") == 0;
+
+    if (!source_was_configured &&
+        (out->home_power_entity_id[0] != '\0' || out->solar_power_entity_id[0] != '\0' ||
+            out->grid_power_entity_id[0] != '\0' || out->grid_import_power_entity_id[0] != '\0' ||
+            out->grid_export_power_entity_id[0] != '\0' || out->battery_power_entity_id[0] != '\0' ||
+            out->battery_charge_power_entity_id[0] != '\0' || out->battery_discharge_power_entity_id[0] != '\0' ||
+            out->battery_soc_entity_id[0] != '\0' || out->gas_entity_id[0] != '\0' ||
+            out->water_entity_id[0] != '\0')) {
+        snprintf(out->source, sizeof(out->source), "%s", "manual_live");
+    }
+}
+
+static esp_err_t ui_energy_page_create_inner(
     const ui_energy_page_config_t *config, lv_obj_t *parent, ui_energy_page_instance_t *out_instance)
 {
     if (config == NULL || parent == NULL || out_instance == NULL) {
@@ -1503,19 +1997,13 @@ esp_err_t ui_energy_page_create(
     }
     ctx->config = *config;
 
-#if APP_HAVE_MDI_ARROWS_FONT_20
-    if (!s_arrow_value_font_ready) {
-        s_arrow_value_font = mdi_arrows_20;
-        s_arrow_value_font.fallback = ENERGY_VALUE_FONT;
-        s_arrow_value_font_ready = true;
-    }
-#endif
+    energy_arrow_value_font_prepare();
 
     lv_obj_t *root = lv_obj_create(parent);
     lv_obj_remove_style_all(root);
-    lv_obj_set_size(root, APP_CONTENT_BOX_WIDTH, APP_CONTENT_BOX_HEIGHT);
+    lv_obj_set_size(root, APP_VIEW_CONTENT_WIDTH, APP_VIEW_CONTENT_HEIGHT);
     lv_obj_set_pos(root, 0, 0);
-    lv_obj_clear_flag(root, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(root, false);
     lv_obj_set_style_bg_color(root, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(root, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(root, 0, LV_PART_MAIN);
@@ -1563,6 +2051,7 @@ esp_err_t ui_energy_page_create(
     energy_apply_static_flow_paths(ctx);
     energy_mark_missing_slots(ctx);
     energy_recompute(ctx);
+    energy_setup_details(ctx);
 
     lv_obj_add_event_cb(root, energy_page_event_cb, LV_EVENT_DELETE, ctx);
     ctx->anim_timer = lv_timer_create(energy_anim_timer_cb, 50, ctx);
@@ -1574,7 +2063,7 @@ esp_err_t ui_energy_page_create(
     return ESP_OK;
 }
 
-bool ui_energy_page_apply_state(ui_energy_page_instance_t *instance, const ha_state_t *state)
+static bool ui_energy_page_apply_state_inner(ui_energy_page_instance_t *instance, const ha_state_t *state)
 {
     if (instance == NULL || instance->ctx == NULL || state == NULL) {
         return false;
@@ -1582,7 +2071,15 @@ bool ui_energy_page_apply_state(ui_energy_page_instance_t *instance, const ha_st
 
     energy_page_ctx_t *ctx = (energy_page_ctx_t *)instance->ctx;
     if (strcmp(ctx->config.source, ENERGY_SOURCE_MANUAL) != 0) {
-        return false;
+        /* Home Assistant energy source: only battery state of charge and live solar power are ours. */
+        bool ha_matched = energy_apply_slot_state(ctx, ENERGY_SLOT_BATTERY_SOC, state);
+        if (energy_apply_slot_state(ctx, ENERGY_SLOT_SOLAR_POWER, state)) {
+            ha_matched = true;
+        }
+        if (ha_matched) {
+            energy_recompute(ctx);
+        }
+        return ha_matched;
     }
     bool matched = false;
     for (int i = 0; i < ENERGY_SLOT_COUNT; i++) {
@@ -1596,7 +2093,7 @@ bool ui_energy_page_apply_state(ui_energy_page_instance_t *instance, const ha_st
     return matched;
 }
 
-void ui_energy_page_apply_all_states(ui_energy_page_instance_t *instance)
+static void ui_energy_page_apply_all_states_inner(ui_energy_page_instance_t *instance)
 {
     if (instance == NULL || instance->ctx == NULL) {
         return;
@@ -1604,6 +2101,20 @@ void ui_energy_page_apply_all_states(ui_energy_page_instance_t *instance)
 
     energy_page_ctx_t *ctx = (energy_page_ctx_t *)instance->ctx;
     if (strcmp(ctx->config.source, ENERGY_SOURCE_MANUAL) != 0) {
+        const char *soc_entity = ctx->config.battery_soc_entity_id;
+        ctx->slots[ENERGY_SLOT_BATTERY_SOC].configured = soc_entity[0] != '\0';
+        ctx->slots[ENERGY_SLOT_BATTERY_SOC].valid = false;
+        ha_state_t soc_state = {0};
+        if (soc_entity[0] != '\0' && ha_model_get_state(soc_entity, &soc_state)) {
+            (void)energy_apply_slot_state(ctx, ENERGY_SLOT_BATTERY_SOC, &soc_state);
+        }
+        const char *pv_entity = ctx->config.solar_power_entity_id;
+        ctx->slots[ENERGY_SLOT_SOLAR_POWER].configured = pv_entity[0] != '\0';
+        ctx->slots[ENERGY_SLOT_SOLAR_POWER].valid = false;
+        ha_state_t pv_state = {0};
+        if (pv_entity[0] != '\0' && ha_model_get_state(pv_entity, &pv_state)) {
+            (void)energy_apply_slot_state(ctx, ENERGY_SLOT_SOLAR_POWER, &pv_state);
+        }
         energy_recompute(ctx);
         return;
     }
@@ -1625,4 +2136,29 @@ void ui_energy_page_apply_all_states(ui_energy_page_instance_t *instance)
         }
     }
     energy_recompute(ctx);
+}
+
+/* The energy page lays its nodes out on fixed circles: its text grows by one step at most, and only on a wide screen (the tile cap of
+ * "energy_page" is read from the display size). */
+esp_err_t ui_energy_page_create(const ui_energy_page_config_t *config, lv_obj_t *parent, ui_energy_page_instance_t *out_instance)
+{
+    ui_fonts_tile_begin("energy_page", (int)lv_display_get_horizontal_resolution(NULL), (int)lv_display_get_vertical_resolution(NULL));
+    const esp_err_t err = ui_energy_page_create_inner(config, parent, out_instance);
+    ui_fonts_tile_end();
+    return err;
+}
+
+bool ui_energy_page_apply_state(ui_energy_page_instance_t *instance, const ha_state_t *state)
+{
+    ui_fonts_tile_begin("energy_page", (int)lv_display_get_horizontal_resolution(NULL), (int)lv_display_get_vertical_resolution(NULL));
+    const bool applied = ui_energy_page_apply_state_inner(instance, state);
+    ui_fonts_tile_end();
+    return applied;
+}
+
+void ui_energy_page_apply_all_states(ui_energy_page_instance_t *instance)
+{
+    ui_fonts_tile_begin("energy_page", (int)lv_display_get_horizontal_resolution(NULL), (int)lv_display_get_vertical_resolution(NULL));
+    ui_energy_page_apply_all_states_inner(instance);
+    ui_fonts_tile_end();
 }

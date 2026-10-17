@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork.
  */
 #pragma once
 
@@ -63,6 +64,14 @@ typedef struct {
     uint32_t state_on;
     uint32_t state_off;
 
+    /* Matte-only surfaces. Separate from generic card colours so other looks and
+     * custom themes retain their existing appearance. */
+    uint32_t matte_page_bg;
+    uint32_t matte_card_off;
+    uint32_t matte_card_on;
+    uint32_t matte_track;
+    uint32_t matte_accent;
+
     uint32_t light_icon_on;
     uint32_t light_track_on;
     uint32_t light_track_off;
@@ -97,7 +106,7 @@ const theme_palette_t *theme_palette_active(void);
 const char *theme_palette_active_id(void);
 
 /* Built-in preset ids: "dark_v2" (default), "classic_v1", "light",
- * "ocean", "contrast". Unknown id returns NULL. */
+ * "ocean", "contrast", "black". Unknown id returns NULL. */
 const theme_entry_t *theme_palette_find_builtin(const char *id);
 
 /* Enumerate built-in presets. Returns count; fills list up to max_count. */
@@ -110,6 +119,8 @@ void theme_palette_set_active(const theme_palette_t *palette, const char *id, co
  * If id names a custom theme (stored via theme_store), that theme is
  * activated. Returns ESP_ERR_NOT_FOUND otherwise. Does not persist. */
 esp_err_t theme_palette_activate_by_id(const char *id);
+/* Resolve a palette without modifying the LVGL-owned active palette. */
+esp_err_t theme_palette_resolve_by_id(const char *id, theme_entry_t *out);
 
 /* JSON (de)serialisation. Caller owns returned string (cJSON_free). */
 char *theme_palette_to_json(const theme_entry_t *entry);

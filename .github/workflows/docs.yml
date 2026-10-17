@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - 'zensical.toml'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - 'zensical.toml'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: '0.12.21'
+          python-version: '3.13'
+          enable-cache: false
+      - name: Build and validate documentation
+        run: uv run --locked --only-group docs zensical build --clean --strict
+      - name: Upload Pages site
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'andre68723/BETTA-HA-PANEL'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'andre68723/BETTA-HA-PANEL'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/configure-pages@v6
+      - name: Deploy documentation
+        id: deployment
+        uses: actions/deploy-pages@v5

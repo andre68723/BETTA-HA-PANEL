@@ -1,0 +1,58 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
+ * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+ *
+ * Editor layout preview in the Flat appearance style.
+ * Loaded after styles.css in the order of index.html and WEBUI_CSS_SOURCES (docs/editor-source.md). Only
+ * rules that exist for this style belong here, so removing the style removes the file.
+ */
+
+/* Flat: 8 px cards with a 1 px outline and no shadow, inner surfaces at most 6 px, 4 px track ends. */
+body[data-ui-style="flat"] #canvas .widget-box {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+body[data-ui-style="flat"] #canvas .widget-box.selected {
+  box-shadow: 0 0 0 5px rgba(0, 0, 0, 0.55);
+}
+body[data-ui-style="flat"] #canvas .tp-datetime b { font-weight: 600; }
+
+body[data-ui-style="flat"] #canvas .tp-day,
+body[data-ui-style="flat"] #canvas .tp-todo .tp-row,
+body[data-ui-style="flat"] #canvas .tp-cover,
+body[data-ui-style="flat"] #canvas .tp-cam-img,
+body[data-ui-style="flat"] #canvas .tp-clim-chips i,
+body[data-ui-style="flat"] #canvas .tp-chips i,
+body[data-ui-style="flat"] #canvas .car-preview-extras .car-x-btn,
+body[data-ui-style="flat"] #canvas .sonos-preview-list div,
+body[data-ui-style="flat"] #canvas .solar-preview-row,
+body[data-ui-style="flat"] #canvas .solar-preview-col {
+  border-radius: 6px;
+}
+
+body[data-ui-style="flat"] #canvas .tp-bar,
+body[data-ui-style="flat"] #canvas .tp-bar i,
+body[data-ui-style="flat"] #canvas .tp-vbar,
+body[data-ui-style="flat"] #canvas .tp-vbar i,
+body[data-ui-style="flat"] #canvas .tp-chip,
+body[data-ui-style="flat"] #canvas .tp-switch,
+body[data-ui-style="flat"] #canvas .solar-preview-hbar,
+body[data-ui-style="flat"] #canvas .solar-preview-vbar,
+body[data-ui-style="flat"] #canvas .solar-preview-hbar i,
+body[data-ui-style="flat"] #canvas .solar-preview-vbar i {
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+body[data-ui-style="flat"] #canvas .tp-switch i {
+  border-radius: 3px;
+  box-shadow: none;
+}
+
+body[data-ui-style="flat"] #canvas .tp-btns span,
+body[data-ui-style="flat"] #canvas .tp-vol span,
+body[data-ui-style="flat"] #canvas .tp-clim-mid span,
+body[data-ui-style="flat"] #canvas .tp-clim-chips i {
+  background: var(--pv-card-on);
+  box-shadow: none;
+}

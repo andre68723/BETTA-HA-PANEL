@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ha/ha_cover_fetcher.h"
 
@@ -24,20 +25,39 @@
 
 #include "app_config.h"
 #include "miniz.h"
+#include "util/cover_guard.h"
+#include "util/cover_scale.h"
 
 /* JPEG backend selection ---------------------------------------------------
  * - ESP32-P4 has a hardware JPEG codec. We use the IDF `driver/jpeg_decode`
  *   API for fast zero-copy RGB565 output.
- * - All other targets (e.g. ESP32-S3 / panels3) fall back to the ROM-resident
+ * - Any other target falls back to the ROM-resident
  *   TJpgDec software decoder. It is single-threaded, runs at low priority on
  *   core 1, and outputs RGB888 which we convert to RGB565 in the output
  *   callback. Sufficient for ~1 cover/sec at typical HA sizes. */
 #if SOC_JPEG_DECODE_SUPPORTED
 #include "driver/jpeg_decode.h"
+#define STBI_ONLY_JPEG
+#define STBI_NO_STDIO
+#define STBI_NO_LINEAR
+#define STBI_NO_HDR
+#define STBI_NO_THREAD_LOCALS
+#define STBIDEF static
+#define STBI_MALLOC(sz) heap_caps_malloc((sz), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)
+#define STBI_REALLOC(p, sz) heap_caps_realloc((p), (sz), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)
+#define STBI_FREE(p) heap_caps_free(p)
+/* Software JPEG fallback: stb_image by Sean Barrett and contributors
+ * (public domain / MIT, dual-licensed), taken from the copy bundled with the
+ * LVGL managed component -- not vendored in this repository. */
+#define STB_IMAGE_IMPLEMENTATION
+#include "../../managed_components/lvgl__lvgl/src/libs/gltf/stb_image/stb_image.h"
 #else
 #include "rom/tjpgd.h"
 #endif
 
+#include "drivers/display_init.h"
+#include "ha/ha_auth_state.h"
+#include "ha/cover_request_lifetime.h"
 #include "ha/ha_client.h"
 
 #if LV_USE_LODEPNG
@@ -47,22 +67,14 @@
 #define TAG "ha_cover"
 
 #define COVER_Q_DEPTH 4
-#define COVER_MAX_DOWNLOAD 1024 * 1024  /* 1 MiB upper bound per cover JPG */
+#define COVER_PNG_STREAM_MAX_PIXELS (3000U * 3000U) /* rows are decoded one at a time */
+#define COVER_PNG_FULL_MAX_PIXELS (1440U * 1440U)   /* lodepng holds the whole image, as the JPEG paths' cap */
+#define COVER_DISPATCH_LOCK_MS 2000
+#define COVER_MAX_DOWNLOAD 1024 * 1024  /* 1 MiB upper bound per cover image */
 #define COVER_GATE_POLL_MS 120
 #define COVER_MIN_W 16
 #define COVER_MIN_H 16
 #define COVER_HTTP_WAIT_LOG_MS 5000
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-#define COVER_HTTP_MIN_INTERNAL_FREE_BYTES (12U * 1024U)
-#define COVER_HTTP_MIN_INTERNAL_LARGEST_BYTES (8U * 1024U)
-#define COVER_HTTP_PRESSURE_HOLD_MS 2000
-#define COVER_HTTP_MAX_ATTEMPTS 6
-#define COVER_HTTP_RETRY_DELAY_MS 2500
-#define COVER_HTTP_BUFFER_SIZE 512
-#define COVER_HTTP_TX_BUFFER_SIZE 768
-#define COVER_HTTP_READ_CHUNK 512
-#define COVER_SINK_INITIAL_CAP (8U * 1024U)
-#else
 #define COVER_HTTP_MIN_INTERNAL_FREE_BYTES (14U * 1024U)
 #define COVER_HTTP_MIN_INTERNAL_LARGEST_BYTES (8U * 1024U)
 #define COVER_HTTP_PRESSURE_HOLD_MS 1000
@@ -72,7 +84,6 @@
 #define COVER_HTTP_TX_BUFFER_SIZE 1024
 #define COVER_HTTP_READ_CHUNK 1024
 #define COVER_SINK_INITIAL_CAP (32U * 1024U)
-#endif
 
 typedef struct {
     char url[512];         /* proxy path or absolute URL */
@@ -80,23 +91,74 @@ typedef struct {
     int target_h;
     ha_cover_cb_t cb;
     void *user;
+    cover_request_lifetime_t *lifetime;
 } cover_req_t;
 
 typedef struct {
     ha_cover_result_t result;
     ha_cover_cb_t cb;
     void *user;
+    cover_request_lifetime_t *lifetime;
 } cover_dispatch_t;
 
 static QueueHandle_t s_queue = NULL;
 static TaskHandle_t s_task = NULL;
 static SemaphoreHandle_t s_lock = NULL;
+static SemaphoreHandle_t s_decode_lock = NULL;
 #if SOC_JPEG_DECODE_SUPPORTED
 static jpeg_decoder_handle_t s_decoder = NULL;
 #endif
-static void *s_cancelled_user = NULL; /* serialised via s_lock with the worker */
-static cover_req_t s_inflight = {0};  /* guarded by s_lock                    */
-static bool s_inflight_valid = false;
+static cover_request_lifetime_t *s_requests; /* guarded by s_lock */
+
+/* Camera snapshots come in at full resolution (often 1536x1080). Averaging k x k
+ * blocks (k = largest integer keeping the result at least as big as the target)
+ * keeps the buffer and LVGL's scaling cost small. RGB565 only. */
+static void cover_downscale_rgb565(ha_cover_result_t *result, int target_w, int target_h)
+{
+    if (result == NULL || !result->valid || result->image.data == NULL ||
+        result->image.header.cf != LV_COLOR_FORMAT_RGB565 || target_w <= 0 || target_h <= 0) {
+        return;
+    }
+    const uint32_t sw = result->image.header.w;
+    const uint32_t sh = result->image.header.h;
+    uint32_t k = LV_MIN(sw / (uint32_t)target_w, sh / (uint32_t)target_h);
+    if (k < 2) {
+        return;
+    }
+    if (k > 8) {
+        k = 8;
+    }
+    const uint32_t dw = sw / k;
+    const uint32_t dh = sh / k;
+    uint16_t *dst = (uint16_t *)heap_caps_malloc((size_t)dw * dh * 2U, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (dst == NULL) {
+        return;
+    }
+    const uint16_t *src = (const uint16_t *)result->image.data;
+    const uint32_t src_stride = result->image.header.stride / 2U;
+    const uint32_t area = k * k;
+    for (uint32_t y = 0; y < dh; y++) {
+        for (uint32_t x = 0; x < dw; x++) {
+            uint32_t r = 0, g = 0, b = 0;
+            for (uint32_t j = 0; j < k; j++) {
+                const uint16_t *row = src + (size_t)(y * k + j) * src_stride + x * k;
+                for (uint32_t i = 0; i < k; i++) {
+                    const uint16_t p = row[i];
+                    r += (p >> 11) & 0x1F;
+                    g += (p >> 5) & 0x3F;
+                    b += p & 0x1F;
+                }
+            }
+            dst[y * dw + x] = (uint16_t)(((r / area) << 11) | ((g / area) << 5) | (b / area));
+        }
+    }
+    heap_caps_free((void *)result->image.data);
+    result->image.data = (const uint8_t *)dst;
+    result->image.data_size = dw * dh * 2U;
+    result->image.header.w = dw;
+    result->image.header.h = dh;
+    result->image.header.stride = dw * 2U;
+}
 
 static void cover_dispatch_on_lvgl(void *data);
 
@@ -126,12 +188,23 @@ static void *cover_heap_calloc(size_t count, size_t size)
     return heap_caps_calloc(count, size, MALLOC_CAP_8BIT);
 }
 
-static bool cover_request_cancelled_locked(void *user)
+static bool cover_request_cancelled(cover_request_lifetime_t *lifetime)
 {
-    return (s_cancelled_user != NULL && s_cancelled_user == user);
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    bool cancelled = lifetime->cancelled;
+    xSemaphoreGive(s_lock);
+    return cancelled;
 }
 
-static bool cover_wait_until_http_ready(void *user)
+static void cover_request_finish(cover_request_lifetime_t *lifetime)
+{
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    cover_request_lifetime_remove(&s_requests, lifetime);
+    xSemaphoreGive(s_lock);
+    heap_caps_free(lifetime);
+}
+
+static bool cover_wait_until_http_ready(cover_request_lifetime_t *lifetime)
 {
     int64_t last_log_ms = 0;
     for (;;) {
@@ -159,9 +232,7 @@ static bool cover_wait_until_http_ready(void *user)
         }
 
         vTaskDelay(pdMS_TO_TICKS(COVER_GATE_POLL_MS));
-        xSemaphoreTake(s_lock, portMAX_DELAY);
-        bool cancel_now = cover_request_cancelled_locked(user);
-        xSemaphoreGive(s_lock);
+        bool cancel_now = cover_request_cancelled(lifetime);
         if (cancel_now) {
             ha_client_set_aux_http_pressure(false, 0);
             return false;
@@ -169,7 +240,7 @@ static bool cover_wait_until_http_ready(void *user)
     }
 }
 
-static bool cover_delay_or_cancel(void *user, uint32_t delay_ms)
+static bool cover_delay_or_cancel(cover_request_lifetime_t *lifetime, uint32_t delay_ms)
 {
     uint32_t elapsed_ms = 0;
     while (elapsed_ms < delay_ms) {
@@ -180,9 +251,7 @@ static bool cover_delay_or_cancel(void *user, uint32_t delay_ms)
         vTaskDelay(pdMS_TO_TICKS(step_ms));
         elapsed_ms += step_ms;
 
-        xSemaphoreTake(s_lock, portMAX_DELAY);
-        bool cancel_now = cover_request_cancelled_locked(user);
-        xSemaphoreGive(s_lock);
+        bool cancel_now = cover_request_cancelled(lifetime);
         if (cancel_now) {
             return false;
         }
@@ -194,6 +263,15 @@ static bool cover_is_png(const uint8_t *buf, size_t len)
 {
     static const uint8_t magic[8] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
     return buf != NULL && len >= sizeof(magic) && memcmp(buf, magic, sizeof(magic)) == 0;
+}
+
+static const char *cover_guess_format(const uint8_t *buf, size_t len)
+{
+    if (cover_is_png(buf, len)) return "png";
+    if (buf != NULL && len >= 2 && buf[0] == 0xFF && buf[1] == 0xD8) return "jpeg";
+    if (buf != NULL && len >= 12 && memcmp(buf, "RIFF", 4) == 0 && memcmp(buf + 8, "WEBP", 4) == 0) return "webp";
+    if (buf != NULL && len >= 6 && (memcmp(buf, "GIF87a", 6) == 0 || memcmp(buf, "GIF89a", 6) == 0)) return "gif";
+    return "unknown";
 }
 
 static uint32_t cover_png_read_be32(const uint8_t *buf)
@@ -252,11 +330,11 @@ static bool cover_png_collect_idat(const uint8_t *png, size_t len, uint8_t **out
     size_t pos = 8;
     while (pos + 12 <= len) {
         uint32_t chunk_len = cover_png_read_be32(png + pos);
-        size_t chunk_total = (size_t)chunk_len + 12U;
-        if (pos + chunk_total > len || pos + chunk_total < pos) {
+        if (!cover_png_chunk_fits(pos, len, chunk_len)) {
             cover_png_free_decoded(idat);
             return false;
         }
+        size_t chunk_total = (size_t)chunk_len + 12U;
 
         const uint8_t *chunk_type = png + pos + 4;
         const uint8_t *chunk_data = png + pos + 8;
@@ -284,6 +362,95 @@ static bool cover_png_collect_idat(const uint8_t *png, size_t len, uint8_t **out
 
     *out_idat = idat;
     *out_len = idat_len;
+    return true;
+}
+
+static bool cover_png_read_palette(const uint8_t *png, size_t len,
+                                   uint8_t *palette_rgb, uint8_t *palette_alpha,
+                                   uint32_t *out_entries)
+{
+    if (png == NULL || palette_rgb == NULL || palette_alpha == NULL ||
+        out_entries == NULL || !cover_is_png(png, len)) {
+        return false;
+    }
+
+    memset(palette_rgb, 0, 256U * 3U);
+    memset(palette_alpha, 0xFF, 256U);
+    *out_entries = 0;
+
+    size_t pos = 8;
+    while (pos + 12 <= len) {
+        uint32_t chunk_len = cover_png_read_be32(png + pos);
+        if (!cover_png_chunk_fits(pos, len, chunk_len)) {
+            return false;
+        }
+        size_t chunk_total = (size_t)chunk_len + 12U;
+
+        const uint8_t *chunk_type = png + pos + 4;
+        const uint8_t *chunk_data = png + pos + 8;
+        if (memcmp(chunk_type, "PLTE", 4) == 0) {
+            if (chunk_len == 0 || (chunk_len % 3U) != 0) {
+                return false;
+            }
+            uint32_t entries = chunk_len / 3U;
+            if (entries > 256U) {
+                entries = 256U;
+            }
+            memcpy(palette_rgb, chunk_data, (size_t)entries * 3U);
+            *out_entries = entries;
+        } else if (memcmp(chunk_type, "tRNS", 4) == 0) {
+            uint32_t entries = chunk_len;
+            if (entries > 256U) {
+                entries = 256U;
+            }
+            memcpy(palette_alpha, chunk_data, entries);
+        } else if (memcmp(chunk_type, "IDAT", 4) == 0 || memcmp(chunk_type, "IEND", 4) == 0) {
+            break;
+        }
+
+        pos += chunk_total;
+    }
+
+    return *out_entries > 0;
+}
+
+/* Area-average downscaler (util/cover_scale.c) with its two work buffers. Returns false when the sizes are not a
+ * plain shrink or memory is short; callers then keep their nearest-neighbour fallback. */
+typedef struct {
+    cover_box_t box;
+    uint32_t *sum;
+    uint16_t *cnt;
+} cover_scaler_t;
+
+static void cover_scaler_end(cover_scaler_t *s)
+{
+    if (s == NULL) {
+        return;
+    }
+    heap_caps_free(s->sum);
+    heap_caps_free(s->cnt);
+    s->sum = NULL;
+    s->cnt = NULL;
+}
+
+static bool cover_scaler_begin(cover_scaler_t *s, uint32_t src_w, uint32_t src_h, uint32_t out_w, uint32_t out_h)
+{
+    if (s == NULL) {
+        return false;
+    }
+    memset(s, 0, sizeof(*s));
+    s->sum = (uint32_t *)heap_caps_malloc(cover_box_sum_bytes(out_w), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (s->sum == NULL) {
+        s->sum = (uint32_t *)heap_caps_malloc(cover_box_sum_bytes(out_w), MALLOC_CAP_8BIT);
+    }
+    s->cnt = (uint16_t *)heap_caps_malloc(cover_box_colcnt_bytes(out_w), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (s->cnt == NULL) {
+        s->cnt = (uint16_t *)heap_caps_malloc(cover_box_colcnt_bytes(out_w), MALLOC_CAP_8BIT);
+    }
+    if (s->sum == NULL || s->cnt == NULL || !cover_box_init(&s->box, src_w, src_h, out_w, out_h, s->sum, s->cnt)) {
+        cover_scaler_end(s);
+        return false;
+    }
     return true;
 }
 
@@ -326,94 +493,17 @@ static void cover_pick_png_output_size(uint32_t src_w, uint32_t src_h,
     *out_h = dst_h > 0 ? dst_h : 1;
 }
 
-static bool cover_rgb24_is_transparent_bg(uint8_t red, uint8_t green, uint8_t blue)
+static uint32_t cover_png_source_bpp_for_type(uint8_t color_type)
+{
+    if (color_type == 3U) return 1U; /* indexed color, 8-bit palette index */
+    if (color_type == 2U) return 3U; /* RGB8 */
+    if (color_type == 6U) return 4U; /* RGBA8 */
+    return 0;
+}
+
+static bool cover_png_is_transparent_bg(uint8_t red, uint8_t green, uint8_t blue)
 {
     return red <= 2U && green <= 2U && blue <= 2U;
-}
-
-static void cover_scale_rgb24_to_rgb565a8_nearest(const uint8_t *src_rgb,
-                                                  uint32_t src_w, uint32_t src_h,
-                                                  uint8_t *dst_color, uint8_t *dst_alpha,
-                                                  uint32_t dst_w, uint32_t dst_h,
-                                                  uint32_t color_stride, uint32_t alpha_stride)
-{
-    if (src_rgb == NULL || dst_color == NULL || dst_alpha == NULL ||
-        src_w == 0 || src_h == 0 || dst_w == 0 || dst_h == 0) {
-        return;
-    }
-
-    for (uint32_t y = 0; y < dst_h; y++) {
-        uint32_t src_y = (uint32_t)(((uint64_t)y * src_h) / dst_h);
-        if (src_y >= src_h) {
-            src_y = src_h - 1U;
-        }
-        const uint8_t *src_row = src_rgb + ((size_t)src_y * src_w * 3U);
-        uint8_t *dst_color_row = dst_color + ((size_t)y * color_stride);
-        uint8_t *dst_alpha_row = dst_alpha + ((size_t)y * alpha_stride);
-        for (uint32_t x = 0; x < dst_w; x++) {
-            uint32_t src_x = (uint32_t)(((uint64_t)x * src_w) / dst_w);
-            if (src_x >= src_w) {
-                src_x = src_w - 1U;
-            }
-            const uint8_t *px = src_row + (src_x * 3U);
-            uint8_t red = px[0];
-            uint8_t green = px[1];
-            uint8_t blue = px[2];
-            uint16_t rgb565 = (uint16_t)(((uint16_t)(red & 0xF8U) << 8) |
-                                         ((uint16_t)(green & 0xFCU) << 3) |
-                                         ((uint16_t)blue >> 3));
-
-            dst_color_row[x * 2U] = (uint8_t)(rgb565 & 0xFFU);
-            dst_color_row[x * 2U + 1U] = (uint8_t)(rgb565 >> 8);
-            dst_alpha_row[x] = cover_rgb24_is_transparent_bg(red, green, blue) ? 0U : 0xFFU;
-        }
-    }
-}
-
-static uint32_t cover_dominant_from_rgb24(const uint8_t *buf, uint32_t w, uint32_t h)
-{
-    if (buf == NULL || w == 0 || h == 0) {
-        return 0;
-    }
-
-    uint64_t r_acc = 0;
-    uint64_t g_acc = 0;
-    uint64_t b_acc = 0;
-    uint32_t samples = 0;
-    uint32_t step_x = w > 96 ? w / 48U : 2U;
-    uint32_t step_y = h > 96 ? h / 48U : 2U;
-    if (step_x == 0) step_x = 1;
-    if (step_y == 0) step_y = 1;
-
-    for (uint32_t y = 0; y < h; y += step_y) {
-        for (uint32_t x = 0; x < w; x += step_x) {
-            const uint8_t *px = buf + (((size_t)y * w + x) * 3U);
-            uint8_t red = px[0];
-            uint8_t green = px[1];
-            uint8_t blue = px[2];
-            if (cover_rgb24_is_transparent_bg(red, green, blue)) {
-                continue;
-            }
-
-            uint16_t lum = (uint16_t)red + (uint16_t)green + (uint16_t)blue;
-            if (lum < 18 || lum > 720) {
-                continue;
-            }
-
-            r_acc += red;
-            g_acc += green;
-            b_acc += blue;
-            samples++;
-        }
-    }
-
-    if (samples == 0) {
-        return 0;
-    }
-
-    return (((uint32_t)(r_acc / samples)) << 16) |
-           (((uint32_t)(g_acc / samples)) << 8) |
-           ((uint32_t)(b_acc / samples));
 }
 
 static uint8_t cover_png_paeth(uint8_t a, uint8_t b, uint8_t c)
@@ -431,13 +521,16 @@ static uint8_t cover_png_paeth(uint8_t a, uint8_t b, uint8_t c)
     return c;
 }
 
-static bool cover_unfilter_rgba8_row(uint8_t *dst, const uint8_t *src, const uint8_t *prev, size_t rowbytes, uint8_t filter)
+static bool cover_unfilter_png_row(uint8_t *dst, const uint8_t *src, const uint8_t *prev,
+                                   size_t rowbytes, uint8_t filter, size_t bytewidth)
 {
     if (dst == NULL || src == NULL || rowbytes == 0) {
         return false;
     }
+    if (bytewidth == 0) {
+        return false;
+    }
 
-    const size_t bytewidth = 4U;
     switch (filter) {
         case 0:
             memcpy(dst, src, rowbytes);
@@ -474,11 +567,18 @@ static bool cover_unfilter_rgba8_row(uint8_t *dst, const uint8_t *src, const uin
     }
 }
 
-static void cover_scale_rgba8_row_to_rgb565a8(const uint8_t *src_row, uint32_t src_w,
-                                              uint8_t *dst_color_row, uint8_t *dst_alpha_row,
-                                              uint32_t dst_w)
+static void cover_scale_png_row_to_rgb565a8(const uint8_t *src_row, uint32_t src_w, uint32_t source_bpp,
+                                            const uint8_t *palette_rgb, const uint8_t *palette_alpha,
+                                            uint32_t palette_entries,
+                                            uint8_t *dst_color_row, uint8_t *dst_alpha_row,
+                                            uint32_t dst_w)
 {
-    if (src_row == NULL || dst_color_row == NULL || dst_alpha_row == NULL || src_w == 0 || dst_w == 0) {
+    if (src_row == NULL || dst_color_row == NULL || dst_alpha_row == NULL ||
+        src_w == 0 || dst_w == 0 ||
+        (source_bpp != 1U && source_bpp != 3U && source_bpp != 4U)) {
+        return;
+    }
+    if (source_bpp == 1U && (palette_rgb == NULL || palette_alpha == NULL || palette_entries == 0)) {
         return;
     }
 
@@ -487,22 +587,73 @@ static void cover_scale_rgba8_row_to_rgb565a8(const uint8_t *src_row, uint32_t s
         if (src_x >= src_w) {
             src_x = src_w - 1U;
         }
-        const uint8_t *px = src_row + ((size_t)src_x * 4U);
-        uint8_t red = px[0];
-        uint8_t green = px[1];
-        uint8_t blue = px[2];
+        const uint8_t *px = src_row + ((size_t)src_x * source_bpp);
+        uint8_t red = 0;
+        uint8_t green = 0;
+        uint8_t blue = 0;
+        uint8_t alpha = 0;
+        if (source_bpp == 1U) {
+            uint8_t index = px[0];
+            if (index < palette_entries) {
+                const uint8_t *pal = palette_rgb + ((size_t)index * 3U);
+                red = pal[0];
+                green = pal[1];
+                blue = pal[2];
+                alpha = palette_alpha[index];
+            }
+        } else {
+            red = px[0];
+            green = px[1];
+            blue = px[2];
+            alpha = source_bpp == 4U
+                        ? px[3]
+                        : (cover_png_is_transparent_bg(red, green, blue) ? 0U : 0xFFU);
+        }
         uint16_t rgb565 = (uint16_t)(((uint16_t)(red & 0xF8U) << 8) |
                                      ((uint16_t)(green & 0xFCU) << 3) |
                                      ((uint16_t)blue >> 3));
         dst_color_row[x * 2U] = (uint8_t)(rgb565 & 0xFFU);
         dst_color_row[x * 2U + 1U] = (uint8_t)(rgb565 >> 8);
-        dst_alpha_row[x] = px[3];
+        dst_alpha_row[x] = alpha;
+    }
+}
+
+/* One decoded PNG row as RGBA8, with the same palette, bounds and transparent-background rules as
+ * cover_scale_png_row_to_rgb565a8(). */
+static void cover_png_row_to_rgba(const uint8_t *src_row, uint32_t src_w, uint32_t source_bpp,
+                                  const uint8_t *palette_rgb, const uint8_t *palette_alpha,
+                                  uint32_t palette_entries, uint8_t *rgba)
+{
+    for (uint32_t x = 0; x < src_w; x++) {
+        const uint8_t *px = src_row + ((size_t)x * source_bpp);
+        uint8_t *o = rgba + ((size_t)x * 4U);
+        if (source_bpp == 1U) {
+            const uint8_t index = px[0];
+            if (index < palette_entries) {
+                const uint8_t *pal = palette_rgb + ((size_t)index * 3U);
+                o[0] = pal[0];
+                o[1] = pal[1];
+                o[2] = pal[2];
+                o[3] = palette_alpha[index];
+            } else {
+                o[0] = o[1] = o[2] = o[3] = 0;
+            }
+        } else {
+            o[0] = px[0];
+            o[1] = px[1];
+            o[2] = px[2];
+            o[3] = source_bpp == 4U ? px[3] : (cover_png_is_transparent_bg(px[0], px[1], px[2]) ? 0U : 0xFFU);
+        }
     }
 }
 
 typedef struct {
     uint32_t src_w;
     uint32_t src_h;
+    uint32_t source_bpp;
+    const uint8_t *palette_rgb;
+    const uint8_t *palette_alpha;
+    uint32_t palette_entries;
     uint32_t out_w;
     uint32_t out_h;
     uint32_t color_stride;
@@ -522,18 +673,27 @@ typedef struct {
     uint8_t *curr_row;
     uint8_t *rgb565a8;
     uint8_t *alpha_plane;
+    cover_scaler_t *scaler; /* area average when set, else nearest-neighbour rows */
+    uint8_t *rgba_row;      /* src_w * 4 scratch row for the scaler */
     size_t rowbytes;
     size_t expected_size;
     size_t emitted;
     bool failed;
 } cover_png_stream_ctx_t;
 
-static void cover_accumulate_dominant_rgba8_row(const uint8_t *row, uint32_t src_w, uint32_t src_y,
-                                                uint32_t step_x, uint32_t step_y,
-                                                uint64_t *r_acc, uint64_t *g_acc, uint64_t *b_acc,
-                                                uint32_t *samples)
+static void cover_accumulate_dominant_png_row(const uint8_t *row, uint32_t src_w, uint32_t src_y,
+                                              uint32_t source_bpp,
+                                              const uint8_t *palette_rgb, const uint8_t *palette_alpha,
+                                              uint32_t palette_entries,
+                                              uint32_t step_x, uint32_t step_y,
+                                              uint64_t *r_acc, uint64_t *g_acc, uint64_t *b_acc,
+                                              uint32_t *samples)
 {
-    if (row == NULL || src_w == 0 || r_acc == NULL || g_acc == NULL || b_acc == NULL || samples == NULL) {
+    if (row == NULL || src_w == 0 || (source_bpp != 1U && source_bpp != 3U && source_bpp != 4U) ||
+        r_acc == NULL || g_acc == NULL || b_acc == NULL || samples == NULL) {
+        return;
+    }
+    if (source_bpp == 1U && (palette_rgb == NULL || palette_alpha == NULL || palette_entries == 0)) {
         return;
     }
     if (step_y == 0 || (src_y % step_y) != 0) {
@@ -541,11 +701,29 @@ static void cover_accumulate_dominant_rgba8_row(const uint8_t *row, uint32_t src
     }
 
     for (uint32_t x = 0; x < src_w; x += step_x) {
-        const uint8_t *px = row + ((size_t)x * 4U);
-        uint8_t red = px[0];
-        uint8_t green = px[1];
-        uint8_t blue = px[2];
-        uint8_t alpha = px[3];
+        const uint8_t *px = row + ((size_t)x * source_bpp);
+        uint8_t red = 0;
+        uint8_t green = 0;
+        uint8_t blue = 0;
+        uint8_t alpha = 0;
+        if (source_bpp == 1U) {
+            uint8_t index = px[0];
+            if (index >= palette_entries) {
+                continue;
+            }
+            const uint8_t *pal = palette_rgb + ((size_t)index * 3U);
+            red = pal[0];
+            green = pal[1];
+            blue = pal[2];
+            alpha = palette_alpha[index];
+        } else {
+            red = px[0];
+            green = px[1];
+            blue = px[2];
+            alpha = source_bpp == 4U
+                        ? px[3]
+                        : (cover_png_is_transparent_bg(red, green, blue) ? 0U : 0xFFU);
+        }
         if (alpha < 24U) {
             continue;
         }
@@ -564,27 +742,44 @@ static void cover_accumulate_dominant_rgba8_row(const uint8_t *row, uint32_t src
 
 static bool cover_png_process_streamed_row(cover_png_stream_ctx_t *ctx)
 {
-    if (ctx == NULL || ctx->line == NULL || ctx->curr_row == NULL || ctx->src_y >= ctx->src_h) {
+    if (ctx == NULL || ctx->line == NULL || ctx->curr_row == NULL ||
+        ctx->src_y >= ctx->src_h ||
+        (ctx->source_bpp != 1U && ctx->source_bpp != 3U && ctx->source_bpp != 4U)) {
         return false;
     }
 
-    if (!cover_unfilter_rgba8_row(ctx->curr_row, ctx->line + 1U,
-                                  ctx->src_y > 0 ? ctx->prev_row : NULL,
-                                  ctx->rowbytes, ctx->line[0])) {
+    if (!cover_unfilter_png_row(ctx->curr_row, ctx->line + 1U,
+                                ctx->src_y > 0 ? ctx->prev_row : NULL,
+                                ctx->rowbytes, ctx->line[0], ctx->source_bpp)) {
         ESP_LOGW(TAG, "png unsupported filter %u", ctx->line[0]);
         return false;
     }
 
-    cover_accumulate_dominant_rgba8_row(ctx->curr_row, ctx->src_w, ctx->src_y,
-                                        ctx->step_x, ctx->step_y,
-                                        &ctx->r_acc, &ctx->g_acc, &ctx->b_acc,
-                                        &ctx->samples);
+    cover_accumulate_dominant_png_row(ctx->curr_row, ctx->src_w, ctx->src_y,
+                                      ctx->source_bpp, ctx->palette_rgb, ctx->palette_alpha,
+                                      ctx->palette_entries, ctx->step_x, ctx->step_y,
+                                      &ctx->r_acc, &ctx->g_acc, &ctx->b_acc,
+                                      &ctx->samples);
 
-    while (ctx->next_dst_y < ctx->out_h &&
+    if (ctx->scaler != NULL && ctx->rgba_row != NULL) {
+        cover_png_row_to_rgba(ctx->curr_row, ctx->src_w, ctx->source_bpp, ctx->palette_rgb, ctx->palette_alpha,
+                              ctx->palette_entries, ctx->rgba_row);
+        if (cover_box_add_rgba_row(&ctx->scaler->box, ctx->rgba_row)) {
+            const uint32_t dy = cover_box_ready_row(&ctx->scaler->box);
+            cover_box_take_rgb565_row(&ctx->scaler->box,
+                                      (uint16_t *)(ctx->rgb565a8 + ((size_t)dy * ctx->color_stride)),
+                                      ctx->alpha_plane + ((size_t)dy * ctx->alpha_stride));
+            ctx->next_dst_y = dy + 1U;
+        }
+    }
+    while (ctx->scaler == NULL && ctx->next_dst_y < ctx->out_h &&
            (uint32_t)(((uint64_t)ctx->next_dst_y * ctx->src_h) / ctx->out_h) == ctx->src_y) {
         uint8_t *dst_color_row = ctx->rgb565a8 + ((size_t)ctx->next_dst_y * ctx->color_stride);
         uint8_t *dst_alpha_row = ctx->alpha_plane + ((size_t)ctx->next_dst_y * ctx->alpha_stride);
-        cover_scale_rgba8_row_to_rgb565a8(ctx->curr_row, ctx->src_w, dst_color_row, dst_alpha_row, ctx->out_w);
+        cover_scale_png_row_to_rgb565a8(ctx->curr_row, ctx->src_w, ctx->source_bpp,
+                                        ctx->palette_rgb, ctx->palette_alpha,
+                                        ctx->palette_entries,
+                                        dst_color_row, dst_alpha_row, ctx->out_w);
         ctx->next_dst_y++;
     }
 
@@ -726,12 +921,19 @@ static bool cover_png_inflate_stream_lowlevel(const uint8_t *idat, size_t idat_l
     return ok;
 }
 
-static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
-                                            uint32_t src_w, uint32_t src_h,
-                                            int target_w, int target_h,
-                                            ha_cover_result_t *out)
+static bool cover_decode_png_streamed(const uint8_t *png, size_t len,
+                                      uint32_t src_w, uint32_t src_h,
+                                      uint32_t source_bpp,
+                                      const uint8_t *palette_rgb, const uint8_t *palette_alpha,
+                                      uint32_t palette_entries,
+                                      int target_w, int target_h,
+                                      ha_cover_result_t *out)
 {
-    if (png == NULL || len == 0 || src_w == 0 || src_h == 0 || out == NULL) {
+    if (png == NULL || len == 0 || src_w == 0 || src_h == 0 ||
+        (source_bpp != 1U && source_bpp != 3U && source_bpp != 4U) || out == NULL) {
+        return false;
+    }
+    if (source_bpp == 1U && (palette_rgb == NULL || palette_alpha == NULL || palette_entries == 0)) {
         return false;
     }
 
@@ -741,9 +943,18 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
     uint8_t *curr_row = NULL;
     uint8_t *line = NULL;
     uint8_t *rgb565a8 = NULL;
+    uint8_t *rgba_row = NULL;
+    cover_scaler_t scaler = {0};
+    bool scaler_ready = false;
     size_t idat_len = 0;
-    size_t rowbytes = (size_t)src_w * 4U;
-    size_t expected_size = ((size_t)src_w * 4U + 1U) * src_h;
+    if ((size_t)src_w > (SIZE_MAX - 1U) / source_bpp ||
+        ((size_t)src_w * source_bpp + 1U) > SIZE_MAX / (size_t)src_h) {
+        ESP_LOGW(TAG, "png stream size overflow");
+        goto cleanup;
+    }
+
+    size_t rowbytes = (size_t)src_w * source_bpp;
+    size_t expected_size = (rowbytes + 1U) * src_h;
     uint32_t out_w = 0;
     uint32_t out_h = 0;
     uint32_t color_stride = 0;
@@ -780,7 +991,14 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
     cover_pick_png_output_size(src_w, src_h, target_w, target_h, &out_w, &out_h);
     color_stride = lv_draw_buf_width_to_stride(out_w, LV_COLOR_FORMAT_RGB565A8);
     alpha_stride = color_stride / 2U;
-    size_t out_size = (size_t)color_stride * out_h + (size_t)alpha_stride * out_h;
+    if (out_w == 0 || out_h == 0 || color_stride == 0 || alpha_stride == 0 ||
+        (size_t)color_stride > SIZE_MAX / (size_t)out_h ||
+        (size_t)alpha_stride > SIZE_MAX / (size_t)out_h ||
+        ((size_t)color_stride * (size_t)out_h) > SIZE_MAX - ((size_t)alpha_stride * (size_t)out_h)) {
+        ESP_LOGW(TAG, "png output size overflow");
+        goto cleanup;
+    }
+    size_t out_size = (size_t)color_stride * (size_t)out_h + (size_t)alpha_stride * (size_t)out_h;
     rgb565a8 = heap_caps_malloc(out_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (rgb565a8 == NULL) {
         ESP_LOGW(TAG, "png alloc %u bytes failed", (unsigned)out_size);
@@ -789,9 +1007,17 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
     memset(rgb565a8, 0, out_size);
 
     uint8_t *alpha_plane = rgb565a8 + ((size_t)color_stride * out_h);
+    if ((size_t)src_w <= SIZE_MAX / 4U) {
+        rgba_row = heap_caps_malloc((size_t)src_w * 4U, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    }
+    scaler_ready = rgba_row != NULL && cover_scaler_begin(&scaler, src_w, src_h, out_w, out_h);
     cover_png_stream_ctx_t stream = {
         .src_w = src_w,
         .src_h = src_h,
+        .source_bpp = source_bpp,
+        .palette_rgb = palette_rgb,
+        .palette_alpha = palette_alpha,
+        .palette_entries = palette_entries,
         .out_w = out_w,
         .out_h = out_h,
         .color_stride = color_stride,
@@ -804,12 +1030,15 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
         .curr_row = curr_row,
         .rgb565a8 = rgb565a8,
         .alpha_plane = alpha_plane,
+        .scaler = scaler_ready ? &scaler : NULL,
+        .rgba_row = rgba_row,
         .rowbytes = rowbytes,
         .expected_size = expected_size,
     };
 
-    ESP_LOGI(TAG, "png stream: src=%ux%u out=%ux%u idat=%u raw=%u",
+    ESP_LOGD(TAG, "png stream: scaler=%d src=%ux%u bpp=%u palette=%u out=%ux%u idat=%u raw=%u", scaler_ready ? 1 : 0,
              (unsigned)src_w, (unsigned)src_h,
+             (unsigned)source_bpp, (unsigned)palette_entries,
              (unsigned)out_w, (unsigned)out_h,
              (unsigned)idat_len, (unsigned)expected_size);
 
@@ -834,7 +1063,9 @@ static bool cover_decode_png_rgba8_streamed(const uint8_t *png, size_t len,
     while (stream.next_dst_y < out_h) {
         uint8_t *dst_color_row = rgb565a8 + ((size_t)stream.next_dst_y * color_stride);
         uint8_t *dst_alpha_row = alpha_plane + ((size_t)stream.next_dst_y * alpha_stride);
-        cover_scale_rgba8_row_to_rgb565a8(stream.prev_row, src_w, dst_color_row, dst_alpha_row, out_w);
+        cover_scale_png_row_to_rgb565a8(stream.prev_row, src_w, source_bpp,
+                                        palette_rgb, palette_alpha, palette_entries,
+                                        dst_color_row, dst_alpha_row, out_w);
         stream.next_dst_y++;
     }
 
@@ -867,41 +1098,103 @@ cleanup:
     cover_png_free_decoded(prev_row);
     cover_png_free_decoded(curr_row);
     cover_png_free_decoded(rgb565a8);
+    heap_caps_free(rgba_row);
+    cover_scaler_end(&scaler);
     return ok;
 }
 
-static bool cover_decode_png(const uint8_t *png, size_t len, int target_w, int target_h,
-                             ha_cover_result_t *out)
+#if LV_USE_LODEPNG
+/* Full-decode fallback via lodepng for PNGs the streamed scanline path cannot
+ * handle (grayscale, 16-bit, interlaced). Materializes the whole RGB24 image
+ * in RAM, so it is only used for these rarer formats. */
+static void cover_scale_rgb24_to_rgb565a8_nearest(const uint8_t *src_rgb,
+                                                  uint32_t src_w, uint32_t src_h,
+                                                  uint8_t *dst_color, uint8_t *dst_alpha,
+                                                  uint32_t dst_w, uint32_t dst_h,
+                                                  uint32_t color_stride, uint32_t alpha_stride)
 {
-#if !LV_USE_LODEPNG
-    LV_UNUSED(png);
-    LV_UNUSED(len);
-    LV_UNUSED(target_w);
-    LV_UNUSED(target_h);
-    LV_UNUSED(out);
-    ESP_LOGW(TAG, "png fetched but LV_USE_LODEPNG is disabled");
-    return false;
-#else
-    if (png == NULL || len == 0 || out == NULL) {
-        return false;
+    if (src_rgb == NULL || dst_color == NULL || dst_alpha == NULL ||
+        src_w == 0 || src_h == 0 || dst_w == 0 || dst_h == 0) {
+        return;
     }
 
-    uint32_t src_w = 0;
-    uint32_t src_h = 0;
-    uint8_t bit_depth = 0;
-    uint8_t color_type = 0;
-    uint8_t interlace = 0;
-    if (!cover_png_get_header(png, len, &src_w, &src_h, &bit_depth, &color_type, &interlace)) {
-        ESP_LOGW(TAG, "png header parse failed");
-        return false;
+    for (uint32_t y = 0; y < dst_h; y++) {
+        uint32_t src_y = (uint32_t)(((uint64_t)y * src_h) / dst_h);
+        if (src_y >= src_h) {
+            src_y = src_h - 1U;
+        }
+        const uint8_t *src_row = src_rgb + ((size_t)src_y * src_w * 3U);
+        uint8_t *dst_color_row = dst_color + ((size_t)y * color_stride);
+        uint8_t *dst_alpha_row = dst_alpha + ((size_t)y * alpha_stride);
+        for (uint32_t x = 0; x < dst_w; x++) {
+            uint32_t src_x = (uint32_t)(((uint64_t)x * src_w) / dst_w);
+            if (src_x >= src_w) {
+                src_x = src_w - 1U;
+            }
+            const uint8_t *px = src_row + (src_x * 3U);
+            uint8_t red = px[0];
+            uint8_t green = px[1];
+            uint8_t blue = px[2];
+            uint16_t rgb565 = (uint16_t)(((uint16_t)(red & 0xF8U) << 8) |
+                                         ((uint16_t)(green & 0xFCU) << 3) |
+                                         ((uint16_t)blue >> 3));
+
+            dst_color_row[x * 2U] = (uint8_t)(rgb565 & 0xFFU);
+            dst_color_row[x * 2U + 1U] = (uint8_t)(rgb565 >> 8);
+            dst_alpha_row[x] = cover_png_is_transparent_bg(red, green, blue) ? 0U : 0xFFU;
+        }
+    }
+}
+
+static uint32_t cover_dominant_from_rgb24(const uint8_t *buf, uint32_t w, uint32_t h)
+{
+    if (buf == NULL || w == 0 || h == 0) {
+        return 0;
     }
 
-    /* Roborock maps currently arrive as non-interlaced RGBA8 PNGs. Decode them
-     * through a scanline path so we never materialize the full RGBA image in RAM. */
-    if (bit_depth == 8U && color_type == 6U && interlace == 0U) {
-        return cover_decode_png_rgba8_streamed(png, len, src_w, src_h, target_w, target_h, out);
+    uint64_t r_acc = 0;
+    uint64_t g_acc = 0;
+    uint64_t b_acc = 0;
+    uint32_t samples = 0;
+    uint32_t step_x = w > 96 ? w / 48U : 2U;
+    uint32_t step_y = h > 96 ? h / 48U : 2U;
+    if (step_x == 0) step_x = 1;
+    if (step_y == 0) step_y = 1;
+
+    for (uint32_t y = 0; y < h; y += step_y) {
+        for (uint32_t x = 0; x < w; x += step_x) {
+            const uint8_t *px = buf + (((size_t)y * w + x) * 3U);
+            uint8_t red = px[0];
+            uint8_t green = px[1];
+            uint8_t blue = px[2];
+            if (cover_png_is_transparent_bg(red, green, blue)) {
+                continue;
+            }
+
+            uint16_t lum = (uint16_t)red + (uint16_t)green + (uint16_t)blue;
+            if (lum < 18 || lum > 720) {
+                continue;
+            }
+
+            r_acc += red;
+            g_acc += green;
+            b_acc += blue;
+            samples++;
+        }
     }
 
+    if (samples == 0) {
+        return 0;
+    }
+
+    return (((uint32_t)(r_acc / samples)) << 16) |
+           (((uint32_t)(g_acc / samples)) << 8) |
+           ((uint32_t)(b_acc / samples));
+}
+
+static bool cover_decode_png_lodepng(const uint8_t *png, size_t len, int target_w, int target_h,
+                                     ha_cover_result_t *out)
+{
     uint8_t *decoded = NULL;
     unsigned decoded_w = 0;
     unsigned decoded_h = 0;
@@ -929,10 +1222,33 @@ static bool cover_decode_png(const uint8_t *png, size_t len, int target_w, int t
     memset(rgb565a8, 0, out_size);
 
     uint8_t *alpha_plane = rgb565a8 + ((size_t)color_stride * out_h);
-    cover_scale_rgb24_to_rgb565a8_nearest(decoded, decoded_w, decoded_h,
-                                          rgb565a8, alpha_plane,
-                                          out_w, out_h,
-                                          color_stride, alpha_stride);
+    cover_scaler_t scaler;
+    uint8_t *rgba_row = (size_t)decoded_w <= SIZE_MAX / 4U
+        ? (uint8_t *)heap_caps_malloc((size_t)decoded_w * 4U, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) : NULL;
+    if (rgba_row != NULL && cover_scaler_begin(&scaler, decoded_w, decoded_h, out_w, out_h)) {
+        for (uint32_t y = 0; y < decoded_h; y++) {
+            const uint8_t *row = decoded + (size_t)y * decoded_w * 3U;
+            for (uint32_t x = 0; x < decoded_w; x++) {
+                const uint8_t *px = row + (size_t)x * 3U;
+                rgba_row[(size_t)x * 4U] = px[0];
+                rgba_row[(size_t)x * 4U + 1U] = px[1];
+                rgba_row[(size_t)x * 4U + 2U] = px[2];
+                rgba_row[(size_t)x * 4U + 3U] = cover_png_is_transparent_bg(px[0], px[1], px[2]) ? 0U : 0xFFU;
+            }
+            if (cover_box_add_rgba_row(&scaler.box, rgba_row)) {
+                const uint32_t dy = cover_box_ready_row(&scaler.box);
+                cover_box_take_rgb565_row(&scaler.box, (uint16_t *)(rgb565a8 + (size_t)dy * color_stride),
+                                          alpha_plane + (size_t)dy * alpha_stride);
+            }
+        }
+        cover_scaler_end(&scaler);
+    } else {
+        cover_scale_rgb24_to_rgb565a8_nearest(decoded, decoded_w, decoded_h,
+                                              rgb565a8, alpha_plane,
+                                              out_w, out_h,
+                                              color_stride, alpha_stride);
+    }
+    heap_caps_free(rgba_row);
 
     out->image.header.magic = LV_IMAGE_HEADER_MAGIC;
     out->image.header.cf = LV_COLOR_FORMAT_RGB565A8;
@@ -948,6 +1264,64 @@ static bool cover_decode_png(const uint8_t *png, size_t len, int target_w, int t
     cover_png_free_decoded(decoded);
     out->valid = true;
     return true;
+}
+#endif /* LV_USE_LODEPNG */
+
+static bool cover_decode_png(const uint8_t *png, size_t len, int target_w, int target_h,
+                             ha_cover_result_t *out)
+{
+    if (png == NULL || len == 0 || out == NULL) {
+        return false;
+    }
+
+    uint32_t src_w = 0;
+    uint32_t src_h = 0;
+    uint8_t bit_depth = 0;
+    uint8_t color_type = 0;
+    uint8_t interlace = 0;
+    if (!cover_png_get_header(png, len, &src_w, &src_h, &bit_depth, &color_type, &interlace)) {
+        ESP_LOGW(TAG, "png header parse failed");
+        return false;
+    }
+
+    uint32_t source_bpp = cover_png_source_bpp_for_type(color_type);
+    /* The streamed path needs only a few rows of memory, but a small file can inflate to a huge image (1 MiB of
+     * deflate expands about 1000-fold): cap the pixel count so one cover cannot hold the worker for seconds. */
+    const bool streamable = bit_depth == 8U && interlace == 0U && source_bpp > 0;
+    if (!cover_image_size_ok(src_w, src_h, streamable ? COVER_PNG_STREAM_MAX_PIXELS : COVER_PNG_FULL_MAX_PIXELS)) {
+        ESP_LOGW(TAG, "png %ux%u exceeds the %s decode cap, skipping", (unsigned)src_w, (unsigned)src_h,
+                 streamable ? "streamed" : "full-image");
+        return false;
+    }
+    if (bit_depth == 8U && interlace == 0U && source_bpp > 0) {
+        uint8_t palette_rgb[256U * 3U];
+        uint8_t palette_alpha[256U];
+        uint32_t palette_entries = 0;
+        const uint8_t *palette_rgb_ptr = NULL;
+        const uint8_t *palette_alpha_ptr = NULL;
+        if (color_type == 3U) {
+            if (!cover_png_read_palette(png, len, palette_rgb, palette_alpha, &palette_entries)) {
+                ESP_LOGW(TAG, "png palette parse failed");
+                return false;
+            }
+            palette_rgb_ptr = palette_rgb;
+            palette_alpha_ptr = palette_alpha;
+        }
+        return cover_decode_png_streamed(png, len, src_w, src_h, source_bpp,
+                                         palette_rgb_ptr, palette_alpha_ptr, palette_entries,
+                                         target_w, target_h, out);
+    }
+
+#if LV_USE_LODEPNG
+    ESP_LOGI(TAG, "png %ux%u depth=%u type=%u interlace=%u not streamable, using lodepng fallback",
+             (unsigned)src_w, (unsigned)src_h,
+             (unsigned)bit_depth, (unsigned)color_type, (unsigned)interlace);
+    return cover_decode_png_lodepng(png, len, target_w, target_h, out);
+#else
+    ESP_LOGW(TAG, "unsupported png cover format: %ux%u depth=%u type=%u interlace=%u",
+             (unsigned)src_w, (unsigned)src_h,
+             (unsigned)bit_depth, (unsigned)color_type, (unsigned)interlace);
+    return false;
 #endif
 }
 
@@ -1041,7 +1415,14 @@ static esp_err_t cover_download(const char *url, http_sink_t *sink)
         .crt_bundle_attach = esp_crt_bundle_attach,
 #endif
     };
-    if (work->ctx.cert_common_name[0] != '\0') cfg.common_name = work->ctx.cert_common_name;
+    /* entity_picture may be an absolute URL on any server (Home Assistant exposes the media source's own URL when it
+     * is publicly reachable). The access token, the Host override and the pinned TLS name belong to the Home
+     * Assistant origin only; a foreign host gets a plain anonymous request. */
+    const bool ha_origin = cover_url_on_origin(work->full_url, work->ctx.base_url);
+    if (ha_origin && work->ctx.cert_common_name[0] != '\0') cfg.common_name = work->ctx.cert_common_name;
+    const bool send_bearer = ha_origin && strstr(work->full_url, "token=") == NULL && work->ctx.bearer_token[0] != '\0';
+    /* A redirect would carry the Authorization header along to wherever it points. */
+    cfg.disable_auto_redirect = send_bearer;
 
     esp_http_client_handle_t cli = esp_http_client_init(&cfg);
     if (cli == NULL) {
@@ -1049,7 +1430,7 @@ static esp_err_t cover_download(const char *url, http_sink_t *sink)
         goto cleanup;
     }
 
-    if (work->ctx.host_header[0] != '\0') {
+    if (ha_origin && work->ctx.host_header[0] != '\0') {
         esp_http_client_set_header(cli, "Host", work->ctx.host_header);
     }
     esp_http_client_set_header(cli, "Connection", "close");
@@ -1057,7 +1438,7 @@ static esp_err_t cover_download(const char *url, http_sink_t *sink)
     /* The HA media_player_proxy URLs already carry a ?token=... query; a Bearer
      * header is harmless but unnecessary and would bloat the request.  Only
      * attach it for URLs that don't include a token. */
-    if (strstr(work->full_url, "token=") == NULL && work->ctx.bearer_token[0] != '\0') {
+    if (send_bearer) {
         snprintf(work->auth, sizeof(work->auth), "Bearer %s", work->ctx.bearer_token);
         esp_http_client_set_header(cli, "Authorization", work->auth);
     }
@@ -1079,6 +1460,10 @@ static esp_err_t cover_download(const char *url, http_sink_t *sink)
         ESP_LOGW(TAG, "http fetch headers failed: %" PRId64, content_length);
         ret = ESP_ERR_HTTP_FETCH_HEADER;
         goto client_close;
+    }
+    if (ha_auth_state_report_http(status, false, true)) {
+        ESP_LOGE(TAG, "HA rejected the panel (HTTP %d, %s): image fetches stop until a restart", status,
+                 ha_auth_state_name());
     }
     if (status != 200) {
         ESP_LOGW(TAG, "http status=%d for cover fetch", status);
@@ -1192,6 +1577,96 @@ static bool cover_download_error_is_retryable(esp_err_t err)
 
 /* ---- Decode + dominant color ---- */
 
+static bool cover_jpeg_find_sof(const uint8_t *buf, size_t len,
+                                uint8_t *marker_out, uint16_t *width_out,
+                                uint16_t *height_out, uint8_t *components_out)
+{
+    if (buf == NULL || len < 4 || buf[0] != 0xFF || buf[1] != 0xD8) {
+        return false;
+    }
+
+    size_t pos = 2;
+    while (pos + 1 < len) {
+        while (pos < len && buf[pos] != 0xFF) {
+            pos++;
+        }
+        while (pos < len && buf[pos] == 0xFF) {
+            pos++;
+        }
+        if (pos >= len) {
+            break;
+        }
+
+        uint8_t marker = buf[pos++];
+        if (marker == 0xD9 || marker == 0xDA) {
+            break;
+        }
+        if ((marker >= 0xD0 && marker <= 0xD7) || marker == 0x01) {
+            continue;
+        }
+        if (pos + 2 > len) {
+            break;
+        }
+
+        uint16_t seg_len = ((uint16_t)buf[pos] << 8) | buf[pos + 1];
+        if (seg_len < 2 || pos + seg_len > len) {
+            break;
+        }
+
+        bool is_sof = (marker >= 0xC0 && marker <= 0xCF &&
+                       marker != 0xC4 && marker != 0xC8 && marker != 0xCC);
+        if (is_sof) {
+            if (seg_len < 8) {
+                return false;
+            }
+            if (marker_out != NULL) *marker_out = marker;
+            if (height_out != NULL) *height_out = ((uint16_t)buf[pos + 3] << 8) | buf[pos + 4];
+            if (width_out != NULL) *width_out = ((uint16_t)buf[pos + 5] << 8) | buf[pos + 6];
+            if (components_out != NULL) *components_out = buf[pos + 7];
+            return true;
+        }
+
+        pos += seg_len;
+    }
+
+    return false;
+}
+
+static const char *cover_jpeg_sof_name(uint8_t marker)
+{
+    switch (marker) {
+        case 0xC0: return "SOF0 baseline";
+        case 0xC1: return "SOF1 extended sequential";
+        case 0xC2: return "SOF2 progressive";
+        case 0xC3: return "SOF3 lossless";
+        case 0xC5: return "SOF5 differential sequential";
+        case 0xC6: return "SOF6 differential progressive";
+        case 0xC7: return "SOF7 differential lossless";
+        case 0xC9: return "SOF9 arithmetic sequential";
+        case 0xCA: return "SOF10 arithmetic progressive";
+        case 0xCB: return "SOF11 arithmetic lossless";
+        case 0xCD: return "SOF13 arithmetic differential sequential";
+        case 0xCE: return "SOF14 arithmetic differential progressive";
+        case 0xCF: return "SOF15 arithmetic differential lossless";
+        default: return "SOF unknown";
+    }
+}
+
+static void cover_log_jpeg_sof(const uint8_t *buf, size_t len)
+{
+    uint8_t marker = 0;
+    uint16_t width = 0;
+    uint16_t height = 0;
+    uint8_t components = 0;
+    if (cover_jpeg_find_sof(buf, len, &marker, &width, &height, &components)) {
+        ESP_LOGI(TAG, "jpeg SOF marker: 0x%02x (%s) %ux%u components=%u",
+                 (unsigned)marker, cover_jpeg_sof_name(marker),
+                 (unsigned)width, (unsigned)height, (unsigned)components);
+    } else {
+        ESP_LOGW(TAG, "jpeg SOF marker not found");
+    }
+}
+
 /* Pick sample_method that yields an output no larger than max(target_w,target_h)*1.5
  * while still keeping enough pixels for color analysis. Hardware supports 1/1, 1/2,
  * 1/4 and 1/8 scales through jpeg_down_sampling_type_t; we rely on it implicitly by
@@ -1258,6 +1733,48 @@ static size_t cover_jpeg_sanitize(uint8_t *buf, size_t len)
 }
 
 #if SOC_JPEG_DECODE_SUPPORTED
+/* Shrink a decoded RGB565 picture to the requested size with an area average. The hardware JPEG decoder always
+ * delivers the full source resolution, which LVGL would otherwise scale down on every redraw (and with
+ * nearest-neighbour artefacts for large ratios); a 640 px cover shown at 200 px also drops from ~800 KB to ~80 KB.
+ * Pictures that are not larger than the target, or where memory is short, stay as decoded. */
+static void cover_shrink_rgb565_to_target(ha_cover_result_t *result, int target_w, int target_h)
+{
+    if (result == NULL || result->image.data == NULL || result->image.header.cf != LV_COLOR_FORMAT_RGB565 ||
+        target_w <= 0 || target_h <= 0) {
+        return;
+    }
+    const uint32_t src_w = result->image.header.w;
+    const uint32_t src_h = result->image.header.h;
+    uint32_t out_w = 0;
+    uint32_t out_h = 0;
+    cover_pick_png_output_size(src_w, src_h, target_w, target_h, &out_w, &out_h);
+    if (out_w == 0 || out_h == 0 || (out_w >= src_w && out_h >= src_h)) {
+        return;
+    }
+    const size_t out_size = (size_t)out_w * out_h * 2U;
+    uint16_t *dst = (uint16_t *)heap_caps_malloc(out_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    cover_scaler_t scaler;
+    if (dst == NULL || !cover_scaler_begin(&scaler, src_w, src_h, out_w, out_h)) {
+        heap_caps_free(dst);
+        return;
+    }
+    const uint32_t src_stride = result->image.header.stride / 2U;
+    const uint16_t *src = (const uint16_t *)result->image.data;
+    for (uint32_t y = 0; y < src_h; y++) {
+        if (cover_box_add_rgb565_row(&scaler.box, src + (size_t)y * src_stride)) {
+            const uint32_t dy = cover_box_ready_row(&scaler.box);
+            cover_box_take_rgb565_row(&scaler.box, dst + (size_t)dy * out_w, NULL);
+        }
+    }
+    cover_scaler_end(&scaler);
+    heap_caps_free((void *)result->image.data);
+    result->image.data = (const uint8_t *)dst;
+    result->image.data_size = (uint32_t)out_size;
+    result->image.header.w = out_w;
+    result->image.header.h = out_h;
+    result->image.header.stride = out_w * 2U;
+}
+
 static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int target_h,
                           ha_cover_result_t *out)
 {
@@ -1266,7 +1783,14 @@ static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int targe
         ESP_LOGW(TAG, "jpeg header parse failed");
         return false;
     }
-    if (pic.width == 0 || pic.height == 0) return false;
+    ESP_LOGD(TAG, "jpeg info: src=%ux%u sample=%u",
+             (unsigned)pic.width, (unsigned)pic.height,
+             (unsigned)pic.sample_method);
+    if (pic.width == 0 || pic.height == 0) {
+        ESP_LOGW(TAG, "jpeg header has zero dimensions");
+        cover_log_jpeg_sof(jpg, len);
+        return false;
+    }
 
     /* Decoder output dimensions must be a multiple of 16. The HW decoder does
      * not downscale: the output always has the source resolution (rounded up
@@ -1274,8 +1798,6 @@ static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int targe
      * reject images that would exceed a sane PSRAM budget. */
     uint32_t out_w = (pic.width + 15U) & ~15U;
     uint32_t out_h = (pic.height + 15U) & ~15U;
-    (void)target_w;
-    (void)target_h;
 
     /* Hard cap ~4 MB RGB565 (≈1440x1440). HA album art is typically ≤ 640²
      * which is ~0.8 MB. */
@@ -1318,8 +1840,10 @@ static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int targe
     out->image.header.magic = LV_IMAGE_HEADER_MAGIC;
     out->image.header.cf = LV_COLOR_FORMAT_RGB565;
     out->image.header.flags = 0;
-    out->image.header.w = (uint32_t)out_w;
-    out->image.header.h = (uint32_t)out_h;
+    /* The decoder fills whole 16 x 16 blocks: the buffer is out_w x out_h, the picture only pic.width x pic.height.
+     * Report the picture size and keep the buffer width as the stride, so the padding is never shown. */
+    out->image.header.w = (uint32_t)pic.width;
+    out->image.header.h = (uint32_t)pic.height;
     out->image.header.stride = (uint32_t)(out_w * 2);
     out->image.data_size = produced;
     out->image.data = rgb;
@@ -1330,8 +1854,8 @@ static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int targe
     const int STEP = 8;
     uint32_t r_acc = 0, g_acc = 0, b_acc = 0, n = 0;
     const uint16_t *px = (const uint16_t *)rgb;
-    for (uint32_t y = 0; y < out_h; y += STEP) {
-        for (uint32_t x = 0; x < out_w; x += STEP) {
+    for (uint32_t y = 0; y < pic.height; y += STEP) {
+        for (uint32_t x = 0; x < pic.width; x += STEP) {
             uint16_t v = px[y * out_w + x];
             uint8_t r = (v >> 11) & 0x1F;
             uint8_t g = (v >> 5) & 0x3F;
@@ -1355,6 +1879,131 @@ static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int targe
         r8 = 0x4D; g8 = 0xA3; b8 = 0xFF;
     }
     out->dominant_rgb = (r8 << 16) | (g8 << 8) | b8;
+    cover_shrink_rgb565_to_target(out, target_w, target_h);
+    out->valid = true;
+    return true;
+}
+
+static bool cover_decode_stb_jpeg(const uint8_t *jpg, size_t len, int target_w, int target_h,
+                                  ha_cover_result_t *out)
+{
+    if (jpg == NULL || out == NULL || len == 0 || len > INT32_MAX) {
+        return false;
+    }
+
+    int info_w = 0;
+    int info_h = 0;
+    int info_comp = 0;
+    if (!stbi_info_from_memory(jpg, (int)len, &info_w, &info_h, &info_comp)) {
+        ESP_LOGW(TAG, "stb jpeg info failed: %s", stbi_failure_reason());
+        return false;
+    }
+    if (info_w <= 0 || info_h <= 0) {
+        ESP_LOGW(TAG, "stb jpeg invalid dimensions: %dx%d", info_w, info_h);
+        return false;
+    }
+
+    const uint32_t MAX_PIXELS = 1440U * 1440U;
+    if ((uint32_t)info_w * (uint32_t)info_h > MAX_PIXELS) {
+        ESP_LOGW(TAG, "stb jpeg %dx%d exceeds decode cap, skipping", info_w, info_h);
+        return false;
+    }
+
+    int src_w = 0;
+    int src_h = 0;
+    int src_comp = 0;
+    int64_t t0 = esp_timer_get_time();
+    uint8_t *rgb24 = stbi_load_from_memory(jpg, (int)len, &src_w, &src_h, &src_comp, 3);
+    if (rgb24 == NULL) {
+        ESP_LOGW(TAG, "stb jpeg decode failed: %s", stbi_failure_reason());
+        return false;
+    }
+    if (src_w <= 0 || src_h <= 0) {
+        ESP_LOGW(TAG, "stb jpeg decoded invalid dimensions: %dx%d", src_w, src_h);
+        stbi_image_free(rgb24);
+        return false;
+    }
+
+    uint32_t out_w = 0;
+    uint32_t out_h = 0;
+    cover_pick_png_output_size((uint32_t)src_w, (uint32_t)src_h, target_w, target_h, &out_w, &out_h);
+    if (out_w == 0 || out_h == 0) {
+        stbi_image_free(rgb24);
+        return false;
+    }
+
+    size_t rgb_size = (size_t)out_w * out_h * 2U;
+    uint8_t *rgb565 = (uint8_t *)heap_caps_malloc(rgb_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (rgb565 == NULL) {
+        rgb565 = (uint8_t *)heap_caps_malloc(rgb_size, MALLOC_CAP_8BIT);
+    }
+    if (rgb565 == NULL) {
+        ESP_LOGW(TAG, "stb jpeg alloc output %u failed", (unsigned)rgb_size);
+        stbi_image_free(rgb24);
+        return false;
+    }
+
+    uint32_t r_acc = 0;
+    uint32_t g_acc = 0;
+    uint32_t b_acc = 0;
+    uint32_t n_acc = 0;
+    uint16_t *dst = (uint16_t *)rgb565;
+    cover_scaler_t scaler;
+    if (cover_scaler_begin(&scaler, (uint32_t)src_w, (uint32_t)src_h, out_w, out_h)) {
+        for (int y = 0; y < src_h; y++) {
+            if (cover_box_add_rgb24_row(&scaler.box, rgb24 + (size_t)y * (uint32_t)src_w * 3U)) {
+                const uint32_t dy = cover_box_ready_row(&scaler.box);
+                cover_box_take_rgb565_row(&scaler.box, dst + (size_t)dy * out_w, NULL);
+            }
+        }
+        cover_scaler_end(&scaler);
+    } else {
+        for (uint32_t y = 0; y < out_h; y++) {
+            uint32_t sy = (uint32_t)(((uint64_t)y * (uint32_t)src_h) / out_h);
+            const uint8_t *src_row = rgb24 + (size_t)sy * (uint32_t)src_w * 3U;
+            for (uint32_t x = 0; x < out_w; x++) {
+                uint32_t sx = (uint32_t)(((uint64_t)x * (uint32_t)src_w) / out_w);
+                const uint8_t *px = src_row + (size_t)sx * 3U;
+                dst[(size_t)y * out_w + x] = (uint16_t)(((px[0] & 0xF8) << 8) | ((px[1] & 0xFC) << 3) | (px[2] >> 3));
+            }
+        }
+    }
+    /* Dominant colour from a coarse grid of the source, independent of the scaler. */
+    for (int y = 0; y < src_h; y += 8) {
+        const uint8_t *src_row = rgb24 + (size_t)y * (uint32_t)src_w * 3U;
+        for (int x = 0; x < src_w; x += 8) {
+            const uint8_t *px = src_row + (size_t)x * 3U;
+            const uint8_t r = px[0];
+            const uint8_t g = px[1];
+            const uint8_t b = px[2];
+            const int lum = (r >> 3) + ((g >> 2) >> 1) + (b >> 3);
+            if (lum >= 4 && lum <= 50) {
+                r_acc += r;
+                g_acc += g;
+                b_acc += b;
+                n_acc++;
+            }
+        }
+    }
+    stbi_image_free(rgb24);
+
+    ESP_LOGD(TAG, "stb jpeg decoded %dx%d comp=%d -> %ux%u in %lld ms",
+             src_w, src_h, src_comp, (unsigned)out_w, (unsigned)out_h,
+             (long long)((esp_timer_get_time() - t0) / 1000));
+
+    out->image.header.magic = LV_IMAGE_HEADER_MAGIC;
+    out->image.header.cf = LV_COLOR_FORMAT_RGB565;
+    out->image.header.flags = 0;
+    out->image.header.w = out_w;
+    out->image.header.h = out_h;
+    out->image.header.stride = out_w * 2U;
+    out->image.data_size = (uint32_t)rgb_size;
+    out->image.data = rgb565;
+    out->source_w = (uint32_t)src_w;
+    out->source_h = (uint32_t)src_h;
+    out->dominant_rgb = n_acc > 0
+        ? (((r_acc / n_acc) << 16) | ((g_acc / n_acc) << 8) | (b_acc / n_acc))
+        : ((0x4DU << 16) | (0xA3U << 8) | 0xFFU);
     out->valid = true;
     return true;
 }
@@ -1451,9 +2100,6 @@ static bool cover_decode(const uint8_t *jpg, size_t len, int target_w, int targe
     /* TJpgDec needs a scratch "pool" of ~3.5 KiB for its work tables. */
     enum { TJPGD_POOL_SZ = 3800 };
     void *pool = NULL;
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480) && defined(CONFIG_SPIRAM) && CONFIG_SPIRAM
-    pool = heap_caps_malloc(TJPGD_POOL_SZ, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-#endif
     if (pool == NULL) {
         pool = heap_caps_malloc(TJPGD_POOL_SZ, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
     }
@@ -1553,32 +2199,15 @@ static void cover_task(void *arg)
         cover_req_t req;
         if (xQueueReceive(s_queue, &req, portMAX_DELAY) != pdTRUE) continue;
 
-        /* Mark as in-flight so cancel() can invalidate us. */
-        xSemaphoreTake(s_lock, portMAX_DELAY);
-        s_inflight = req;
-        s_inflight_valid = true;
-        void *cancelled = s_cancelled_user;
-        xSemaphoreGive(s_lock);
-
-        if (cancelled != NULL && cancelled == req.user) {
-            xSemaphoreTake(s_lock, portMAX_DELAY);
-            s_inflight_valid = false;
-            s_cancelled_user = NULL;
-            xSemaphoreGive(s_lock);
+        if (cover_request_cancelled(req.lifetime)) {
+            cover_request_finish(req.lifetime);
             continue;
         }
 
         /* 1) Wait for WS liveness, the heavy WS gate and a small internal
          *    heap/socket reserve. Cover fetches are nice-to-have UI work. */
-        if (!cover_wait_until_http_ready(req.user)) {
-            xSemaphoreTake(s_lock, portMAX_DELAY);
-            if (cover_request_cancelled_locked(req.user)) {
-                s_cancelled_user = NULL;
-            }
-            xSemaphoreGive(s_lock);
-            xSemaphoreTake(s_lock, portMAX_DELAY);
-            s_inflight_valid = false;
-            xSemaphoreGive(s_lock);
+        if (!cover_wait_until_http_ready(req.lifetime)) {
+            cover_request_finish(req.lifetime);
             continue;
         }
 
@@ -1590,12 +2219,7 @@ static void cover_task(void *arg)
         bool ok = false;
         bool cancelled_download = false;
         for (uint8_t attempt = 0; attempt < COVER_HTTP_MAX_ATTEMPTS; attempt++) {
-            if (!cover_wait_until_http_ready(req.user)) {
-                xSemaphoreTake(s_lock, portMAX_DELAY);
-                if (cover_request_cancelled_locked(req.user)) {
-                    s_cancelled_user = NULL;
-                }
-                xSemaphoreGive(s_lock);
+            if (!cover_wait_until_http_ready(req.lifetime)) {
                 cancelled_download = true;
                 break;
             }
@@ -1623,12 +2247,7 @@ static void cover_task(void *arg)
                 (unsigned)COVER_HTTP_MAX_ATTEMPTS,
                 (unsigned)retry_ms,
                 esp_err_to_name(download_err));
-            if (!cover_delay_or_cancel(req.user, retry_ms)) {
-                xSemaphoreTake(s_lock, portMAX_DELAY);
-                if (cover_request_cancelled_locked(req.user)) {
-                    s_cancelled_user = NULL;
-                }
-                xSemaphoreGive(s_lock);
+            if (!cover_delay_or_cancel(req.lifetime, retry_ms)) {
                 cancelled_download = true;
                 break;
             }
@@ -1638,33 +2257,71 @@ static void cover_task(void *arg)
             if (sink.buf != NULL) {
                 heap_caps_free(sink.buf);
             }
-            xSemaphoreTake(s_lock, portMAX_DELAY);
-            s_inflight_valid = false;
-            xSemaphoreGive(s_lock);
+            cover_request_finish(req.lifetime);
             continue;
         }
 
         /* 3) Decode + color */
         ha_cover_result_t result = {0};
         if (ok) {
+            const char *format = cover_guess_format(sink.buf, sink.len);
+            ESP_LOGD(TAG, "cover decode start: format=%s len=%u magic=%02x %02x %02x %02x",
+                     format, (unsigned)sink.len,
+                     sink.len > 0 ? sink.buf[0] : 0,
+                     sink.len > 1 ? sink.buf[1] : 0,
+                     sink.len > 2 ? sink.buf[2] : 0,
+                     sink.len > 3 ? sink.buf[3] : 0);
             if (cover_is_png(sink.buf, sink.len)) {
                 ok = cover_decode_png(sink.buf, sink.len, req.target_w, req.target_h, &result);
-            } else {
-                sink.len = cover_jpeg_sanitize(sink.buf, sink.len);
+            } else if (sink.len >= 2 && sink.buf[0] == 0xFF && sink.buf[1] == 0xD8) {
+                xSemaphoreTake(s_decode_lock, portMAX_DELAY); /* worker only; shared with MJPEG */
                 ok = cover_decode(sink.buf, sink.len, req.target_w, req.target_h, &result);
+                if (!ok) {
+                    size_t original_len = sink.len;
+                    size_t sanitized_len = cover_jpeg_sanitize(sink.buf, original_len);
+                    if (sanitized_len != original_len) {
+                        ESP_LOGI(TAG, "retrying sanitized jpeg: len=%u -> %u",
+                                 (unsigned)original_len, (unsigned)sanitized_len);
+                        ok = cover_decode(sink.buf, sanitized_len, req.target_w, req.target_h, &result);
+                        sink.len = sanitized_len;
+                    }
+                }
+#if SOC_JPEG_DECODE_SUPPORTED
+                if (!ok) {
+                    ESP_LOGI(TAG, "retrying jpeg with software decoder");
+                    ok = cover_decode_stb_jpeg(sink.buf, sink.len, req.target_w, req.target_h, &result);
+                }
+#endif
+                xSemaphoreGive(s_decode_lock);
+            } else {
+                ESP_LOGW(TAG, "unsupported cover image format: %s len=%u", format, (unsigned)sink.len);
+                ok = false;
+            }
+            if (ok && result.valid && strstr(req.url, "camera_proxy") != NULL) {
+                cover_downscale_rgb565(&result, req.target_w, req.target_h);
+            }
+            if (ok && result.valid && result.image.data != NULL) {
+                ESP_LOGD(TAG, "cover decode ok: cf=%u out=%ux%u stride=%u size=%u src=%ux%u dominant=%06x",
+                         (unsigned)result.image.header.cf,
+                         (unsigned)result.image.header.w,
+                         (unsigned)result.image.header.h,
+                         (unsigned)result.image.header.stride,
+                         (unsigned)result.image.data_size,
+                         (unsigned)result.source_w,
+                         (unsigned)result.source_h,
+                         (unsigned)(result.dominant_rgb & 0xFFFFFFU));
+            } else {
+                ESP_LOGW(TAG, "cover decode failed: format=%s len=%u", format, (unsigned)sink.len);
             }
         }
         if (sink.buf) heap_caps_free(sink.buf);
 
-        /* 4) Re-check cancellation, then dispatch on LVGL task. */
-        xSemaphoreTake(s_lock, portMAX_DELAY);
-        bool cancelled_final = (s_cancelled_user != NULL && s_cancelled_user == req.user);
-        if (cancelled_final) s_cancelled_user = NULL;
-        s_inflight_valid = false;
-        xSemaphoreGive(s_lock);
+        /* Keep the cancellation ticket alive through LVGL dispatch. */
+        bool cancelled_final = cover_request_cancelled(req.lifetime);
 
         if (cancelled_final) {
             if (result.valid && result.image.data) heap_caps_free((void *)result.image.data);
+            cover_request_finish(req.lifetime);
             continue;
         }
 
@@ -1672,17 +2329,27 @@ static void cover_task(void *arg)
             cover_dispatch_t *disp = (cover_dispatch_t *)cover_heap_calloc(1, sizeof(cover_dispatch_t));
             if (disp == NULL) {
                 if (result.valid && result.image.data) heap_caps_free((void *)result.image.data);
+                cover_request_finish(req.lifetime);
                 continue;
             }
             disp->result = result;
             disp->cb = req.cb;
             disp->user = req.user;
-            if (lv_async_call(cover_dispatch_on_lvgl, disp) != LV_RESULT_OK) {
+            disp->lifetime = req.lifetime;
+            /* lv_async_call() changes LVGL's timer list: only under the display lock (see ha_history.c). */
+            bool queued = false;
+            if (display_lock(COVER_DISPATCH_LOCK_MS)) {
+                queued = lv_async_call(cover_dispatch_on_lvgl, disp) == LV_RESULT_OK;
+                display_unlock();
+            }
+            if (!queued) {
                 if (result.valid && result.image.data) heap_caps_free((void *)result.image.data);
                 heap_caps_free(disp);
+                cover_request_finish(req.lifetime);
             }
-        } else if (result.valid && result.image.data) {
-            heap_caps_free((void *)result.image.data);
+        } else {
+            if (result.valid && result.image.data) heap_caps_free((void *)result.image.data);
+            cover_request_finish(req.lifetime);
         }
     }
 }
@@ -1693,13 +2360,7 @@ static void cover_dispatch_on_lvgl(void *data)
     if (disp == NULL) return;
     /* Final cancel check on the LVGL side – the consumer may have been
      * destroyed between enqueue and dispatch. */
-    bool cancelled = false;
-    xSemaphoreTake(s_lock, portMAX_DELAY);
-    if (s_cancelled_user != NULL && s_cancelled_user == disp->user) {
-        s_cancelled_user = NULL;
-        cancelled = true;
-    }
-    xSemaphoreGive(s_lock);
+    bool cancelled = cover_request_cancelled(disp->lifetime);
 
     if (!cancelled) {
         disp->cb(disp->user, &disp->result);
@@ -1709,6 +2370,7 @@ static void cover_dispatch_on_lvgl(void *data)
     /* If the callback did not keep the buffer, it must have called
      * ha_cover_result_release() which frees it. We cannot free here without
      * double-free risk; the contract is: callback owns the buffer. */
+    cover_request_finish(disp->lifetime);
     heap_caps_free(disp);
 }
 
@@ -1718,8 +2380,9 @@ esp_err_t ha_cover_fetcher_init(void)
 {
     if (s_task != NULL) return ESP_OK;
     s_lock = xSemaphoreCreateMutex();
+    s_decode_lock = xSemaphoreCreateMutex();
     s_queue = xQueueCreate(COVER_Q_DEPTH, sizeof(cover_req_t));
-    if (s_lock == NULL || s_queue == NULL) return ESP_ERR_NO_MEM;
+    if (s_lock == NULL || s_decode_lock == NULL || s_queue == NULL) return ESP_ERR_NO_MEM;
 
 #if SOC_JPEG_DECODE_SUPPORTED
     jpeg_decode_engine_cfg_t eng = {
@@ -1735,7 +2398,8 @@ esp_err_t ha_cover_fetcher_init(void)
     /* Low priority (below HA WS RX task). Run on core 1 to keep core 0
      * for the HA WS / LVGL path. */
     BaseType_t ok;
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480) && CONFIG_SPIRAM && CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
+/* the stack lives in PSRAM: the task used under 2.2 KB of 8 KB, and it never touches flash */
+#if CONFIG_SPIRAM && CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
     ok = xTaskCreatePinnedToCoreWithCaps(
         cover_task, "ha_cover", APP_HA_COVER_TASK_STACK, NULL, APP_HA_COVER_TASK_PRIO, &s_task, 1,
         MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
@@ -1764,21 +2428,25 @@ esp_err_t ha_cover_fetcher_request(const char *entity_picture, int target_w, int
     req.cb = cb;
     req.user = user;
 
-    /* Clear any stale cancel token for this consumer. After widget destroy the
-     * heap may recycle the same ctx pointer for a freshly created widget; we
-     * must not let the old cancel mark suppress legitimate new requests. */
-    if (s_lock != NULL) {
-        xSemaphoreTake(s_lock, portMAX_DELAY);
-        if (s_cancelled_user == user) s_cancelled_user = NULL;
-        xSemaphoreGive(s_lock);
-    }
+    req.lifetime = cover_heap_calloc(1, sizeof(*req.lifetime));
+    if (!req.lifetime) return ESP_ERR_NO_MEM;
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    cover_request_lifetime_add(&s_requests, req.lifetime, user);
+    xSemaphoreGive(s_lock);
 
     if (xQueueSend(s_queue, &req, 0) != pdTRUE) {
         /* Drop-oldest policy: the newest entity_picture supersedes any stale
          * queued request for the same consumer anyway. */
         cover_req_t drop;
-        (void)xQueueReceive(s_queue, &drop, 0);
-        if (xQueueSend(s_queue, &req, 0) != pdTRUE) return ESP_ERR_NO_MEM;
+        if (xQueueReceive(s_queue, &drop, 0) == pdTRUE) {
+            /* The dropped request is never answered: its consumer has to cope (the camera tile times out). */
+            ESP_LOGW(TAG, "cover queue full: dropped the oldest request (%.60s)", drop.url);
+            cover_request_finish(drop.lifetime);
+        }
+        if (xQueueSend(s_queue, &req, 0) != pdTRUE) {
+            cover_request_finish(req.lifetime);
+            return ESP_ERR_NO_MEM;
+        }
     }
     return ESP_OK;
 }
@@ -1787,7 +2455,7 @@ void ha_cover_fetcher_cancel(void *user)
 {
     if (s_lock == NULL) return;
     xSemaphoreTake(s_lock, portMAX_DELAY);
-    s_cancelled_user = user;
+    cover_request_lifetime_cancel(s_requests, user);
     xSemaphoreGive(s_lock);
 }
 
@@ -1799,4 +2467,16 @@ void ha_cover_result_release(ha_cover_result_t *result)
         result->image.data = NULL;
     }
     result->valid = false;
+}
+
+bool ha_cover_fetcher_decode_jpeg(const uint8_t *jpeg, size_t length, int width, int height,
+                                 ha_cover_result_t *out)
+{
+    if (!out || !jpeg || !length || !s_decode_lock ||
+        xSemaphoreTake(s_decode_lock, pdMS_TO_TICKS(2500)) != pdTRUE) return false;
+    memset(out, 0, sizeof(*out));
+    bool ok = cover_decode(jpeg, length, width, height, out);
+    xSemaphoreGive(s_decode_lock);
+    if (ok) cover_downscale_rgb565(out, width, height);
+    return ok;
 }

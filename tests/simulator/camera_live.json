@@ -1,0 +1,31 @@
+{
+  "ha_online": true,
+  "pages": [
+    {
+      "id": "camera",
+      "title": "Camera example",
+      "widgets": [
+        {
+          "id": "camera_live",
+          "type": "camera_tile",
+          "title": "Synthetic camera",
+          "entity_id": "camera.synthetic",
+          "camera_live": true,
+          "rect": {
+            "x": 16,
+            "y": 16,
+            "w": 640,
+            "h": 360
+          }
+        }
+      ]
+    }
+  ],
+  "states": [
+    {
+      "entity_id": "camera.synthetic",
+      "state": "streaming",
+      "attributes": {}
+    }
+  ]
+}

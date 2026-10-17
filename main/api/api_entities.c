@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "api/api_routes.h"
 
@@ -12,6 +13,7 @@
 #include "app_config.h"
 #include "ha/ha_client.h"
 #include "ha/ha_model.h"
+#include "util/url_decode.h"
 
 #define API_ENTITIES_MAX_ITEMS_DEFAULT 128U
 #define API_ENTITIES_MAX_ITEMS_MIN 8U
@@ -21,7 +23,6 @@ static void set_json_headers(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 }
 
 static size_t parse_max_items(const char *value)
@@ -59,6 +60,7 @@ esp_err_t api_entities_get_handler(httpd_req_t *req)
         if (httpd_req_get_url_query_str(req, query, query_len + 1) == ESP_OK) {
             httpd_query_key_value(query, "domain", domain, sizeof(domain));
             httpd_query_key_value(query, "search", search, sizeof(search));
+            url_decode_in_place(search);
             httpd_query_key_value(query, "limit", limit_raw, sizeof(limit_raw));
         }
         free(query);
@@ -120,6 +122,7 @@ esp_err_t api_light_entities_get_handler(httpd_req_t *req)
     char refresh_raw[8] = {0};
     char domain[APP_HA_DISCOVERY_DOMAIN_MAX_LEN] = "light";
     char search[APP_HA_DISCOVERY_SEARCH_MAX_LEN] = {0};
+    char areas_only_raw[8] = {0};
 
     int query_len = httpd_req_get_url_query_len(req);
     if (query_len > 0) {
@@ -129,15 +132,21 @@ esp_err_t api_light_entities_get_handler(httpd_req_t *req)
         }
         if (httpd_req_get_url_query_str(req, query, query_len + 1) == ESP_OK) {
             httpd_query_key_value(query, "refresh", refresh_raw, sizeof(refresh_raw));
+            httpd_query_key_value(query, "areas_only", areas_only_raw, sizeof(areas_only_raw));
             httpd_query_key_value(query, "domain", domain, sizeof(domain));
             httpd_query_key_value(query, "search", search, sizeof(search));
+            url_decode_in_place(search);
         }
         free(query);
     }
 
     bool refresh = strcmp(refresh_raw, "1") == 0 || strcmp(refresh_raw, "true") == 0;
+    /* domain=room&areas_only=1: just the area/floor registry, no entity discovery. */
+    bool areas_only = strcmp(domain, "room") == 0 &&
+        (strcmp(areas_only_raw, "1") == 0 || strcmp(areas_only_raw, "true") == 0);
     char *payload = NULL;
-    esp_err_t err = ha_client_get_domain_entities_json(domain, search, refresh, &payload);
+    esp_err_t err = areas_only ? ha_client_get_room_areas_json(refresh, &payload)
+                               : ha_client_get_domain_entities_json(domain, search, refresh, &payload);
     if (err != ESP_OK || payload == NULL) {
         return httpd_resp_send_500(req);
     }
@@ -162,6 +171,7 @@ esp_err_t api_light_entities_delete_handler(httpd_req_t *req)
         if (httpd_req_get_url_query_str(req, query, query_len + 1) == ESP_OK) {
             httpd_query_key_value(query, "domain", domain, sizeof(domain));
             httpd_query_key_value(query, "search", search, sizeof(search));
+            url_decode_in_place(search);
         }
         free(query);
     }

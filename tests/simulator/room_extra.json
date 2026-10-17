@@ -1,0 +1,619 @@
+{
+ "version": 1,
+ "pages": [
+  {
+   "id": "re_default",
+   "title": "Room default",
+   "widgets": [
+    {
+     "id": "re_default_a",
+     "type": "room_tile",
+     "title": "Wohnzimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 10,
+      "y": 10,
+      "w": 220,
+      "h": 120
+     }
+    },
+    {
+     "id": "re_default_b",
+     "type": "room_tile",
+     "title": "Küche mit sehr langem Namen",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 250,
+      "y": 10,
+      "w": 236,
+      "h": 140
+     }
+    },
+    {
+     "id": "re_default_c",
+     "type": "room_tile",
+     "title": "Schlafzimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 10,
+      "y": 170,
+      "w": 280,
+      "h": 180
+     }
+    },
+    {
+     "id": "re_default_d",
+     "type": "room_tile",
+     "title": "Arbeitszimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 310,
+      "y": 170,
+      "w": 400,
+      "h": 240
+     }
+    }
+   ]
+  },
+  {
+   "id": "re_humidity",
+   "title": "Room humidity",
+   "widgets": [
+    {
+     "id": "re_humidity_a",
+     "type": "room_tile",
+     "title": "Wohnzimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 10,
+      "y": 10,
+      "w": 220,
+      "h": 120
+     },
+     "room_extra_mode": "humidity",
+     "room_extra_entity_id": "sensor.re_hum"
+    },
+    {
+     "id": "re_humidity_b",
+     "type": "room_tile",
+     "title": "Küche mit sehr langem Namen",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 250,
+      "y": 10,
+      "w": 236,
+      "h": 140
+     },
+     "room_extra_mode": "humidity",
+     "room_extra_entity_id": "sensor.re_hum"
+    },
+    {
+     "id": "re_humidity_c",
+     "type": "room_tile",
+     "title": "Schlafzimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 10,
+      "y": 170,
+      "w": 280,
+      "h": 180
+     },
+     "room_extra_mode": "humidity",
+     "room_extra_entity_id": "sensor.re_hum"
+    },
+    {
+     "id": "re_humidity_d",
+     "type": "room_tile",
+     "title": "Arbeitszimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 310,
+      "y": 170,
+      "w": 400,
+      "h": 240
+     },
+     "room_extra_mode": "humidity",
+     "room_extra_entity_id": "sensor.re_hum"
+    }
+   ]
+  },
+  {
+   "id": "re_cover",
+   "title": "Room cover",
+   "widgets": [
+    {
+     "id": "re_cover_a",
+     "type": "room_tile",
+     "title": "Wohnzimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 10,
+      "y": 10,
+      "w": 220,
+      "h": 120
+     },
+     "room_extra_mode": "cover",
+     "room_extra_entity_id": "cover.re_blind"
+    },
+    {
+     "id": "re_cover_b",
+     "type": "room_tile",
+     "title": "Küche mit sehr langem Namen",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 250,
+      "y": 10,
+      "w": 236,
+      "h": 140
+     },
+     "room_extra_mode": "cover",
+     "room_extra_entity_id": "cover.re_blind"
+    },
+    {
+     "id": "re_cover_c",
+     "type": "room_tile",
+     "title": "Schlafzimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 10,
+      "y": 170,
+      "w": 280,
+      "h": 180
+     },
+     "room_extra_mode": "cover",
+     "room_extra_entity_id": "cover.re_blind"
+    },
+    {
+     "id": "re_cover_d",
+     "type": "room_tile",
+     "title": "Arbeitszimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 310,
+      "y": 170,
+      "w": 400,
+      "h": 240
+     },
+     "room_extra_mode": "cover",
+     "room_extra_entity_id": "cover.re_blind"
+    }
+   ]
+  },
+  {
+   "id": "re_media",
+   "title": "Room media",
+   "widgets": [
+    {
+     "id": "re_media_a",
+     "type": "room_tile",
+     "title": "Wohnzimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 10,
+      "y": 10,
+      "w": 220,
+      "h": 120
+     },
+     "room_extra_mode": "media_player",
+     "room_extra_entity_id": "media_player.re_tv"
+    },
+    {
+     "id": "re_media_b",
+     "type": "room_tile",
+     "title": "Küche mit sehr langem Namen",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 250,
+      "y": 10,
+      "w": 236,
+      "h": 140
+     },
+     "room_extra_mode": "media_player",
+     "room_extra_entity_id": "media_player.re_tv"
+    },
+    {
+     "id": "re_media_c",
+     "type": "room_tile",
+     "title": "Schlafzimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 10,
+      "y": 170,
+      "w": 280,
+      "h": 180
+     },
+     "room_extra_mode": "media_player",
+     "room_extra_entity_id": "media_player.re_tv"
+    },
+    {
+     "id": "re_media_d",
+     "type": "room_tile",
+     "title": "Arbeitszimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 310,
+      "y": 170,
+      "w": 400,
+      "h": 240
+     },
+     "room_extra_mode": "media_player",
+     "room_extra_entity_id": "media_player.re_tv"
+    }
+   ]
+  },
+  {
+   "id": "re_big",
+   "title": "Room big",
+   "widgets": [
+    {
+     "id": "re_big_cover",
+     "type": "room_tile",
+     "title": "Wohnzimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "media_player.re_tv",
+      "light.re_lamp",
+      "binary_sensor.re_window"
+     ],
+     "rect": {
+      "x": 10,
+      "y": 10,
+      "w": 640,
+      "h": 320
+     },
+     "room_extra_mode": "cover",
+     "room_extra_entity_id": "cover.re_blind"
+    }
+   ]
+  },
+  {
+   "id": "re_tiny",
+   "title": "Room tiny",
+   "widgets": [
+    {
+     "id": "re_tiny_cover",
+     "type": "room_tile",
+     "title": "Bad",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "cover.re_blind",
+      "binary_sensor.re_window",
+      "light.re_lamp"
+     ],
+     "rect": {
+      "x": 10,
+      "y": 10,
+      "w": 220,
+      "h": 120
+     },
+     "room_extra_mode": "cover",
+     "room_extra_entity_id": "cover.re_blind"
+    }
+   ]
+  },
+  {
+   "id": "re_house",
+   "title": "Haus",
+   "type": "house_dashboard",
+   "widgets": [],
+   "house": {
+    "rooms": [
+     {
+      "name": "Wohnzimmer",
+      "floor": "EG",
+      "entity_id": "sensor.re_temp",
+      "room_entities": [
+       "sensor.re_hum",
+       "cover.re_blind",
+       "light.re_lamp",
+       "binary_sensor.re_window"
+      ],
+      "room_extra_mode": "cover",
+      "room_extra_entity_id": "cover.re_blind"
+     },
+     {
+      "name": "Küche",
+      "floor": "EG",
+      "entity_id": "sensor.re_temp",
+      "room_entities": [
+       "sensor.re_hum",
+       "media_player.re_tv"
+      ],
+      "room_extra_mode": "media_player",
+      "room_extra_entity_id": "media_player.re_tv"
+     },
+     {
+      "name": "Bad",
+      "floor": "OG",
+      "entity_id": "sensor.re_temp",
+      "room_entities": [
+       "sensor.re_hum",
+       "light.re_lamp"
+      ],
+      "room_extra_mode": "humidity",
+      "room_extra_entity_id": "sensor.re_hum"
+     },
+     {
+      "name": "Flur",
+      "floor": "OG",
+      "entity_id": "sensor.re_temp",
+      "room_entities": [
+       "light.re_lamp"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "re_controls",
+   "title": "Room controls",
+   "widgets": [
+    {
+     "id": "rc_a",
+     "type": "room_tile",
+     "title": "Henri",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "cover.re_blind2",
+      "light.re_lamp",
+      "light.re_lamp2",
+      "switch.re_plug",
+      "binary_sensor.re_window"
+     ],
+     "room_controls": true,
+     "rect": {
+      "x": 10,
+      "y": 10,
+      "w": 400,
+      "h": 240
+     }
+    },
+    {
+     "id": "rc_b",
+     "type": "room_tile",
+     "title": "Wohnzimmer",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "cover.re_blind2",
+      "light.re_lamp",
+      "light.re_lamp2",
+      "switch.re_plug",
+      "binary_sensor.re_window"
+     ],
+     "room_controls": true,
+     "rect": {
+      "x": 430,
+      "y": 10,
+      "w": 640,
+      "h": 320
+     }
+    },
+    {
+     "id": "rc_c",
+     "type": "room_tile",
+     "title": "Bad",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "cover.re_blind2",
+      "light.re_lamp",
+      "light.re_lamp2",
+      "switch.re_plug",
+      "binary_sensor.re_window"
+     ],
+     "room_controls": true,
+     "rect": {
+      "x": 10,
+      "y": 270,
+      "w": 280,
+      "h": 180
+     }
+    },
+    {
+     "id": "rc_d",
+     "type": "room_tile",
+     "title": "Klein",
+     "entity_id": "sensor.re_temp",
+     "room_entities": [
+      "sensor.re_hum",
+      "cover.re_blind",
+      "cover.re_blind2",
+      "light.re_lamp",
+      "light.re_lamp2",
+      "switch.re_plug",
+      "binary_sensor.re_window"
+     ],
+     "room_controls": true,
+     "rect": {
+      "x": 10,
+      "y": 470,
+      "w": 220,
+      "h": 120
+     }
+    }
+   ]
+  }
+ ],
+ "states": [
+  {
+   "entity_id": "sensor.re_temp",
+   "state": "21.5",
+   "attributes": {
+    "device_class": "temperature",
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.re_hum",
+   "state": "48",
+   "attributes": {
+    "device_class": "humidity",
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "cover.re_blind",
+   "state": "open",
+   "attributes": {
+    "current_position": 40,
+    "supported_features": 15
+   }
+  },
+  {
+   "entity_id": "media_player.re_tv",
+   "state": "playing",
+   "attributes": {
+    "supported_features": 21389
+   }
+  },
+  {
+   "entity_id": "light.re_lamp",
+   "state": "on",
+   "attributes": {}
+  },
+  {
+   "entity_id": "binary_sensor.re_window",
+   "state": "on",
+   "attributes": {
+    "device_class": "window"
+   }
+  },
+  {
+   "entity_id": "cover.re_blind2",
+   "state": "closed",
+   "attributes": {
+    "current_position": 0,
+    "supported_features": 15
+   }
+  },
+  {
+   "entity_id": "light.re_lamp2",
+   "state": "off",
+   "attributes": {}
+  },
+  {
+   "entity_id": "switch.re_plug",
+   "state": "on",
+   "attributes": {}
+  }
+ ]
+}

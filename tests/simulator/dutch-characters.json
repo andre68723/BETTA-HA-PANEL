@@ -1,0 +1,17 @@
+{
+  "pages": [{
+    "id": "dutch-sensors",
+    "title": "Keuken 2",
+    "widgets": [
+      {"id": "yield", "type": "sensor", "title": "Zonneplan opbrengst", "entity_id": "sensor.demo_yield", "sensor_show_label": true, "sensor_show_age": true, "x": 16, "y": 20, "w": 320, "h": 150},
+      {"id": "price", "type": "sensor", "title": "Stroomprijs geëindigd", "entity_id": "sensor.demo_price", "sensor_show_label": true, "sensor_show_age": true, "x": 352, "y": 20, "w": 320, "h": 150},
+      {"id": "unit", "type": "sensor", "title": "Temperatuur bij de keuken", "entity_id": "sensor.demo_temp", "sensor_show_label": true, "sensor_show_age": true, "x": 16, "y": 186, "w": 320, "h": 150}
+    ]
+  }],
+  "states": [
+    {"entity_id": "sensor.demo_yield", "state": "25.4926", "attributes": {"unit_of_measurement": "kWh"}, "age_seconds": 240},
+    {"entity_id": "sensor.demo_price", "state": "95.4", "attributes": {"unit_of_measurement": "€"}, "age_seconds": 240},
+    {"entity_id": "sensor.demo_temp", "state": "21.8", "attributes": {"unit_of_measurement": "°C"}, "age_seconds": 240}
+  ],
+  "frame": {"date": "26-09-2026", "time": "14:00", "weather_temperature": "18°C"}
+}

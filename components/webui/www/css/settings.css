@@ -1,0 +1,282 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
+ * Copyright (c) 2026 andre68723
+ * Compact settings controls and offline alert example.
+ */
+
+/* Explicit hiding must beat the form's author-level display:grid rule. */
+.form[hidden] {
+  display: none;
+}
+
+/* A label is a grid, which would beat the hidden attribute (the custom time zone field). */
+.settings-content-section label[hidden] {
+  display: none;
+}
+
+.settings-content-section > .settings-box:last-child {
+  margin-bottom: 0;
+}
+
+.settings-language-row {
+  align-items: flex-end;
+}
+
+.settings-upload-row,
+.provisioning-url-row {
+  align-items: flex-end;
+}
+
+.settings-upload-row > label,
+.provisioning-url-row > label {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.settings-upload-row > .field-xs {
+  flex: 0 0 130px;
+}
+
+.translation-manager > summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.translation-manager > .form {
+  margin-top: 10px;
+}
+
+.settings-content-section select {
+  max-width: 340px;
+}
+
+.coredump-actions a.btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.coredump-entry {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.coredump-entry + .coredump-entry {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.coredump-entry summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.coredump-details {
+  margin-top: 6px;
+}
+
+.restart-history {
+  margin-top: 6px;
+  font-family: "Segoe UI", sans-serif;
+  word-break: normal;
+}
+
+
+/* Display controls share rows where space allows; narrow screens wrap naturally. */
+.settings-content-section .form > .display-fields {
+  max-width: 820px;
+}
+
+/* One grid, so labels and fields of a row line up whatever the control (slider, number, select). */
+.display-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px 16px;
+  align-items: start;
+}
+
+/* Same height for every field of a row, so a select sits level with the number next to it. */
+.display-fields select,
+.display-fields input[type="number"],
+.display-fields input[type="time"],
+.display-fields input[type="text"] {
+  height: 40px;
+  box-sizing: border-box;
+}
+
+.display-fields > label,
+.display-fields > div {
+  min-width: 0;
+  max-width: none !important;
+}
+
+.display-fields > .display-short-field {
+  min-width: 130px;
+}
+
+/* Display is one page; headings organize the controls without nested cards. */
+.display-settings > h2 { display: none; }
+.display-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 24px 28px;
+  align-items: start;
+}
+.display-settings-group {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+.display-settings .form > .display-fields {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.display-settings .form > label,
+.display-settings .form > .row,
+.display-settings .form > .meta,
+.display-settings .range-field {
+  min-width: 0;
+  max-width: 100%;
+}
+.display-settings .meta:empty { display: none; }
+.display-settings .settings-subheading {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--text);
+}
+.display-settings .display-fields {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+}
+.display-settings .range-field:has(.brightness-test-btn) {
+  grid-template-columns: minmax(0, 1fr) 46px auto;
+}
+.brightness-test-btn { white-space: nowrap; }
+.display-settings .brightness-test-status { grid-column: 1 / -1; }
+.brightness-test-status[hidden] { display: none; }
+.display-settings .display-fields > label:has(.brightness-test-btn) { grid-column: 1 / -1; }
+.display-settings #settingsSaverWeatherFields > label:first-child { grid-column: 1 / -1; }
+.display-settings .time-range { flex-wrap: wrap; }
+.display-settings .time-range input { width: 110px; }
+.display-settings .display-dependent-fields { margin: 0; grid-template-columns: minmax(0, 1fr); }
+.display-refinements[hidden] { display: none; }
+.display-refinements > summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.display-refinements > .form { margin-top: 10px; }
+.display-settings button { justify-self: start; width: auto; }
+.display-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.workspace-body:has(.display-settings:not(.hidden)) .settings-sidebar-actions .row {
+  display: flex;
+  flex-wrap: wrap;
+}
+.workspace-body:has(.display-settings:not(.hidden)) .settings-sidebar-actions .btn {
+  width: auto;
+}
+.workspace-body:has(.display-settings:not(.hidden)) #saveSettingsBtn,
+.workspace-body:has(.display-settings:not(.hidden)) #settingsActionsHint {
+  display: none;
+}
+
+.settings-content-section .form > .topbar-fields {
+  max-width: 820px;
+}
+
+.topbar-fields {
+  align-items: flex-end;
+}
+
+.topbar-fields > label {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.topbar-entities > label {
+  flex-basis: 300px;
+}
+
+.topbar-fields > label[hidden] {
+  display: none;
+}
+
+
+.alerts-intro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  max-width: 820px;
+}
+
+.alerts-intro > .meta {
+  flex: 1 1 240px;
+}
+
+.alerts-example {
+  width: 220px;
+  max-width: 100%;
+  margin: 0;
+}
+
+.alerts-example img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
+#settingsAlertsList {
+  max-width: 820px;
+  min-width: 0;
+}
+
+.alert-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.alert-fields > label {
+  min-width: 0;
+}
+
+.alert-fields > .alert-message-field {
+  grid-column: 1 / -1;
+}
+
+.alert-fields > button {
+  justify-self: start;
+}
+
+/* The disclosure lines of the settings pages follow the body size of the page, not the larger default of <summary>. */
+.settings-content-section details > summary {
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ota-manual {
+  margin-top: 10px;
+}
+
+.ota-manual > .form {
+  margin-top: 8px;
+}
+
+#settingsFirmwareInfoBox {
+  margin-top: 16px;
+}
+
+.settings-language-row label {
+  display: grid;
+  gap: 4px;
+}

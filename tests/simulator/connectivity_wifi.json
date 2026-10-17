@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "pages": [{"id": "connection", "title": "Demo", "widgets": []}],
+  "frame": {"time": "14:30", "mqtt": true},
+  "open_popup": "wifi"
+}

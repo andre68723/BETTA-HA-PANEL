@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "net/wifi_mgr.h"
 
@@ -13,11 +14,15 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "esp_random.h"
 #include "esp_netif.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "driver/gpio.h"
 #include "soc/soc_caps.h"
+
+#include "net/setup_passphrase.h"
+#include "net/wifi_diag_store.h"
 
 #if CONFIG_ESP_HOSTED_ENABLED
 #include "esp_app_desc.h"
@@ -28,19 +33,31 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 
 #include "app_config.h"
 #include "ui/ui_boot_splash.h"
 #include "util/log_tags.h"
+#include "util/reboot_log_esp.h"
+#include "util/ota_validate.h"
 
 static bool s_wifi_connected = false;
 static EventGroupHandle_t s_wifi_event_group = NULL;
+/* esp_hosted's RPC response-table locking only landed in 2.12.13 (we're on
+ * 2.12.12; kept as a second layer on 2.12.13): concurrent esp_wifi_* calls from different tasks (e.g. the
+ * HTTP server task via /api/settings and the LVGL UI task via the topbar
+ * Wi-Fi popup) can otherwise race and return a response meant for a
+ * different in-flight request -- observed as a plausible-looking but wrong
+ * RSSI reading. Serialize our own calls into the RPC layer until we're on
+ * a version with the upstream fix. */
+static SemaphoreHandle_t s_wifi_api_mutex = NULL;
 static esp_event_handler_instance_t s_wifi_event_instance = NULL;
 static esp_event_handler_instance_t s_ip_event_instance = NULL;
 static esp_netif_t *s_wifi_sta_netif = NULL;
 static esp_netif_t *s_wifi_ap_netif = NULL;
 static bool s_setup_ap_active = false;
 static char s_setup_ap_ssid[APP_WIFI_SSID_MAX_LEN] = {0};
+static char s_setup_ap_password[APP_SETUP_AP_PASSWORD_LEN + 1] = {0};
 static bool s_wifi_scan_in_progress = false;
 static wifi_config_t s_cached_sta_cfg = {0};
 static bool s_cached_sta_cfg_valid = false;
@@ -77,6 +94,52 @@ static uint8_t s_pending_reconnect_reason = 0;
 static int s_pending_reconnect_attempt = 0;
 static int s_wifi_scan_last_status = 0;
 
+/* Diagnostics for wifi_mgr_get_diag(): kept separately from the reconnect-logic state above
+ * (which resets on every successful connect) so a value survives long enough to be read after
+ * the fact -- on the connectivity popup while an outage is still ongoing, or via GET /api/version
+ * after a forced reboot ended it (see wifi_diag_store.c for the NVS side). Found necessary
+ * 2026-09-24: a real SDIO/C6 wedge left the panel unreachable for minutes with the display still
+ * live and no way to tell, from the screen alone, whether the automatic recovery in this file had
+ * even tried anything. */
+static uint8_t s_diag_last_disconnect_reason = 0;
+static int64_t s_diag_last_disconnect_uptime_ms = 0;
+static uint32_t s_diag_disconnect_count = 0;
+static uint32_t s_diag_reconnect_attempts = 0;
+static uint32_t s_diag_hard_recover_count = 0;
+static int32_t s_diag_last_hard_recover_err = 0;
+static int64_t s_diag_last_hard_recover_uptime_ms = 0;
+
+void wifi_mgr_get_diag(wifi_mgr_diag_t *out)
+{
+    if (out == NULL) {
+        return;
+    }
+    out->last_disconnect_reason = s_diag_last_disconnect_reason;
+    out->last_disconnect_uptime_ms = s_diag_last_disconnect_uptime_ms;
+    out->disconnect_count = s_diag_disconnect_count;
+    out->reconnect_attempts = s_diag_reconnect_attempts;
+    out->hard_recover_count = s_diag_hard_recover_count;
+    out->last_hard_recover_err = s_diag_last_hard_recover_err;
+    out->last_hard_recover_uptime_ms = s_diag_last_hard_recover_uptime_ms;
+}
+
+static void wifi_mgr_diag_persist(bool critical)
+{
+    wifi_mgr_diag_t diag;
+    wifi_mgr_get_diag(&diag);
+    wifi_diag_store_save(&diag, critical);
+}
+
+#if CONFIG_ESP_HOSTED_ENABLED
+static void wifi_mgr_diag_record_hard_recover(esp_err_t result)
+{
+    s_diag_hard_recover_count++;
+    s_diag_last_hard_recover_err = (int32_t)result;
+    s_diag_last_hard_recover_uptime_ms = esp_timer_get_time() / 1000;
+    wifi_mgr_diag_persist(true);
+}
+#endif
+
 static esp_err_t wifi_mgr_force_reconnect_internal(bool allow_transport_escalation);
 
 static void wifi_mgr_reset_reconnect_state(void)
@@ -95,7 +158,17 @@ static void wifi_mgr_set_setup_ap_state(bool active, const char *ssid)
         strlcpy(s_setup_ap_ssid, ssid, sizeof(s_setup_ap_ssid));
     } else {
         s_setup_ap_ssid[0] = '\0';
+        s_setup_ap_password[0] = '\0';
     }
+}
+
+/* A new random WPA2 passphrase for each setup AP start, shown on the display: an open setup AP let
+ * anyone in radio range set the panel's Wi-Fi and Home Assistant. Two words and two digits from the
+ * hardware random number generator (about 25 bits: the AP exists only while no Wi-Fi is configured,
+ * see docs/SECURITY.md). */
+static void wifi_mgr_generate_setup_password(char *out, size_t out_len)
+{
+    (void)setup_passphrase_format(out, out_len, esp_random(), esp_random(), esp_random());
 }
 
 static void wifi_mgr_build_default_setup_ssid(char *out, size_t out_len)
@@ -140,6 +213,18 @@ static void wifi_mgr_set_country_code_from_input(const char *country_code)
         strlcpy(normalized, "US", sizeof(normalized));
     }
     strlcpy(s_wifi_country_code, normalized, sizeof(s_wifi_country_code));
+}
+
+/* SSIDs are up to 32 bytes and a raw WPA2 key is 64 hex digits: the fields of wifi_config_t are exactly that wide and
+ * need no terminator, so strlcpy() would cut the last byte of a full-length value and the network would never match.
+ * `dst` must be zeroed. */
+static void wifi_mgr_copy_field(uint8_t *dst, size_t dst_size, const char *src)
+{
+    if (dst == NULL || src == NULL) {
+        return;
+    }
+    size_t n = strlen(src);
+    memcpy(dst, src, n < dst_size ? n : dst_size);
 }
 
 static int wifi_mgr_hex_nibble(char c)
@@ -200,7 +285,7 @@ static esp_err_t wifi_mgr_apply_country_code(void)
     return ESP_OK;
 }
 
-static const char *wifi_reason_to_str(uint8_t reason)
+const char *wifi_mgr_reason_to_str(uint8_t reason)
 {
     switch (reason) {
     case 2:
@@ -219,6 +304,25 @@ static const char *wifi_reason_to_str(uint8_t reason)
 }
 
 static void wifi_mgr_try_reconnect(uint8_t reason, int attempt_no);
+
+#define WIFI_API_LOCK_STOP_START_MS 3000     /* wait for a scan or status RPC before a stop/start */
+#define WIFI_API_LOCK_HARD_RECOVER_MS 10000  /* a scan holds the lock for up to its timeout */
+
+/* The Wi-Fi RPCs that run on the C6 coprocessor are serialised by s_wifi_api_mutex (scan, AP info, RSSI). The recovery
+ * paths below stop and restart Wi-Fi and even re-initialise the whole ESP-Hosted transport, so they take it too:
+ * otherwise a scan or the settings poll could be inside an RPC while the transport underneath it is torn down.
+ * False only when the mutex exists and stays busy; before it exists there is nothing to wait for. */
+static bool wifi_mgr_api_lock(uint32_t timeout_ms)
+{
+    return s_wifi_api_mutex == NULL || xSemaphoreTake(s_wifi_api_mutex, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
+}
+
+static void wifi_mgr_api_unlock(void)
+{
+    if (s_wifi_api_mutex != NULL) {
+        xSemaphoreGive(s_wifi_api_mutex);
+    }
+}
 
 static bool wifi_mgr_request_connect(bool force, const char *ctx)
 {
@@ -350,7 +454,8 @@ static void wifi_mgr_try_reconnect(uint8_t reason, int attempt_no)
     bool reason_known = (reason != 0);
 
     if (hard_reason && attempt_no >= WIFI_RECOVER_HARD_ATTEMPT_THRESHOLD &&
-        (now_ms - s_last_recover_stop_start_ms) >= WIFI_RECOVER_STOP_START_COOLDOWN_MS) {
+        (now_ms - s_last_recover_stop_start_ms) >= WIFI_RECOVER_STOP_START_COOLDOWN_MS &&
+        wifi_mgr_api_lock(WIFI_API_LOCK_STOP_START_MS)) {
         esp_err_t stop_err = esp_wifi_stop();
         if (stop_err != ESP_OK && stop_err != ESP_ERR_WIFI_NOT_INIT) {
             ESP_LOGW(TAG_WIFI, "esp_wifi_stop failed in recovery step: %s", esp_err_to_name(stop_err));
@@ -360,10 +465,12 @@ static void wifi_mgr_try_reconnect(uint8_t reason, int attempt_no)
             (void)wifi_mgr_apply_country_code();
             s_last_recover_stop_start_ms = now_ms;
             ESP_LOGW(TAG_WIFI, "Wi-Fi recovery step: stop/start (attempt %d, reason=%d)", attempt_no, (int)reason);
+            wifi_mgr_api_unlock();
             (void)wifi_mgr_request_connect(true, "after-stop-start");
             return;
         }
         ESP_LOGW(TAG_WIFI, "esp_wifi_start failed in recovery step: %s", esp_err_to_name(start_err));
+        wifi_mgr_api_unlock();
     }
 
     if (reason_known && (attempt_no % WIFI_RECOVER_DISC_CONN_PERIOD) == 0 &&
@@ -451,9 +558,14 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         s_wifi_connected = false;
         if (disc != NULL) {
             ESP_LOGW(TAG_WIFI, "Wi-Fi disconnected, reason=%d (%s)",
-                (int)disc->reason, wifi_reason_to_str((uint8_t)disc->reason));
+                (int)disc->reason, wifi_mgr_reason_to_str((uint8_t)disc->reason));
         }
+        s_diag_last_disconnect_reason = reason;
+        s_diag_last_disconnect_uptime_ms = esp_timer_get_time() / 1000;
+        s_diag_disconnect_count++;
         retry_count++;
+        s_diag_reconnect_attempts = (uint32_t)retry_count;
+        wifi_mgr_diag_persist(false);
         int64_t delay_ms = wifi_mgr_schedule_reconnect(reason, retry_count);
 
         if (retry_count < s_wifi_max_retries) {
@@ -480,6 +592,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         retry_count = 0;
+        s_diag_reconnect_attempts = 0;
         fail_notified = false;
         s_wifi_connected = true;
         s_last_recover_disc_conn_ms = 0;
@@ -618,6 +731,8 @@ static esp_err_t hosted_get_embedded_c6_fw(const uint8_t **out_data, size_t *out
 }
 #endif
 
+static bool s_c6_update_deferred; /* a C6 update is needed but waits for the image to be marked valid */
+
 static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_t *running_fw)
 {
     if (running_fw == NULL || !APP_HOSTED_AUTO_UPDATE_C6_FW) {
@@ -625,8 +740,20 @@ static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_
     }
 
     const bool allow_version_mismatch = (APP_HOSTED_ALLOW_BUNDLED_C6_VERSION_MISMATCH != 0);
-    uint32_t host_version = hosted_version_pack(
-        ESP_HOSTED_VERSION_MAJOR_1, ESP_HOSTED_VERSION_MINOR_1, ESP_HOSTED_VERSION_PATCH_1);
+    /* esp_hosted's own ESP_HOSTED_VERSION_MAJOR_1/MINOR_1/PATCH_1 macros are a
+     * legacy compat shim in esp_hosted 3.x and do not reflect the actual
+     * resolved component version; use the version CMake reads from the
+     * component's own manifest instead (see main/CMakeLists.txt). */
+    uint32_t host_major = 0;
+    uint32_t host_minor = 0;
+    uint32_t host_patch = 0;
+    if (!hosted_parse_version_text(APP_HOSTED_C6_EXPECTED_VERSION, &host_major, &host_minor, &host_patch)) {
+        ESP_LOGW(TAG_WIFI,
+            "Could not parse host esp_hosted component version '%s'; skipping auto update for safety",
+            APP_HOSTED_C6_EXPECTED_VERSION);
+        return;
+    }
+    uint32_t host_version = hosted_version_pack(host_major, host_minor, host_patch);
     uint32_t running_version = hosted_version_pack(running_fw->major1, running_fw->minor1, running_fw->patch1);
     const bool running_version_is_zero = hosted_is_zero_version(running_fw);
 
@@ -700,6 +827,22 @@ static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_
         return;
     }
 
+    /* The update ends with a deliberate restart. A freshly installed image is still on probation (pending verify), and the bootloader returns to the
+     * previous image on any reset before it is marked valid: updating now would undo the firmware update that needed the new C6 image, and the old
+     * image would then flash the C6 back. Wait until the image is valid (util/ota_validate.c calls wifi_mgr_run_deferred_c6_update()). */
+    if (strcmp(ota_validate_image_state(), "pending_verify") == 0) {
+        ESP_LOGW(TAG_WIFI, "C6 update needed, but this image is still pending verification: deferred until it is marked valid");
+        s_c6_update_deferred = true;
+        return;
+    }
+
+    /* Never two coprocessor updates in a row: if the version still differs right after one (the C6 reports 0.0.0 or
+     * another number than the bundled image), repeating it would flash the C6 and restart the panel at every boot. */
+    if (reboot_log_last_cause() == REBOOT_CAUSE_C6_UPDATE) {
+        ESP_LOGW(TAG_WIFI, "C6 firmware still differs right after a C6 update: not updating again until the next restart");
+        return;
+    }
+
     ESP_LOGW(TAG_WIFI, "Starting automatic C6 OTA update over ESP-Hosted transport");
     ui_boot_splash_set_title("C6 Firmware Update");
     ui_boot_splash_clear_status();
@@ -756,7 +899,33 @@ static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_
     ui_boot_splash_set_progress(100);
     ui_boot_splash_set_status("C6 update done, rebooting...");
     ESP_LOGW(TAG_WIFI, "C6 OTA update completed. Rebooting host to resynchronize transport");
+    reboot_log_mark(REBOOT_CAUSE_C6_UPDATE);
     esp_restart();
+#endif
+}
+
+#if CONFIG_ESP_HOSTED_ENABLED
+static void c6_deferred_update_task(void *arg)
+{
+    (void)arg;
+    esp_hosted_coprocessor_fwver_t fw = {0};
+    if (esp_hosted_get_coprocessor_fwversion(&fw) == ESP_OK) {
+        wifi_mgr_maybe_auto_update_c6_fw(&fw);
+    }
+    vTaskDelete(NULL);
+}
+#endif
+
+void wifi_mgr_run_deferred_c6_update(void)
+{
+#if CONFIG_ESP_HOSTED_ENABLED
+    if (!s_c6_update_deferred) {
+        return;
+    }
+    s_c6_update_deferred = false;
+    if (xTaskCreate(c6_deferred_update_task, "c6_update", 8192, NULL, 4, NULL) != pdPASS) {
+        ESP_LOGW(TAG_WIFI, "Could not start the deferred C6 update task");
+    }
 #endif
 }
 
@@ -872,6 +1041,12 @@ static esp_err_t wifi_mgr_ensure_stack_initialized(void)
     if (s_wifi_event_group == NULL) {
         return ESP_ERR_NO_MEM;
     }
+    if (s_wifi_api_mutex == NULL) {
+        s_wifi_api_mutex = xSemaphoreCreateMutex();
+    }
+    if (s_wifi_api_mutex == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
 
     esp_err_t err = esp_netif_init();
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
@@ -944,8 +1119,8 @@ esp_err_t wifi_mgr_init(const wifi_mgr_config_t *cfg)
     }
 
     wifi_config_t wifi_cfg = {0};
-    strlcpy((char *)wifi_cfg.sta.ssid, cfg->ssid, sizeof(wifi_cfg.sta.ssid));
-    strlcpy((char *)wifi_cfg.sta.password, cfg->password ? cfg->password : "", sizeof(wifi_cfg.sta.password));
+    wifi_mgr_copy_field(wifi_cfg.sta.ssid, sizeof(wifi_cfg.sta.ssid), cfg->ssid);
+    wifi_mgr_copy_field(wifi_cfg.sta.password, sizeof(wifi_cfg.sta.password), cfg->password);
     wifi_cfg.sta.bssid_set = false;
     if (cfg->bssid != NULL && cfg->bssid[0] != '\0') {
         uint8_t bssid[6] = {0};
@@ -962,6 +1137,15 @@ esp_err_t wifi_mgr_init(const wifi_mgr_config_t *cfg)
         (cfg->password != NULL && cfg->password[0] != '\0') ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
     wifi_cfg.sta.pmf_cfg.capable = true;
     wifi_cfg.sta.pmf_cfg.required = false;
+    /* Default scan_method (WIFI_FAST_SCAN) stops at the first AP that
+     * matches the SSID and connects to it, without ever comparing it
+     * against other APs broadcasting the same SSID on other channels --
+     * on a multi-AP network this "sticks" the device to whichever AP
+     * happens to be found first, even a much weaker/farther one, instead
+     * of the strongest one actually in range. Scan all channels and pick
+     * by signal so roaming/(re)connects land on the best available AP. */
+    wifi_cfg.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+    wifi_cfg.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
     memcpy(&s_cached_sta_cfg, &wifi_cfg, sizeof(s_cached_sta_cfg));
     s_cached_sta_cfg_valid = true;
 
@@ -1007,6 +1191,8 @@ bool wifi_mgr_is_connected(void)
 }
 
 #if CONFIG_ESP_HOSTED_ENABLED
+static esp_err_t wifi_mgr_force_hosted_hard_recover_locked(int64_t now_ms);
+
 static esp_err_t wifi_mgr_force_hosted_hard_recover(void)
 {
     int64_t now_ms = esp_timer_get_time() / 1000;
@@ -1015,7 +1201,17 @@ static esp_err_t wifi_mgr_force_hosted_hard_recover(void)
             now_ms - s_last_hosted_hard_recover_ms);
         return wifi_mgr_force_reconnect_internal(false);
     }
+    if (!wifi_mgr_api_lock(WIFI_API_LOCK_HARD_RECOVER_MS)) {
+        ESP_LOGW(TAG_WIFI, "Skip C6 hard recover: a Wi-Fi RPC (scan or status) still holds the API lock");
+        return ESP_ERR_TIMEOUT;
+    }
+    esp_err_t result = wifi_mgr_force_hosted_hard_recover_locked(now_ms);
+    wifi_mgr_api_unlock();
+    return result;
+}
 
+static esp_err_t wifi_mgr_force_hosted_hard_recover_locked(int64_t now_ms)
+{
     s_wifi_connected = false;
     s_last_connect_request_ms = 0;
     s_last_recover_disc_conn_ms = 0;
@@ -1046,6 +1242,7 @@ static esp_err_t wifi_mgr_force_hosted_hard_recover(void)
     esp_err_t hosted_err = wifi_mgr_init_hosted_transport();
     if (hosted_err != ESP_OK) {
         ESP_LOGE(TAG_WIFI, "C6 hard recover failed: ESP-Hosted re-init failed (%s)", esp_err_to_name(hosted_err));
+        wifi_mgr_diag_record_hard_recover(hosted_err);
         return hosted_err;
     }
 
@@ -1054,6 +1251,7 @@ static esp_err_t wifi_mgr_force_hosted_hard_recover(void)
     esp_err_t mode_err = esp_wifi_set_mode(restore_mode);
     if (mode_err != ESP_OK && mode_err != ESP_ERR_INVALID_STATE) {
         ESP_LOGE(TAG_WIFI, "esp_wifi_set_mode failed during hard recover: %s", esp_err_to_name(mode_err));
+        wifi_mgr_diag_record_hard_recover(mode_err);
         return mode_err;
     }
 
@@ -1067,6 +1265,7 @@ static esp_err_t wifi_mgr_force_hosted_hard_recover(void)
     esp_err_t start_err = esp_wifi_start();
     if (start_err != ESP_OK && start_err != ESP_ERR_INVALID_STATE) {
         ESP_LOGE(TAG_WIFI, "esp_wifi_start failed during hard recover: %s", esp_err_to_name(start_err));
+        wifi_mgr_diag_record_hard_recover(start_err);
         return start_err;
     }
     (void)wifi_mgr_apply_country_code();
@@ -1079,10 +1278,12 @@ static esp_err_t wifi_mgr_force_hosted_hard_recover(void)
 #endif
 
     if (!wifi_mgr_request_connect(true, "after-c6-hard-recover")) {
+        wifi_mgr_diag_record_hard_recover(ESP_FAIL);
         return ESP_FAIL;
     }
 
     s_last_hosted_hard_recover_ms = now_ms;
+    wifi_mgr_diag_record_hard_recover(ESP_OK);
     ESP_LOGW(TAG_WIFI, "C6 hard recover complete: ESP-Hosted reinitialized and Wi-Fi reconnect requested");
     return ESP_OK;
 }
@@ -1107,7 +1308,8 @@ static esp_err_t wifi_mgr_force_reconnect_internal(bool allow_transport_escalati
 
     if (!wifi_mgr_request_connect(true, "force-reconnect")) {
         int64_t now_ms = esp_timer_get_time() / 1000;
-        if ((now_ms - s_last_recover_stop_start_ms) >= WIFI_RECOVER_STOP_START_COOLDOWN_MS) {
+        if ((now_ms - s_last_recover_stop_start_ms) >= WIFI_RECOVER_STOP_START_COOLDOWN_MS &&
+            wifi_mgr_api_lock(WIFI_API_LOCK_STOP_START_MS)) {
             esp_err_t stop_err = esp_wifi_stop();
             if (stop_err != ESP_OK && stop_err != ESP_ERR_WIFI_NOT_INIT &&
                 stop_err != ESP_ERR_WIFI_NOT_STARTED && stop_err != ESP_ERR_INVALID_STATE) {
@@ -1115,6 +1317,7 @@ static esp_err_t wifi_mgr_force_reconnect_internal(bool allow_transport_escalati
                     esp_err_to_name(stop_err));
             }
             esp_err_t start_err = esp_wifi_start();
+            wifi_mgr_api_unlock();
             if (start_err == ESP_OK || start_err == ESP_ERR_INVALID_STATE) {
                 (void)wifi_mgr_apply_country_code();
                 s_last_recover_stop_start_ms = now_ms;
@@ -1183,23 +1386,27 @@ esp_err_t wifi_mgr_start_setup_ap(const wifi_mgr_ap_config_t *cfg)
         wifi_mgr_build_default_setup_ssid(ap_ssid, sizeof(ap_ssid));
     }
 
-    const char *ap_password =
-        (cfg != NULL && cfg->password != NULL) ? cfg->password : APP_SETUP_AP_PASSWORD;
+    if (cfg != NULL && cfg->password != NULL && cfg->password[0] != '\0') {
+        strlcpy(s_setup_ap_password, cfg->password, sizeof(s_setup_ap_password));
+    } else {
+        wifi_mgr_generate_setup_password(s_setup_ap_password, sizeof(s_setup_ap_password));
+    }
+    const char *ap_password = s_setup_ap_password;
     uint8_t ap_channel =
         (cfg != NULL && cfg->channel > 0U) ? cfg->channel : (uint8_t)APP_SETUP_AP_CHANNEL;
     uint8_t ap_max_conn =
         (cfg != NULL && cfg->max_connection > 0U) ? cfg->max_connection : (uint8_t)APP_SETUP_AP_MAX_CONNECTIONS;
 
     wifi_config_t ap_cfg = {0};
-    strlcpy((char *)ap_cfg.ap.ssid, ap_ssid, sizeof(ap_cfg.ap.ssid));
-    ap_cfg.ap.ssid_len = (uint8_t)strlen(ap_ssid);
+    wifi_mgr_copy_field(ap_cfg.ap.ssid, sizeof(ap_cfg.ap.ssid), ap_ssid);
+    ap_cfg.ap.ssid_len = (uint8_t)strnlen(ap_ssid, sizeof(ap_cfg.ap.ssid));
     ap_cfg.ap.channel = ap_channel;
     ap_cfg.ap.max_connection = ap_max_conn;
     ap_cfg.ap.pmf_cfg.capable = true;
     ap_cfg.ap.pmf_cfg.required = false;
 
     if (ap_password != NULL && ap_password[0] != '\0') {
-        strlcpy((char *)ap_cfg.ap.password, ap_password, sizeof(ap_cfg.ap.password));
+        wifi_mgr_copy_field(ap_cfg.ap.password, sizeof(ap_cfg.ap.password), ap_password);
         ap_cfg.ap.authmode = WIFI_AUTH_WPA2_PSK;
     } else {
         ap_cfg.ap.password[0] = '\0';
@@ -1258,6 +1465,11 @@ bool wifi_mgr_is_setup_ap_active(void)
     return s_setup_ap_active;
 }
 
+const char *wifi_mgr_get_setup_ap_password(void)
+{
+    return s_setup_ap_active ? s_setup_ap_password : "";
+}
+
 const char *wifi_mgr_get_setup_ap_ssid(void)
 {
     return s_setup_ap_ssid;
@@ -1272,6 +1484,17 @@ esp_err_t wifi_mgr_get_sta_ip(char *out, size_t out_len)
 #else
     return wifi_mgr_get_ip_for_netif(s_wifi_sta_netif, out, out_len);
 #endif
+}
+
+bool wifi_mgr_get_sta_gateway(uint32_t *out_addr)
+{
+    esp_netif_ip_info_t ip_info = {0};
+    if (out_addr == NULL || s_wifi_sta_netif == NULL || esp_netif_get_ip_info(s_wifi_sta_netif, &ip_info) != ESP_OK ||
+        ip_info.ip.addr == 0 || ip_info.gw.addr == 0) {
+        return false;
+    }
+    *out_addr = ip_info.gw.addr;
+    return true;
 }
 
 esp_err_t wifi_mgr_get_ap_ip(char *out, size_t out_len)
@@ -1294,9 +1517,13 @@ esp_err_t wifi_mgr_get_sta_ap_info(wifi_mgr_sta_ap_info_t *out_info)
     if (out_info == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
+    if (s_wifi_api_mutex == NULL || xSemaphoreTake(s_wifi_api_mutex, pdMS_TO_TICKS(2000)) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
 
     wifi_ap_record_t ap_info = {0};
     esp_err_t err = esp_wifi_sta_get_ap_info(&ap_info);
+    xSemaphoreGive(s_wifi_api_mutex);
     if (err != ESP_OK) {
         return err;
     }
@@ -1308,6 +1535,30 @@ esp_err_t wifi_mgr_get_sta_ap_info(wifi_mgr_sta_ap_info_t *out_info)
     out_info->channel = ap_info.primary;
     memcpy(out_info->bssid, ap_info.bssid, sizeof(out_info->bssid));
     return ESP_OK;
+#endif
+}
+
+esp_err_t wifi_mgr_try_get_sta_rssi(int8_t *out_rssi_dbm)
+{
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+    (void)out_rssi_dbm;
+    return ESP_ERR_NOT_SUPPORTED;
+#else
+    if (out_rssi_dbm == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    /* Never waits: the caller is the UI task, and the Wi-Fi API may be busy with a scan or a
+     * reconnect for seconds (ESP-Hosted RPCs are serialized by this mutex). */
+    if (s_wifi_api_mutex == NULL || xSemaphoreTake(s_wifi_api_mutex, 0) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
+    wifi_ap_record_t ap_info = {0};
+    esp_err_t err = esp_wifi_sta_get_ap_info(&ap_info);
+    xSemaphoreGive(s_wifi_api_mutex);
+    if (err == ESP_OK) {
+        *out_rssi_dbm = ap_info.rssi;
+    }
+    return err;
 #endif
 }
 
@@ -1356,10 +1607,14 @@ esp_err_t wifi_mgr_scan(wifi_mgr_scan_result_t *results, size_t max_results, siz
     if (s_wifi_scan_in_progress) {
         return ESP_ERR_INVALID_STATE;
     }
+    if (s_wifi_api_mutex == NULL || xSemaphoreTake(s_wifi_api_mutex, pdMS_TO_TICKS(2000)) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
 
     wifi_mode_t original_mode = WIFI_MODE_NULL;
     err = esp_wifi_get_mode(&original_mode);
     if (err != ESP_OK) {
+        xSemaphoreGive(s_wifi_api_mutex);
         return err;
     }
 
@@ -1520,6 +1775,7 @@ cleanup:
         xEventGroupClearBits(s_wifi_event_group, clear_bits);
     }
     s_wifi_scan_in_progress = false;
+    xSemaphoreGive(s_wifi_api_mutex);
     return err;
 #endif
 }

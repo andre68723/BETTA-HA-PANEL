@@ -1,0 +1,13 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 */
+/* Only the 720x600 panel4 canvas uses the reviewed roles. Canvas zoom scales
+ * the whole preview; these are panel pixels, not desktop reading sizes. */
+.panel4-readable .tp-name, .panel4-readable .solar-preview-title { font-size: 24px; line-height: 32px; }
+.panel4-readable .tp-sensor small { font-size: 24px; line-height: 32px; }
+.panel4-readable .tp-sensor b { font-size: 38px; line-height: 47px; }
+.panel4-readable .tp-day span, .panel4-readable .solar-preview-col strong { font-size: 24px; line-height: 32px; }
+.panel4-readable .tp-day b, .panel4-readable .tp-day small, .panel4-readable .solar-preview-col span { font-size: 28px; line-height: 35px; }
+.panel4-readable .tp-wx-head b { font-size: 28px; line-height: 35px; }
+.panel4-readable .tp-wx-head small, .panel4-readable .solar-preview-unit { font-size: 20px; line-height: 25px; }
+.panel4-readable .tp-gauge-h .tp-light-top { font-size: 24px; line-height: 32px; }
+.panel4-readable .tp-gauge-h .tp-light-top > span:last-child { font-size: 28px; line-height: 35px; }
+.solar-preview-unit { text-align: right; }

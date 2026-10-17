@@ -1,0 +1,1587 @@
+{
+ "ha_online": true,
+ "pages": [
+  {
+   "id": "printing",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_printing",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 360,
+      "h": 420
+     },
+     "entity_id": "sensor.p_printing_status",
+     "nozzle_temp_entity_id": "sensor.p_printing_nozzle",
+     "bed_temp_entity_id": "sensor.p_printing_bed",
+     "progress_entity_id": "sensor.p_printing_progress",
+     "remaining_time_entity_id": "sensor.p_printing_remaining",
+     "stage_entity_id": "sensor.p_printing_stage",
+     "job_name_entity_id": "sensor.p_printing_job",
+     "pause_entity_id": "button.p_printing_pause",
+     "resume_entity_id": "button.p_printing_resume",
+     "stop_entity_id": "button.p_printing_stop"
+    }
+   ]
+  },
+  {
+   "id": "paused",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_paused",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 640,
+      "h": 320
+     },
+     "entity_id": "sensor.p_paused_status",
+     "nozzle_temp_entity_id": "sensor.p_paused_nozzle",
+     "bed_temp_entity_id": "sensor.p_paused_bed",
+     "progress_entity_id": "sensor.p_paused_progress",
+     "remaining_time_entity_id": "sensor.p_paused_remaining",
+     "stage_entity_id": "sensor.p_paused_stage",
+     "job_name_entity_id": "sensor.p_paused_job",
+     "pause_entity_id": "button.p_paused_pause",
+     "resume_entity_id": "button.p_paused_resume",
+     "stop_entity_id": "button.p_paused_stop"
+    }
+   ]
+  },
+  {
+   "id": "minimum",
+   "title": "A1",
+   "widgets": [
+    {
+     "id": "p_minimum",
+     "type": "bambu_printer",
+     "title": "A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 320,
+      "h": 320
+     },
+     "entity_id": "sensor.p_minimum_status",
+     "nozzle_temp_entity_id": "sensor.p_minimum_nozzle",
+     "bed_temp_entity_id": "sensor.p_minimum_bed",
+     "progress_entity_id": "sensor.p_minimum_progress",
+     "remaining_time_entity_id": "sensor.p_minimum_remaining",
+     "stage_entity_id": "sensor.p_minimum_stage",
+     "job_name_entity_id": "sensor.p_minimum_job",
+     "pause_entity_id": "button.p_minimum_pause",
+     "resume_entity_id": "button.p_minimum_resume",
+     "stop_entity_id": "button.p_minimum_stop"
+    }
+   ]
+  },
+  {
+   "id": "idle",
+   "title": "Workshop printer",
+   "widgets": [
+    {
+     "id": "p_idle",
+     "type": "bambu_printer",
+     "title": "Workshop printer",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 360,
+      "h": 420
+     },
+     "entity_id": "sensor.p_idle_status",
+     "nozzle_temp_entity_id": "sensor.p_idle_nozzle",
+     "bed_temp_entity_id": "sensor.p_idle_bed",
+     "progress_entity_id": "sensor.p_idle_progress",
+     "remaining_time_entity_id": "sensor.p_idle_remaining",
+     "stage_entity_id": "sensor.p_idle_stage",
+     "job_name_entity_id": "sensor.p_idle_job",
+     "pause_entity_id": "button.p_idle_pause",
+     "resume_entity_id": "button.p_idle_resume",
+     "stop_entity_id": "button.p_idle_stop"
+    }
+   ]
+  },
+  {
+   "id": "offline",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_offline",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 360,
+      "h": 420
+     },
+     "entity_id": "sensor.p_offline_status",
+     "nozzle_temp_entity_id": "sensor.p_offline_nozzle",
+     "bed_temp_entity_id": "sensor.p_offline_bed",
+     "progress_entity_id": "sensor.p_offline_progress",
+     "remaining_time_entity_id": "sensor.p_offline_remaining",
+     "stage_entity_id": "sensor.p_offline_stage",
+     "job_name_entity_id": "sensor.p_offline_job",
+     "pause_entity_id": "button.p_offline_pause",
+     "resume_entity_id": "button.p_offline_resume",
+     "stop_entity_id": "button.p_offline_stop"
+    }
+   ]
+  },
+  {
+   "id": "finished",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_finished",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 360,
+      "h": 420
+     },
+     "entity_id": "sensor.p_finished_status",
+     "nozzle_temp_entity_id": "sensor.p_finished_nozzle",
+     "bed_temp_entity_id": "sensor.p_finished_bed",
+     "progress_entity_id": "sensor.p_finished_progress",
+     "remaining_time_entity_id": "sensor.p_finished_remaining",
+     "stage_entity_id": "sensor.p_finished_stage",
+     "job_name_entity_id": "sensor.p_finished_job",
+     "pause_entity_id": "button.p_finished_pause",
+     "resume_entity_id": "button.p_finished_resume",
+     "stop_entity_id": "button.p_finished_stop"
+    }
+   ]
+  },
+  {
+   "id": "failed",
+   "title": "Bambu A1 with a very long title that must truncate",
+   "widgets": [
+    {
+     "id": "p_failed",
+     "type": "bambu_printer",
+     "title": "Bambu A1 with a very long title that must truncate",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 360,
+      "h": 420
+     },
+     "entity_id": "sensor.p_failed_status",
+     "nozzle_temp_entity_id": "sensor.p_failed_nozzle",
+     "bed_temp_entity_id": "sensor.p_failed_bed",
+     "progress_entity_id": "sensor.p_failed_progress",
+     "remaining_time_entity_id": "sensor.p_failed_remaining",
+     "stage_entity_id": "sensor.p_failed_stage",
+     "job_name_entity_id": "sensor.p_failed_job",
+     "pause_entity_id": "button.p_failed_pause",
+     "resume_entity_id": "button.p_failed_resume",
+     "stop_entity_id": "button.p_failed_stop"
+    }
+   ]
+  },
+  {
+   "id": "hours",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_hours",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 360,
+      "h": 420
+     },
+     "entity_id": "sensor.p_hours_status",
+     "nozzle_temp_entity_id": "sensor.p_hours_nozzle",
+     "bed_temp_entity_id": "sensor.p_hours_bed",
+     "progress_entity_id": "sensor.p_hours_progress",
+     "remaining_time_entity_id": "sensor.p_hours_remaining",
+     "stage_entity_id": "sensor.p_hours_stage",
+     "job_name_entity_id": "sensor.p_hours_job",
+     "pause_entity_id": "button.p_hours_pause",
+     "resume_entity_id": "button.p_hours_resume",
+     "stop_entity_id": "button.p_hours_stop"
+    }
+   ]
+  },
+  {
+   "id": "readonly",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_readonly",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 360,
+      "h": 420
+     },
+     "entity_id": "sensor.p_readonly_status",
+     "nozzle_temp_entity_id": "sensor.p_readonly_nozzle",
+     "bed_temp_entity_id": "sensor.p_readonly_bed",
+     "progress_entity_id": "sensor.p_readonly_progress",
+     "remaining_time_entity_id": "sensor.p_readonly_remaining",
+     "stage_entity_id": "sensor.p_readonly_stage",
+     "job_name_entity_id": "sensor.p_readonly_job"
+    }
+   ]
+  },
+  {
+   "id": "size_340x340",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_size_340x340",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 340,
+      "h": 340
+     },
+     "entity_id": "sensor.p_size_340x340_status",
+     "nozzle_temp_entity_id": "sensor.p_size_340x340_nozzle",
+     "bed_temp_entity_id": "sensor.p_size_340x340_bed",
+     "progress_entity_id": "sensor.p_size_340x340_progress",
+     "remaining_time_entity_id": "sensor.p_size_340x340_remaining",
+     "stage_entity_id": "sensor.p_size_340x340_stage",
+     "job_name_entity_id": "sensor.p_size_340x340_job",
+     "pause_entity_id": "button.p_size_340x340_pause",
+     "resume_entity_id": "button.p_size_340x340_resume",
+     "stop_entity_id": "button.p_size_340x340_stop"
+    }
+   ]
+  },
+  {
+   "id": "size_340x380",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_size_340x380",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 340,
+      "h": 380
+     },
+     "entity_id": "sensor.p_size_340x380_status",
+     "nozzle_temp_entity_id": "sensor.p_size_340x380_nozzle",
+     "bed_temp_entity_id": "sensor.p_size_340x380_bed",
+     "progress_entity_id": "sensor.p_size_340x380_progress",
+     "remaining_time_entity_id": "sensor.p_size_340x380_remaining",
+     "stage_entity_id": "sensor.p_size_340x380_stage",
+     "job_name_entity_id": "sensor.p_size_340x380_job",
+     "pause_entity_id": "button.p_size_340x380_pause",
+     "resume_entity_id": "button.p_size_340x380_resume",
+     "stop_entity_id": "button.p_size_340x380_stop"
+    }
+   ]
+  },
+  {
+   "id": "size_400x360",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_size_400x360",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 400,
+      "h": 360
+     },
+     "entity_id": "sensor.p_size_400x360_status",
+     "nozzle_temp_entity_id": "sensor.p_size_400x360_nozzle",
+     "bed_temp_entity_id": "sensor.p_size_400x360_bed",
+     "progress_entity_id": "sensor.p_size_400x360_progress",
+     "remaining_time_entity_id": "sensor.p_size_400x360_remaining",
+     "stage_entity_id": "sensor.p_size_400x360_stage",
+     "job_name_entity_id": "sensor.p_size_400x360_job",
+     "pause_entity_id": "button.p_size_400x360_pause",
+     "resume_entity_id": "button.p_size_400x360_resume",
+     "stop_entity_id": "button.p_size_400x360_stop"
+    }
+   ]
+  },
+  {
+   "id": "size_420x480",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_size_420x480",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 420,
+      "h": 480
+     },
+     "entity_id": "sensor.p_size_420x480_status",
+     "nozzle_temp_entity_id": "sensor.p_size_420x480_nozzle",
+     "bed_temp_entity_id": "sensor.p_size_420x480_bed",
+     "progress_entity_id": "sensor.p_size_420x480_progress",
+     "remaining_time_entity_id": "sensor.p_size_420x480_remaining",
+     "stage_entity_id": "sensor.p_size_420x480_stage",
+     "job_name_entity_id": "sensor.p_size_420x480_job",
+     "pause_entity_id": "button.p_size_420x480_pause",
+     "resume_entity_id": "button.p_size_420x480_resume",
+     "stop_entity_id": "button.p_size_420x480_stop"
+    }
+   ]
+  },
+  {
+   "id": "size_480x420",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_size_480x420",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 480,
+      "h": 420
+     },
+     "entity_id": "sensor.p_size_480x420_status",
+     "nozzle_temp_entity_id": "sensor.p_size_480x420_nozzle",
+     "bed_temp_entity_id": "sensor.p_size_480x420_bed",
+     "progress_entity_id": "sensor.p_size_480x420_progress",
+     "remaining_time_entity_id": "sensor.p_size_480x420_remaining",
+     "stage_entity_id": "sensor.p_size_480x420_stage",
+     "job_name_entity_id": "sensor.p_size_480x420_job",
+     "pause_entity_id": "button.p_size_480x420_pause",
+     "resume_entity_id": "button.p_size_480x420_resume",
+     "stop_entity_id": "button.p_size_480x420_stop"
+    }
+   ]
+  },
+  {
+   "id": "size_480x560",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_size_480x560",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 480,
+      "h": 560
+     },
+     "entity_id": "sensor.p_size_480x560_status",
+     "nozzle_temp_entity_id": "sensor.p_size_480x560_nozzle",
+     "bed_temp_entity_id": "sensor.p_size_480x560_bed",
+     "progress_entity_id": "sensor.p_size_480x560_progress",
+     "remaining_time_entity_id": "sensor.p_size_480x560_remaining",
+     "stage_entity_id": "sensor.p_size_480x560_stage",
+     "job_name_entity_id": "sensor.p_size_480x560_job",
+     "pause_entity_id": "button.p_size_480x560_pause",
+     "resume_entity_id": "button.p_size_480x560_resume",
+     "stop_entity_id": "button.p_size_480x560_stop"
+    }
+   ]
+  },
+  {
+   "id": "size_560x360",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_size_560x360",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 560,
+      "h": 360
+     },
+     "entity_id": "sensor.p_size_560x360_status",
+     "nozzle_temp_entity_id": "sensor.p_size_560x360_nozzle",
+     "bed_temp_entity_id": "sensor.p_size_560x360_bed",
+     "progress_entity_id": "sensor.p_size_560x360_progress",
+     "remaining_time_entity_id": "sensor.p_size_560x360_remaining",
+     "stage_entity_id": "sensor.p_size_560x360_stage",
+     "job_name_entity_id": "sensor.p_size_560x360_job",
+     "pause_entity_id": "button.p_size_560x360_pause",
+     "resume_entity_id": "button.p_size_560x360_resume",
+     "stop_entity_id": "button.p_size_560x360_stop"
+    }
+   ]
+  },
+  {
+   "id": "size_640x400",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_size_640x400",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 640,
+      "h": 400
+     },
+     "entity_id": "sensor.p_size_640x400_status",
+     "nozzle_temp_entity_id": "sensor.p_size_640x400_nozzle",
+     "bed_temp_entity_id": "sensor.p_size_640x400_bed",
+     "progress_entity_id": "sensor.p_size_640x400_progress",
+     "remaining_time_entity_id": "sensor.p_size_640x400_remaining",
+     "stage_entity_id": "sensor.p_size_640x400_stage",
+     "job_name_entity_id": "sensor.p_size_640x400_job",
+     "pause_entity_id": "button.p_size_640x400_pause",
+     "resume_entity_id": "button.p_size_640x400_resume",
+     "stop_entity_id": "button.p_size_640x400_stop"
+    }
+   ]
+  },
+  {
+   "id": "size_640x560",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_size_640x560",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 640,
+      "h": 560
+     },
+     "entity_id": "sensor.p_size_640x560_status",
+     "nozzle_temp_entity_id": "sensor.p_size_640x560_nozzle",
+     "bed_temp_entity_id": "sensor.p_size_640x560_bed",
+     "progress_entity_id": "sensor.p_size_640x560_progress",
+     "remaining_time_entity_id": "sensor.p_size_640x560_remaining",
+     "stage_entity_id": "sensor.p_size_640x560_stage",
+     "job_name_entity_id": "sensor.p_size_640x560_job",
+     "pause_entity_id": "button.p_size_640x560_pause",
+     "resume_entity_id": "button.p_size_640x560_resume",
+     "stop_entity_id": "button.p_size_640x560_stop"
+    }
+   ]
+  },
+  {
+   "id": "size_700x330",
+   "title": "Bambu A1",
+   "widgets": [
+    {
+     "id": "p_size_700x330",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 700,
+      "h": 330
+     },
+     "entity_id": "sensor.p_size_700x330_status",
+     "nozzle_temp_entity_id": "sensor.p_size_700x330_nozzle",
+     "bed_temp_entity_id": "sensor.p_size_700x330_bed",
+     "progress_entity_id": "sensor.p_size_700x330_progress",
+     "remaining_time_entity_id": "sensor.p_size_700x330_remaining",
+     "stage_entity_id": "sensor.p_size_700x330_stage",
+     "job_name_entity_id": "sensor.p_size_700x330_job",
+     "pause_entity_id": "button.p_size_700x330_pause",
+     "resume_entity_id": "button.p_size_700x330_resume",
+     "stop_entity_id": "button.p_size_700x330_stop"
+    }
+   ]
+  },
+  {
+   "id": "missing",
+   "title": "Missing",
+   "widgets": [
+    {
+     "id": "p_missing",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 360,
+      "h": 420
+     },
+     "entity_id": "sensor.p_missing_status",
+     "nozzle_temp_entity_id": "sensor.p_missing_nozzle",
+     "bed_temp_entity_id": "sensor.p_missing_bed",
+     "progress_entity_id": "sensor.p_missing_progress",
+     "remaining_time_entity_id": "sensor.p_missing_remaining",
+     "stage_entity_id": "sensor.p_missing_stage",
+     "job_name_entity_id": "sensor.p_missing_job",
+     "pause_entity_id": "button.p_missing_pause",
+     "resume_entity_id": "button.p_missing_resume",
+     "stop_entity_id": "button.p_missing_stop"
+    }
+   ]
+  },
+  {
+   "id": "long_job",
+   "title": "Long Job",
+   "widgets": [
+    {
+     "id": "p_long_job",
+     "type": "bambu_printer",
+     "title": "Bambu A1",
+     "rect": {
+      "x": 8,
+      "y": 8,
+      "w": 360,
+      "h": 420
+     },
+     "entity_id": "sensor.p_long_job_status",
+     "nozzle_temp_entity_id": "sensor.p_long_job_nozzle",
+     "bed_temp_entity_id": "sensor.p_long_job_bed",
+     "progress_entity_id": "sensor.p_long_job_progress",
+     "remaining_time_entity_id": "sensor.p_long_job_remaining",
+     "stage_entity_id": "sensor.p_long_job_stage",
+     "job_name_entity_id": "sensor.p_long_job_job",
+     "pause_entity_id": "button.p_long_job_pause",
+     "resume_entity_id": "button.p_long_job_resume",
+     "stop_entity_id": "button.p_long_job_stop"
+    }
+   ]
+  }
+ ],
+ "states": [
+  {
+   "entity_id": "sensor.p_printing_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_printing_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_printing_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_printing_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_printing_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_printing_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_printing_job",
+   "state": "Benchy_0.2mm_PLA"
+  },
+  {
+   "entity_id": "button.p_printing_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_printing_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_printing_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_paused_status",
+   "state": "pause"
+  },
+  {
+   "entity_id": "sensor.p_paused_nozzle",
+   "state": "215",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_paused_bed",
+   "state": "60",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_paused_progress",
+   "state": "57",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_paused_remaining",
+   "state": "17",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_paused_stage",
+   "state": "paused_user"
+  },
+  {
+   "entity_id": "sensor.p_paused_job",
+   "state": "Bracket_v3"
+  },
+  {
+   "entity_id": "button.p_paused_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_paused_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_paused_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_minimum_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_minimum_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_minimum_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_minimum_progress",
+   "state": "100",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_minimum_remaining",
+   "state": "1",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_minimum_stage",
+   "state": "printing"
+  },
+  {
+   "entity_id": "sensor.p_minimum_job",
+   "state": "Part"
+  },
+  {
+   "entity_id": "button.p_minimum_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_minimum_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_minimum_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_idle_status",
+   "state": "idle"
+  },
+  {
+   "entity_id": "sensor.p_idle_nozzle",
+   "state": "24",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_idle_bed",
+   "state": "23",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_idle_progress",
+   "state": "100",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_idle_remaining",
+   "state": "0",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_idle_stage",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_idle_job",
+   "state": "Old job"
+  },
+  {
+   "entity_id": "button.p_idle_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_idle_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_idle_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_offline_status",
+   "state": "offline"
+  },
+  {
+   "entity_id": "sensor.p_offline_nozzle",
+   "state": "unavailable"
+  },
+  {
+   "entity_id": "sensor.p_offline_bed",
+   "state": "unavailable"
+  },
+  {
+   "entity_id": "sensor.p_offline_progress",
+   "state": "unavailable"
+  },
+  {
+   "entity_id": "sensor.p_offline_remaining",
+   "state": "unavailable"
+  },
+  {
+   "entity_id": "sensor.p_offline_stage",
+   "state": "unavailable"
+  },
+  {
+   "entity_id": "sensor.p_offline_job",
+   "state": "unavailable"
+  },
+  {
+   "entity_id": "button.p_offline_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_offline_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_offline_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_finished_status",
+   "state": "finish"
+  },
+  {
+   "entity_id": "sensor.p_finished_nozzle",
+   "state": "30",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_finished_bed",
+   "state": "28",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_finished_progress",
+   "state": "100",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_finished_remaining",
+   "state": "0",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_finished_stage",
+   "state": "printing"
+  },
+  {
+   "entity_id": "sensor.p_finished_job",
+   "state": "Spool_holder"
+  },
+  {
+   "entity_id": "button.p_finished_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_finished_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_finished_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_failed_status",
+   "state": "failed"
+  },
+  {
+   "entity_id": "sensor.p_failed_nozzle",
+   "state": "40",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_failed_bed",
+   "state": "35",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_failed_progress",
+   "state": "37",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_failed_remaining",
+   "state": "50",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_failed_stage",
+   "state": "paused_nozzle_clog"
+  },
+  {
+   "entity_id": "sensor.p_failed_job",
+   "state": "A very long print job name for the popup.3mf"
+  },
+  {
+   "entity_id": "button.p_failed_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_failed_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_failed_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_hours_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_hours_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_hours_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_hours_progress",
+   "state": "3",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_hours_remaining",
+   "state": "6.5",
+   "attributes": {
+    "unit_of_measurement": "h"
+   }
+  },
+  {
+   "entity_id": "sensor.p_hours_stage",
+   "state": "calibrating_extrusion"
+  },
+  {
+   "entity_id": "sensor.p_hours_job",
+   "state": "Big_print"
+  },
+  {
+   "entity_id": "button.p_hours_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_hours_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_hours_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_readonly_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_readonly_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_readonly_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_readonly_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_readonly_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_readonly_stage",
+   "state": "printing"
+  },
+  {
+   "entity_id": "sensor.p_readonly_job",
+   "state": "Part"
+  },
+  {
+   "entity_id": "sensor.p_size_340x340_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_size_340x340_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_340x340_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_340x340_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_340x340_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_340x340_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_size_340x340_job",
+   "state": "Benchy_0.2mm_PLA"
+  },
+  {
+   "entity_id": "button.p_size_340x340_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_340x340_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_340x340_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_size_340x380_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_size_340x380_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_340x380_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_340x380_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_340x380_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_340x380_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_size_340x380_job",
+   "state": "Benchy_0.2mm_PLA"
+  },
+  {
+   "entity_id": "button.p_size_340x380_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_340x380_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_340x380_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_size_400x360_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_size_400x360_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_400x360_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_400x360_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_400x360_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_400x360_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_size_400x360_job",
+   "state": "Benchy_0.2mm_PLA"
+  },
+  {
+   "entity_id": "button.p_size_400x360_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_400x360_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_400x360_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_size_420x480_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_size_420x480_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_420x480_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_420x480_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_420x480_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_420x480_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_size_420x480_job",
+   "state": "Benchy_0.2mm_PLA"
+  },
+  {
+   "entity_id": "button.p_size_420x480_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_420x480_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_420x480_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_size_480x420_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_size_480x420_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_480x420_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_480x420_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_480x420_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_480x420_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_size_480x420_job",
+   "state": "Benchy_0.2mm_PLA"
+  },
+  {
+   "entity_id": "button.p_size_480x420_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_480x420_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_480x420_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_size_480x560_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_size_480x560_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_480x560_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_480x560_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_480x560_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_480x560_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_size_480x560_job",
+   "state": "Benchy_0.2mm_PLA"
+  },
+  {
+   "entity_id": "button.p_size_480x560_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_480x560_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_480x560_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_size_560x360_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_size_560x360_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_560x360_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_560x360_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_560x360_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_560x360_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_size_560x360_job",
+   "state": "Benchy_0.2mm_PLA"
+  },
+  {
+   "entity_id": "button.p_size_560x360_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_560x360_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_560x360_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_size_640x400_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_size_640x400_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_640x400_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_640x400_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_640x400_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_640x400_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_size_640x400_job",
+   "state": "Benchy_0.2mm_PLA"
+  },
+  {
+   "entity_id": "button.p_size_640x400_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_640x400_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_640x400_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_size_640x560_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_size_640x560_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_640x560_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_640x560_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_640x560_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_640x560_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_size_640x560_job",
+   "state": "Benchy_0.2mm_PLA"
+  },
+  {
+   "entity_id": "button.p_size_640x560_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_640x560_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_640x560_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_size_700x330_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_size_700x330_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_700x330_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_700x330_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_700x330_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_size_700x330_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_size_700x330_job",
+   "state": "Benchy_0.2mm_PLA"
+  },
+  {
+   "entity_id": "button.p_size_700x330_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_700x330_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_size_700x330_stop",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "sensor.p_long_job_status",
+   "state": "running"
+  },
+  {
+   "entity_id": "sensor.p_long_job_nozzle",
+   "state": "220",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_long_job_bed",
+   "state": "65",
+   "attributes": {
+    "unit_of_measurement": "°C"
+   }
+  },
+  {
+   "entity_id": "sensor.p_long_job_progress",
+   "state": "46",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.p_long_job_remaining",
+   "state": "22",
+   "attributes": {
+    "unit_of_measurement": "min"
+   }
+  },
+  {
+   "entity_id": "sensor.p_long_job_stage",
+   "state": "heating_hotend"
+  },
+  {
+   "entity_id": "sensor.p_long_job_job",
+   "state": "A very long printer job name with spaces and underscores_0.2mm_PLA_multi_part_assembly.gcode"
+  },
+  {
+   "entity_id": "button.p_long_job_pause",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_long_job_resume",
+   "state": "unknown"
+  },
+  {
+   "entity_id": "button.p_long_job_stop",
+   "state": "unknown"
+  }
+ ]
+}

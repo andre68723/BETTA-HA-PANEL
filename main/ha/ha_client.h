@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "esp_err.h"
@@ -42,15 +44,36 @@ esp_err_t ha_client_call_service_with_response(
     const char *json_service_data,
     ha_client_response_cb_t cb,
     void *user);
+/* Sends any Home Assistant WebSocket command and delivers its `result` to `cb`, like
+ * ha_client_call_service_with_response(): once, on the WS RX task, with success=false on timeout, error or a
+ * refused send. `command` is an object without "id" (for example {"type":"recorder/statistics_during_period",...});
+ * this function adds the id and TAKES OWNERSHIP of the cJSON tree on every path. It passes the heavy-request gate,
+ * so it can fail with ESP_ERR_INVALID_STATE while another heavy request runs; the caller retries later. */
+esp_err_t ha_client_send_command_with_response(cJSON *command, ha_client_response_cb_t cb, void *user);
 /* Cancel any pending response callbacks that match the given `user` pointer.
  * Must be called by any caller of ha_client_call_service_with_response()
  * before the object referenced by `user` is destroyed, to prevent the WS
  * RX task from invoking the callback with a dangling pointer.  Safe to call
  * from any task; never invokes the callback. */
 void ha_client_cancel_pending_responses_for_user(void *user);
+/* The statistic IDs behind the sources of Home Assistant's Energy dashboard, as the client read them from
+ * energy/get_prefs. Empty until the preferences are loaded or when the dashboard has no such source. */
+typedef enum {
+    HA_ENERGY_RES_GRID_IMPORT = 0,
+    HA_ENERGY_RES_GRID_EXPORT,
+    HA_ENERGY_RES_SOLAR,
+    HA_ENERGY_RES_BATTERY_DISCHARGE,
+    HA_ENERGY_RES_BATTERY_CHARGE,
+    HA_ENERGY_RES_GAS,
+    HA_ENERGY_RES_WATER,
+} ha_energy_resource_t;
+size_t ha_client_energy_source_ids(ha_energy_resource_t resource, char ids[][APP_MAX_ENTITY_ID_LEN], size_t max_ids);
 esp_err_t ha_client_notify_layout_updated(void);
 esp_err_t ha_client_request_energy_refresh(void);
 esp_err_t ha_client_get_domain_entities_json(const char *domain, const char *search, bool refresh, char **out_json);
+/* Areas and floors from the Home Assistant registry only, without an entity discovery (the
+ * editor's room import lists the rooms first and then reads one room's entities). */
+esp_err_t ha_client_get_room_areas_json(bool refresh, char **out_json);
 esp_err_t ha_client_cancel_domain_entities(const char *domain, const char *search);
 
 /* HTTP-context snapshot used by auxiliary consumers (e.g. cover-art fetcher).

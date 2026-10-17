@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ha/ha_light_capabilities.h"
 
@@ -44,14 +45,6 @@ static int clamp_kelvin(int value)
         return 12000;
     }
     return value;
-}
-
-static int kelvin_from_mired(double mired)
-{
-    if (mired <= 0.0) {
-        return 0;
-    }
-    return clamp_kelvin((int)((1000000.0 / mired) + 0.5));
 }
 
 static bool attrs_have_number(cJSON *attrs, const char *name)
@@ -165,9 +158,8 @@ static void apply_attribute_fallbacks(cJSON *attrs, ha_light_capabilities_t *cap
     if (attrs_have_array(attrs, "rgb_color") || attrs_have_array(attrs, "hs_color") || attrs_have_array(attrs, "xy_color")) {
         caps->can_color = true;
     }
-    if (attrs_have_number(attrs, "color_temp") || attrs_have_number(attrs, "color_temp_kelvin") ||
-        attrs_have_number(attrs, "min_color_temp_kelvin") || attrs_have_number(attrs, "max_color_temp_kelvin") ||
-        attrs_have_number(attrs, "min_mireds") || attrs_have_number(attrs, "max_mireds")) {
+    if (attrs_have_number(attrs, "color_temp_kelvin") || attrs_have_number(attrs, "min_color_temp_kelvin") ||
+        attrs_have_number(attrs, "max_color_temp_kelvin")) {
         caps->can_color_temp = true;
     }
     if (attrs_have_array(attrs, "effect_list")) {
@@ -241,19 +233,6 @@ static void apply_color_temp_kelvin(cJSON *attrs, ha_light_capabilities_t *caps)
         caps->max_color_temp_kelvin = clamp_kelvin((int)(max_kelvin->valuedouble + 0.5));
     }
 
-    if (!cJSON_IsNumber(min_kelvin) || !cJSON_IsNumber(max_kelvin)) {
-        cJSON *min_mireds = cJSON_GetObjectItemCaseSensitive(attrs, "min_mireds");
-        cJSON *max_mireds = cJSON_GetObjectItemCaseSensitive(attrs, "max_mireds");
-        int kelvin_from_max_mireds = cJSON_IsNumber(max_mireds) ? kelvin_from_mired(max_mireds->valuedouble) : 0;
-        int kelvin_from_min_mireds = cJSON_IsNumber(min_mireds) ? kelvin_from_mired(min_mireds->valuedouble) : 0;
-        if (!cJSON_IsNumber(min_kelvin) && kelvin_from_max_mireds > 0) {
-            caps->min_color_temp_kelvin = kelvin_from_max_mireds;
-        }
-        if (!cJSON_IsNumber(max_kelvin) && kelvin_from_min_mireds > 0) {
-            caps->max_color_temp_kelvin = kelvin_from_min_mireds;
-        }
-    }
-
     if (caps->min_color_temp_kelvin > caps->max_color_temp_kelvin) {
         int tmp = caps->min_color_temp_kelvin;
         caps->min_color_temp_kelvin = caps->max_color_temp_kelvin;
@@ -264,14 +243,6 @@ static void apply_color_temp_kelvin(cJSON *attrs, ha_light_capabilities_t *caps)
     if (cJSON_IsNumber(current_kelvin)) {
         caps->has_color_temp_kelvin = true;
         caps->color_temp_kelvin = clamp_kelvin((int)(current_kelvin->valuedouble + 0.5));
-        return;
-    }
-
-    cJSON *current_mired = cJSON_GetObjectItemCaseSensitive(attrs, "color_temp");
-    int from_mired = cJSON_IsNumber(current_mired) ? kelvin_from_mired(current_mired->valuedouble) : 0;
-    if (from_mired > 0) {
-        caps->has_color_temp_kelvin = true;
-        caps->color_temp_kelvin = from_mired;
     }
 }
 

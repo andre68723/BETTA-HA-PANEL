@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "drivers/touch_init.h"
 
 #include "driver/gpio.h"
+#include "driver/i2c_master.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -12,11 +14,14 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_touch_gt911.h"
 #include "esp_log.h"
-#include "esp_lvgl_port.h"
+#include "drivers/display_port.h"
 #include "lvgl.h"
 
 #include "drivers/display_init.h"
 #include "util/log_tags.h"
+
+/* LCD-4B hardware reset remains GPIO23; BSP 3.x declares it NC. */
+#define PANEL4_TOUCH_RESET_GPIO GPIO_NUM_23
 
 static bool s_touch_ready = false;
 static lv_indev_t *s_touch_indev = NULL;
@@ -26,6 +31,7 @@ static const int TOUCH_INIT_RETRIES = 8;
 static const int TOUCH_INIT_RETRY_DELAY_MS = 250;
 static const int TOUCH_GT911_RESET_ASSERT_MS = 20;
 static const int TOUCH_GT911_POST_RESET_MS = 140;
+static const int TOUCH_GT911_PROBE_MS = 50;
 
 static void touch_activity_event_cb(lv_event_t *event)
 {
@@ -56,32 +62,53 @@ static void touch_release_handle(void)
 
 static esp_err_t touch_gt911_prepare_reset(void)
 {
-    if (BSP_LCD_TOUCH_RST == GPIO_NUM_NC) {
+    if (PANEL4_TOUCH_RESET_GPIO == GPIO_NUM_NC) {
         vTaskDelay(pdMS_TO_TICKS(TOUCH_GT911_POST_RESET_MS));
         return ESP_OK;
     }
 
     const gpio_config_t rst_gpio_config = {
         .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = BIT64(BSP_LCD_TOUCH_RST),
+        .pin_bit_mask = BIT64(PANEL4_TOUCH_RESET_GPIO),
     };
     esp_err_t err = gpio_config(&rst_gpio_config);
     if (err != ESP_OK) {
         return err;
     }
 
-    err = gpio_set_level(BSP_LCD_TOUCH_RST, 0);
+    err = gpio_set_level(PANEL4_TOUCH_RESET_GPIO, 0);
     if (err != ESP_OK) {
         return err;
     }
     vTaskDelay(pdMS_TO_TICKS(TOUCH_GT911_RESET_ASSERT_MS));
 
-    err = gpio_set_level(BSP_LCD_TOUCH_RST, 1);
+    err = gpio_set_level(PANEL4_TOUCH_RESET_GPIO, 1);
     if (err != ESP_OK) {
         return err;
     }
     vTaskDelay(pdMS_TO_TICKS(TOUCH_GT911_POST_RESET_MS));
     return ESP_OK;
+}
+
+/* The GT911 latches 0x5D or 0x14 from its INT level when it leaves reset. INT only
+ * goes to a test point on this board, without a pull resistor, so try both (as
+ * Waveshare's BSP 3.0.1 does). */
+static esp_err_t touch_detect_gt911_address(i2c_master_bus_handle_t bus, uint16_t *out_addr)
+{
+    static const uint16_t candidates[] = {
+        ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS,
+        ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS_BACKUP,
+    };
+
+    for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
+        esp_err_t err = i2c_master_probe(bus, candidates[i], TOUCH_GT911_PROBE_MS);
+        if (err == ESP_OK) {
+            *out_addr = candidates[i];
+            return ESP_OK;
+        }
+        ESP_LOGI(TAG_TOUCH, "GT911 probe 0x%02x failed: %s", candidates[i], esp_err_to_name(err));
+    }
+    return ESP_ERR_NOT_FOUND;
 }
 
 static esp_err_t touch_create_gt911(esp_lcd_touch_handle_t *out_touch)
@@ -106,7 +133,15 @@ static esp_err_t touch_create_gt911(esp_lcd_touch_handle_t *out_touch)
         return ESP_ERR_INVALID_STATE;
     }
 
+    uint16_t addr = 0;
+    err = touch_detect_gt911_address(i2c_handle, &addr);
+    if (err != ESP_OK) {
+        return err;
+    }
+    ESP_LOGI(TAG_TOUCH, "GT911 answers at 0x%02x", addr);
+
     esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG();
+    tp_io_config.dev_addr = addr;
     tp_io_config.scl_speed_hz = CONFIG_BSP_I2C_CLK_SPEED_HZ;
 
     esp_lcd_panel_io_handle_t io_handle = NULL;
@@ -174,7 +209,7 @@ esp_err_t touch_init(void)
         return (err == ESP_OK) ? ESP_FAIL : err;
     }
 
-    const lvgl_port_touch_cfg_t touch_cfg = {
+    const esp_lv_adapter_touch_config_t touch_cfg = {
         .disp = disp,
         .handle = s_touch_handle,
         .scale = {
@@ -187,20 +222,20 @@ esp_err_t touch_init(void)
         touch_release_handle();
         return ESP_ERR_TIMEOUT;
     }
-    s_touch_indev = lvgl_port_add_touch(&touch_cfg);
+    s_touch_indev = esp_lv_adapter_register_touch(&touch_cfg);
     if (s_touch_indev != NULL) {
         lv_indev_add_event_cb(s_touch_indev, touch_activity_event_cb, LV_EVENT_PRESSED, NULL);
     }
     display_unlock();
 
     if (s_touch_indev == NULL) {
-        ESP_LOGE(TAG_TOUCH, "lvgl_port_add_touch failed");
+        ESP_LOGE(TAG_TOUCH, "esp_lv_adapter_register_touch failed");
         touch_release_handle();
         return ESP_FAIL;
     }
 
     s_touch_ready = true;
-    ESP_LOGI(TAG_TOUCH, "Touch initialized (esp_lvgl_port + GT911)");
+    ESP_LOGI(TAG_TOUCH, "Touch initialized (esp_lvgl_adapter + GT911)");
     return ESP_OK;
 }
 

@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #pragma once
 
 #include <stdbool.h>
 
+#include "cJSON.h"
 #include "esp_err.h"
 #include "lvgl.h"
 
@@ -24,6 +26,9 @@ typedef struct {
     char battery_charge_power_entity_id[APP_MAX_ENTITY_ID_LEN];
     char battery_discharge_power_entity_id[APP_MAX_ENTITY_ID_LEN];
     char battery_soc_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char gas_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char water_entity_id[APP_MAX_ENTITY_ID_LEN];
+    bool details_side; /* "energy.details": "side" shows the seven-day details in a right-hand panel on wide displays */
 } ui_energy_page_config_t;
 
 typedef struct {
@@ -31,6 +36,11 @@ typedef struct {
     void *ctx;
     lv_obj_t *obj;
 } ui_energy_page_instance_t;
+
+/* Fills `out` from a layout page's "energy" object (source and sensor entities); the title falls
+ * back to "Energy". A page that names sensors without a source uses them live ("manual_live"). */
+void ui_energy_page_config_from_json(const cJSON *page_json, const char *page_id, const char *page_title,
+    ui_energy_page_config_t *out);
 
 esp_err_t ui_energy_page_create(
     const ui_energy_page_config_t *config, lv_obj_t *parent, ui_energy_page_instance_t *out_instance);

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ha/ha_model.h"
 
@@ -199,6 +200,17 @@ esp_err_t ha_model_upsert_entity(const ha_entity_info_t *entity)
     s_entities[s_entity_count++] = *entity;
     xSemaphoreGive(s_model_mutex);
     return ESP_OK;
+}
+
+bool ha_model_get_entity_name(const char *entity_id, char *out, size_t out_len)
+{
+    if (s_model_mutex == NULL || s_entities == NULL || entity_id == NULL || out == NULL || out_len == 0) return false;
+    xSemaphoreTake(s_model_mutex, portMAX_DELAY);
+    int idx = find_entity_index(entity_id);
+    bool found = idx >= 0 && s_entities[idx].name[0] != '\0' && strcmp(s_entities[idx].name, entity_id) != 0;
+    if (found) safe_copy_cstr(out, out_len, s_entities[idx].name);
+    xSemaphoreGive(s_model_mutex);
+    return found;
 }
 
 esp_err_t ha_model_upsert_state(const ha_state_t *state)

@@ -1,0 +1,287 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "id": "etl_min",
+      "title": "Timeline minimum",
+      "widgets": [
+        {
+          "id": "etl_min_solar",
+          "type": "energy_timeline",
+          "title": "Energy",
+          "entity_id": "sensor.grid_import",
+          "secondary_entity_id": "sensor.grid_export",
+          "tertiary_entity_id": "sensor.solar",
+          "rect": {
+            "x": 10,
+            "y": 10,
+            "w": 320,
+            "h": 220
+          }
+        },
+        {
+          "id": "etl_min_gridonly",
+          "type": "energy_timeline",
+          "title": "Grid only",
+          "entity_id": "sensor.grid_import",
+          "rect": {
+            "x": 350,
+            "y": 10,
+            "w": 320,
+            "h": 220
+          }
+        },
+        {
+          "id": "etl_min_loading",
+          "type": "energy_timeline",
+          "title": "Loading",
+          "entity_id": "sensor.grid_import",
+          "secondary_entity_id": "sensor.grid_export",
+          "tertiary_entity_id": "sensor.solar",
+          "rect": {
+            "x": 10,
+            "y": 250,
+            "w": 320,
+            "h": 220
+          }
+        },
+        {
+          "id": "etl_min_stale",
+          "type": "energy_timeline",
+          "title": "Stale",
+          "entity_id": "sensor.grid_import",
+          "secondary_entity_id": "sensor.grid_export",
+          "tertiary_entity_id": "sensor.solar",
+          "rect": {
+            "x": 350,
+            "y": 250,
+            "w": 320,
+            "h": 220
+          }
+        }
+      ]
+    },
+    {
+      "id": "etl_half",
+      "title": "Timeline half page",
+      "widgets": [
+        {
+          "id": "etl_half_solar",
+          "type": "energy_timeline",
+          "title": "Energy last 24 hours",
+          "entity_id": "sensor.grid_import",
+          "secondary_entity_id": "sensor.grid_export",
+          "tertiary_entity_id": "sensor.solar",
+          "rect": {
+            "x": 10,
+            "y": 10,
+            "w": 700,
+            "h": 300
+          }
+        }
+      ]
+    },
+    {
+      "id": "etl_full",
+      "title": "Timeline full page",
+      "widgets": [
+        {
+          "id": "etl_full_solar",
+          "type": "energy_timeline",
+          "title": "Energy last 24 hours",
+          "entity_id": "sensor.grid_import",
+          "secondary_entity_id": "sensor.grid_export",
+          "tertiary_entity_id": "sensor.solar",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 720,
+            "h": 600
+          }
+        }
+      ]
+    },
+    {
+      "id": "etl_battery",
+      "title": "Timeline battery",
+      "widgets": [
+        {
+          "id": "etl_battery_full",
+          "type": "energy_timeline",
+          "title": "Energy last 24 hours",
+          "entity_id": "sensor.grid_import",
+          "secondary_entity_id": "sensor.grid_export",
+          "tertiary_entity_id": "sensor.solar",
+          "battery_charge_entity_id": "sensor.battery_charge",
+          "battery_discharge_entity_id": "sensor.battery_discharge",
+          "battery_soc_entity_id": "sensor.battery_soc",
+          "forecast_today_entity_id": "sensor.solar_forecast_today",
+          "rect": {
+            "x": 10,
+            "y": 10,
+            "w": 700,
+            "h": 580
+          }
+        }
+      ]
+    },
+    {
+      "id": "etl_battery_min",
+      "title": "Battery minimum",
+      "widgets": [
+        {
+          "id": "etl_battery_min_a",
+          "type": "energy_timeline",
+          "title": "Energy",
+          "entity_id": "sensor.grid_import",
+          "secondary_entity_id": "sensor.grid_export",
+          "tertiary_entity_id": "sensor.solar",
+          "battery_charge_entity_id": "sensor.battery_charge",
+          "battery_discharge_entity_id": "sensor.battery_discharge",
+          "battery_soc_entity_id": "sensor.battery_soc",
+          "forecast_today_entity_id": "sensor.solar_forecast_today",
+          "rect": {
+            "x": 10,
+            "y": 10,
+            "w": 320,
+            "h": 220
+          }
+        },
+        {
+          "id": "etl_battery_min_b",
+          "type": "energy_timeline",
+          "title": "Battery, wide",
+          "entity_id": "sensor.grid_import",
+          "secondary_entity_id": "sensor.grid_export",
+          "tertiary_entity_id": "sensor.solar",
+          "battery_charge_entity_id": "sensor.battery_charge",
+          "battery_discharge_entity_id": "sensor.battery_discharge",
+          "battery_soc_entity_id": "sensor.battery_soc",
+          "rect": {
+            "x": 10,
+            "y": 250,
+            "w": 700,
+            "h": 240
+          }
+        }
+      ]
+    },
+    {
+      "id": "etl_nested",
+      "title": "Timeline nested",
+      "widgets": [
+        {
+          "id": "etl_nested_full",
+          "type": "energy_timeline",
+          "title": "Energy last 24 hours",
+          "style_variant": "nested",
+          "entity_id": "sensor.grid_import",
+          "secondary_entity_id": "sensor.grid_export",
+          "tertiary_entity_id": "sensor.solar",
+          "battery_charge_entity_id": "sensor.battery_charge",
+          "battery_discharge_entity_id": "sensor.battery_discharge",
+          "battery_soc_entity_id": "sensor.battery_soc",
+          "forecast_today_entity_id": "sensor.solar_forecast_today",
+          "rect": {
+            "x": 10,
+            "y": 10,
+            "w": 700,
+            "h": 580
+          }
+        }
+      ]
+    },
+    {
+      "id": "etl_nested_small",
+      "title": "Nested small",
+      "widgets": [
+        {
+          "id": "etl_nested_small",
+          "type": "energy_timeline",
+          "title": "Nested small",
+          "style_variant": "nested",
+          "entity_id": "sensor.grid_import",
+          "secondary_entity_id": "sensor.grid_export",
+          "tertiary_entity_id": "sensor.solar",
+          "battery_charge_entity_id": "sensor.battery_charge",
+          "battery_discharge_entity_id": "sensor.battery_discharge",
+          "battery_soc_entity_id": "sensor.battery_soc",
+          "rect": {
+            "x": 10,
+            "y": 10,
+            "w": 320,
+            "h": 220
+          }
+        }
+      ]
+    }
+  ],
+  "states": [
+    {
+      "entity_id": "sensor.battery_soc",
+      "state": "64",
+      "attributes": {
+        "unit_of_measurement": "%",
+        "device_class": "battery"
+      }
+    },
+    {
+      "entity_id": "sensor.solar_forecast_today",
+      "state": "46.8",
+      "attributes": {
+        "fc_t0": 1779972300,
+        "fc_step": 1800,
+        "fc_kw": [
+          5.03,
+          4.45,
+          3.79,
+          3.1,
+          2.41,
+          1.75,
+          1.17,
+          0.68,
+          0.31,
+          0.08,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.08,
+          0.31,
+          0.68,
+          1.17,
+          1.75,
+          2.41,
+          3.1,
+          3.79,
+          4.45,
+          5.03,
+          5.52,
+          5.89,
+          6.12,
+          6.2,
+          6.12,
+          5.89,
+          5.52
+        ]
+      }
+    }
+  ]
+}

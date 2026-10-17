@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork.
  */
 #include "ui/theme/theme_palette.h"
 #include "ui/theme/theme_store.h"
@@ -52,6 +53,11 @@ static const theme_entry_t k_preset_dark_v2 = {
         .card_icon_on = 0x53E5FF,
         .state_on = 0xD6EAF8,
         .state_off = 0xA2B2C3,
+        .matte_page_bg = 0x0B0D11,
+        .matte_card_off = 0x2E3744,
+        .matte_card_on = 0x50627F,
+        .matte_track = 0x1C222A,
+        .matte_accent = 0xFFB74D,
         .light_icon_on = 0xFFCF6B,
         .light_track_on = 0x5A4722,
         .light_track_off = 0x435262,
@@ -113,6 +119,11 @@ static const theme_entry_t k_preset_classic_v1 = {
         .card_icon_on = 0xFDD835,
         .state_on = 0xFDD835,
         .state_off = 0xB0B0B0,
+        .matte_page_bg = 0x101012,
+        .matte_card_off = 0x303034,
+        .matte_card_on = 0x55535A,
+        .matte_track = 0x202024,
+        .matte_accent = 0xF5AE45,
         .light_icon_on = 0xFDD835,
         .light_track_on = 0x4A3A00,
         .light_track_off = 0x3A3A3A,
@@ -169,6 +180,11 @@ static const theme_entry_t k_preset_light = {
         .card_icon_on = 0x1680D0,
         .state_on = 0x1A2330,
         .state_off = 0x6A7685,
+        .matte_page_bg = 0xF2F4F7,
+        .matte_card_off = 0xDCE3EA,
+        .matte_card_on = 0xB6CDE0,
+        .matte_track = 0xBBC7D1,
+        .matte_accent = 0xB86B05,
         .light_icon_on = 0xE6A600,
         .light_track_on = 0xFCE6A3,
         .light_track_off = 0xCBD5E0,
@@ -225,6 +241,11 @@ static const theme_entry_t k_preset_ocean = {
         .card_icon_on = 0x5AE4FF,
         .state_on = 0xCCEEFB,
         .state_off = 0x92B5C7,
+        .matte_page_bg = 0x071B2A,
+        .matte_card_off = 0x24475C,
+        .matte_card_on = 0x386C8A,
+        .matte_track = 0x123348,
+        .matte_accent = 0xFFC05A,
         .light_icon_on = 0xFFD87A,
         .light_track_on = 0x544220,
         .light_track_off = 0x1E4966,
@@ -281,6 +302,11 @@ static const theme_entry_t k_preset_contrast = {
         .card_icon_on = 0xFFFF00,
         .state_on = 0xFFFFFF,
         .state_off = 0xC8C8C8,
+        .matte_page_bg = 0x000000,
+        .matte_card_off = 0x252525,
+        .matte_card_on = 0x484848,
+        .matte_track = 0x101010,
+        .matte_accent = 0xFFFF00,
         .light_icon_on = 0xFFFF00,
         .light_track_on = 0x666600,
         .light_track_off = 0x333333,
@@ -299,12 +325,78 @@ static const theme_entry_t k_preset_contrast = {
     },
 };
 
+/* Pure black page and tiles with no outlines (unlike High Contrast's white borders), Dark's text
+ * and accent colours. Only controls inside a tile (round buttons, tracks) are a very dark grey so
+ * they still read as something to tap. Fully black with the flat style; glow and glass add their
+ * own surface effects as with every theme. */
+static const theme_entry_t k_preset_black = {
+    .id = "black",
+    .name = "Pure Black",
+    .builtin = true,
+    .palette = {
+        .screen_bg = 0x000000,
+        .screen_bg_grad = 0x000000,
+        .content_bg = 0x000000,
+        .content_border = 0x000000,
+        .topbar_text = 0xEAF2FA,
+        .topbar_muted = 0xA1B1C1,
+        .topbar_status_on = 0xC7D1DB,
+        .topbar_status_off = 0x5F6B78,
+        .topbar_bg = 0x000000,
+        .topbar_border = 0x000000,
+        .topbar_chip_bg = 0x000000,
+        .topbar_chip_border = 0x000000,
+        .text_primary = 0xF5F9FD,
+        .text_muted = 0x9FB2C4,
+        .text_soft = 0xB7C3D0,
+        .nav_bg = 0x000000,
+        .nav_border = 0x000000,
+        .nav_btn_bg_idle = 0x1A1A1A,
+        .nav_btn_bg_active = 0x2A2A2A,
+        .nav_tab_idle = 0xA9C3D0,
+        .nav_tab_active = 0x6FE8FF,
+        .nav_home_idle = 0x9EB8C7,
+        .nav_home_active = 0x53E5FF,
+        .ok = 0x59D87C,
+        .error = 0xE97474,
+        .wifi_off = 0x6D7E90,
+        .card_bg_off = 0x000000,
+        .card_bg_on = 0x000000,
+        .card_border = 0x000000,
+        .card_icon_off = 0x8EA1B4,
+        .card_icon_on = 0x53E5FF,
+        .state_on = 0xD6EAF8,
+        .state_off = 0xA2B2C3,
+        .matte_page_bg = 0x000000,
+        .matte_card_off = 0x2E3744,
+        .matte_card_on = 0x50627F,
+        .matte_track = 0x1C222A,
+        .matte_accent = 0xFFB74D,
+        .light_icon_on = 0xFFCF6B,
+        .light_track_on = 0x3D3016,
+        .light_track_off = 0x262626,
+        .light_ind_on = 0xFFC34D,
+        .light_ind_off = 0x7E93A5,
+        .light_knob_on = 0xFFE2A3,
+        .light_knob_off = 0xB0BFD0,
+        .heat_icon_on = 0xFF9A72,
+        .heat_track_on = 0x3D1D15,
+        .heat_track_off = 0x262626,
+        .heat_ind_on = 0xFF7340,
+        .heat_ind_off = 0x9BB0C1,
+        .heat_knob_on = 0xFF916A,
+        .heat_knob_off = 0xC2CED9,
+        .weather_icon = 0xEAF3FB,
+    },
+};
+
 static const theme_entry_t *const k_builtin_list[] = {
     &k_preset_dark_v2,
     &k_preset_classic_v1,
     &k_preset_light,
     &k_preset_ocean,
     &k_preset_contrast,
+    &k_preset_black,
 };
 #define BUILTIN_COUNT (sizeof(k_builtin_list) / sizeof(k_builtin_list[0]))
 
@@ -383,22 +475,23 @@ size_t theme_palette_builtin_list(const theme_entry_t **out_list)
     return BUILTIN_COUNT;
 }
 
-esp_err_t theme_palette_activate_by_id(const char *id)
+esp_err_t theme_palette_resolve_by_id(const char *id, theme_entry_t *out)
 {
-    if (id == NULL || id[0] == '\0') {
-        return ESP_ERR_INVALID_ARG;
-    }
+    if (id == NULL || id[0] == '\0' || out == NULL) return ESP_ERR_INVALID_ARG;
     const theme_entry_t *builtin = theme_palette_find_builtin(id);
     if (builtin != NULL) {
-        theme_palette_set_active(&builtin->palette, builtin->id, builtin->name);
+        *out = *builtin;
         return ESP_OK;
     }
-    theme_entry_t custom = {0};
-    if (theme_store_load_custom(id, &custom) == ESP_OK) {
-        theme_palette_set_active(&custom.palette, custom.id, custom.name);
-        return ESP_OK;
-    }
-    return ESP_ERR_NOT_FOUND;
+    return theme_store_load_custom(id, out);
+}
+
+esp_err_t theme_palette_activate_by_id(const char *id)
+{
+    theme_entry_t entry;
+    esp_err_t err = theme_palette_resolve_by_id(id, &entry);
+    if (err == ESP_OK) theme_palette_set_active(&entry.palette, entry.id, entry.name);
+    return err;
 }
 
 /* -------------------------------------------------------------------------
@@ -422,6 +515,8 @@ static const theme_field_map_t k_field_map[] = {
     THEME_FIELD(ok), THEME_FIELD(error), THEME_FIELD(wifi_off),
     THEME_FIELD(card_bg_off), THEME_FIELD(card_bg_on), THEME_FIELD(card_border),
     THEME_FIELD(card_icon_off), THEME_FIELD(card_icon_on), THEME_FIELD(state_on), THEME_FIELD(state_off),
+    THEME_FIELD(matte_page_bg), THEME_FIELD(matte_card_off), THEME_FIELD(matte_card_on),
+    THEME_FIELD(matte_track), THEME_FIELD(matte_accent),
     THEME_FIELD(light_icon_on), THEME_FIELD(light_track_on), THEME_FIELD(light_track_off),
     THEME_FIELD(light_ind_on), THEME_FIELD(light_ind_off), THEME_FIELD(light_knob_on), THEME_FIELD(light_knob_off),
     THEME_FIELD(heat_icon_on), THEME_FIELD(heat_track_on), THEME_FIELD(heat_track_off),
@@ -540,6 +635,19 @@ bool theme_palette_from_json(const char *json, theme_entry_t *out_entry)
             *(uint32_t *)(base + k_field_map[i].offset) = (r8 << 16) | (g8 << 8) | b8;
         }
     }
+    /* Older custom themes have no Matte fields. Derive them from that theme's own colours. */
+    const uint32_t content = out_entry->palette.content_bg;
+    const uint32_t brightness = ((content >> 16) & 0xFFU) + ((content >> 8) & 0xFFU) + (content & 0xFFU);
+    const theme_palette_t *fallback = brightness > 384U ? &k_preset_light.palette : &k_preset_dark_v2.palette;
+#define MATTE_FALLBACK(field) do { \
+    if (cJSON_GetObjectItemCaseSensitive(colors, #field) == NULL) out_entry->palette.field = fallback->field; \
+} while (0)
+    MATTE_FALLBACK(matte_page_bg);
+    MATTE_FALLBACK(matte_card_off);
+    MATTE_FALLBACK(matte_card_on);
+    MATTE_FALLBACK(matte_track);
+    MATTE_FALLBACK(matte_accent);
+#undef MATTE_FALLBACK
     cJSON_Delete(root);
     return true;
 }

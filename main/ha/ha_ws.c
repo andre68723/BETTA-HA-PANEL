@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ha/ha_ws.h"
 
@@ -33,13 +34,8 @@ static char s_ws_headers[192] = {0};
 static char s_last_resolved_host[128] = {0};
 static char s_last_resolved_ip[64] = {0};
 
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-#define HA_WS_TASK_STACK 8192
-#define HA_WS_BUFFER_SIZE 8192
-#else
-#define HA_WS_TASK_STACK 12288
+#define HA_WS_TASK_STACK 8192 /* used 1.6 of 12 KB; the rest is margin for a TLS (wss) handshake */
 #define HA_WS_BUFFER_SIZE 16384
-#endif
 #define HA_WS_CTRL_PING_INTERVAL_SEC 25
 #define HA_WS_CTRL_PINGPONG_TIMEOUT_SEC 15
 #define HA_WS_TCP_KEEPALIVE_IDLE_SEC 30

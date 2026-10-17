@@ -1,5 +1,6 @@
 ﻿/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "drivers/touch_init.h"
 
@@ -11,7 +12,7 @@
 #include "esp_err.h"
 #include "esp_lcd_touch.h"
 #include "esp_log.h"
-#include "esp_lvgl_port.h"
+#include "drivers/display_port.h"
 #include "lvgl.h"
 
 #include "drivers/display_init.h"
@@ -126,7 +127,7 @@ esp_err_t touch_init(void)
 
     touch_apply_display_rotation_alignment(s_touch_handle);
 
-    const lvgl_port_touch_cfg_t touch_cfg = {
+    const esp_lv_adapter_touch_config_t touch_cfg = {
         .disp = disp,
         .handle = s_touch_handle,
         .scale = {
@@ -139,14 +140,14 @@ esp_err_t touch_init(void)
         touch_release_handle();
         return ESP_ERR_TIMEOUT;
     }
-    s_touch_indev = lvgl_port_add_touch(&touch_cfg);
+    s_touch_indev = esp_lv_adapter_register_touch(&touch_cfg);
     if (s_touch_indev != NULL) {
         lv_indev_add_event_cb(s_touch_indev, touch_activity_event_cb, LV_EVENT_PRESSED, NULL);
     }
     display_unlock();
 
     if (s_touch_indev == NULL) {
-        ESP_LOGE(TAG_TOUCH, "lvgl_port_add_touch failed");
+        ESP_LOGE(TAG_TOUCH, "esp_lv_adapter_register_touch failed");
         touch_release_handle();
         return ESP_FAIL;
     }
@@ -154,7 +155,7 @@ esp_err_t touch_init(void)
     touch_apply_polling_tune(s_touch_indev);
 
     s_touch_ready = true;
-    ESP_LOGI(TAG_TOUCH, "Touch initialized (esp_lvgl_port + GT911)");
+    ESP_LOGI(TAG_TOUCH, "Touch initialized (esp_lvgl_adapter + GT911)");
     return ESP_OK;
 }
 

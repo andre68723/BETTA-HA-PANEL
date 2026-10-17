@@ -1,16 +1,20 @@
 {
     "version": 3,
-    "cmakeMinimumRequired": { "major": 3, "subMajor": 21, "patch": 0 },
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 21,
+        "patch": 0
+    },
     "configurePresets": [
         {
             "name": "panel4",
             "displayName": "Panel 4\" 720x720 (smart86 base)",
             "description": "Build for the original 4-inch 720x720 round panel.",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build-panel4",
+            "binaryDir": "${sourceDir}/build/panel4",
             "cacheVariables": {
-                "SDKCONFIG_DEFAULTS": "sdkconfig.defaults;sdkconfig.defaults.panel4",
-                "SDKCONFIG": "${sourceDir}/sdkconfig.panel4"
+                "SDKCONFIG_DEFAULTS": "config/sdkconfig.defaults;config/sdkconfig.defaults.panel4",
+                "SDKCONFIG": "${sourceDir}/build/panel4/sdkconfig"
             }
         },
         {
@@ -18,21 +22,46 @@
             "displayName": "Panel 10.1\" 1280x800 (betta large)",
             "description": "Build for the 10.1-inch 1280x800 MIPI-DSI panel.",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build-panel10",
+            "binaryDir": "${sourceDir}/build/panel10",
             "cacheVariables": {
-                "SDKCONFIG_DEFAULTS": "sdkconfig.defaults;sdkconfig.defaults.panel10",
-                "SDKCONFIG": "${sourceDir}/sdkconfig.panel10"
+                "SDKCONFIG_DEFAULTS": "config/sdkconfig.defaults;config/sdkconfig.defaults.panel10",
+                "SDKCONFIG": "${sourceDir}/build/panel10/sdkconfig"
             }
         },
         {
-            "name": "panels3",
-            "displayName": "Panel S3 4\" 480x480 (Guition CYD 4848S040)",
-            "description": "Build for the Guition CYD ESP32-S3 4848S040 (RGB ST7701S, native Wi-Fi).",
+            "name": "paneljc",
+            "displayName": "Panel JC 10.1\" 800x1280 (Guition JC8012P4A1)",
+            "description": "Build for the Guition JC8012P4A1 (ESP32-P4 + JD9365 MIPI-DSI, GSL3680 touch, ESP-Hosted C6 Wi-Fi). Targets the original 'V1' panel revision (rear case date code up to ~2627) \u2014 see docs/choose-display.md.",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build-panels3",
+            "binaryDir": "${sourceDir}/build/paneljc",
             "cacheVariables": {
-                "SDKCONFIG_DEFAULTS": "sdkconfig.defaults.s3;sdkconfig.defaults.panels3",
-                "SDKCONFIG": "${sourceDir}/sdkconfig.panels3"
+                "IDF_TARGET": "esp32p4",
+                "SDKCONFIG_DEFAULTS": "config/sdkconfig.defaults;config/sdkconfig.defaults.paneljc",
+                "SDKCONFIG": "${sourceDir}/build/paneljc/sdkconfig"
+            }
+        },
+        {
+            "name": "paneljc-v2",
+            "displayName": "Panel JC 10.1\" 800x1280 (Guition JC8012P4A1, V2 panel)",
+            "description": "Build for the Guition JC8012P4A1 'V2' panel revision (rear case date code ~2628+) \u2014 different JD9365 init table/timing, same GSL3680 touch. See docs/choose-display.md.",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/paneljc-v2",
+            "cacheVariables": {
+                "IDF_TARGET": "esp32p4",
+                "SDKCONFIG_DEFAULTS": "config/sdkconfig.defaults;config/sdkconfig.defaults.paneljc;config/sdkconfig.defaults.paneljc.v2",
+                "SDKCONFIG": "${sourceDir}/build/paneljc-v2/sdkconfig"
+            }
+        },
+        {
+            "name": "tab5",
+            "displayName": "M5Stack Tab5 5\" 1280x720 (planned, not yet run on hardware)",
+            "description": "Build for the M5Stack Tab5 (ESP32-P4 + C6, BSP display/touch). Not yet run on hardware; see docs/choose-display.md.",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/tab5",
+            "cacheVariables": {
+                "IDF_TARGET": "esp32p4",
+                "SDKCONFIG_DEFAULTS": "config/sdkconfig.defaults;config/sdkconfig.defaults.tab5",
+                "SDKCONFIG": "${sourceDir}/build/tab5/sdkconfig"
             }
         }
     ]

@@ -1,7 +1,12 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "api/api_routes.h"
+#include "api/api_ota.h"
+#include "util/ota_chip_rev.h"
+#include "util/sha256_soft.h"
+#include "net/auto_update_task.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,6 +17,7 @@
 #include "cJSON.h"
 #include "bsp/display.h"
 #include "esp_app_desc.h"
+#include "esp_chip_info.h"
 #include "esp_app_format.h"
 #include "esp_crt_bundle.h"
 #include "esp_heap_caps.h"
@@ -21,17 +27,23 @@
 #include "esp_partition.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#include "api/ota_transfer.h"
+#include "util/transfer_deadline.h"
+#include "psa/crypto.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 
 #include "app_config.h"
+#include "net/update_check.h"
+#include "net/update_check_parse.h"
 #include "ui/ui_ota_progress.h"
+#include "util/flash_gate.h"
 #include "util/log_tags.h"
+#include "util/reboot_log_esp.h"
 
-#define OTA_APP_DESC_OFFSET (sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t))
-#define OTA_HEADER_CHECK_LEN (OTA_APP_DESC_OFFSET + sizeof(esp_app_desc_t))
 #define OTA_URL_MAX_REDIRECTS 8
+#define OTA_FLASH_GATE_WAIT_MS 15000U
 #define TAG_API_OTA "api_ota"
 
 typedef enum {
@@ -55,21 +67,8 @@ typedef struct {
     char version[32];
     char project_name[32];
     char partition_label[16];
+    bool sha256_verified; /* the image matched the SHA-256 GitHub published for its release asset */
 } api_ota_status_t;
-
-typedef struct {
-    const esp_partition_t *partition;
-    esp_ota_handle_t handle;
-    bool begun;
-    bool header_checked;
-    uint8_t header_buf[OTA_HEADER_CHECK_LEN];
-    size_t header_len;
-    size_t written;
-    size_t total;
-    char version[32];
-    char project_name[32];
-    char error[160];
-} api_ota_stream_t;
 
 static SemaphoreHandle_t s_ota_mutex = NULL;
 static esp_timer_handle_t s_ota_restart_timer = NULL;
@@ -95,7 +94,6 @@ static void set_json_headers(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 }
 
 static esp_err_t send_json_error(httpd_req_t *req, const char *status, const char *message)
@@ -232,6 +230,16 @@ static void ota_finish_status_error(const char *message)
     ui_ota_progress_error(message);
 }
 
+static void ota_set_sha256_verified(bool verified)
+{
+    if (ota_ensure_mutex() != ESP_OK) {
+        return;
+    }
+    xSemaphoreTake(s_ota_mutex, portMAX_DELAY);
+    s_ota_status.sha256_verified = verified;
+    xSemaphoreGive(s_ota_mutex);
+}
+
 static void ota_finish_status_success(void)
 {
     if (s_ota_mutex == NULL) {
@@ -255,6 +263,7 @@ static void ota_restart_timer_cb(void *arg)
 
 static void ota_schedule_restart(void)
 {
+    reboot_log_mark(REBOOT_CAUSE_OTA);
     if (s_ota_restart_timer == NULL) {
         const esp_timer_create_args_t timer_args = {
             .callback = ota_restart_timer_cb,
@@ -363,14 +372,6 @@ static bool ota_normalize_url(const char *input, char *out, size_t out_len)
     return written > 0 && (size_t)written < out_len && ota_url_is_https(out);
 }
 
-static void ota_stream_set_error(api_ota_stream_t *stream, const char *message)
-{
-    if (stream == NULL) {
-        return;
-    }
-    strlcpy(stream->error, message != NULL ? message : "OTA stream failed", sizeof(stream->error));
-}
-
 static esp_err_t ota_stream_init(api_ota_stream_t *stream, size_t total)
 {
     if (stream == NULL) {
@@ -391,6 +392,16 @@ static esp_err_t ota_stream_init(api_ota_stream_t *stream, size_t total)
     return ESP_OK;
 }
 
+/* The digest GitHub publishes for a release asset: the whole downloaded file must match it before the boot partition
+ * is switched. Integrity only (a compromised release would carry its own digest); see docs/SECURITY.md. */
+static esp_err_t ota_stream_expect_sha256(api_ota_stream_t *stream, const char *hex)
+{
+    sha256_soft_init(&stream->sha);
+    strlcpy(stream->expected_sha256, hex, sizeof(stream->expected_sha256));
+    stream->verify = true;
+    return ESP_OK;
+}
+
 static esp_err_t ota_stream_validate_header(api_ota_stream_t *stream)
 {
     if (stream == NULL || stream->header_len < OTA_HEADER_CHECK_LEN) {
@@ -408,6 +419,19 @@ static esp_err_t ota_stream_validate_header(api_ota_stream_t *stream)
     if (running_app != NULL &&
         strncmp(new_app->project_name, running_app->project_name, sizeof(new_app->project_name)) != 0) {
         ota_stream_set_error(stream, "OTA image project name does not match this firmware");
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
+    /* The same project but built for other silicon (a v3.x chip needs its own image): refuse it now, before anything is
+     * written; the bootloader would only reject it at the next boot. */
+    esp_chip_info_t chip;
+    esp_chip_info(&chip);
+    ota_image_revs_t image_revs;
+    if (ota_image_revs_parse(stream->header_buf, stream->header_len, &image_revs) &&
+        ota_image_revs_check(&image_revs, chip.revision) != OTA_REV_OK) {
+        char message[sizeof(stream->error)];
+        (void)ota_rev_mismatch_text(&image_revs, chip.revision, message, sizeof(message));
+        ota_stream_set_error(stream, message);
         return ESP_ERR_INVALID_RESPONSE;
     }
 
@@ -440,6 +464,9 @@ static esp_err_t ota_stream_write_checked(api_ota_stream_t *stream, const uint8_
 {
     if (stream == NULL || data == NULL || len == 0) {
         return ESP_OK;
+    }
+    if (stream->verify) {
+        sha256_soft_update(&stream->sha, data, len);
     }
 
     if (!stream->header_checked) {
@@ -491,69 +518,6 @@ static esp_err_t ota_stream_write_checked(api_ota_stream_t *stream, const uint8_
     return ESP_OK;
 }
 
-static esp_err_t ota_stream_finish(api_ota_stream_t *stream)
-{
-    if (stream == NULL) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    if (!stream->header_checked) {
-        ota_stream_set_error(stream, "OTA image is too small or incomplete");
-        return ESP_ERR_INVALID_SIZE;
-    }
-    if (stream->total > 0 && stream->written != stream->total) {
-        ota_stream_set_error(stream, "OTA transfer ended before all bytes were received");
-        return ESP_ERR_INVALID_SIZE;
-    }
-
-    esp_err_t err = esp_ota_end(stream->handle);
-    stream->begun = false;
-    if (err != ESP_OK) {
-        ota_stream_set_error(stream, "OTA image validation failed");
-        return err;
-    }
-
-    err = esp_ota_set_boot_partition(stream->partition);
-    if (err != ESP_OK) {
-        ota_stream_set_error(stream, "Failed to select OTA boot partition");
-        return err;
-    }
-    return ESP_OK;
-}
-
-static void ota_stream_abort(api_ota_stream_t *stream)
-{
-    if (stream != NULL && stream->begun) {
-        (void)esp_ota_abort(stream->handle);
-        stream->begun = false;
-    }
-}
-
-static char *ota_read_request_body(httpd_req_t *req, size_t max_len)
-{
-    if (req == NULL || req->content_len <= 0 || (size_t)req->content_len > max_len) {
-        return NULL;
-    }
-    char *buf = calloc((size_t)req->content_len + 1U, sizeof(char));
-    if (buf == NULL) {
-        return NULL;
-    }
-
-    int received = 0;
-    while (received < req->content_len) {
-        int r = httpd_req_recv(req, buf + received, req->content_len - received);
-        if (r == HTTPD_SOCK_ERR_TIMEOUT) {
-            continue;
-        }
-        if (r <= 0) {
-            free(buf);
-            return NULL;
-        }
-        received += r;
-    }
-    buf[received] = '\0';
-    return buf;
-}
-
 static esp_err_t ota_send_status_json(httpd_req_t *req)
 {
     if (ota_ensure_mutex() != ESP_OK) {
@@ -591,11 +555,14 @@ static esp_err_t ota_send_status_json(httpd_req_t *req)
     cJSON_AddStringToObject(root, "version", status.version);
     cJSON_AddStringToObject(root, "project_name", status.project_name);
     cJSON_AddStringToObject(root, "partition", status.partition_label);
+    cJSON_AddBoolToObject(root, "sha256_verified", status.sha256_verified);
     cJSON_AddBoolToObject(root, "available", next != NULL);
     cJSON_AddStringToObject(root, "next_partition", next != NULL ? next->label : "");
     cJSON_AddStringToObject(root, "running_partition", running != NULL ? running->label : "");
     cJSON_AddNumberToObject(root, "slot_size", next != NULL ? (double)next->size : 0.0);
     cJSON_AddNumberToObject(root, "updated_ms", (double)status.updated_ms);
+    update_check_add_status_json(root);
+    auto_update_add_status_json(root);
 
     char *payload = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -613,6 +580,38 @@ esp_err_t api_ota_status_get_handler(httpd_req_t *req)
 {
     return ota_send_status_json(req);
 }
+
+esp_err_t api_ota_check_post_handler(httpd_req_t *req)
+{
+    if (update_check_request_now() != ESP_OK) {
+        return send_json_error(req, "429 Too Many Requests", "Update check already running or run less than a minute ago");
+    }
+    return ota_send_status_json(req);
+}
+
+#if CONFIG_APP_AUTO_UPDATE_TEST_HOOK
+/* {"force": true|false, "reset": true, "attempt": "<tag>"}: see auto_update_test_hook(). Test builds only. */
+esp_err_t api_ota_auto_test_post_handler(httpd_req_t *req)
+{
+    char *body = ota_read_request_body(req, APP_OTA_JSON_MAX_LEN);
+    if (body == NULL) {
+        return send_json_error(req, "400 Bad Request", "Invalid payload");
+    }
+    cJSON *root = cJSON_Parse(body);
+    free(body);
+    if (!cJSON_IsObject(root)) {
+        cJSON_Delete(root);
+        return send_json_error(req, "400 Bad Request", "Invalid JSON");
+    }
+    const cJSON *force = cJSON_GetObjectItemCaseSensitive(root, "force");
+    const cJSON *reset = cJSON_GetObjectItemCaseSensitive(root, "reset");
+    const cJSON *attempt = cJSON_GetObjectItemCaseSensitive(root, "attempt");
+    auto_update_test_hook(cJSON_IsBool(force) ? (cJSON_IsTrue(force) ? 1 : 0) : -1, cJSON_IsTrue(reset),
+        cJSON_IsString(attempt) ? attempt->valuestring : NULL);
+    cJSON_Delete(root);
+    return ota_send_status_json(req);
+}
+#endif
 
 typedef struct {
     char url[APP_OTA_URL_MAX_LEN];
@@ -656,6 +655,13 @@ static esp_err_t ota_http_open_follow_redirects(esp_http_client_handle_t client,
         esp_http_client_close(client);
         if (err != ESP_OK) {
             return err;
+        }
+        /* The first URL is HTTPS (ota_normalize_url); a redirect must not lead the download, and with it the
+         * firmware, onto plain HTTP where anyone on the path could swap the image. */
+        char next_url[APP_OTA_URL_MAX_LEN] = {0};
+        if (esp_http_client_get_url(client, next_url, sizeof(next_url)) != ESP_OK || !ota_url_is_https(next_url)) {
+            ESP_LOGW(TAG_API_OTA, "OTA redirect to a non-HTTPS URL refused");
+            return ESP_ERR_INVALID_RESPONSE;
         }
     }
 
@@ -724,6 +730,14 @@ static void ota_url_task(void *arg)
         ota_finish_status_error(stream.error);
         goto done;
     }
+    char expected_sha256[65] = {0};
+    if (update_check_expected_sha256(url, expected_sha256)) {
+        err = ota_stream_expect_sha256(&stream, expected_sha256);
+        if (err != ESP_OK) {
+            ota_finish_status_error(stream.error);
+            goto done;
+        }
+    }
 
     chunk = (char *)heap_caps_malloc(APP_OTA_CHUNK_SIZE, MALLOC_CAP_8BIT);
     if (chunk == NULL) {
@@ -732,7 +746,16 @@ static void ota_url_task(void *arg)
     }
 
     bool read_failed = false;
+    bool timed_out = false;
+    /* The socket timeout only bounds an idle connection; the total limit keeps a slow but steady download from outliving
+     * the automatic-update observer, which treats the attempt as finished once it gives up (AUTO_UPDATE_INSTALL_WATCH_MS). */
+    transfer_deadline_t deadline;
+    transfer_deadline_init(&deadline, esp_timer_get_time() / 1000, UINT32_MAX, APP_OTA_URL_TOTAL_TIMEOUT_MS);
     while (true) {
+        if (transfer_deadline_expired(&deadline, esp_timer_get_time() / 1000)) {
+            timed_out = true;
+            break;
+        }
         int read = esp_http_client_read(client, chunk, APP_OTA_CHUNK_SIZE);
         if (read < 0) {
             read_failed = true;
@@ -747,6 +770,11 @@ static void ota_url_task(void *arg)
         }
     }
 
+    if (timed_out) {
+        ota_stream_abort(&stream);
+        ota_finish_status_error("OTA URL download took too long");
+        goto done;
+    }
     if (read_failed) {
         ota_stream_abort(&stream);
         ota_finish_status_error("OTA URL read failed");
@@ -764,6 +792,7 @@ static void ota_url_task(void *arg)
         goto done;
     }
 
+    ota_set_sha256_verified(expected_sha256[0] != '\0');
     ota_finish_status_success();
     ota_schedule_restart();
 
@@ -776,6 +805,55 @@ done:
         esp_http_client_cleanup(client);
     }
     vTaskDelete(NULL);
+}
+
+esp_err_t api_ota_start_url(const char *raw_url)
+{
+    char url[APP_OTA_URL_MAX_LEN] = {0};
+    if (raw_url == NULL || !ota_normalize_url(raw_url, url, sizeof(url))) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const esp_partition_t *partition = esp_ota_get_next_update_partition(NULL);
+    if (partition == NULL) {
+        return ESP_ERR_NOT_FOUND;
+    }
+    if (!ota_begin_status(API_OTA_STATE_URL, url, 0, partition->label)) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    ota_url_task_arg_t *task_arg = calloc(1, sizeof(*task_arg));
+    if (task_arg == NULL) {
+        ota_finish_status_error("Failed to allocate OTA task");
+        return ESP_ERR_NO_MEM;
+    }
+    strlcpy(task_arg->url, url, sizeof(task_arg->url));
+
+    BaseType_t created = xTaskCreate(ota_url_task, "ota_url", APP_OTA_TASK_STACK, task_arg, APP_OTA_TASK_PRIO, NULL);
+    if (created != pdPASS) {
+        free(task_arg);
+        ota_finish_status_error("Failed to start OTA task");
+        return ESP_FAIL;
+    }
+    return ESP_OK;
+}
+
+api_ota_phase_t api_ota_phase(void)
+{
+    if (ota_ensure_mutex() != ESP_OK) {
+        return API_OTA_PHASE_IDLE;
+    }
+    api_ota_phase_t phase = API_OTA_PHASE_IDLE;
+    xSemaphoreTake(s_ota_mutex, portMAX_DELAY);
+    if (s_ota_status.running) {
+        phase = API_OTA_PHASE_RUNNING;
+    } else if (s_ota_status.rebooting) {
+        phase = API_OTA_PHASE_REBOOTING;
+    } else if (s_ota_status.state == API_OTA_STATE_ERROR) {
+        phase = API_OTA_PHASE_FAILED;
+    }
+    xSemaphoreGive(s_ota_mutex);
+    return phase;
 }
 
 esp_err_t api_ota_url_post_handler(httpd_req_t *req)
@@ -798,36 +876,20 @@ esp_err_t api_ota_url_post_handler(httpd_req_t *req)
         return send_json_error(req, "400 Bad Request", "Missing url");
     }
 
-    char url[APP_OTA_URL_MAX_LEN] = {0};
-    bool valid_url = ota_normalize_url(url_item->valuestring, url, sizeof(url));
+     const esp_err_t started = api_ota_start_url(url_item->valuestring);
     cJSON_Delete(root);
-    if (!valid_url) {
+    switch (started) {
+    case ESP_OK:
+        return ota_send_status_json(req);
+    case ESP_ERR_INVALID_ARG:
         return send_json_error(req, "400 Bad Request", "OTA URL must be an https:// URL or a supported GitHub blob/raw URL");
-    }
-
-    const esp_partition_t *partition = esp_ota_get_next_update_partition(NULL);
-    if (partition == NULL) {
+    case ESP_ERR_NOT_FOUND:
         return send_json_error(req, "409 Conflict", "No OTA partition found. Flash the OTA-capable factory image first.");
-    }
-    if (!ota_begin_status(API_OTA_STATE_URL, url, 0, partition->label)) {
+    case ESP_ERR_INVALID_STATE:
         return send_json_error(req, "409 Conflict", "OTA already running or reboot pending");
-    }
-
-    ota_url_task_arg_t *task_arg = calloc(1, sizeof(*task_arg));
-    if (task_arg == NULL) {
-        ota_finish_status_error("Failed to allocate OTA task");
+    default:
         return httpd_resp_send_500(req);
     }
-    strlcpy(task_arg->url, url, sizeof(task_arg->url));
-
-    BaseType_t created = xTaskCreate(ota_url_task, "ota_url", APP_OTA_TASK_STACK, task_arg, APP_OTA_TASK_PRIO, NULL);
-    if (created != pdPASS) {
-        free(task_arg);
-        ota_finish_status_error("Failed to start OTA task");
-        return httpd_resp_send_500(req);
-    }
-
-    return ota_send_status_json(req);
 }
 
 esp_err_t api_ota_upload_post_handler(httpd_req_t *req)
@@ -856,15 +918,19 @@ esp_err_t api_ota_upload_post_handler(httpd_req_t *req)
 
     uint8_t *buf = (uint8_t *)heap_caps_malloc(APP_OTA_CHUNK_SIZE, MALLOC_CAP_8BIT);
     if (buf == NULL) {
+        ota_stream_abort(&stream);
         ota_finish_status_error("Failed to allocate OTA upload buffer");
         return httpd_resp_send_500(req);
     }
 
+    transfer_deadline_t deadline;
+    transfer_deadline_init(&deadline, esp_timer_get_time() / 1000, 30000, 180000);
     int received = 0;
     while (received < req->content_len) {
         int remaining = req->content_len - received;
         int to_read = remaining > APP_OTA_CHUNK_SIZE ? APP_OTA_CHUNK_SIZE : remaining;
         int r = httpd_req_recv(req, (char *)buf, to_read);
+        if (transfer_deadline_expired(&deadline, esp_timer_get_time() / 1000)) r = 0;
         if (r == HTTPD_SOCK_ERR_TIMEOUT) {
             continue;
         }
@@ -883,6 +949,7 @@ esp_err_t api_ota_upload_post_handler(httpd_req_t *req)
             return send_json_error(req, "400 Bad Request", stream.error);
         }
         received += r;
+        transfer_deadline_progress(&deadline, esp_timer_get_time() / 1000);
     }
     heap_caps_free(buf);
 

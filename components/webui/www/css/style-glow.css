@@ -1,0 +1,15 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
+ * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+ *
+ * Editor layout preview in the Glow appearance style.
+ * Loaded after styles.css in the order of index.html and WEBUI_CSS_SOURCES (docs/editor-source.md). Only
+ * rules that exist for this style belong here, so removing the style removes the file.
+ */
+
+/* Glow: rounded, slightly raised cards: light-to-dark gradient and a soft drop shadow. */
+body[data-ui-style="glow"] #canvas .widget-box {
+  border-radius: 20px;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(0, 0, 0, 0.18));
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+}
+body[data-ui-style="glow"] #canvas .tp-datetime b { color: var(--pv-text); }

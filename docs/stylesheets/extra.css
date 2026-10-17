@@ -1,0 +1,339 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
+ * Copyright (c) 2026 andre68723 -- added in the BETTA-HA-PANEL fork, see docs/release-notes.md
+ */
+
+/* Leave room for screenshot comparisons alongside the navigation and contents. */
+.md-grid {
+  max-width: 100rem;
+}
+
+.md-content {
+  min-width: 0;
+}
+
+/* Release-note status labels remain plain text when browsing Markdown on GitHub. */
+.release-status {
+  display: inline-block;
+  padding: .12rem .4rem;
+  border-radius: .25rem;
+  font-size: .65rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.release-status--new {
+  color: #00695c;
+  background: rgb(0 150 136 / 12%);
+}
+
+.release-status--changed {
+  color: #145a98;
+  background: rgb(33 150 243 / 12%);
+}
+
+.release-status--unchanged {
+  color: var(--md-default-fg-color--light);
+  background: var(--md-code-bg-color);
+}
+
+[data-md-color-scheme="slate"] .release-status--new {
+  color: #8bddd1;
+}
+
+[data-md-color-scheme="slate"] .release-status--changed {
+  color: #9eceff;
+}
+
+/* Top bars share one pixel scale; Tab5 and 10-inch have equal width. */
+.topbar-examples {
+  max-width: 1280px;
+}
+
+.md-typeset .topbar-examples figure {
+  margin: 1.2rem 0;
+}
+
+.topbar-examples img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.topbar-examples .topbar-compact {
+  width: 56.25%;
+}
+
+.md-typeset .topbar-examples figcaption {
+  max-width: none;
+  margin: .5rem 0 0;
+  text-align: left;
+  font-style: normal;
+}
+
+.md-typeset .board-hero {
+  margin: 0 0 1.2rem;
+  max-width: 900px;
+}
+
+.board-hero img {
+  display: block;
+  max-width: 100%;
+  max-height: 440px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.md-typeset .board-hero figcaption {
+  max-width: none;
+  margin: .65rem 0 0;
+  text-align: left;
+  font-size: .7rem;
+  font-style: normal;
+  color: var(--md-default-fg-color--light);
+}
+
+/* Matched dashboards use two columns and keep their original aspect ratio. */
+.appearance-comparison,
+.gallery-styles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+
+.md-typeset .appearance-comparison figure {
+  margin: 0;
+}
+
+.appearance-comparison img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: .4rem;
+}
+
+.md-typeset .appearance-comparison figcaption {
+  margin: .5rem 0 0;
+  text-align: left;
+  font-style: normal;
+}
+
+/* Small widgets keep their proportions; detailed widgets get wider columns. */
+.gallery-comparison {
+  padding: 1.2rem 0;
+  border-top: 1px solid var(--md-typeset-table-color);
+}
+
+.md-typeset .gallery-comparison h3 {
+  margin-top: 0;
+}
+
+.gallery-styles {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.gallery-comparison--wide .gallery-styles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gallery-style {
+  min-width: 0;
+  font-size: .7rem;
+}
+
+.md-typeset .gallery-style h4 {
+  margin: 0 0 .5rem;
+}
+
+.gallery-style img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: .35rem 0;
+}
+
+.gallery-capabilities {
+  margin: 1rem 0 0;
+  font-size: .7rem;
+}
+
+.image-zoom {
+  cursor: zoom-in;
+}
+
+.image-viewer {
+  width: min(96vw, 1800px);
+  max-width: none;
+  max-height: 96dvh;
+  margin: auto;
+  padding: 1rem;
+  border: 0;
+  border-radius: .5rem;
+  background: var(--md-default-bg-color, white);
+  color: var(--md-default-fg-color, #222);
+}
+
+.image-viewer::backdrop {
+  background: rgb(0 0 0 / 80%);
+}
+
+.image-viewer-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: .75rem;
+  font-size: .8rem;
+}
+
+.image-viewer-toolbar a {
+  color: var(--md-typeset-a-color, teal);
+}
+
+.image-viewer-close {
+  padding: .5rem .8rem;
+  border: 1px solid currentColor;
+  border-radius: .25rem;
+  cursor: pointer;
+}
+
+.image-viewer-image {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: calc(96dvh - 8rem);
+  height: auto;
+  margin: auto;
+  object-fit: contain;
+}
+
+.image-viewer-caption {
+  margin: .75rem 0 0;
+  text-align: center;
+  font-size: .75rem;
+}
+
+html:has(.image-viewer[open]) {
+  overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .appearance-comparison,
+  .gallery-comparison--wide .gallery-styles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gallery-styles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Widget library: a thumbnail on top of each card. */
+.md-typeset .widget-index .grid.cards img {
+  display: block;
+  max-height: 120px;
+  width: auto;
+  max-width: 100%;
+  margin: 0 auto .4rem;
+  object-fit: contain;
+}
+
+/* Feature tour: card text stays compact, lists inside cards lose their indentation. */
+.md-typeset .grid.cards > ul > li > ul {
+  margin-left: 0;
+  padding-left: 1.1rem;
+}
+
+/* Four short steps stay on one row. */
+.md-typeset .grid.cards.steps > ul {
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+
+/* The two first-run screenshots side by side, not full width. */
+.md-typeset .setup-shots figure img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 340px;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+
+/* Home page: the dashboard and the same dashboard in the editor, side by side. */
+.md-typeset .home-hero {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+  margin: 0 0 .8rem;
+}
+
+.md-typeset .home-hero p {
+  margin: 0;
+}
+
+.md-typeset .home-hero img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: .3rem;
+}
+
+@media (max-width: 760px) {
+  .md-typeset .home-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A screenshot floating beside the text of a page (Display and brightness), stacked on narrow screens. */
+.md-typeset a:has(> img.float-shot),
+.md-typeset img.float-shot {
+  float: right;
+  width: 40%;
+  max-width: 420px;
+  margin: 0 0 1rem 1.5rem;
+}
+
+.md-typeset a > img.float-shot {
+  float: none;
+  width: 100%;
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .md-typeset a:has(> img.float-shot),
+  .md-typeset img.float-shot {
+    float: none;
+    width: 100%;
+    max-width: none;
+    margin: 0 0 1rem;
+  }
+}
+
+/* Widget guides show functional variants once; Gallery owns the style matrix. */
+.widget-previews {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 1rem;
+}
+
+.md-typeset .widget-previews figure {
+  margin: 0;
+  max-width: 100%;
+}
+
+.widget-previews img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.md-typeset .widget-previews figcaption {
+  margin: .4rem 0 0;
+  text-align: left;
+  font-style: normal;
+  font-size: .7rem;
+}

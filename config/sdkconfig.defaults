@@ -1,0 +1,209 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 Cpt_Kirk
+# Core behavior defaults for development
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+# Wall-clock time (HH:MM:SS.sss) instead of milliseconds-since-boot: the device has real time from
+# SNTP (main/net/time_sync.c), so this is readable right away instead of needing to add the boot
+# time back in by hand when reading a log. LOG_VERSION_1 (the version this project builds with) has
+# no date in this format, only LOG_VERSION_2 does (SYSTEM_FULL) -- not worth bumping the log version
+# just for the date, since the panel's own device log endpoint (GET /api/log) only keeps the last
+# 32 KB anyway, rarely more than a few hours of it.
+CONFIG_LOG_TIMESTAMP_SOURCE_SYSTEM=y
+CONFIG_FREERTOS_HZ=1000
+CONFIG_FREERTOS_USE_TRACE_FACILITY=y
+CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+CONFIG_ESPTOOLPY_FLASHSIZE_32MB=y
+
+# Use custom partition table with OTA slots and LittleFS storage partition
+# CONFIG_PARTITION_TABLE_SINGLE_APP is not set
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="config/partitions.csv"
+CONFIG_PARTITION_TABLE_FILENAME="config/partitions.csv"
+
+# OTA rollback: a freshly installed image must prove itself (util/ota_validate.c, util/ota_health.h) or the next
+# reset returns to the previous image. It needs a bootloader built with this option: flash the bootloader over USB
+# once (docs/development.md); an older bootloader ignores the flag and simply never rolls back.
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+# The bootloader reports this number (esp_ota_get_bootloader_description); the app tells from it whether the panel has a
+# rollback-capable bootloader (util/ota_health.h, OTA_BOOTLOADER_ROLLBACK_VERSION). The default 1 is what every older bootloader has.
+CONFIG_BOOTLOADER_PROJECT_VER=2
+
+# The MQTT client task keeps its stack in PSRAM: it used 1.5 of 6 KB of internal RAM (2026-09-30 measurement).
+CONFIG_MQTT_TASK_STACK_ON_EXTERNAL_MEMORY=y
+
+# ESP-Hosted over SDIO (ESP32-P4 host + ESP32-C6 coprocessor)
+CONFIG_ESP_WIFI_REMOTE_ENABLED=y
+CONFIG_ESP_WIFI_REMOTE_LIBRARY_HOSTED=y
+CONFIG_SLAVE_IDF_TARGET_ESP32C6=y
+
+CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE=y
+# CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE is not set
+# CONFIG_ESP_HOSTED_SPI_HD_HOST_INTERFACE is not set
+# CONFIG_ESP_HOSTED_UART_HOST_INTERFACE is not set
+CONFIG_ESP_HOSTED_P4_DEV_BOARD_NONE=y
+# CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD is not set
+CONFIG_ESP_HOSTED_SDIO_SLOT_1=y
+CONFIG_ESP_HOSTED_SDIO_4_BIT_BUS=y
+CONFIG_ESP_HOSTED_SDIO_CLOCK_FREQ_KHZ=40000
+CONFIG_ESP_HOSTED_SDIO_RESET_DELAY_MS=1500
+# CONFIG_ESP_HOSTED_SDIO_OPTIMIZATION_RX_MAX_SIZE is not set
+CONFIG_ESP_HOSTED_SDIO_OPTIMIZATION_RX_STREAMING_MODE=y
+# CONFIG_ESP_HOSTED_SDIO_OPTIMIZATION_RX_NONE is not set
+
+# User provided ESP-Hosted SDIO wiring
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CLK_SLOT_1=18
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CMD_SLOT_1=19
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D0_SLOT_1=14
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D1_4BIT_BUS_SLOT_1=15
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D2_4BIT_BUS_SLOT_1=16
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D3_4BIT_BUS_SLOT_1=17
+CONFIG_ESP_HOSTED_SDIO_GPIO_RESET_SLAVE=54
+CONFIG_ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH=y
+# CONFIG_ESP_HOSTED_SDIO_RESET_ACTIVE_LOW is not set
+# CONFIG_ESP_HOSTED_RESET_GPIO_ACTIVE_LOW is not set
+
+# Recommended Wi-Fi remote tuning for P4 + C6
+CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=16
+CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM=64
+CONFIG_WIFI_RMT_DYNAMIC_TX_BUFFER_NUM=64
+CONFIG_WIFI_RMT_AMPDU_TX_ENABLED=y
+CONFIG_WIFI_RMT_TX_BA_WIN=32
+CONFIG_WIFI_RMT_AMPDU_RX_ENABLED=y
+CONFIG_WIFI_RMT_RX_BA_WIN=32
+
+# Recommended LWIP mailbox/window sizing for Hosted Wi-Fi use-cases
+CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=32
+CONFIG_LWIP_TCP_RECVMBOX_SIZE=32
+CONFIG_LWIP_UDP_RECVMBOX_SIZE=32
+CONFIG_LWIP_MAX_SOCKETS=16
+CONFIG_LWIP_TCP_MSS=1200
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=16384
+CONFIG_LWIP_TCP_WND_DEFAULT=16384
+CONFIG_LWIP_TCP_SACK_OUT=y
+
+# Keep station-only footprint for MVP
+CONFIG_ESP_WIFI_SOFTAP_SUPPORT=n
+
+# Internal-memory pressure tuning:
+# esp_hosted SDIO RX + mbedTLS AES DMA require MALLOC_CAP_INTERNAL|DMA.
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=8192
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536
+CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM=y
+
+# PSRAM profile (Hex mode @ 200MHz).
+# Both the 4" (ESP32-P4-WIFI6-Touch-LCD-4B) and 10.1" (Waveshare Nano) boards
+# ship with 16/32MB Hex PSRAM; ESP-Hosted + LVGL draw buffers cannot fit in
+# internal RAM on either variant. Keep this in the common defaults.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_HEX=y
+CONFIG_SPIRAM_SPEED_200M=y
+CONFIG_SPIRAM_SPEED=200
+CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y
+CONFIG_SPIRAM_RODATA=y
+CONFIG_SPIRAM_FLASH_LOAD_TO_PSRAM=y
+CONFIG_SPIRAM_BOOT_HW_INIT=y
+CONFIG_SPIRAM_BOOT_INIT=y
+CONFIG_SPIRAM_PRE_CONFIGURE_MEMORY_PROTECTION=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MEMTEST=y
+CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM=y
+
+# --- LVGL allocator: PSRAM first (ui/lvgl_alloc.c) instead of the 64KB TLSF pool ---
+# The 64KB built-in pool cannot absorb label reflow / vector-graphic allocations, which manifests as an infinite
+# update_layout_completed_cb loop -> task WDT in lv_array_resize. With the C-library allocator LVGL held 146 to 174 KB of
+# internal RAM (small blocks stay internal), which Wi-Fi/SDIO buffers and TLS need. Measured 2026-10-01 on paneljc: free
+# internal heap 129 -> 321 KB, largest block 35 -> 164 KB, stress-test minimum 76 -> 184 KB; on panel4: 165 -> 329 KB,
+# 53 -> 152 KB, 82 -> 165-226 KB, same pages and timings (docs/development.md, "Memory and heap"). panel10 shares this
+# setting without its own measurement.
+# CONFIG_LV_USE_BUILTIN_MALLOC is not set
+# CONFIG_LV_USE_CLIB_MALLOC is not set
+CONFIG_LV_USE_CUSTOM_MALLOC=y
+CONFIG_APP_LVGL_ALLOC_PSRAM_FIRST=y
+
+
+# Reduce peak TLS memory to avoid DMA descriptor allocation failures
+CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
+# IN buffer must fit full todo.get_items WebSocket responses (both variants).
+CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=16384
+CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=2048
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+# CONFIG_MBEDTLS_INTERNAL_MEM_ALLOC is not set
+CONFIG_MBEDTLS_DYNAMIC_FREE_CONFIG_DATA=y
+# CONFIG_MBEDTLS_SSL_KEEP_PEER_CERTIFICATE is not set
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+# Reuse TLS sessions across HTTP reconnects to avoid full handshakes
+# (saves ~2-4 kB internal heap + ~150 ms per reconnect on Home Assistant)
+CONFIG_MBEDTLS_CLIENT_SSL_SESSION_TICKETS=y
+CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK=y
+
+# App defaults
+CONFIG_APP_WIFI_DISABLE_POWER_SAVE=y
+CONFIG_APP_HA_FETCH_INITIAL_STATES=y
+CONFIG_APP_HA_SUBSCRIBE_STATE_CHANGED=y
+CONFIG_APP_HA_PING_INTERVAL_MS=30000
+
+# Keep hosted C6 out of Wi-Fi 6 TWT power-save behavior
+# CONFIG_ESP_HOSTED_ENABLE_ITWT is not set
+
+# Disable ESP-Hosted host-side power-save/deep-sleep. The P4 host has no wake GPIO wired.
+# CONFIG_ESP_HOSTED_HOST_POWER_SAVE_ENABLED is not set
+# CONFIG_ESP_HOSTED_HOST_DEEP_SLEEP_ALLOWED is not set
+
+# Keep remote station PM fully disabled for long-lived websocket links
+# CONFIG_WIFI_RMT_STA_DISCONNECTED_PM_ENABLE is not set
+# CONFIG_ESP_WIFI_STA_DISCONNECTED_PM_ENABLE is not set
+
+# Every text, symbol, icon and emoji is an lv_tiny_ttf font made from three embedded subsets (ui/text_font.c). The fonts
+# are const arrays in flash, so no file support. Glyph caches are sized per font by the font manager.
+CONFIG_LV_USE_TINY_TTF=y
+# CONFIG_LV_TINY_TTF_FILE_SUPPORT is not set
+# A character that no font of the chain has is drawn as a box (LVGL's default, kept on purpose): a name with a character the subsets lack stays
+# visibly incomplete instead of silently losing letters. Notification text maps emoji to "[Emoji]" first (ui/notification_text.c).
+CONFIG_LV_USE_FONT_PLACEHOLDER=y
+CONFIG_LV_FONT_UNSCII_8=y
+# Lottie / ThorVG only serve the optional betta easter egg (sdkconfig.defaults.easteregg): off saves about 460 KB.
+# CONFIG_LV_USE_VECTOR_GRAPHIC is not set
+CONFIG_LV_USE_FLOAT=y
+CONFIG_LV_USE_MATRIX=y
+# CONFIG_LV_USE_THORVG is not set
+# CONFIG_LV_USE_THORVG_INTERNAL is not set
+# CONFIG_LV_USE_LOTTIE is not set
+CONFIG_LV_USE_LODEPNG=y
+CONFIG_LV_USE_IMGFONT=y
+
+# Display/LVGL performance profile for ESP32-P4 + DSI
+CONFIG_APP_DISPLAY_PPA=y
+# CONFIG_ESP_LVGL_ADAPTER_ENABLE_FS is not set
+# CONFIG_ESP_LVGL_ADAPTER_ENABLE_DECODER is not set
+# CONFIG_ESP_LVGL_ADAPTER_ENABLE_FREETYPE is not set
+CONFIG_SPIRAM_XIP_FROM_PSRAM=y
+CONFIG_BSP_LCD_DPI_BUFFER_NUMS=2
+CONFIG_BSP_DISPLAY_LVGL_AVOID_TEAR=y
+# CONFIG_BSP_DISPLAY_LVGL_FULL_REFRESH is not set
+CONFIG_BSP_DISPLAY_LVGL_DIRECT_MODE=y
+CONFIG_LV_DEF_REFR_PERIOD=16
+
+# No built-in Montserrat: text, symbols and emoji are tiny_ttf fonts; LVGL's compile-time default is the tiny built-in
+# unscii 8, set in the root CMakeLists.txt, and the UI inherits the manager's meta font on the screen.
+CONFIG_LV_USE_CUSTOM_FONT_DEFAULT=y
+# CONFIG_LV_FONT_MONTSERRAT_14 is not set
+CONFIG_LV_FONT_FMT_TXT_LARGE=y
+CONFIG_LV_TXT_BREAK_CHARS=" ,.;:-_"
+CONFIG_LV_USE_SNAPSHOT=y
+
+# LV_ASSERT_HANDLER_INCLUDE="assert.h" is inherited from a prior menuconfig
+# session; LVGL now treats the deprecation notice for it as a fatal
+# -Werror=cpp on any variant that needs a from-scratch LVGL rebuild
+# (surfaced on panel4, since paneljc's LVGL objects were already cached).
+CONFIG_LV_DISABLE_ASSERT_HANDLER_INCLUDE_WARNING=y
+
+# Crash diagnostics: an ELF core dump goes to a dedicated flash partition on a panic (not a plain
+# reboot or watchdog without one), checked and reported at the next boot (util/coredump_report.c) and
+# in GET /api/version. Harmless on a device without a `coredump` partition (one only ever updated over OTA): esp_core_dump's own init just finds no partition and does nothing. See docs/coredump.md.
+CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
+
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_360=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=360

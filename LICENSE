@@ -73,3 +73,62 @@ in full force. Failure to enforce any provision is not a waiver.
 
 11. Commercial Licensing Contact
 Commercial use requires a separate written license from the copyright holder.
+
+12. Third-Party Components
+This repository vendors a small number of third-party source files that are NOT
+covered by this License and remain under their own original licenses, as marked
+by the SPDX/license header at the top of each such file. Notably:
+
+- third_party/waveshare__esp32_p4_wifi6_touch_lcd_4b/: official Waveshare BSP 3.0.1,
+  Apache-2.0; original license in that directory, provenance and the single manifest
+  constraint modification recorded in BETTA.md.
+- main/drivers/gsl3680/: the GSL3680 touch driver (esp_lcd_gsl3680.c, esp_lcd_gsl3680.h,
+  esp_lcd_gsl3680_fw.h), adapted from Espressif's esp_lcd_touch_gsl3680 in
+  esp-arduino-libs/ESP32_Display_Panel (commit 92b790e), Apache-2.0, Copyright
+  2022-2025 Espressif Systems (Shanghai) CO LTD; license text in LICENSES/Apache-2.0.txt.
+  The embedded controller firmware data is Copyright Silead Inc. and is distributed
+  in Espressif's Apache-2.0 file. The Silead GPL point-tracking algorithm
+  (gsl_point_id.c/.h) that earlier fork versions vendored from the Guition
+  reference repository has been removed.
+- main/drivers/display_init_paneljc.c: the "V1" JD9365 init table matches
+  espressif/esp_lcd_jd9365's default init sequence (Copyright 2024 Espressif
+  Systems (Shanghai) CO LTD, Apache-2.0); the "V2" init table and DSI/DPI
+  timing come from jtenniswood/espcontrol, PolyForm Noncommercial License
+  1.0.0, Required Notice: Copyright (c) 2026 jtenniswood.
+- Reference material consulted but not copied: ESPHome's mipi_dsi model
+  "JC8012P4A1"/"JC8012P4A1-V2" (esphome/esphome, MIT for Python) and its gsl3670
+  touchscreen component (GPLv3 C++). They agree with our init table and touch
+  sequence and are named in the headers of main/drivers/display_init_paneljc.c
+  and touch_init_paneljc.c as cross-checks.
+- components/esp_cam_sensor/: Espressif's esp_cam_sensor 2.3.0 core (originally
+  2.1.0), reduced to the OV02C10 driver for Guition, the SC202CS/SC2356 driver
+  for Tab5 and the DW9714 motor (Apache-2.0, Copyright Espressif Systems
+  (Shanghai) CO LTD, license text in that directory). The OV02C10 driver was
+  taken from the BETTA-kruzio project's copy because the registry version has
+  no OV02C10 driver. CMakeLists.txt and Kconfig carry the fork's modification
+  notices, preserved by tools/vendor_cam_sensor.py. main/drivers/ambient_camera.c
+  follows the V4L2 capture approach of that project's local camera module.
+- main/ha/ha_cover_fetcher.c compiles the stb_image decoder (Sean Barrett and
+  contributors, public domain / MIT) from the LVGL component; it is not
+  vendored in this repository.
+- main/ui/fonts/materialdesignicons-webfont.ttf and the icon subset generated
+  from it (mdi_subset.ttf, ttf_mdi_data.c): Material Design Icons by
+  Pictogrammers, Apache-2.0 (notice and license text in
+  main/ui/fonts/MDI-APACHE-2.0.txt).
+- main/ui/fonts/POPPINS-OFL.txt: license text for the Poppins font (SIL Open
+  Font License 1.1) from which poppins_medium_subset.ttf and ttf_poppins_data.c
+  are generated.
+- main/ui/fonts/noto_emoji_subset.ttf, ttf_emoji_data.c, NOTO_EMOJI-OFL.txt: a
+  curated subset of Noto Emoji (Copyright 2013-2026 Google LLC,
+  https://github.com/notofonts/noto-emoji), SIL Open Font License 1.1, used as
+  the fallback of the Poppins text fonts (lv_tiny_ttf) so an emoji outside
+  Poppins' Latin range still renders instead of nothing (main/ui/fonts/README.md,
+  "Emoji").
+- main/ui/fonts/notification_emoji_data.c, NOTO_EMOJI_IMAGES-APACHE-2.0.txt:
+  scaled copies of Noto Emoji color images (Google LLC,
+  https://github.com/googlefonts/noto-emoji, revision e20cbc2), Apache-2.0,
+  drawn by the notification popup (ui/notification_emoji.c).
+- main/ui/assets/weather/: weather icons rendered from Meteocons by Bas Milius,
+  MIT License (see main/ui/assets/weather/LICENSE-meteocons.txt).
+Consult each file's own header for its actual license before assuming this
+License applies.

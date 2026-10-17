@@ -1,0 +1,178 @@
+<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md -->
+
+# Web editor source
+
+User guide: [Use the web editor](editor.md). This page covers the source.
+
+Plain HTML, CSS and JavaScript in `components/webui/www/`, no framework. For development serve that directory:
+`index.html` loads the modules in order. The firmware build generates an `index.html` that loads one ordered bundle
+(`app.<hash>.js`) and one fingerprinted stylesheet (`styles.<hash>.css`, the `WEBUI_CSS_SOURCES` concatenated in
+`index.html` order, so the cascade is the same) and embeds those three files gzipped. They live only under
+`build/<variant>/`. The HTML is never cached; the fingerprinted files are cached until the next firmware build.
+`www/img/doorbell-example.png` (the Alerts example, offline) is a copy of `docs/img/gallery/gallery_doorbell_glow.png`:
+refresh it when that image changes (asset declaration and copy are in the WebUI CMake file).
+
+```
+www/index.html        the page (loads the scripts below, in this order)
+www/styles.css        base editor styles, the canvas and the layout preview shared by every style
+www/css/style-*.css   rules for one appearance style (depth: shared by Glow and Glass), after the base
+www/css/readability.css  the readability controls' styles, after the style files
+www/css/preview-fit.css  tile preview sizes that follow the tile (container units) and the looks matched to the panel
+www/css/settings.css compact settings forms and the offline alert example
+www/css/layout-toolbar.css compact layout header, icon actions and JSON menu
+www/css/layout-actions.css widget context menu and page-transfer dialog
+www/css/inspector.css compact Inspector fields, tabs and independently scrolling desktop lists
+www/js/config.js      constants, the entity picker configurations
+www/js/i18n.js        built-in translations (en, de)
+www/js/state.js       size limits, the `editor` state object, the DOM element map `el`
+www/js/util.js        normalizers, layout normalization, status line, `t()`, storage
+www/js/ui-basics.js   style cards, firmware info, HA diagnostics, canvas geometry
+www/js/inspector-hints.js Inspector info icons and help popups; settings sentence summaries
+www/js/translations.js loading and applying translations, language files
+www/js/settings.js    settings pages: Wi-Fi, OTA, device status, alerts, backup, security, saving
+www/js/brightness-test.js  temporary brightness tests: shared controls, serialized requests and device countdown
+www/js/update-check.js the panel's daily firmware update check: banner, OTA URL, its two settings
+www/js/layout-model.js layout model, entity domains and suggestions, loading layout and entities
+www/js/pickers.js     entity pickers, the "+ Widget" dialog (widget types and entity search)
+www/js/readability.js panel4 role sizes, day-count and gauge-width hints for the previews (after pickers, before canvas)
+www/js/bambu-printer.js Bambu printer widget: Inspector fields for its entity bindings and the canvas preview (before canvas)
+www/js/energy-timeline-colors.js energy flow palette, compact color controls and HEX editing
+www/js/tile-previews.js  the schematic tile previews (solar, car, Sonos, `tilePreviewMarkup`) and the house page grid (before canvas)
+www/js/layout-history.js bounded layout/selection snapshots, edit grouping and Undo/Redo
+www/js/widget-actions.js validated page transfers, widget menu and target dialog
+www/js/canvas.js      pages list, canvas, inspector, page and widget operations
+www/js/inspector-layout.js Inspector presentation: tabs, optional groups, wrapping entity fields and automatic Appearance fit
+www/js/room-import.js room import: area pick, role assignment dialog with preview, zone layout
+www/js/bind.js        event binding, editor start, bootstrap
+www/js/theme.js       theme editor
+www/js/menus.js       dropdown menus
+www/js/main.js        calls `bootstrap()` once everything has loaded
+```
+
+The scripts are classic scripts sharing one global scope, run in `<script>` order: top-level code may only use what an
+earlier file defines (calls inside functions run later). `bundle_assets.py` keeps that order and inserts semicolon
+boundaries; `tools/check_web.py` checks order, syntax, fingerprinted names and gzip round-trips.
+
+## Adding a file
+
+1. Create it under `www/js/` with the licence header of the others.
+2. Add it to `WEBUI_JS_SOURCES` in `components/webui/CMakeLists.txt` and to the `<script>` list in `www/index.html` in
+   the same position. A stylesheet goes into `WEBUI_CSS_SOURCES` and the `<link>` block the same way (order is cascade
+   order; style files come after `styles.css`).
+3. `tools/check.sh` fails when the lists, tags and `www/js/` disagree or the bundle breaks, and runs the editor tests
+   (`node --test tests/webui/*.test.mjs`). `load_editor.mjs` loads the scripts into a Node `vm` context with a small DOM
+   stub; add the script there if new logic needs it. Handwritten sources warn above 800 lines and fail above 2,999.
+
+## Local test server
+
+Run the current editor against synthetic data, without a panel, Home Assistant or ESP-IDF:
+
+```bash
+python3 tools/editor_local.py
+```
+
+Open `http://127.0.0.1:8766/`. Sources are served directly from `components/webui/www/`; refresh after edits.
+Only Python's standard library is needed. Save writes `.local/editor-local/paneljc-state.json`; Export downloads
+JSON. The local toolbar identifies the test environment. Ctrl+C stops the server.
+
+- `--variant panel4|panel10|paneljc|paneljc-v2|tab5` selects geometry, page limits and text-role metadata.
+- `--fixture path/to/layout.json` replaces the demo layout; an optional `states` array supplies synthetic readings.
+  Layout-only files use the demo states, so unknown bindings show missing readings.
+- `--demo all` supplies every widget type, optional bindings and house/energy pages on 12 pages;
+  use a wide variant (`paneljc` or `tab5`) and a separate state file for this review layout.
+- `--state-file path` isolates saves; an existing save takes precedence over the fixture.
+  `--reset` replaces that save with the supplied/default fixture. The default save file is separate per variant.
+- `--port 0` selects a free port, printed on startup; the default is 8766.
+- `--ui spike` opens the bundled local prototype and enables the **View** selector for comparison with Classic.
+  `--spike path/to/adapter` overrides its sources (`spike.css`, `widget-icons.js`, `spike.js`).
+
+Both views share the editor sources and API. The local view selector transfers the in-memory layout and selection
+through session storage, including unsaved edits, without saving to the API. Both views use the shared layout history, which resets
+on a view change. View preferences and transfer data never enter layout JSON.
+
+The API serves local fixtures and accepts local layout/UI-setting saves only. Device commands, firmware uploads,
+network setup and HA service calls are unavailable. Brightness tests are explicitly labelled as local simulations; their transient state is not saved. There is no device proxy; external connections are blocked by
+CSP. Its validation checks page/widget/JSON limits, not the firmware's complete contract. Geometry/text metadata
+follow current firmware profiles; the browser preview still approximates LVGL and does not establish hardware behavior.
+
+## Parallel development
+
+The experiment lives under `tools/editor_local/spike/`, outside the firmware's CMake asset lists. Its workspace,
+labelled Save/Export, widget icons and prototype history are injected only by the local server. Work on these
+files can proceed alongside firmware changes. Local fixtures/saves, plans and browser captures stay under `.local/`.
+Changes in the shared `components/webui/www/` sources affect both the local editor and the next firmware build.
+Keep prototype work in the adapter until explicitly integrating it. Production coexistence needs a reversible
+workspace adapter over one model, validation/save path and history; the local reload switch is an experiment.
+
+## Device-backed preview
+
+For live readings, serve `www/` on localhost and proxy `/api` to a panel; saves then go to that panel.
+Back up its layout or make the proxy read-only. The local test server above does not provide this mode.
+Browser smoke test on a flashed panel: check board, assets and canvas, then Settings → Device, Network,
+Home Assistant and back without saving. Check for console errors and the generated
+`styles.<hash>.css` and `js/app.<hash>.js`. Device workloads and evidence collection are in
+[Checks and device tests](development/testing.md).
+
+## Rules for the editor
+
+- **Little scrolling.** At about 80-90 % of a desktop screen, finding a widget, editing its main fields and saving must
+  not need trips between distant regions. Review Device and Layout at that size when adding controls; group or fold long,
+  rare options.
+- **Texts:** keys in the `en` and `de` tables of `WEB_I18N_BUILTIN` (`js/i18n.js`). A new widget type also goes into
+  `ENTITY_PICKER_CONFIGS` (`js/config.js`), the Add menu, the size tables and `tilePreviewMarkup`
+  (`js/tile-previews.js`).
+- **Text size** (`settingsUiTextStep`, beside the save controls) applies live and refreshes the preview and role-size
+  hint; resetting Appearance keeps it.
+- **Widget names:** the **Show name** checkbox sits beside Name for every type; `widgetShowsName()` is shared by the
+  inspector, normalization and the previews (legacy sensor flag as fallback). Previews omit the name element; the
+  widget list keeps it.
+- **Pages:** `maxPages()` comes from `/api/version` (`max_pages` 8 or 12). From `full_nav_pages` (5, 10) on, the page
+  inspector warns about a missing or duplicate icon (`navIconIssue()`). The size limit is `layout_max_bytes` (32 KB);
+  see [bottom navigation](development/testing.md#bottom-navigation-full-and-compact-tabs).
+- **Entity search** covers every widget entity binding. `inspectorEntityPickerTarget()` supplies
+  domain and Room candidate filters; picking a result dispatches the same change event as manual entry.
+- **Inspector presentation** retains the original fields and event handlers. Wrapping entity editors forward
+  editing events to those fields; picker assignments mirror back into the visible editor. Position and size
+  use a separate tab. Appearance opens when it fits, unless the user toggled it for that widget.
+  The right column stays reserved and has no collapse button. Widget and special-page titles have
+  an info icon with a short description and a documentation link. Extended help uses a label and an info icon opening the full explanation in a popup. Modal keyboard
+  events do not reach editor shortcuts. The local spike shares help popups and keeps its own presentation adapter.
+- **Energy timeline and room extra field** live in `js/canvas.js`, validated in `js/layout-model.js` like
+  `layout_validate.c` (an extra entity must be one of the card's own and fit the mode's domain).
+- **Previews follow the panel.** A tile preview matches the panel render in size, proportions, visible elements and
+  their order at the same geometry and text step; it is not a pixel copy. The thresholds it copies from a `w_*.c`
+  (a row appears above some height, a cover below some width) change together with the widget.
+- **Readability** (`js/readability.js`, `css/readability.css`) mirrors the panel4 role sizes in 720 × 600 previews.
+  Weather offers auto or 1-6 days, aligned solar auto or 1-5; Save does not resize tiles or enable rain. Gauge width
+  hints measure state, range and unit at 38 px and are suggestions.
+- **Sound** has its own settings page; the test plays at the selected volume and bypasses enable and night mute. Boards
+  without audio hide it.
+
+## Layout preview
+
+Canvas tiles follow the panel: colour theme (`themeApplyCanvasPalette()` in `js/theme.js` sets `--pv-*` on `#canvas` from
+`/api/themes/active`), the style's card and inner shapes (the "Layout preview" part of `styles.css`,
+`css/style-<style>.css`) and Poppins Medium (the panel's subset as a WOFF2 data URI in the `betta-poppins` block of
+`styles.css`, written by `tools/generate_widget_fonts.py --web`; the CSP allows `font-src data:`). The editor around the
+canvas stays neutral. Sizes follow the tile through container units of `.widget-box` (`cqw`, `cqh`, `cqmin`), like the
+panel's text scaling, and an element the panel drops at a size (media cover, vacuum robot, solar rows) is dropped at the
+same height. Pixel-exact comparison is the simulator's job.
+
+`tools/compare_editor_previews.py` puts each gallery widget's editor tile next to its LVGL image (one image per widget
+plus contact sheets under `/private/tmp/`):
+
+```bash
+uv run --locked --group screenshots python tools/compare_editor_previews.py [--style matte] [widget ids]
+... --cases [tile names] [--all-sizes]   # smallest and largest size of each tile in layout_cases.json, fresh renders
+... --pages                              # whole house and energy page
+```
+
+Look for missing, extra, clipped or overlapping elements, German text in the English editor and sizes where the panel
+hides something.
+
+## Tab5 orientation and layout storage
+
+Tab5 layout responses carry `orientation`, `canvas_w` and `canvas_h`. Portrait projects each widget's `portrait_rect`
+into `rect` and adds the canonical `landscape_rect`; PUT restores landscape `rect` and stores edited portrait positions
+separately. Stored JSON keeps the 32 KiB limit; Tab5 accepts up to 64 KiB on the wire for these aliases. A mismatched
+orientation is rejected with HTTP 409. Version refreshes do not resize a loaded layout: reload after rotating.

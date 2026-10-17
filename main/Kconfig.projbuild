@@ -1,6 +1,38 @@
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1
 # Copyright (c) 2026 Cpt_Kirk
+# Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
 menu "Example Configuration"
+
+menu "LVGL memory"
+
+config APP_LVGL_ALLOC_PSRAM_FIRST
+    bool "Allocate LVGL memory from PSRAM first (needs CONFIG_LV_USE_CUSTOM_MALLOC)"
+    default n
+    help
+        Only has an effect when LVGL uses its custom allocator (set in config/sdkconfig.defaults for every variant):
+        every LVGL allocation then tries PSRAM first and falls back to internal RAM. Off keeps the
+        default heap policy (small blocks go to internal RAM first, see SPIRAM_MALLOC_ALWAYSINTERNAL).
+
+endmenu
+
+config APP_DISPLAY_PPA
+    bool "Use PPA for shared display rotation"
+    default y
+    help
+        Shared adapter bitmap rotation uses a bounded PPA transaction. Disable
+        for boards using CPU rotation, including the original JC panel.
+
+menu "OTA test hook"
+
+config APP_AUTO_UPDATE_TEST_HOOK
+    bool "Test hook for the automatic update (never in a release)"
+    default n
+    help
+        Adds POST /api/ota/auto-update-test, which lets a test force the automatic update's night window and quiet
+        panel, clear its stored state and fake a started attempt, so the install and the rollback can be exercised on a device
+        in minutes. Only for test builds (config/sdkconfig.defaults.autoupdate_test); release images must not have it.
+
+endmenu
 
 menu "Panel Hardware Variant"
 
@@ -22,14 +54,83 @@ config APP_PANEL_VARIANT_10INCH_1280
     help
         10.1-inch 1280x800 panel variant.
 
-config APP_PANEL_VARIANT_S3_480
-    bool "4\" 480x480 (Guition CYD ESP32-S3 4848S040)"
+config APP_PANEL_VARIANT_10INCH_JC
+    bool "10.1\" 800x1280 (Guition JC8012P4A1, ESP32-P4)"
     help
-        Guition CYD ESP32-S3 4848S040 4-inch 480x480 RGB panel
-        with ST7701S controller and GT911 capacitive touch.
-        Native Wi-Fi (no ESP-Hosted/C6 coprocessor).
+        Guition JC8012P4A1 10.1-inch 800x1280 MIPI-DSI panel.
+        Display: JD9365 controller, 2-lane MIPI-DSI.
+        Touch: GSL3680 (Silead) I2C capacitive.
+        Wi-Fi: ESP-Hosted (ESP32-P4 host + ESP32-C6 coprocessor, same as panel4/panel10).
+        Native portrait 800x1280; LVGL rotation 90deg yields landscape 1280x800.
+
+config APP_PANEL_VARIANT_TAB5_1280
+    bool "5\" 1280x720 (M5Stack Tab5, ESP32-P4) - untested on hardware"
+    help
+        M5Stack Tab5, 5-inch 1280x720 landscape, ESP32-P4 + ESP32-C6 (ESP-Hosted).
+        Display and touch come from Espressif's m5stack_tab5 BSP, Wi-Fi from ESP-Hosted over SDIO.
+        Builds with `tools/build.sh tab5 build`; NOT YET RUN ON HARDWARE (docs/hardware.md).
 
 endchoice
+
+config APP_PANELJC_PANEL_V2
+    bool "JC8012P4A1 'V2' panel revision (JD9365 init table)"
+    depends on APP_PANEL_VARIANT_10INCH_JC
+    default n
+    help
+        The Guition JC8012P4A1(C) ships with at least two, probably three,
+        physically different display panels under the same model number,
+        identified by a 4-digit date code (YYWW = year + ISO week) printed
+        on the rear case sticker:
+
+          - date code up to ~2627: "V1" / original panel (default, this
+            option OFF). This is what the default paneljc init table in
+            main/drivers/display_init_paneljc.c targets.
+          - date code ~2628 and up: "V2" panel. Needs a different JD9365
+            gamma/GOA init table and different DSI/DPI timing. Enable this
+            option for V2 hardware.
+          - date code 2633+: reported as a further "V3" revision that is
+            NOT supported by this firmware yet (black screen even with V2
+            firmware in third-party projects). Do not enable this option
+            for a V3-dated unit.
+
+        The date-code cutoff is strong evidence, not a guarantee -- at
+        least one report exists of a 2627-dated unit that actually needed
+        V1 firmware. If the wrong option produces a black or garbled
+        screen, try the other one.
+
+        Touch (GSL3680) is identical between V1 and V2 and is unaffected
+        by this option.
+
+        See docs/hardware.md ("JC8012P4A1 panel revisions") for the full
+        background, or build with the "paneljc-v2" CMake preset /
+        config/sdkconfig.defaults.paneljc.v2 overlay instead of setting this by
+        hand.
+
+endmenu
+
+menu "Ambient camera"
+
+config APP_FEATURE_AMBIENT_CAMERA
+    bool "Use the built-in camera as ambient light / presence sensor"
+    default n
+    depends on APP_PANEL_VARIANT_10INCH_JC || APP_PANEL_VARIANT_TAB5_1280
+    help
+        Duty-cycled capture of a few frames every few seconds, reduced to a
+        luma grid. No streaming, no JPEG, nothing leaves the device.
+
+endmenu
+
+menu "Easter egg"
+
+config APP_BETTA_EASTER_EGG
+    bool "Swimming betta fish (7 taps on the navigation home button)"
+    default n
+    help
+        Plays a Lottie animation of a betta fish. Needs the Lottie and ThorVG
+        support of LVGL, which costs about 460 KB of flash (ThorVG, the animation
+        and the C++ runtime), so it is off by default. Build with the overlay
+        config/sdkconfig.defaults.easteregg to turn it on (it enables this option and
+        CONFIG_LV_USE_LOTTIE / THORVG / VECTOR_GRAPHIC together).
 
 endmenu
 
