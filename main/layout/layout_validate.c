@@ -413,6 +413,31 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         }
     }
 
+    if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "price_forecast") == 0) {
+        /* Optional average sensor and the price card's options. */
+        cJSON *price_day_switch = cJSON_GetObjectItemCaseSensitive(widget, "price_day_switch");
+        cJSON *price_cheap_times = cJSON_GetObjectItemCaseSensitive(widget, "price_cheap_times");
+        cJSON *price_line = cJSON_GetObjectItemCaseSensitive(widget, "price_line");
+        cJSON *price_average = cJSON_GetObjectItemCaseSensitive(widget, "price_average");
+        if (cJSON_IsString(secondary_entity_id) && secondary_entity_id->valuestring != NULL &&
+            secondary_entity_id->valuestring[0] != '\0' &&
+            (!is_valid_entity_id(secondary_entity_id->valuestring) || !entity_in_domain(secondary_entity_id->valuestring, "sensor"))) {
+            snprintf(msg, sizeof(msg), "widget %s: secondary_entity_id must be sensor.*", cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+        if ((price_day_switch != NULL && !cJSON_IsBool(price_day_switch)) || (price_cheap_times != NULL && !cJSON_IsBool(price_cheap_times)) ||
+            (price_line != NULL && !cJSON_IsBool(price_line))) {
+            snprintf(msg, sizeof(msg), "widget %s: price_day_switch, price_cheap_times and price_line must be true or false",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+        if (price_average != NULL && (!cJSON_IsNumber(price_average) || price_average->valuedouble < 0.0 || price_average->valuedouble > 5.0)) {
+            snprintf(msg, sizeof(msg), "widget %s: price_average must be a price in EUR/kWh between 0 and 5",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+    }
+
     if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "heating_tile") == 0) {
         if (cJSON_IsString(secondary_entity_id) && secondary_entity_id->valuestring != NULL &&
             secondary_entity_id->valuestring[0] != '\0') {

@@ -269,3 +269,53 @@ bool ha_stats_sum_days(const ha_stats_series_t *series, int64_t now, int days, h
     }
     return true;
 }
+
+bool ha_stats_range_window(int64_t now, ha_range_kind_t kind, ha_stats_window_t *out, const char **period)
+{
+    if (out == NULL || now < 0) return false;
+    memset(out, 0, sizeof(*out));
+    const bool days = kind == HA_RANGE_30_DAYS;
+    const int64_t start = ha_stats_local_day_start(now, days ? -29 : -364);
+    if (start < 0) return false;
+    out->start_epoch = start;
+    out->end_epoch = now;
+    out->first_slot = start;
+    if (period != NULL) *period = days ? "day" : "week";
+    return true;
+}
+
+ha_stats_outcome_t ha_stats_parse_range(const cJSON *result, const char *stat_id, const ha_stats_window_t *window,
+                                        ha_range_kind_t kind, ha_range_series_t *out)
+{
+    if (out == NULL || window == NULL) return HA_STATS_OUTCOME_INVALID;
+    memset(out, 0, sizeof(*out));
+    out->kind = kind;
+    if (stat_id == NULL || !cJSON_IsObject(result)) return HA_STATS_OUTCOME_INVALID;
+    const cJSON *rows = cJSON_GetObjectItemCaseSensitive((cJSON *)result, stat_id);
+    if (rows == NULL || cJSON_IsNull(rows)) return HA_STATS_OUTCOME_EMPTY;
+    if (!cJSON_IsArray(rows) || cJSON_GetArraySize(rows) > HA_RANGE_MAX_POINTS) return HA_STATS_OUTCOME_INVALID;
+    /* a week row may begin up to a week before the window (its Monday), a day row only on the window's first midnight */
+    const int64_t lead = kind == HA_RANGE_12_MONTHS ? 7 * 86400 : 0;
+    const cJSON *row;
+    cJSON_ArrayForEach(row, rows) {
+        double start_ms, mean;
+        if (!cJSON_IsObject(row) || !row_number(row, "start", &start_ms)) { out->rejected++; continue; }
+        const cJSON *mean_item = cJSON_GetObjectItemCaseSensitive((cJSON *)row, "mean");
+        if (mean_item == NULL || cJSON_IsNull(mean_item)) continue; /* no value for the period: a gap */
+        if (!row_number(row, "mean", &mean)) { out->rejected++; continue; }
+        const int64_t start = (int64_t)(start_ms / 1000.0);
+        if (start < window->start_epoch - lead || start >= window->end_epoch ||
+            (out->count > 0 && start <= out->point[out->count - 1].start)) {
+            out->rejected++;
+            continue;
+        }
+        ha_range_point_t *p = &out->point[out->count++];
+        p->start = start;
+        p->mean = (float)mean;
+        double lo, hi;
+        p->has_range = row_number(row, "min", &lo) && row_number(row, "max", &hi) && lo <= hi;
+        p->min = p->has_range ? (float)lo : p->mean;
+        p->max = p->has_range ? (float)hi : p->mean;
+    }
+    return out->count > 0 ? HA_STATS_OUTCOME_OK : HA_STATS_OUTCOME_EMPTY;
+}

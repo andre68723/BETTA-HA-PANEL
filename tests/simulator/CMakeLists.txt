@@ -84,6 +84,7 @@ add_executable(betta-widget-sim
     energy_regression.c
     font_budget_regression.c
     notification_regression.c
+    price_regression.c
     pages_stubs.c
     "${REPO_ROOT}/main/build_stamp.c"
     "${REPO_ROOT}/main/net/wifi_signal_level.c"
@@ -111,6 +112,8 @@ add_executable(betta-widget-sim
     "${REPO_ROOT}/main/ui/ui_days_view.c"
     "${REPO_ROOT}/main/ha/ha_history_reduce.c"
     "${REPO_ROOT}/main/ha/ha_history_stats.c"
+    "${REPO_ROOT}/main/ha/ha_price_series.c"
+    "${REPO_ROOT}/main/ha/ha_attr_serialize.c"
     "${REPO_ROOT}/main/ui/ui_option_picker.c"
     "${REPO_ROOT}/main/ha/ha_select_options.c"
     "${REPO_ROOT}/main/ha/ha_evcc_value.c"
@@ -153,6 +156,7 @@ add_executable(betta-widget-sim
     "${REPO_ROOT}/main/ui/widgets/w_camera.c"
     "${REPO_ROOT}/main/ui/widgets/w_vacuum.c"
     "${REPO_ROOT}/main/ui/widgets/w_solar_forecast.c"
+    "${REPO_ROOT}/main/ui/widgets/w_price_forecast.c"
     "${REPO_ROOT}/main/ui/widgets/w_car_widget.c"
     "${REPO_ROOT}/main/ui/widgets/w_todo.c"
     "${REPO_ROOT}/main/ui/widgets/w_bambu_printer.c"

@@ -305,6 +305,7 @@ const WIDGET_TYPE_LABEL_KEYS = {
   scene_tile: "layout.widgets.add_scene",
   select_tile: "layout.widgets.add_select",
   energy_timeline: "layout.widgets.add_energy_timeline",
+  price_forecast: "layout.widgets.add_price_forecast",
   datetime_tile: "layout.widgets.add_datetime",
   lock_tile: "layout.widgets.add_lock",
   alarm_tile: "layout.widgets.add_alarm",
@@ -464,6 +465,7 @@ function renderWidgets() {
     el.addWeatherTileBtn,
     el.addWeather3DayBtn,
     el.addSolarForecastBtn,
+    el.addPriceForecastBtn,
     el.addCarWidgetBtn,
     el.addBambuPrinterBtn, el.addEvccWallboxBtn,
     el.addTodoListBtn,
@@ -1177,6 +1179,7 @@ function renderInspector() {
       el.carExtraFields.classList.add("hidden");
     }
     if (el.cameraOptions) el.cameraOptions.classList.add("hidden");
+    if (el.priceOptions) el.priceOptions.classList.add("hidden");
     if (el.fCameraLive) el.fCameraLive.checked = false;
     bambuResetInspector(); evccResetInspector();
     for (const input of [el.fCarPrecond, el.fCarLock, el.fCarTemp, el.fEtlStyle, el.fEtlCharge, el.fEtlDischarge, el.fEtlSoc, el.fEtlForecast]) {
@@ -1347,6 +1350,11 @@ function renderInspector() {
   if (el.fCameraLive) el.fCameraLive.checked = widget.type === "camera_tile" && widget.camera_live === true;
   if (el.lockOptions) el.lockOptions.classList.toggle("hidden", widget.type !== "lock_tile");
   if (el.fLockConfirm) el.fLockConfirm.checked = widget.type === "lock_tile" && widget.lock_confirm === true;
+  if (el.priceOptions) el.priceOptions.classList.toggle("hidden", widget.type !== "price_forecast");
+  if (el.fPriceDaySwitch) el.fPriceDaySwitch.checked = widget.type === "price_forecast" && widget.price_day_switch === true;
+  if (el.fPriceCheapTimes) el.fPriceCheapTimes.checked = widget.type === "price_forecast" && widget.price_cheap_times === true;
+  if (el.fPriceLine) el.fPriceLine.checked = widget.type === "price_forecast" && widget.price_line === true;
+  if (el.fPriceAverage) el.fPriceAverage.value = widget.type === "price_forecast" && widget.price_average > 0 ? String(widget.price_average) : "";
   alarmLoadInspector(widget);
   if (el.historyOptions) el.historyOptions.classList.toggle("hidden",
     !["sensor", "binary_tile", "contact_tile", "lock_tile", "alarm_tile", "vacuum_tile"].includes(widget.type));
@@ -2010,6 +2018,7 @@ function addWidget(type, options = {}) {
       : type === "wallbox_evcc" ? 360
       : type === "bambu_printer" ? 360
       : type === "energy_timeline" ? 420
+      : type === "price_forecast" ? 460
       : type === "todo_list" ? 360
       : type === "media_player" ? 360
       : type === "sonos_favorites" ? 360
@@ -2030,6 +2039,7 @@ function addWidget(type, options = {}) {
       : type === "wallbox_evcc" ? 300
       : type === "bambu_printer" ? 420
       : type === "energy_timeline" ? 260
+      : type === "price_forecast" ? 250
       : type === "todo_list" ? 360
       : type === "media_player" ? 280
       : type === "sonos_favorites" ? 300
@@ -2306,6 +2316,16 @@ function applyInspector(options = {}) {
   } else {
     delete widget.lock_confirm; // default: no confirmation
   }
+  // price_forecast: the price timeline card's options, all off by default; the average sensor is the secondary entity
+  if (widgetType === "price_forecast" && el.fPriceDaySwitch?.checked) widget.price_day_switch = true;
+  else delete widget.price_day_switch;
+  if (widgetType === "price_forecast" && el.fPriceCheapTimes?.checked) widget.price_cheap_times = true;
+  else delete widget.price_cheap_times;
+  if (widgetType === "price_forecast" && el.fPriceLine?.checked) widget.price_line = true;
+  else delete widget.price_line;
+  const priceAverage = Number(String(el.fPriceAverage?.value ?? "").replace(",", "."));
+  if (widgetType === "price_forecast" && Number.isFinite(priceAverage) && priceAverage > 0 && priceAverage <= 5) widget.price_average = priceAverage;
+  else delete widget.price_average;
   const alarmChosen = ALARM_ACTION_FIELDS.filter(([key]) => el[key]?.checked).map(([, action]) => action);
   if (widgetType === "alarm_tile" && alarmChosen.length > 0 && alarmChosen.length < ALARM_ACTION_FIELDS.length) {
     widget.alarm_actions = alarmChosen; // only a deviation from "all actions" is stored

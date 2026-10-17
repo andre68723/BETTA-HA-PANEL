@@ -44,8 +44,8 @@
 static const char *TAG = "ha_week";
 
 /* One work item of the worker, and the single WebSocket operations it is made of. */
-typedef enum { WORK_CHECK, WORK_WEEK, WORK_DAYS } work_kind_t;
-typedef enum { OP_METADATA, OP_MEAN, OP_CHANGE } op_kind_t;
+typedef enum { WORK_CHECK, WORK_WEEK, WORK_DAYS, WORK_RANGE } work_kind_t;
+typedef enum { OP_METADATA, OP_MEAN, OP_CHANGE, OP_PERIOD } op_kind_t;
 
 typedef struct {
     work_kind_t kind;
@@ -59,6 +59,8 @@ typedef struct {
     ha_history_check_cb_t check_cb;
     ha_history_week_cb_t week_cb;
     ha_history_days_cb_t days_cb;
+    ha_range_kind_t range_kind;
+    ha_history_range_cb_t range_cb;
 } week_request_t;
 
 typedef struct {
@@ -66,6 +68,7 @@ typedef struct {
     ha_history_check_t check;
     ha_history_week_t *week;
     ha_history_days_t *days;
+    ha_history_range_t *range;
 } week_dispatch_t;
 
 typedef struct {
@@ -83,6 +86,9 @@ typedef struct {
     uint8_t id_count;
     const ha_stats_window_t *window;
     ha_stats_series_t *series;   /* parse target of OP_MEAN / OP_CHANGE */
+    ha_range_series_t *range;    /* parse target of OP_PERIOD */
+    ha_range_kind_t range_kind;
+    const char *period;          /* OP_PERIOD: "day" or "week" (every other statistics operation asks for hours) */
     const char *units_class;     /* ask HA to convert: units {units_class: units_target} */
     const char *units_target;
     int gate_wait_ms;
@@ -101,6 +107,8 @@ static uint8_t s_op_id_count;
 static ha_stats_meta_t s_op_metas[HA_DAYS_MAX_SOURCES];
 static const ha_stats_window_t *s_op_window;
 static ha_stats_series_t *s_op_series;
+static ha_range_series_t *s_op_range;
+static ha_range_kind_t s_op_range_kind;
 static ha_stats_outcome_t s_op_outcome;
 static bool s_op_ok;
 
@@ -119,6 +127,11 @@ void ha_history_days_free(ha_history_days_t *days)
     if (days != NULL) heap_caps_free(days);
 }
 
+void ha_history_range_free(ha_history_range_t *range)
+{
+    if (range != NULL) heap_caps_free(range);
+}
+
 static void reply_cb(bool success, cJSON *result, void *user)
 {
     xSemaphoreTake(s_lock, portMAX_DELAY);
@@ -132,6 +145,11 @@ static void reply_cb(bool success, cJSON *result, void *user)
             s_op_ok = true;
             for (uint8_t i = 0; i < s_op_id_count; i++) {
                 if (!ha_stats_parse_metadata(result, s_op_ids[i], &s_op_metas[i])) s_op_ok = false;
+            }
+        } else if (s_op_kind == OP_PERIOD) {
+            if (s_op_range != NULL && s_op_window != NULL) {
+                s_op_outcome = ha_stats_parse_range(result, s_op_ids[0], s_op_window, s_op_range_kind, s_op_range);
+                s_op_ok = s_op_outcome != HA_STATS_OUTCOME_INVALID;
             }
         } else if (s_op_series != NULL && s_op_window != NULL) {
             const bool mean = s_op_kind == OP_MEAN;
@@ -177,14 +195,14 @@ static esp_err_t send_op(const op_t *op, uint32_t op_id)
         cJSON_AddStringToObject(cmd, "type", "recorder/statistics_during_period");
         cJSON_AddStringToObject(cmd, "start_time", start_iso);
         cJSON_AddStringToObject(cmd, "end_time", end_iso);
-        cJSON_AddStringToObject(cmd, "period", "hour");
+        cJSON_AddStringToObject(cmd, "period", op->kind == OP_PERIOD && op->period != NULL ? op->period : "hour");
         cJSON_AddItemToObject(cmd, "statistic_ids", ids);
         cJSON *types = cJSON_AddArrayToObject(cmd, "types");
         if (types == NULL) {
             cJSON_Delete(cmd);
             return ESP_ERR_NO_MEM;
         }
-        if (op->kind == OP_MEAN) {
+        if (op->kind == OP_MEAN || op->kind == OP_PERIOD) {
             cJSON_AddItemToArray(types, cJSON_CreateString("mean"));
             cJSON_AddItemToArray(types, cJSON_CreateString("min"));
             cJSON_AddItemToArray(types, cJSON_CreateString("max"));
@@ -213,6 +231,8 @@ static esp_err_t run_op(const op_t *op)
     memset(s_op_metas, 0, sizeof(s_op_metas));
     s_op_window = op->window;
     s_op_series = op->series;
+    s_op_range = op->range;
+    s_op_range_kind = op->range_kind;
     s_op_outcome = HA_STATS_OUTCOME_INVALID;
     s_op_ok = false;
     uint32_t op_id = ++s_op;
@@ -232,6 +252,7 @@ static esp_err_t run_op(const op_t *op)
         xSemaphoreTake(s_lock, portMAX_DELAY);
         s_op++; /* a late reply is ignored; waiting for s_lock lets a running callback finish first */
         s_op_series = NULL;
+        s_op_range = NULL;
         s_op_window = NULL;
         xSemaphoreGive(s_lock);
         ha_client_cancel_pending_responses_for_user((void *)(uintptr_t)op_id);
@@ -240,6 +261,7 @@ static esp_err_t run_op(const op_t *op)
     xSemaphoreTake(s_lock, portMAX_DELAY);
     bool ok = s_op_ok;
     s_op_series = NULL;
+    s_op_range = NULL;
     s_op_window = NULL;
     xSemaphoreGive(s_lock);
     return ok ? ESP_OK : ESP_ERR_INVALID_RESPONSE;
@@ -258,23 +280,28 @@ static void dispatch_on_lvgl(void *user)
     case WORK_DAYS:
         dispatch->request.days_cb(dispatch->request.generation, dispatch->days);
         break;
+    case WORK_RANGE:
+        dispatch->request.range_cb(dispatch->request.generation, dispatch->range);
+        break;
     }
     free(dispatch);
 }
 
 static void dispatch(const week_request_t *req, const ha_history_check_t *check, ha_history_week_t *week,
-                     ha_history_days_t *days)
+                     ha_history_days_t *days, ha_history_range_t *range)
 {
     week_dispatch_t *d = calloc(1, sizeof(*d));
     if (d == NULL) {
         ha_history_week_free(week);
         ha_history_days_free(days);
+        ha_history_range_free(range);
         return;
     }
     d->request = *req;
     if (check != NULL) d->check = *check;
     d->week = week;
     d->days = days;
+    d->range = range;
     /* lv_async_call() inserts into LVGL's timer list: take the display lock from this task (see ha_history.c). */
     bool queued = false;
     if (display_lock(WEEK_DISPATCH_LOCK_MS)) {
@@ -284,6 +311,7 @@ static void dispatch(const week_request_t *req, const ha_history_check_t *check,
     if (!queued) {
         ha_history_week_free(week);
         ha_history_days_free(days);
+        ha_history_range_free(range);
         free(d);
     }
 }
@@ -338,7 +366,7 @@ static void handle_check(const week_request_t *req)
     ESP_LOGI(TAG, "check %s: %s, kind %d, why %d%s, %d ms", req->ids[0], esp_err_to_name(check.status),
              (int)check.result.kind, (int)check.result.why, from_cache ? " (cached)" : "",
              (int)((esp_timer_get_time() - started_us) / 1000));
-    dispatch(req, &check, NULL, NULL);
+    dispatch(req, &check, NULL, NULL, NULL);
 }
 
 static void handle_week(const week_request_t *req)
@@ -363,7 +391,7 @@ static void handle_week(const week_request_t *req)
              req->ids[0], esp_err_to_name(week->status), (int)week->outcome, (unsigned)week->series.valid,
              (unsigned)week->series.slots, (unsigned)week->series.rejected,
              (int)((esp_timer_get_time() - started_us) / 1000), (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-    dispatch(req, NULL, week, NULL);
+    dispatch(req, NULL, week, NULL, NULL);
 }
 
 /* Daily consumption: metadata of all sources in one call, then the hourly change of each eligible source. */
@@ -443,7 +471,28 @@ done:
              (unsigned)days->sources_eligible, days->unit, (int)((esp_timer_get_time() - started_us) / 1000),
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     heap_caps_free(one);
-    dispatch(req, NULL, NULL, days);
+    dispatch(req, NULL, NULL, days, NULL);
+}
+
+static void handle_range(const week_request_t *req)
+{
+    ha_history_range_t *range = psram_calloc(sizeof(*range));
+    if (range == NULL) return;
+    const int64_t started_us = esp_timer_get_time();
+    const time_t now = time(NULL);
+    const char *period = "day";
+    if (now < 1700000000 || !ha_stats_range_window((int64_t)now, req->range_kind, &range->window, &period)) {
+        range->status = ESP_ERR_INVALID_STATE;
+    } else {
+        op_t op = {.kind = OP_PERIOD, .ids = {req->ids[0]}, .id_count = 1, .window = &range->window, .range = &range->series,
+                   .range_kind = req->range_kind, .period = period, .gate_wait_ms = WEEK_REQUEST_GATE_WAIT_MS};
+        range->status = run_op(&op);
+        range->outcome = s_op_outcome;
+    }
+    ESP_LOGI(TAG, "range %s (%s): %s, outcome %d, %u points, %u rejected, %d ms", req->ids[0], period,
+             esp_err_to_name(range->status), (int)range->outcome, (unsigned)range->series.count,
+             (unsigned)range->series.rejected, (int)((esp_timer_get_time() - started_us) / 1000));
+    dispatch(req, NULL, NULL, NULL, range);
 }
 
 static void week_task(void *arg)
@@ -456,6 +505,7 @@ static void week_task(void *arg)
         case WORK_CHECK: handle_check(&req); break;
         case WORK_WEEK: handle_week(&req); break;
         case WORK_DAYS: handle_days(&req); break;
+        case WORK_RANGE: handle_range(&req); break;
         }
     }
 }
@@ -538,5 +588,14 @@ esp_err_t ha_history_request_days(const char *const *ids, size_t count, uint32_t
         if (!entity_id_ok(ids[i])) return ESP_ERR_INVALID_ARG;
         strlcpy(req.ids[i], ids[i], sizeof(req.ids[i]));
     }
+    return enqueue(&req);
+}
+
+esp_err_t ha_history_request_range(const char *entity_id, ha_range_kind_t kind, uint32_t generation, ha_history_range_cb_t callback)
+{
+    if (!entity_id_ok(entity_id) || callback == NULL) return ESP_ERR_INVALID_ARG;
+    if (kind != HA_RANGE_30_DAYS && kind != HA_RANGE_12_MONTHS) return ESP_ERR_INVALID_ARG;
+    week_request_t req = {.kind = WORK_RANGE, .id_count = 1, .generation = generation, .range_kind = kind, .range_cb = callback};
+    strlcpy(req.ids[0], entity_id, sizeof(req.ids[0]));
     return enqueue(&req);
 }

@@ -7,8 +7,10 @@
  */
 #include "ha/ha_attr_serialize.h"
 #include "ha/ha_control_options.h"
+#include "ha/ha_price_series.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -1062,4 +1064,74 @@ bool ha_client_append_compact_forecast_to_attrs_json(char *attrs_json, size_t at
     }
     cJSON_free(merged_json);
     return fits;
+}
+
+bool ha_client_attrs_is_price_series(cJSON *attrs)
+{
+    return cJSON_IsObject(attrs) && ha_price_series_detect(attrs);
+}
+
+/* A price list (the attribute `data` of ha_epex_spot, the Day Ahead Optimizer and the Tibber/Nord Pool template sensors) is far larger
+ * than the model's attribute buffer: it becomes the regular grid of ha_price_series.c under "pf". If even the steps of a quarter-hour series
+ * do not fit, whole hours are averaged (nothing is invented, a gap stays a gap). The scalars other widgets of the same entity read (a Sensor
+ * tile shows the unit) follow in the order unit, device class, state class, name for as long as they fit. False when the list is not
+ * representable exactly or does not fit even hourly; the caller then keeps only the generic metadata and the widget reports
+ * "no usable prices". */
+bool ha_client_serialize_price_series_compact(cJSON *src_attrs, char *out_json, size_t out_json_size)
+{
+    static const char *const keep[] = {"unit_of_measurement", "device_class", "state_class", "friendly_name"};
+    if (!cJSON_IsObject(src_attrs) || out_json == NULL || out_json_size < 8) {
+        return false;
+    }
+    ha_price_series_t *series = (ha_price_series_t *)calloc(1, sizeof(*series));
+    ha_price_series_t *hourly = (ha_price_series_t *)calloc(1, sizeof(*hourly));
+    char *pf = (char *)malloc(out_json_size);
+    bool ok = false;
+    if (series == NULL || hourly == NULL || pf == NULL) {
+        goto done;
+    }
+    if (!ha_price_series_from_attrs(src_attrs, series)) {
+        goto done;
+    }
+    if (!ha_price_series_to_json(series, pf, out_json_size)) {
+        if (!ha_price_series_to_hourly(series, hourly) || !ha_price_series_to_json(hourly, pf, out_json_size)) {
+            goto done;
+        }
+    }
+    {
+        /* pf is {"pf":{...}}: its member opens the output object. */
+        const size_t pf_len = strlen(pf);
+        if (pf_len < 3 || 1 + (pf_len - 2) + 1 >= out_json_size) {
+            goto done;
+        }
+        size_t used = 0;
+        out_json[used++] = '{';
+        memcpy(out_json + used, pf + 1, pf_len - 2);
+        used += pf_len - 2;
+        for (size_t i = 0; i < sizeof(keep) / sizeof(keep[0]); i++) {
+            cJSON *item = cJSON_GetObjectItemCaseSensitive(src_attrs, keep[i]);
+            if (!cJSON_IsString(item) || item->valuestring == NULL || strlen(item->valuestring) > 48) {
+                continue;
+            }
+            cJSON *quoted = cJSON_CreateString(item->valuestring);
+            char *text = quoted != NULL ? cJSON_PrintUnformatted(quoted) : NULL;
+            cJSON_Delete(quoted);
+            if (text == NULL) {
+                continue;
+            }
+            const size_t need = 1 + strlen(keep[i]) + 3 + strlen(text); /* ,"key":"value" */
+            if (used + need + 2 <= out_json_size) {
+                used += (size_t)snprintf(out_json + used, out_json_size - used, ",\"%s\":%s", keep[i], text);
+            }
+            cJSON_free(text);
+        }
+        out_json[used++] = '}';
+        out_json[used] = '\0';
+        ok = true;
+    }
+done:
+    free(pf);
+    free(hourly);
+    free(series);
+    return ok;
 }

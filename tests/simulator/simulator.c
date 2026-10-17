@@ -20,6 +20,7 @@
 #include "ui/display_geometry.h"
 #include "layout/layout_orientation.h"
 #include "ha/ha_alarm_state.h"
+#include "ha/ha_attr_serialize.h"
 #include "ha/ha_display_precision.h"
 #include "ui/text_font.h"
 #include "ui/theme/ui_day_grid.h"
@@ -85,6 +86,8 @@ esp_err_t w_lock_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_
 void w_lock_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_alarm_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_alarm_apply_state(ui_widget_instance_t *, const ha_state_t *);
+esp_err_t w_price_forecast_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
+void w_price_forecast_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_energy_timeline_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_energy_timeline_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_select_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
@@ -137,6 +140,7 @@ static const sim_widget_type_t k_types[] = {
     {"datetime_tile", w_datetime_create, w_datetime_apply_state},
     {"lock_tile", w_lock_create, w_lock_apply_state},
     {"alarm_tile", w_alarm_create, w_alarm_apply_state},
+    {"price_forecast", w_price_forecast_create, w_price_forecast_apply_state},
     {"energy_timeline", w_energy_timeline_create, w_energy_timeline_apply_state},
     {"binary_tile", w_binary_create, w_binary_apply_state},
     {"room_tile", w_room_create, w_room_apply_state},
@@ -263,6 +267,10 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     def->hide_name = !widget_show_name(json);
     def->sensor_show_age = json_bool(json, "sensor_show_age", true);
     def->lock_confirm = json_bool(json, "lock_confirm", false);
+    def->price_day_switch = json_bool(json, "price_day_switch", false);
+    def->price_cheap_times = json_bool(json, "price_cheap_times", false);
+    def->price_line = json_bool(json, "price_line", false);
+    def->price_average = json_float(json, "price_average", 0.0f);
     def->camera_live = json_bool(json, "camera_live", false);
     def->alarm_actions = ha_alarm_action_mask_parse(cJSON_GetObjectItemCaseSensitive(json, "alarm_actions"));
     def->history_popup = json_bool(json, "history_popup", false);
@@ -412,6 +420,86 @@ static char *read_text_file(const char *path)
     return data;
 }
 
+/* A fixture states a price list as {"price_series": {"shape": "epex"|"dao"|"raw", "interval_min": 60, "today": [...], "tomorrow": [...]}}: the prices of
+ * the local calendar days around the moment the simulator runs, expanded to the `data` attribute a price sensor has in Home Assistant. */
+static void expand_price_series(cJSON *attrs)
+{
+    const cJSON *spec = cJSON_GetObjectItemCaseSensitive(attrs, "price_series");
+    if (!cJSON_IsObject(spec)) return;
+    const cJSON *shape = cJSON_GetObjectItemCaseSensitive(spec, "shape");
+    const bool dao = cJSON_IsString(shape) && shape->valuestring != NULL && strcmp(shape->valuestring, "dao") == 0;
+    /* "raw": the Nord Pool / Energy Price Forecast shape, raw_today (only the slots from now on) and raw_tomorrow with {start (UTC), value} */
+    const bool raw = cJSON_IsString(shape) && shape->valuestring != NULL && strcmp(shape->valuestring, "raw") == 0;
+    const int interval_min = json_int(spec, "interval_min", 60);
+    time_t now = time(NULL);
+    struct tm tm;
+    localtime_r(&now, &tm);
+    tm.tm_hour = 0;
+    tm.tm_min = 0;
+    tm.tm_sec = 0;
+    tm.tm_isdst = -1;
+    const time_t midnight = mktime(&tm);
+    cJSON *data = cJSON_CreateArray();
+    cJSON *raw_days[2] = {cJSON_CreateArray(), cJSON_CreateArray()};
+    int slot = 0;
+    const char *days[2] = {"today", "tomorrow"};
+    for (int d = 0; d < 2; d++) {
+        const cJSON *list = cJSON_GetObjectItemCaseSensitive(spec, days[d]);
+        const cJSON *price;
+        cJSON_ArrayForEach(price, list) {
+            cJSON *item = cJSON_CreateObject();
+            const time_t start = midnight + (time_t)slot * interval_min * 60;
+            struct tm lt;
+            localtime_r(&start, &lt);
+            if (raw) {
+                struct tm ut;
+                char text[24];
+                gmtime_r(&start, &ut);
+                strftime(text, sizeof(text), "%Y-%m-%dT%H:%M:%SZ", &ut);
+                cJSON_AddStringToObject(item, "start", text);
+                cJSON_AddNumberToObject(item, "value", price->valuedouble);
+                if (d == 1 || start + interval_min * 60 > now) {
+                    cJSON_AddItemToArray(raw_days[d], item);
+                } else {
+                    cJSON_Delete(item);
+                }
+                slot++;
+                continue;
+            }
+            if (dao) {
+                cJSON_AddNumberToObject(item, "time_ts", (double)start * 1000.0);
+                char local[20];
+                strftime(local, sizeof(local), "%Y-%m-%d %H:%M", &lt);
+                cJSON_AddStringToObject(item, "time", local);
+                cJSON_AddNumberToObject(item, "da_ex", price->valuedouble * 0.6);
+                cJSON_AddNumberToObject(item, "da_cons", price->valuedouble);
+                cJSON_AddNumberToObject(item, "da_prod", price->valuedouble);
+                cJSON_AddStringToObject(item, "datatype", start < now ? "recorded" : "expected");
+            } else {
+                char text[40];
+                const long off = lt.tm_gmtoff;
+                size_t n = strftime(text, sizeof(text), "%Y-%m-%dT%H:%M:%S", &lt);
+                snprintf(text + n, sizeof(text) - n, "%c%02ld:%02ld", off < 0 ? '-' : '+', labs(off) / 3600, (labs(off) % 3600) / 60);
+                cJSON_AddStringToObject(item, "start_time", text);
+                cJSON_AddNumberToObject(item, "price_per_kwh", price->valuedouble);
+            }
+            cJSON_AddItemToArray(data, item);
+            slot++;
+        }
+    }
+    cJSON_DeleteItemFromObjectCaseSensitive(attrs, "price_series");
+    cJSON_DeleteItemFromObjectCaseSensitive(attrs, "data");
+    if (raw) {
+        cJSON_Delete(data);
+        cJSON_AddItemToObject(attrs, "raw_today", raw_days[0]);
+        cJSON_AddItemToObject(attrs, "raw_tomorrow", raw_days[1]);
+        return;
+    }
+    cJSON_Delete(raw_days[0]);
+    cJSON_Delete(raw_days[1]);
+    cJSON_AddItemToObject(attrs, "data", data);
+}
+
 static bool parse_state(const cJSON *json, ha_state_t *state)
 {
     memset(state, 0, sizeof(*state));
@@ -434,14 +522,25 @@ static bool parse_state(const cJSON *json, ha_state_t *state)
                 cJSON_DeleteItemFromObjectCaseSensitive(day, "day_offset");
             }
         }
-        char *serialized = cJSON_PrintUnformatted(resolved); cJSON_Delete(resolved);
-        if (serialized == NULL || strlen(serialized) >= sizeof(state->attributes_json)) {
-            fprintf(stderr, "Attributes too long for %s\n", state->entity_id);
+        expand_price_series(resolved);
+        if (ha_client_attrs_is_price_series(resolved)) {
+            /* the firmware's own compaction, so the widget is fed exactly what it gets from Home Assistant */
+            const bool ok = ha_client_serialize_price_series_compact(resolved, state->attributes_json, sizeof(state->attributes_json));
+            cJSON_Delete(resolved);
+            if (!ok) {
+                fprintf(stderr, "Price list of %s is not representable\n", state->entity_id);
+                return false;
+            }
+        } else {
+            char *serialized = cJSON_PrintUnformatted(resolved); cJSON_Delete(resolved);
+            if (serialized == NULL || strlen(serialized) >= sizeof(state->attributes_json)) {
+                fprintf(stderr, "Attributes too long for %s\n", state->entity_id);
+                cJSON_free(serialized);
+                return false;
+            }
+            snprintf(state->attributes_json, sizeof(state->attributes_json), "%s", serialized);
             cJSON_free(serialized);
-            return false;
         }
-        snprintf(state->attributes_json, sizeof(state->attributes_json), "%s", serialized);
-        cJSON_free(serialized);
     } else if (cJSON_IsString(attrs)) {
         snprintf(state->attributes_json, sizeof(state->attributes_json), "%s", attrs->valuestring);
     } else {
@@ -512,7 +611,7 @@ static void print_usage(const char *program)
     }
     fprintf(stderr,
             "] [--language de|en|es|fr] [--exit-after-ms duration] [--screenshot path.bmp] "
-            "[--dump-layout path.jsonl] [--tap x,y]... [--regression wallbox|bambu|history|energy|controls|fonts]\n");
+            "[--dump-layout path.jsonl] [--tap x,y]... [--regression wallbox|bambu|history|energy|controls|fonts|notification|price]\n");
 }
 
 static bool save_screenshot(lv_display_t *display, const char *path)
@@ -708,6 +807,10 @@ static void show_fixture_notification(const cJSON *json)
 static void show_fixture_history(const cJSON *json)
 {
     if (!cJSON_IsObject(json)) return;
+    if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(json, "range"))) { /* the stock chip's popup: 30 days, a tap on "12 m" shows the year */
+        ui_history_popup_open_range(json_string(json, "entity_id"), json_string(json, "title"), json_string(json, "current"));
+        return;
+    }
     ui_history_popup_open(json_string(json, "entity_id"), json_string(json, "title"),
                           json_string(json, "current"),
                           cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(json, "numeric")),
@@ -733,6 +836,8 @@ int main(int argc, char **argv)
     extern int sim_font_budget_regression(void);
     extern int sim_notification_regression(void);
     bool notification_regression = false;
+    extern int sim_price_regression(void);
+    bool price_regression = false;
     bool font_budget_regression = false;
     bool energy_regression = false;
     bool bambu_regression = false;
@@ -764,6 +869,7 @@ int main(int argc, char **argv)
         else if (strcmp(argv[i - 1], "--regression") == 0 && strcmp(value, "energy") == 0) energy_regression = true;
         else if (strcmp(argv[i - 1], "--regression") == 0 && strcmp(value, "controls") == 0) controls_regression = true;
         else if (strcmp(argv[i - 1], "--regression") == 0 && strcmp(value, "notification") == 0) notification_regression = true;
+        else if (strcmp(argv[i - 1], "--regression") == 0 && strcmp(value, "price") == 0) price_regression = true;
         else if (strcmp(argv[i - 1], "--regression") == 0 && strcmp(value, "fonts") == 0) font_budget_regression = true;
         else if (strcmp(argv[i - 1], "--fixture") == 0) fixture_path = value;
         else if (strcmp(argv[i - 1], "--page") == 0) page_id = value;
@@ -910,6 +1016,10 @@ int main(int argc, char **argv)
     if (notification_regression) {
         cJSON_Delete(root);
         return sim_notification_regression();
+    }
+    if (price_regression) {
+        cJSON_Delete(root);
+        return sim_price_regression();
     }
     if (font_budget_regression) {
         cJSON_Delete(root);

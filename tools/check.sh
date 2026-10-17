@@ -11,20 +11,27 @@
 #   tools/check.sh --build    also builds all five variants (needs ESP-IDF 6.1 in the environment)
 #   tools/check.sh --force    ignore the stamps and run everything (CI always does)
 #   tools/check.sh --verbose  print every step's full output as it runs
+#   tools/check.sh --group G  only one group of steps (CI runs the groups as parallel jobs): web, host, sim-panel4,
+#                             sim-paneljc or sim-tab5; the simulator groups hold a variant's regressions and layout
 # Logs: ${TMPDIR:-/tmp}/betta-check/<step>.log (BETTA_CHECK_LOG_DIR overrides). Stamps: build/check-stamps/ (delete the folder, or pass --force, to rerun everything).
 set -u
 cd "$(dirname "$0")/.."
 
-build=0; full=0; force=0; verbose=0
-for arg in "$@"; do
+build=0; full=0; force=0; verbose=0; group=""
+while [ $# -gt 0 ]; do
+  arg="$1"; shift
   case "$arg" in
+    --group) group="${1:-}"; shift || true ;;
     --build) build=1 ;;
     --full) full=1 ;;
     --force) force=1 ;;
     --verbose) verbose=1 ;;
-    *) echo "usage: tools/check.sh [--build] [--full] [--force] [--verbose]" >&2; exit 2 ;;
+    *) echo "usage: tools/check.sh [--build] [--full] [--force] [--verbose] [--group web|host|sim-panel4|sim-paneljc|sim-tab5]" >&2; exit 2 ;;
   esac
 done
+case "$group" in ""|web|host|sim-panel4|sim-paneljc|sim-tab5) ;; *) echo "unknown group '$group'" >&2; exit 2 ;; esac
+# A step group runs when no group is selected or when it is the selected one.
+in_group() { [ -z "$group" ] || [ "$group" = "$1" ]; }
 # CI must never skip a step because of a stamp, and runs the whole text-step matrix.
 if [ -n "${CI:-}" ]; then force=1; full=1; fi
 
@@ -111,7 +118,8 @@ export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-dummy}"
 export SDL_RENDER_DRIVER="${SDL_RENDER_DRIVER:-software}"
 
 have_node=0; command -v node >/dev/null 2>&1 && have_node=1
-if [ "$have_node" -eq 1 ]; then
+if ! in_group web; then :
+elif [ "$have_node" -eq 1 ]; then
   step "editor JavaScript syntax" "" bash -c 'for f in components/webui/www/js/*.js; do node --check "$f" || exit 1; done'
   # Files, not the directory: Node 22 (CI) treats a directory argument as a module to load.
   step "editor unit tests" "" bash -c 'node --test tests/webui/*.test.mjs'
@@ -120,41 +128,49 @@ else
   skip "node not found" "editor unit tests"
 fi
 
-step "HTML and translation tables" "" python3 tools/check_web.py
-SKIP_RC=2 SKIP_WHY="fontTools not installed" step "font subsets" \
-  "tools/generate_widget_fonts.py main/ui/fonts" python3 tools/generate_widget_fonts.py --check
-step "source file sizes" "" python3 tools/check_source_sizes.py
-step "documentation page sizes" "" python3 tools/check_docs_size.py
+if in_group web; then
+  step "HTML and translation tables" "" python3 tools/check_web.py
+  SKIP_RC=2 SKIP_WHY="fontTools not installed" step "font subsets" \
+    "tools/generate_widget_fonts.py main/ui/fonts" python3 tools/generate_widget_fonts.py --check
+  step "source file sizes" "" python3 tools/check_source_sizes.py
+  step "documentation page sizes" "" python3 tools/check_docs_size.py
 
-# A hint, never a failure: show its one line when it has something to say.
-python3 tools/check_gallery_fresh.py 2>&1 | grep '^WARN' | cut -c1-200
+  # A hint, never a failure: show its one line when it has something to say.
+  python3 tools/check_gallery_fresh.py 2>&1 | grep '^WARN' | cut -c1-200
+fi
 
 # Everything the simulator renders depends on the firmware sources and the fixtures.
 sim_inputs="main tests/simulator tools/simulator.sh tools/check_widget_layout.py tools/check_readability.py tools/ui_styles.py tools/generate_simulator_gallery.py tools/gallery_content.py"
-if command -v cmake >/dev/null 2>&1 && command -v sdl2-config >/dev/null 2>&1; then
-  for variant in panel4 paneljc tab5; do
-    step "simulator regressions $variant" "$sim_inputs" bash -c '
-      for r in controls wallbox bambu history energy fonts notification; do
-        SDL_VIDEODRIVER=dummy tools/simulator.sh "$0" --regression "$r" || exit 1
-      done' "$variant"
-  done
+if [ -n "$group" ] && [ "${group#sim-}" = "$group" ]; then
+  : # no simulator group selected
+elif command -v cmake >/dev/null 2>&1 && command -v sdl2-config >/dev/null 2>&1; then
   # Text grows with the user's Larger and Largest steps and tiles cap it; nothing may overlap. The standard step
   # runs on every check, the other two with --full (and always in CI).
   steps="0"; [ "$full" -eq 1 ] && steps="0 1 2"
-  for s in $steps; do
-    step "widget layout panel4 step $s" "$sim_inputs" python3 tools/check_widget_layout.py --text-step "$s"
-    step "widget layout paneljc step $s" "$sim_inputs" python3 tools/check_widget_layout.py --variant paneljc --text-step "$s"
-    step "widget layout tab5 step $s" "$sim_inputs" python3 tools/check_widget_layout.py --variant tab5 --text-step "$s"
+  for variant in panel4 paneljc tab5; do
+    in_group "sim-$variant" || continue
+    step "simulator regressions $variant" "$sim_inputs" bash -c '
+      for r in controls wallbox bambu history energy fonts notification price; do
+        SDL_VIDEODRIVER=dummy tools/simulator.sh "$0" --regression "$r" || exit 1
+      done' "$variant"
+    for s in $steps; do
+      case "$variant" in
+        panel4) step "widget layout panel4 step $s" "$sim_inputs" python3 tools/check_widget_layout.py --text-step "$s" ;;
+        *) step "widget layout $variant step $s" "$sim_inputs" python3 tools/check_widget_layout.py --variant "$variant" --text-step "$s" ;;
+      esac
+    done
   done
 else
   skip "cmake or SDL2 not found (macOS: brew install cmake sdl2; Debian: apt install cmake libsdl2-dev)" "widget layout (SDL simulator)"
 fi
 
-for variant in panel4 paneljc; do
-  step "host tests $variant" "main tests/host tools/test_host.sh" env VARIANT="$variant" tools/test_host.sh
-done
+if in_group host; then
+  for variant in panel4 paneljc; do
+    step "host tests $variant" "main tests/host tools/test_host.sh" env VARIANT="$variant" tools/test_host.sh
+  done
+fi
 
-if [ "$build" -eq 1 ]; then
+if [ "$build" -eq 1 ] && [ -z "$group" ]; then
   # The component patches (tools/apply_component_patches.py) are applied automatically by the root
   # CMakeLists.txt on every configure, not called here separately any more.
   # tools/build.sh passes the full define set (see docs/development/build.md), one build directory per variant.

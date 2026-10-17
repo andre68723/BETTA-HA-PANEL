@@ -63,6 +63,8 @@ function widgetSizeLimitsForCanvas(type) {
       return { minW: 160, minH: 70, maxW: CANVAS_WIDTH, maxH: 160 };
     case "energy_timeline":
       return { minW: 300, minH: 200, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "price_forecast":
+      return { minW: 240, minH: 150, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "select_tile":
       return { minW: 160, minH: 80, maxW: CANVAS_WIDTH, maxH: 200 };
     case "datetime_tile":
@@ -318,10 +320,20 @@ const el = {
   addSceneTileBtn: document.getElementById("addSceneTileBtn"),
   addSelectTileBtn: document.getElementById("addSelectTileBtn"),
   addEnergyTimelineBtn: document.getElementById("addEnergyTimelineBtn"),
+  addPriceForecastBtn: document.getElementById("addPriceForecastBtn"),
   addDatetimeTileBtn: document.getElementById("addDatetimeTileBtn"),
   addLockTileBtn: document.getElementById("addLockTileBtn"),
   addAlarmTileBtn: document.getElementById("addAlarmTileBtn"),
   lockOptions: document.getElementById("lockOptions"),
+  priceOptions: document.getElementById("priceOptions"),
+  fPriceDaySwitch: document.getElementById("fPriceDaySwitch"),
+  fPriceDaySwitchLabel: document.getElementById("fPriceDaySwitchLabel"),
+  fPriceCheapTimes: document.getElementById("fPriceCheapTimes"),
+  fPriceCheapTimesLabel: document.getElementById("fPriceCheapTimesLabel"),
+  fPriceLine: document.getElementById("fPriceLine"),
+  fPriceLineLabel: document.getElementById("fPriceLineLabel"),
+  fPriceAverage: document.getElementById("fPriceAverage"),
+  fPriceAverageLabel: document.getElementById("fPriceAverageLabel"),
   fAlarmDisarm: document.getElementById("fAlarmDisarm"),
   fAlarmArmHome: document.getElementById("fAlarmArmHome"),
   fAlarmArmAway: document.getElementById("fAlarmArmAway"),

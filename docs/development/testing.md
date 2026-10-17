@@ -41,6 +41,12 @@ first, then review on hardware.
   taps may add at most 512 bytes per cycle.
 - `tests/host/test_alarm_state.c` covers the alarm state names, the arm and disarm actions an entity offers from its
   `supported_features`, the `code_format` and `code_arm_required` rules and the per-tile `alarm_actions` mask.
+- `tests/host/test_price_series.c` covers the electricity price lists: the EPEX Spot and Day Ahead Optimizer shapes with the real hourly market
+  prices of 2026-10-17, the regular grid (gaps, unsorted input, off-grid starts, conflicting duplicates, too many items), the model's attribute
+  JSON and its size budget, day statistics, the cheap windows across local days (negative and equal prices, the 23 and 25 hour clock-change days)
+  and the serializer. Regression cases cover EUR/cent unit conversion and rejection, sparse lists with explicit ends, and more than eight cheap windows.
+  `tests/host/test_price_layout.c` checks the widget's domain, size limits and subscription. `--regression price` taps the
+  real Today/Tomorrow buttons (both on a wide tile, one toggle on a narrow one) and the no-data states.
 - Host tests need cJSON (`libcjson-dev`, `brew install cjson`, or fetched sources); `tools/test_host.sh` exits with 2
   when neither exists.
 - `tests/host/test_coredump_store.c` checks two-report retention, failed imports, duplicate imports,
@@ -56,8 +62,8 @@ first, then review on hardware.
 - `--regression fonts` (font manager failure acceptance, `tests/simulator/font_budget_regression.c`) requests every integer size and every icon font
   with `UI_FONTS_TEST_HOOKS` compiled in: a failed creation and the 64-instance budget never give a caller a NULL font, instances stay bounded and a
   key created before keeps its instance. `GET /api/version` reports the same counters under `fonts` on a panel.
-- With SDL2, `check.sh` runs the regressions `controls`, `wallbox`, `bambu`, `history`, `energy`, `fonts` and
-  `notification` through `tools/simulator.sh <variant> --regression <name>` for panel4, paneljc and tab5.
+- With SDL2, `check.sh` runs the regressions `controls`, `wallbox`, `bambu`, `history`, `energy`, `fonts`,
+  `notification` and `price` through `tools/simulator.sh <variant> --regression <name>` for panel4, paneljc and tab5.
   `--regression bambu` exercises the real widget buttons, mocked service targets, pending commands, timeout/disconnect and popup
   ownership during hide, resize and deletion. It sends no Home Assistant commands. `--regression history` runs
   alongside it and drives the history popup's real 24 h / 7 days buttons, quick switching, close and reopen, and

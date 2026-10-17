@@ -38,6 +38,13 @@ Tap Sensor, Binary sensor and Contact tiles for history; long-press Lock and Vac
 [Energy timeline](widgets/energy_timeline.md) or [Graph](widgets/graph.md).
 For popups, enable [History on tap](history.md) in the widget's inspector.
 
+## Electricity prices
+
+Show today's and tomorrow's prices, the current interval and the next cheap window with a Price forecast widget.
+Choose bars or a stepped line. Missing intervals stay gaps, and all upcoming cheap windows remain available.
+
+**Set it up:** [Price forecast](widgets/price_forecast.md) lists supported price sensors, units and helper formats.
+
 ## Doorbell and messages
 
 A doorbell or sensor can wake the screen and show a message, camera snapshot and optional action button.

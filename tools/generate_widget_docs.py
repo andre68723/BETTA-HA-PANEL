@@ -32,6 +32,7 @@ INTRO = {
     "weather_tile": "Show current weather conditions, temperature and the available extra readings.",
     "weather_3day": "Compare forecast days, temperatures and precipitation in configurable columns.",
     "solar_forecast": "Compare predicted solar production for today and the next four days.",
+    "price_forecast": "Show a day of electricity prices as bars, with the price now, today and tomorrow, and the cheap hours.",
     "car_widget": "Show a car's battery or charge level, with optional range and vehicle controls.",
     "bambu_printer": "Show a Bambu Lab printer's status, temperatures, progress and remaining time, with Pause/Resume and Stop buttons.",
     "todo_list": "Show a Home Assistant to-do list and mark individual items done.",
@@ -71,6 +72,12 @@ GUIDANCE = {
     "solar_forecast": "Assign today's remaining production and the daily forecast sensors for the days you want to show. "
                       "Today's bar shows the day's total and keeps the part still to come bright. "
                       "Values use whole-number production forecasts; optional date alignment can match a weather forecast beside it.",
+    "price_forecast": "Choose the price sensor. One bar per interval: below the average green, above it orange. Intervals that are over are dimmed and the running one is outlined. Prices are shown in cent per kWh.\n\n"
+                      "**Display options** (as in the community's price timeline cards, for example [Neisi/ha-price-timeline-card](https://github.com/Neisi/ha-price-timeline-card); the code is the panel's own):\n\n"
+                      "- **Average**: the day's own average in whole cents by default; a fixed value in EUR/kWh, or an average sensor in the secondary entity, replaces it.\n"
+                      "- **Day switch**: Today/Tomorrow buttons, one toggle button on a narrow tile. Off shows the 24 hours around now, the running interval in the middle (tomorrow once published).\n"
+                      "- **Cheap times**: shade the cheap windows and name the next one. A window is the lowest quarter of the day's prices (rounded to 0.001 EUR/kWh), at least one hour long and not over yet.\n"
+                      "- **Line**: draw the prices as a stepped line instead of filled bars (the default).",
     "car_widget": "Assign the battery sensor first, then optional range, charging, temperature, lock and pre-conditioning entities.",
     "bambu_printer": "Select the print status sensor, then the temperature, progress and remaining-time sensors. Pause, Resume and Stop buttons, the current step and the job name are optional. "
                      "The example cards are 354 × 420 px; the minimum is 320 × 320 px.",
@@ -108,6 +115,7 @@ FIELD_LABELS = {
     "graph_point_count": "number of displayed points", "graph_line_color": "line colour",
     "solar_forecast_bar_orientation": "bar orientation", "show_precipitation": "show precipitation",
     "slider_accent_color": "accent colour", "arc_opening": "arc opening direction",
+    "price_day_switch": "Today/Tomorrow buttons", "price_cheap_times": "cheap times", "price_line": "line instead of bars", "price_average": "fixed average (EUR/kWh)",
     "lock_confirm": "confirm unlocking/opening", "alarm_actions": "offered alarm actions", "display_mode": "state presentation",
     "supported_features": "the entity's supported capabilities",
     "line_smooth_points": "smoothed line with points", "line_smooth": "smoothed line",
@@ -124,6 +132,22 @@ REQUIRED_INTEGRATION = {
     "bambu_printer": "This widget reads a printer through the **[Bambu Lab integration (`ha-bambulab`)](https://github.com/greghesp/ha-bambulab)** "
                      "in Home Assistant. The panel only talks to Home Assistant; it has no direct connection to the printer. "
                      "Setting up the integration is described by its own project.",
+    "price_forecast": "The widget reads a price sensor that carries the list of prices as an attribute named `data`, in EUR per kWh, hourly or every 15 minutes. "
+                      "Home Assistant keeps the full list; the panel reduces it to a compact series, so two days of 15-minute prices fit. "
+                      "If a list is still too large, whole hours are averaged; missing intervals stay gaps. "
+                      "A list that cannot be kept exactly (conflicting interval lengths, two prices in one slot) shows \"No prices\".\n\n"
+                      "Raw lists (`raw_today`, `raw_tomorrow`) require a unit: EUR or euro cents (`c`, `ct`, `¢`) per Wh, kWh or MWh. "
+                      "They are converted to EUR/kWh before display; an unknown unit or a currency other than EUR shows \"No prices\". "
+                      "For example, 20 c/kWh and 200 EUR/MWh both display as 20 ct/kWh. "
+                      "When creating a helper, include each interval's end as `end_time` (or `end` in a raw list), so missing intervals keep their correct duration. "
+                      "Without end times the interval is inferred from the supplied starts.\n\n"
+                      "**Sources**\n\n"
+                      "- **[EPEX Spot](https://github.com/mampfes/ha_epex_spot)** (HACS; Germany and many other markets): works directly. Use the market price or the total price sensor. Checked with real 15-minute data.\n"
+                      "- **Nord Pool** (Home Assistant integration): its sensors have no list, the prices come from the action `nordpool.get_prices_for_date` (EUR per MWh, divide by 1000). "
+                      "A helper that calls the action for today and tomorrow and stores `start_time` and `price_per_kwh` as `data` makes it work. Checked with real data through such a helper. "
+                      "The Nord Pool custom component (`raw_today`, `raw_tomorrow`) needs no helper when configured in EUR or euro cents.\n"
+                      "- **Tibber** (Home Assistant integration): not verified. As far as known its sensors carry no price list either (action `tibber.get_prices`), so it probably needs the same kind of helper.\n"
+                      "- **Day Ahead Optimizer** (`time_ts`, `da_cons`): read too, but only checked against a stand-in.",
     "solar_forecast": "The widget needs sensors that forecast the solar production per day. "
                       "**[Solcast PV Forecast](https://github.com/BJReplay/ha-solcast-solar)** is one source of such sensors, "
                       "but the widget does not depend on Solcast: any integration that provides them works. "

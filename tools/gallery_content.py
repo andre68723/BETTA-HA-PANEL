@@ -401,7 +401,7 @@ def build_spec(entities):
                            "Size": "min 180x90"}),
             ],
         },
-    ] + bambu_pages(entities) + wallbox_pages(entities)
+    ] + bambu_pages(entities) + wallbox_pages(entities) + price_pages(entities)
 
 
 # The public example list of the simulator preview (a real panel reads it from the todo entity).
@@ -440,6 +440,27 @@ def bambu_pages(entities):
         "tiles": [
             dict(slot="bambu_printer", type="bambu_printer", title="Bambu A1", rect=(6, 6, 354, 420),
                  fields=dict(printer["printing"]), caps=caps),
+        ],
+    }]
+
+
+def price_pages(entities):
+    price = entities.get("price_forecast")
+    if not price:
+        return []
+    caps = {"Domain": "sensor with a list attribute `data` (EPEX Spot, Day Ahead Optimizer, Tibber and Nord Pool template sensors)",
+            "Display": "one bar per interval, green below and orange above the average, past hours dimmed, the running interval outlined",
+            "Options": "price_day_switch: show Today and Tomorrow (one toggle button on a narrow tile); price_cheap_times: shade the cheap windows and name the next; price_line: a stepped line instead of filled bars; "
+                       "price_average: a fixed value instead of the day's own average, or a sensor in secondary_entity_id",
+            "Extras": "price now, interval, minimum and maximum; the cheap windows are the lowest quarter of the day's prices, at least one hour",
+            "Size": "min 240x150, max CBWxCBH"}
+    return [{
+        "page": "gallery_price",
+        "tiles": [
+            dict(slot="price_forecast", type="price_forecast", title="Price forecast", rect=(10, 10, 680, 300),
+                 fields={"entity_id": price, "price_day_switch": True, "price_cheap_times": True}, caps=caps),
+            dict(slot="price_forecast", type="price_forecast", title="Price forecast (small)", rect=(10, 330, 260, 170),
+                 fields={"entity_id": price, "price_day_switch": True, "price_line": True}, caps=caps),
         ],
     }]
 
@@ -569,7 +590,7 @@ WIDGET_GROUPS = [
      ["button", "slider", "light_tile", "heating_tile", "climate_tile", "cover_tile", "fan_tile", "lock_tile", "alarm_tile", "select_tile", "datetime_tile", "scene_tile"]),
     ("Rooms", "Everything about one room in a single card.", ["room_tile"]),
     ("Weather and energy", "Forecasts, solar production and the energy balance.",
-     ["weather_tile", "weather_3day", "solar_forecast", "energy_timeline"]),
+     ["weather_tile", "weather_3day", "solar_forecast", "price_forecast", "energy_timeline"]),
     ("Media and tasks", "Playback, favourites and shopping lists.", ["media_player", "sonos_favorites", "todo_list"]),
     ("Devices", "Vacuum, camera, car, wallbox and 3D printer.", ["vacuum_tile", "camera_tile", "car_widget", "bambu_printer", "wallbox_evcc"]),
     ("Layout", "Space for the design itself.", ["empty_tile"]),
@@ -579,7 +600,7 @@ WIDGET_GROUPS = [
 # title ("Vertical", "Horizontal"), which said nothing about which widget it even was.
 ROW_DISPLAY_NAME = {
     "sensor": "Sensor", "gauge": "Gauge", "car_widget": "Car", "bambu_printer": "Bambu printer", "wallbox_evcc": "Wallbox", "graph": "Graph",
-    "solar_forecast": "Solar forecast", "weather_tile": "Weather (now)", "weather_3day": "Weather forecast",
+    "solar_forecast": "Solar forecast", "price_forecast": "Price forecast", "weather_tile": "Weather (now)", "weather_3day": "Weather forecast",
     "button": "Button", "scene_tile": "Scene", "select_tile": "Select", "lock_tile": "Lock", "alarm_tile": "Alarm", "datetime_tile": "Date/Time", "slider": "Slider", "cover_tile": "Cover",
     "light_tile": "Light", "fan_tile": "Fan", "climate_tile": "Climate", "heating_tile": "Heating",
     "media_player": "Media player", "sonos_favorites": "Sonos favorites", "contact_tile": "Contact",

@@ -79,6 +79,10 @@ typedef struct {
     bool camera_live; /* camera_tile: HA MJPEG while visible; opt-in, default false */
     unsigned alarm_actions; /* alarm_tile: bit (1 << ha_alarm_action_t) per action offered, 0 = all */
     bool history_popup; /* sensor/binary/contact/lock: show Recorder history on tap/long press */
+    bool price_day_switch;  /* price_forecast: Today/Tomorrow buttons, default false */
+    bool price_line; /* price_forecast: a stepped line instead of filled bars, default false */
+    bool price_cheap_times; /* price_forecast: shade the cheap times and name the next one, default false */
+    float price_average;    /* price_forecast: fixed average in EUR/kWh, 0 = none (the day's own average, or the sensor in secondary_entity_id) */
     int x;
     int y;
     int w;

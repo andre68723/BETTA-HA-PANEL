@@ -4251,6 +4251,17 @@ static bool ha_client_import_state_object(cJSON *state_obj)
                 snprintf(model_state.attributes_json, sizeof(model_state.attributes_json), "{}");
                 serialized = true;
             }
+        } else if (ha_client_attrs_is_price_series(attributes)) {
+            /* An electricity price list (EPEX Spot, Day Ahead Optimizer, ...) is far beyond the attribute buffer: keep it as a
+             * regular grid, or, when it cannot be kept exactly, only the generic metadata and no list (never a cut one). */
+            serialized = ha_client_serialize_price_series_compact(
+                attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
+            if (!serialized) {
+                ESP_LOGW(TAG_HA_CLIENT, "price list of %s is not representable, dropping it", model_state.entity_id);
+                ha_attrs_build_generic_overflow_fallback(
+                    attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
+                serialized = true;
+            }
         }
 
         if (!serialized && (strncmp(model_state.entity_id, "select.", 7) == 0 ||

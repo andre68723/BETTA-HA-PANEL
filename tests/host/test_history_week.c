@@ -298,7 +298,20 @@ esp_err_t ha_client_send_command_with_response(cJSON *cmd, ha_client_response_cb
         time_t end = parse_iso(cJSON_GetObjectItemCaseSensitive(cmd, "end_time")->valuestring);
         const bool mean = strcmp(cJSON_GetArrayItem(cJSON_GetObjectItemCaseSensitive(cmd, "types"), 0)->valuestring, "mean") == 0;
         cJSON *rows = cJSON_AddArrayToObject(reply, ids->child->valuestring);
-        if (s != NULL && mode != MODE_BAD_SHAPE) {
+        const char *period = cJSON_GetObjectItemCaseSensitive(cmd, "period")->valuestring;
+        const time_t step = strcmp(period, "day") == 0 ? 86400 : strcmp(period, "week") == 0 ? 7 * 86400 : 0;
+        if (s != NULL && mode != MODE_BAD_SHAPE && step > 0) {
+            /* a long period: one row per day or week from the window's start (a local midnight) */
+            for (time_t t = start; t < end; t += step) {
+                cJSON *r = cJSON_CreateObject();
+                cJSON_AddNumberToObject(r, "start", (double)t * 1000.0);
+                cJSON_AddNumberToObject(r, "end", ((double)t + (double)step) * 1000.0);
+                cJSON_AddNumberToObject(r, "mean", s->per_hour);
+                cJSON_AddNumberToObject(r, "min", s->per_hour - 1);
+                cJSON_AddNumberToObject(r, "max", s->per_hour + 1);
+                cJSON_AddItemToArray(rows, r);
+            }
+        } else if (s != NULL && mode != MODE_BAD_SHAPE) {
             for (time_t t = (start / 3600) * 3600; t + 3600 <= end - 3600 + 3600 && t < (end / 3600) * 3600; t += 3600) {
                 if (t < start - 3599) continue;
                 cJSON *r = cJSON_CreateObject();
@@ -337,6 +350,7 @@ static int g_cb_count;
 static ha_history_check_t g_check;
 static ha_history_week_t *g_week;
 static ha_history_days_t *g_days;
+static ha_history_range_t *g_range;
 static uint32_t g_gen;
 
 static void on_check(uint32_t gen, const ha_history_check_t *c)
@@ -362,6 +376,14 @@ static void on_days(uint32_t gen, ha_history_days_t *d)
     pthread_cond_broadcast(&g_cb_c);
     pthread_mutex_unlock(&g_cb_m);
 }
+static void on_range(uint32_t gen, ha_history_range_t *r)
+{
+    pthread_mutex_lock(&g_cb_m);
+    ha_history_range_free(g_range);
+    g_range = r; g_gen = gen; g_cb_count++;
+    pthread_cond_broadcast(&g_cb_c);
+    pthread_mutex_unlock(&g_cb_m);
+}
 static bool wait_callbacks(int want, int timeout_ms)
 {
     struct timespec ts;
@@ -380,6 +402,7 @@ static void cb_reset(void)
     g_cb_count = 0;
     ha_history_week_free(g_week); g_week = NULL;
     ha_history_days_free(g_days); g_days = NULL;
+    ha_history_range_free(g_range); g_range = NULL;
     memset(&g_check, 0, sizeof(g_check));
     pthread_mutex_unlock(&g_cb_m);
 }
@@ -466,6 +489,48 @@ static void test_check_failures(void)
         CHECK(g_check.result.kind == HA_STATS_KIND_NONE);
         if (modes[i] == MODE_NO_REPLY) CHECK(g_ws.cancels == 1);  /* the pending response is dropped */
     }
+}
+
+static void test_range(void)
+{
+    ws_reset(); cb_reset();
+    ws_add(&S_TEMP);
+    CHECK(ha_history_request_range("sensor.temp", HA_RANGE_30_DAYS, 4, on_range) == ESP_OK);
+    CHECK(wait_callbacks(1, 3000));
+    CHECK(g_range != NULL && g_range->status == ESP_OK && g_range->outcome == HA_STATS_OUTCOME_OK && g_gen == 4);
+    CHECK(g_range->series.count >= 29 && g_range->series.count <= 31 && g_range->series.rejected == 0);
+    CHECK(strstr(g_ws.last_stats_cmd, "\"period\":\"day\"") != NULL);
+    CHECK(strstr(g_ws.last_stats_cmd, "\"types\":[\"mean\",\"min\",\"max\"]") != NULL);
+
+    ws_reset(); cb_reset();
+    ws_add(&S_TEMP);
+    CHECK(ha_history_request_range("sensor.temp", HA_RANGE_12_MONTHS, 5, on_range) == ESP_OK);
+    CHECK(wait_callbacks(1, 3000));
+    CHECK(g_range->status == ESP_OK && g_range->series.count >= 52 && g_range->series.count <= 53);
+    CHECK(strstr(g_ws.last_stats_cmd, "\"period\":\"week\"") != NULL);
+
+    /* an entity without statistics, a wrong shape, silence, and arguments */
+    ws_reset(); cb_reset();
+    CHECK(ha_history_request_range("sensor.unknown", HA_RANGE_30_DAYS, 6, on_range) == ESP_OK);
+    CHECK(wait_callbacks(1, 3000));
+    CHECK(g_range->status == ESP_OK && g_range->outcome == HA_STATS_OUTCOME_EMPTY && g_range->series.count == 0);
+    ws_reset(); cb_reset();
+    source_t bad = S_TEMP;
+    bad.stats_mode = MODE_BAD_SHAPE;
+    ws_add(&bad);
+    CHECK(ha_history_request_range("sensor.temp", HA_RANGE_30_DAYS, 7, on_range) == ESP_OK);
+    CHECK(wait_callbacks(1, 3000));
+    CHECK(g_range->status == ESP_ERR_INVALID_RESPONSE);
+    ws_reset(); cb_reset();
+    source_t silent = S_TEMP;
+    silent.stats_mode = MODE_NO_REPLY;
+    ws_add(&silent);
+    CHECK(ha_history_request_range("sensor.temp", HA_RANGE_30_DAYS, 8, on_range) == ESP_OK);
+    CHECK(wait_callbacks(1, 3000));
+    CHECK(g_range->status == ESP_ERR_TIMEOUT && g_ws.cancels == 1);
+    CHECK(ha_history_request_range("Sensor.Bad", HA_RANGE_30_DAYS, 1, on_range) == ESP_ERR_INVALID_ARG);
+    CHECK(ha_history_request_range("sensor.temp", (ha_range_kind_t)9, 1, on_range) == ESP_ERR_INVALID_ARG);
+    CHECK(ha_history_request_range("sensor.temp", HA_RANGE_30_DAYS, 1, NULL) == ESP_ERR_INVALID_ARG);
 }
 
 static esp_err_t week(const char *id, const char *unit, bool convert, const char *klass)
@@ -696,6 +761,7 @@ int main(void)
     test_week();
     test_late_reply();
     test_days();
+    test_range();
     test_queue_overflow();
     test_no_allocation_left_behind();
     printf("%s: %d checks, %d failed\n", g_failed == 0 ? "PASS history worker" : "FAIL history worker", g_checks, g_failed);

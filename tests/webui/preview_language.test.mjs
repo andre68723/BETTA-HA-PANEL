@@ -34,3 +34,14 @@ test("the media player preview drops the cover where the panel does", () => {
   assert.ok(!markup(280).includes("tp-cover"), "300x280 has no room for a cover on the panel");
   assert.ok(markup(420).includes("tp-cover"), "300x420 does");
 });
+
+test("price preview keeps the interval on its own row and one day toggle on a narrow tile", () => {
+  const { fn, run } = loadEditor();
+  run("editor.i18nMap = WEB_I18N_BUILTIN.en");
+  const tile = { type: "price_forecast", id: "p", title: "Price", price_day_switch: true, rect: { w: 240, h: 150 } };
+  const narrow = fn("tilePreviewMarkup")(tile);
+  assert.match(narrow, /class="tp-price-slot">\d{2}:\d{2}-\d{2}:\d{2}<\/div>/);
+  assert.match(narrow, /Today/);
+  assert.doesNotMatch(narrow, /Tomorrow/);
+  assert.match(fn("tilePreviewMarkup")({ ...tile, rect: { w: 680, h: 300 } }), /Tomorrow/);
+});

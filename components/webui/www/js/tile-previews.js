@@ -376,6 +376,45 @@ function tilePreviewMarkup(widget) {
         : counters.map(([id, color, pct, value]) => `<span class="tp-etl-counter"><i style="--p:${pct};--c:${color}"><b>${value}</b></i><small>${escapeHtml(labels[id])}</small></span>`).join("");
       return `<div class="tp tp-etl${nested ? " tp-etl-is-nested" : ""}" style="${Object.entries(palette).map(([key, value]) => `--etl-${key}:${value}`).join(";")}">${name('small', '')}<div class="tp-etl-top">${top}</div><div class="tp-etl-bars">${Array.from({ length: 48 }, (_, i) => `<u style="height:${12 + Math.round(38 * Math.abs(Math.sin(i / 7.6)))}%;background:linear-gradient(var(--etl-grid) 0 50%,var(--etl-battery_out) 50% 65%,var(--etl-solar) 65%)"></u>`).join("")}<svg class="tp-etl-line" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M0,8 C12,10 22,30 40,32 S70,32 80,24 S92,6 100,10" fill="none" stroke="${palette.forecast}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg></div></div>${handle}`;
     }
+    case "price_forecast": {
+      // A day of bars like the panel (w_price_forecast.c): below the day's average green, above it orange, hours that are over dimmed,
+      // the running hour outlined; the entity's state is the price now (EUR/kWh), the profile is a typical day.
+      const raw = Number(String(editor.states.get(widget.entity_id) ?? "").replace(",", "."));
+      const price = Number.isFinite(raw) && raw > 0 && raw < 5 ? (raw * 100).toFixed(1).replace(".", ",") : "20,1";
+      // 96 quarter hours of a typical day-ahead curve (ct/kWh)
+      const profile = [21, 21, 20, 19, 20, 19, 18, 17, 17, 17, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 15, 15, 15, 15, 15, 15, 16, 16, 17, 17, 19, 19, 19, 18, 18, 17, 17, 16, 17, 16, 16, 15, 15, 15, 14, 14, 13, 13, 13, 12, 12, 12, 12, 12, 12, 12, 13, 13, 14, 14, 15, 15, 15, 16, 16, 20, 17, 20, 21, 22, 21, 21, 22, 24, 25, 24, 24, 22, 21, 20, 20, 20, 21, 20, 18, 17, 18, 17, 18, 16, 16, 16, 16, 16];
+      const avg = profile.reduce((a, b) => a + b, 0) / profile.length;
+      const peak = Math.max(...profile);
+      const now = new Date();
+      const slotNow = now.getHours() * 4 + Math.floor(now.getMinutes() / 15);
+      const clock = (slot) => `${String(Math.floor(slot / 4) % 24).padStart(2, "0")}:${String((slot % 4) * 15).padStart(2, "0")}`;
+      const interval = `${clock(slotNow)}-${clock(slotNow + 1)}`;
+      const daySwitch = widget.price_day_switch === true;
+      // Without the day buttons the view is the 24 hours around now (the running interval in the middle, as on the panel); with them it is the day.
+      const shift = daySwitch ? 0 : slotNow - 48;
+      const slotAt = (i) => (((i + shift) % 96) + 96) % 96;
+      const shown = profile.map((_, i) => slotAt(i));
+      const bars = shown.map((s, i) => {
+        const v = profile[s];
+        const cls = (v > avg ? "" : "cheap") + (s < slotNow ? " past" : "") + (s === slotNow ? " now" : "");
+        return `<i class="${cls}" style="height:${Math.round((v / peak) * 100)}%"></i>`;
+      }).join("");
+      // Options of the price timeline card: day_switch shows the day buttons, cheap_times shades the cheap hours and names the next window.
+      const days = daySwitch
+        ? `<span class="tp-price-days"><em class="on">${escapeHtml(t("preview.price.today"))}</em>${Number(widget.rect?.w) < 360 ? "" : `<em>${escapeHtml(t("preview.price.tomorrow"))}</em>`}</span>` : "";
+      const cheap = widget.price_cheap_times === true;
+      // the cheap window 11:00-16:00 (slots 44..64) at its place in the view
+      const bandStart = ((44 - shift) % 96 + 96) % 96;
+      const bandWidth = Math.min(20, 96 - bandStart);
+      const band = cheap ? `<u class="tp-price-band" style="left:${(bandStart / 96 * 100).toFixed(1)}%;width:${(bandWidth / 96 * 100).toFixed(1)}%"></u>` : "";
+      const foot = cheap ? `<div class="tp-price-cheap">${escapeHtml(t("preview.price.cheap"))} 11:00-16:00</div>` : "";
+      // ticks at 00, 06, 12 and 18 o'clock where they fall in the view
+      const ticks = [0, 6, 12, 18].map((h) => ({ h, at: ((h * 4 - shift) % 96 + 96) % 96 })).filter((x) => daySwitch || x.at < 96)
+        .map((x) => `<span style="left:${(x.at / 96 * 100).toFixed(1)}%">${String(x.h).padStart(2, "0")}</span>`).join("");
+      return `<div class="tp tp-price">${name('div', 'class="tp-name"')}<div class="tp-price-head"><b>${price}</b><small>ct/kWh</small>${days}</div>
+        <div class="tp-price-slot">${interval}</div>
+        <div class="tp-price-bars${widget.price_line === true ? " line" : ""}">${band}${bars}</div><div class="tp-price-foot">${ticks}</div>${foot}</div>${handle}`;
+    }
     case "select_tile":
       return `<div class="tp tp-select"><div class="tp-blind-text">${name('small', '')}<b>${previewEntityValue(widget.entity_id, "pv")}</b></div><span class="tp-select-chevron">\u2304</span></div>${handle}`;
     case "datetime_tile": {

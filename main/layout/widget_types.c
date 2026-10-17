@@ -32,6 +32,8 @@ static const widget_type_info_t s_types[] = {
     {"weather_tile",    {220, 200, 480,       480},       "weather"},
     {"weather_3day",    {260, 220, CBW,       CBH},       "weather"},
     {"solar_forecast",  {260, 220, 640,       480},       "sensor"},
+    /* A day of electricity prices (hourly or quarter-hourly) from the list attribute of a price sensor. */
+    {"price_forecast",  {240, 150, CBW,       CBH},       "sensor"},
     {"car_widget",      {200, 200, 480,       560},       "sensor"},
     {"wallbox_evcc", {320, 360, CBW, CBH}, "select"},
     {"bambu_printer",   {320, 320, CBW,       CBH},       "sensor"},

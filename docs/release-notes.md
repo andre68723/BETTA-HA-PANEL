@@ -21,7 +21,7 @@ Changes of **this fork**, compared with upstream v0.8.2. The release notes of th
 | --- | --- |
 | [Toolchain](#toolchain-and-dependencies) | **ESP-IDF 5.5.2 → 6.1**, **LVGL 9.5.0 → 9.6.0**, updated and pinned shared dependencies |
 | [Display devices](choose-display.md) | Guition 10.1-inch and M5Stack Tab5 profiles join the Waveshare P4 devices; hardware validation is tracked per device |
-| [Widgets](#widgets-new-and-changed) | **19 new types**, **11 updated types**, plus the existing Empty spacer |
+| [Widgets](#widgets-new-and-changed) | **20 new types**, **11 updated types**, plus the existing Empty spacer |
 | [Appearance](appearance.md) | Flat, Glow, Glass and Matte, independent color themes, larger text and consistent icons |
 | [Pages and editor](editor.md) | Room/house imports, searchable entity picker, history options, live settings and more pages |
 | [Notifications](notifications.md) | MQTT/HTTP alerts, camera doorbells, Home Assistant triggers and optional sound |
@@ -222,6 +222,7 @@ font and icon changes apply across the visible widgets.
 | [Select](widgets/select_tile.md) | <span class="release-status release-status--new">New</span> | Choose a select/input-select option through its popup. |
 | [Sensor](widgets/sensor.md) | <span class="release-status release-status--changed">Changed</span> | HA display precision, optional name/age and Recorder history. |
 | [Slider](widgets/slider.md) | <span class="release-status release-status--changed">Changed</span> | Improved fitting, controls and wider Matte presentation. |
+| [Price forecast](widgets/price_forecast.md) | <span class="release-status release-status--new">New</span> | A day of electricity prices as bars (hourly or 15-minute) from the list attribute of a price sensor (EPEX Spot directly; Nord Pool and Tibber through a helper that stores the list as `data`): the price now, Today/Tomorrow, the day's minimum and maximum and the next cheap window. Raw EUR/cent units are converted before display; missing intervals stay gaps and all upcoming cheap windows remain available. Design inspired by the community's price timeline cards. |
 | [Solar forecast](widgets/solar_forecast.md) | <span class="release-status release-status--new">New</span> | Daily yield with optional weather-date alignment; today shows the weekday and its total, with the remaining part bright; editor bars keep their full height. |
 | [Sonos favorites](widgets/sonos_favorites.md) | <span class="release-status release-status--new">New</span> | Play configured media favorites directly. |
 | [Todo list](widgets/todo_list.md) | <span class="release-status release-status--changed">Changed</span> | Improved state handling, controls and layout. |
@@ -371,6 +372,7 @@ style; text and symbols use the same fonts throughout. See
   Detail cards grow for larger text, wrap long values and scroll when necessary, keeping Wi-Fi and firmware information readable at Largest.
 
 - **Top bar items:** the 1280 px boards (10-inch and Tab5) show up to three items left of the clock (date, weather, stock quote); the 4-inch panel shows two. The third item is set in Settings > Top bar.
+- **Quote history:** a double tap on the top bar stock item opens its price history, 30 days of daily means or 12 months of weekly means, from the Home Assistant statistics of the sensor.
 
 - **Top bar and navigation:** date, weather and stock slots sit beside live
   Wi-Fi/Home Assistant/MQTT status popups. The stock quote fits beside the date

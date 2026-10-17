@@ -126,6 +126,7 @@ if (el.addBambuPrinterBtn) {
   if (el.addSceneTileBtn) el.addSceneTileBtn.onclick = () => openLightEntityPicker("scene_tile");
   if (el.addSelectTileBtn) el.addSelectTileBtn.onclick = () => openLightEntityPicker("select_tile");
   if (el.addEnergyTimelineBtn) el.addEnergyTimelineBtn.onclick = () => openLightEntityPicker("energy_timeline");
+  if (el.addPriceForecastBtn) el.addPriceForecastBtn.onclick = () => openLightEntityPicker("price_forecast");
   if (el.addDatetimeTileBtn) el.addDatetimeTileBtn.onclick = () => openLightEntityPicker("datetime_tile");
   if (el.addLockTileBtn) el.addLockTileBtn.onclick = () => openLightEntityPicker("lock_tile");
   if (el.addAlarmTileBtn) el.addAlarmTileBtn.onclick = () => openLightEntityPicker("alarm_tile");
@@ -453,6 +454,10 @@ if (el.addBambuPrinterBtn) {
   bindInspectorAutoApply(el.fSensorShowAge, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fCameraLive, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fLockConfirm, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fPriceDaySwitch, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fPriceCheapTimes, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fPriceLine, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fPriceAverage, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fAlarmDisarm, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fAlarmArmHome, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fAlarmArmAway, ["change"], { softEntityValidation: true });

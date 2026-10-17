@@ -308,6 +308,7 @@ explains the reason and architectural change, one logical change per commit.
 Use `andre68723` as the author name in commits and fork file headers.
 
 Do not push or flash a device unless the owner asks. The `origin` remote is
-upstream; `fork` is the owner's remote. Never modify the `backup*` branches.
+the owner's repository (`andre68723/BETTA-HA-PANEL`); `betta-backup` is a private CI test repository. The original
+author's baseline is the commit `420df764`. Never modify the `backup*` branches.
 Read Home Assistant through the configured `ha-mcp` server only; keep access
 read-only unless the owner asks for a change, and never print or store its token.

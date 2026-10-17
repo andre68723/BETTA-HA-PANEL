@@ -35,6 +35,7 @@
 #define ha_history_snapshot_free free
 #define ha_history_week_free free
 #define ha_history_days_free free
+#define ha_history_range_free free
 #endif
 
 typedef struct {
@@ -63,6 +64,10 @@ typedef struct {
     /* daily consumption view (Energy page nodes): no selector, seven bars from hourly statistics */
     bool days_mode;
     uint32_t days_generation;
+    /* range view (a quote): 30 days of daily or 12 months of weekly means; the two selector buttons switch between them */
+    bool range_mode;
+    uint32_t range_generation;
+    ha_range_kind_t range_kind;
     uint32_t bar_color;
     char ids[HA_DAYS_MAX_SOURCES][APP_MAX_ENTITY_ID_LEN];
     uint8_t id_count;
@@ -265,6 +270,107 @@ static void render_week(history_popup_t *popup, const ha_history_week_t *week)
     }
     /* no vertical grid: its lines would not meet the day labels, which sit at local midnights */
     render_plot(popup, lowest, highest, series->slots, 0, 60, week_value_at, series, labels, count);
+}
+
+/* ---- Range view: 30 days of daily means or 12 months of weekly means (a quote) ---- */
+
+static bool range_value_at(const void *data, size_t i, float *out)
+{
+    const ha_range_series_t *series = (const ha_range_series_t *)data;
+    if (i >= series->count) return false;
+    *out = series->point[i].mean;
+    return true;
+}
+
+static void render_range(history_popup_t *popup, const ha_range_series_t *series)
+{
+    float lowest = INFINITY, highest = -INFINITY;
+    for (size_t i = 0; i < series->count; i++) {
+        if (series->point[i].min < lowest) lowest = series->point[i].min;
+        if (series->point[i].max > highest) highest = series->point[i].max;
+    }
+    if (!isfinite(lowest) || !isfinite(highest)) return;
+    axis_label_t labels[5];
+    size_t count = 0;
+    const bool months = series->kind == HA_RANGE_12_MONTHS;
+    for (size_t k = 0; k < 5 && series->count > 1; k++) {
+        const size_t index = k * (series->count - 1) / 4;
+        time_t at = (time_t)series->point[index].start;
+        struct tm local;
+        if (localtime_r(&at, &local) == NULL) continue;
+        if (months) snprintf(labels[count].text, sizeof(labels[count].text), "%02d/%02d", local.tm_mon + 1, local.tm_year % 100);
+        else snprintf(labels[count].text, sizeof(labels[count].text), "%02d.%02d.", local.tm_mday, local.tm_mon + 1);
+        labels[count].frac = (float)index / (float)(series->count - 1);
+        count++;
+    }
+    render_plot(popup, lowest, highest, series->count, 0, 72, range_value_at, series, labels, count);
+}
+
+static void range_received(uint32_t generation, ha_history_range_t *range)
+{
+    history_popup_t *popup = s_popup;
+    if (popup == NULL || popup->range_generation != generation || !popup->range_mode || range == NULL) {
+        ha_history_range_free(range);
+        return;
+    }
+    lv_obj_clean(popup->body);
+    if (range->status != ESP_OK) {
+        lv_label_set_text(popup->status, ui_i18n_get("history.week_error", "Could not load statistics"));
+    } else if (range->outcome != HA_STATS_OUTCOME_OK || range->series.count < 2) {
+        lv_label_set_text(popup->status, ui_i18n_get(range->series.kind == HA_RANGE_12_MONTHS ? "history.range_empty_12m"
+                                                                                          : "history.range_empty_30d",
+                                                     range->series.kind == HA_RANGE_12_MONTHS ? "No statistics for 12 months yet"
+                                                                                          : "No statistics for 30 days yet"));
+    } else {
+        /* the change from the first to the last mean of the range */
+        const float first = range->series.point[0].mean, last = range->series.point[range->series.count - 1].mean;
+        char text[64];
+        const char *what = ui_i18n_get(range->series.kind == HA_RANGE_12_MONTHS ? "history.weekly_mean" : "history.daily_mean",
+                                       range->series.kind == HA_RANGE_12_MONTHS ? "Weekly means" : "Daily means");
+        if (first != 0.0f) snprintf(text, sizeof(text), "%s  ·  %+.1f %%", what, (double)((last - first) / fabsf(first) * 100.0f));
+        else snprintf(text, sizeof(text), "%s", what);
+        lv_label_set_text(popup->status, text);
+        render_range(popup, &range->series);
+    }
+    ha_history_range_free(range);
+}
+
+#ifdef BETTA_SIMULATOR
+/* A synthetic quote for the layout screenshots: a drifting wave over the range, ending at the value the chip shows. */
+static void simulator_show_range(history_popup_t *popup)
+{
+    ha_history_range_t *range = calloc(1, sizeof(*range));
+    if (range == NULL) return;
+    const time_t now = time(NULL);
+    range->status = ESP_OK;
+    const char *period = "day";
+    if (!ha_stats_range_window((int64_t)now, popup->range_kind, &range->window, &period)) { free(range); return; }
+    const bool year = popup->range_kind == HA_RANGE_12_MONTHS;
+    range->series.kind = popup->range_kind;
+    range->series.count = year ? 53 : 30;
+    for (uint16_t i = 0; i < range->series.count; i++) {
+        const float t = (float)i / (float)(range->series.count - 1);
+        const float mean = 190.0f + 14.0f * sinf(t * (year ? 9.0f : 5.5f)) + 22.0f * t;
+        range->series.point[i] = (ha_range_point_t){.start = range->window.start_epoch + (int64_t)i * (year ? 7 : 1) * 86400,
+                                                    .mean = mean, .min = mean - 3.0f, .max = mean + 3.5f, .has_range = true};
+    }
+    range->outcome = HA_STATS_OUTCOME_OK;
+    range_received(popup->range_generation, range);
+}
+#endif
+
+static void request_range(history_popup_t *popup)
+{
+    popup->range_generation = ++s_generation;
+    popup->week_active = popup->range_kind == HA_RANGE_12_MONTHS;
+    lv_obj_clean(popup->body);
+    lv_label_set_text(popup->status, ui_i18n_get("history.loading", "Loading history..."));
+#ifndef BETTA_SIMULATOR
+    if (ha_history_request_range(popup->entity_id, popup->range_kind, popup->range_generation, range_received) != ESP_OK)
+        lv_label_set_text(popup->status, ui_i18n_get("history.week_error", "Could not load statistics"));
+#else
+    simulator_show_range(popup);
+#endif
 }
 
 static uint32_t state_color(const char *state)
@@ -513,6 +619,14 @@ static void range_clicked(lv_event_t *event)
     history_popup_t *popup = (history_popup_t *)lv_event_get_user_data(event);
     if (popup == NULL || popup != s_popup || !popup->week_offered) return;
     const bool want_week = lv_event_get_target(event) == popup->btn_week;
+    if (popup->range_mode) {
+        const ha_range_kind_t kind = want_week ? HA_RANGE_12_MONTHS : HA_RANGE_30_DAYS;
+        if (kind == popup->range_kind) return;
+        popup->range_kind = kind;
+        request_range(popup);
+        style_range_button(popup);
+        return;
+    }
     if (want_week == popup->week_active) return;
     if (want_week) request_week(popup);
     else request_day(popup);
@@ -699,6 +813,54 @@ void ui_history_popup_open(const char *entity_id, const char *title, const char 
         (void)ha_history_check_week(entity_id, unit, state_class, popup->check_generation, check_received);
     }
 #endif
+}
+
+void ui_history_popup_open_range(const char *entity_id, const char *title, const char *current)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') return;
+    if (s_popup != NULL) lv_obj_delete(s_popup->overlay);
+    history_popup_t *popup = calloc(1, sizeof(*popup));
+    if (popup == NULL) return;
+    popup->numeric = true;
+    popup->range_mode = true;
+    popup->week_offered = true;
+    popup->range_kind = HA_RANGE_30_DAYS;
+    strlcpy(popup->entity_id, entity_id, sizeof(popup->entity_id));
+    strlcpy(popup->current, current ? current : "", sizeof(popup->current));
+    s_popup = popup;
+    int cw, ch;
+    create_frame(popup, title, entity_id, &cw, &ch);
+    const int selector_w = 2 * range_button_width() + 8 + 12;
+    const int row_h = range_button_height();
+    const int status_h = (int)lv_font_get_line_height(ui_font_role(UI_TEXT_META));
+    const int title_h = (int)lv_font_get_line_height(ui_font_role(UI_TEXT_LABEL));
+    popup->row_y = title_h + 2 > 32 ? title_h + 2 : 32;
+    popup->status = new_label(popup->card, ui_i18n_get("history.loading", "Loading history..."), ui_font_role(UI_TEXT_META),
+                              APP_UI_COLOR_TEXT_MUTED, selector_w, popup->row_y + (row_h > status_h ? (row_h - status_h) / 2 : 0),
+                              cw - 70 - selector_w);
+    popup->body = lv_obj_create(popup->card);
+    lv_obj_remove_style_all(popup->body);
+    const int body_y = popup->row_y + row_h + 4;
+    lv_obj_set_pos(popup->body, 0, body_y);
+    lv_obj_set_size(popup->body, cw - 28, ch - body_y - 28);
+    lv_obj_set_scrollable(popup->body, false);
+    lv_obj_update_layout(popup->card);
+    const int w = range_button_width(), h = range_button_height();
+    popup->btn_day = range_button(popup, ui_i18n_get("history.range_30d", "30 d"), 0, w, h, popup->row_y);
+    popup->btn_week = range_button(popup, ui_i18n_get("history.range_12m", "12 m"), w + 8, w, h, popup->row_y);
+    request_range(popup);
+    style_range_button(popup);
+}
+
+void ui_history_popup_range_select(bool year)
+{
+    history_popup_t *popup = s_popup;
+    if (popup == NULL || !popup->range_mode) return;
+    const ha_range_kind_t kind = year ? HA_RANGE_12_MONTHS : HA_RANGE_30_DAYS;
+    if (kind == popup->range_kind) return;
+    popup->range_kind = kind;
+    request_range(popup);
+    style_range_button(popup);
 }
 
 #ifdef BETTA_SIMULATOR

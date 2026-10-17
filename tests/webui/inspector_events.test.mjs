@@ -201,6 +201,9 @@ for (const [input, type, entity, property, firstChecked, firstValue, secondValue
   ["fHistoryPopup", "vacuum_tile", "vacuum.robot", "history_popup", true, true, undefined],
   ["fCameraLive", "camera_tile", "camera.printer", "camera_live", true, true, undefined],
   ["fLockConfirm", "lock_tile", "lock.front_door", "lock_confirm", true, true, undefined],
+  ["fPriceDaySwitch", "price_forecast", "sensor.epex_spot_data_market_price", "price_day_switch", true, true, undefined],
+  ["fPriceCheapTimes", "price_forecast", "sensor.epex_spot_data_market_price", "price_cheap_times", true, true, undefined],
+  ["fPriceLine", "price_forecast", "sensor.epex_spot_data_market_price", "price_line", true, true, undefined],
   ["fShowName", "sensor", "sensor.temperature", "show_name", false, false, undefined],
   ["fSensorShowAge", "sensor", "sensor.temperature", "sensor_show_age", false, false, undefined],
   ["fWeatherShowPrecip", "weather_3day", "weather.home", "show_precipitation", false, false, undefined],
@@ -217,6 +220,24 @@ for (const [input, type, entity, property, firstChecked, firstValue, secondValue
     assert.equal(run(`savedLayout.pages[0].widgets[0].${property}`), secondValue);
   });
 }
+
+test("price fixed average: edit, save, reload and clear through Inspector events", async () => {
+  const run = setupInspector("price_forecast", "sensor.price");
+  run("populateMovePageOptions = renderEntityOptions = () => {}"); // unrelated select/datalist presentation
+  run('el.fPriceAverage.value = "0.25"; el.fPriceAverage.dispatch("change")');
+  assert.equal(run("selectedWidget().price_average"), 0.25);
+  await run("el.saveBtn.onclick()");
+  run("editor.layout = savedLayout; renderInspector()");
+  assert.equal(run("Number(el.fPriceAverage.value)"), 0.25);
+  run('el.fPriceAverage.value = "0.125"; el.fPriceAverage.dispatch("blur")');
+  await run("el.saveBtn.onclick()");
+  assert.equal(run("savedLayout.pages[0].widgets[0].price_average"), 0.125);
+  run('editor.layout = savedLayout; el.fPriceAverage.value = ""; el.fPriceAverage.dispatch("change")');
+  await run("el.saveBtn.onclick()");
+  assert.equal(run("savedLayout.pages[0].widgets[0].price_average"), undefined);
+  run("editor.layout = savedLayout; renderInspector()");
+  assert.equal(run("el.fPriceAverage.value"), "");
+});
 
 for (const [input, key, entity] of [
   ["fBambuNozzle", "nozzle_temp_entity_id", "sensor.printer_nozzle"],

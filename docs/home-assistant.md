@@ -33,6 +33,7 @@ Each widget guide lists its own requirements at the top; this is the overview.
 | Weather tile, top-bar weather | a `weather.*` entity from any provider with daily forecasts | [Weather](widgets/weather_tile.md) |
 | German report text on the forecast | **DWD Weather** and its *Weather report* sensor, disabled by default: show disabled entities, enable it | [Weather forecast](widgets/weather_3day.md) |
 | Solar forecast | one `sensor.*` per day to show; Solcast PV Forecast is one source, replace the suggested IDs | [Solar forecast](widgets/solar_forecast.md) |
+| Price forecast | one `sensor.*` with a `data` list of prices: EPEX Spot (Germany and many markets); Nord Pool and Tibber through a helper that stores their prices as `data` | [Price forecast](widgets/price_forecast.md) |
 | Energy page, mode Home Assistant Energy | sources set up in HA's Energy dashboard | [below](#energy-and-rooms) |
 | Energy timeline | cumulative kWh counters with `state_class` `total` or `total_increasing` | [Energy timeline](widgets/energy_timeline.md) |
 | Energy page: seven-day details | Gas, Water or Solar as cumulative counters with long-term statistics (volume or energy unit) | [Seven-day details](pages.md#seven-day-details) |

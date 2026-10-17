@@ -24,6 +24,13 @@ typedef struct {
     ha_stats_series_t series;
 } ha_history_week_t;
 
+typedef struct {
+    esp_err_t status;              /* ESP_OK, ESP_ERR_TIMEOUT, ESP_FAIL, ESP_ERR_INVALID_RESPONSE, ESP_ERR_INVALID_STATE (no clock) */
+    ha_stats_outcome_t outcome;
+    ha_stats_window_t window;
+    ha_range_series_t series;
+} ha_history_range_t;
+
 #define HA_DAYS_MAX_SOURCES 4
 #define HA_DAYS_COUNT 7
 
@@ -40,6 +47,7 @@ typedef struct {
 } ha_history_days_t;
 
 typedef void (*ha_history_days_cb_t)(uint32_t generation, ha_history_days_t *days);
+typedef void (*ha_history_range_cb_t)(uint32_t generation, ha_history_range_t *range);
 
 /* Completion runs on the LVGL task. The week callback owns and frees the result with ha_history_week_free(). The The week callback owns and frees the result with ha_history_week_free(). The
  * generation ID lets a closed or replaced popup ignore an older answer without keeping a widget pointer. */
@@ -60,3 +68,9 @@ void ha_history_week_free(ha_history_week_t *week);
  * last seven local days. The callback owns and frees the result with ha_history_days_free(). */
 esp_err_t ha_history_request_days(const char *const *ids, size_t count, uint32_t generation, ha_history_days_cb_t callback);
 void ha_history_days_free(ha_history_days_t *days);
+
+/* Daily means of the last 30 days or weekly means of the last 12 months of one measurement entity (a quote), from the Recorder
+ * statistics: no metadata check, an entity without statistics answers with outcome EMPTY. The callback owns and frees the
+ * result with ha_history_range_free(). */
+esp_err_t ha_history_request_range(const char *entity_id, ha_range_kind_t kind, uint32_t generation, ha_history_range_cb_t callback);
+void ha_history_range_free(ha_history_range_t *range);

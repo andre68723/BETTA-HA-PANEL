@@ -37,6 +37,7 @@
 #include "ui/ui_memory.h"
 #include "ui/notification_text.h"
 #include "ui/ui_notification_popup.h"
+#include "ui/ui_history_popup.h"
 #include "ui/ui_pages.h"
 #include "ui/ui_display_protection.h"
 #include "ui/ui_widget_factory.h"
@@ -466,6 +467,43 @@ static void ui_runtime_refresh_topbar_stocks(void)
     ui_pages_set_topbar_stocks(items, count);
 }
 
+/* A double tap on the stock chip: the quote's history of the last 30 days or 12 months, from the Recorder statistics. */
+static void ui_runtime_stock_chip_double_tap(void)
+{
+    const char *entity_id = s_topbar_stock_entity_ids[0];
+    if (entity_id[0] == '\0') return;
+    ha_state_t *state = calloc(1, sizeof(*state));
+    if (state == NULL || !ha_model_get_state(entity_id, state)) {
+        free(state);
+        return;
+    }
+    char title[APP_MAX_NAME_LEN];
+    char current[40];
+    ui_runtime_stock_symbol_from_entity(entity_id, title, sizeof(title));
+    snprintf(current, sizeof(current), "%.20s", state->state);
+    cJSON *attrs = cJSON_Parse(state->attributes_json);
+    if (attrs != NULL) {
+        const cJSON *symbol = cJSON_GetObjectItemCaseSensitive(attrs, "symbol");
+        if (cJSON_IsString(symbol) && symbol->valuestring != NULL && symbol->valuestring[0] != '\0') {
+            ui_runtime_stock_symbol_from_entity(symbol->valuestring, title, sizeof(title));
+        }
+        const cJSON *price = cJSON_GetObjectItemCaseSensitive(attrs, "regularMarketPrice");
+        float value = 0.0f;
+        if (ui_runtime_json_item_to_float((cJSON *)price, &value)) snprintf(current, sizeof(current), "%.2f", (double)value);
+        const cJSON *symbol_char = cJSON_GetObjectItemCaseSensitive(attrs, "currencySymbol");
+        const cJSON *unit = cJSON_GetObjectItemCaseSensitive(attrs, "unit_of_measurement");
+        const char *suffix = cJSON_IsString(symbol_char) && symbol_char->valuestring[0] != '\0' ? symbol_char->valuestring
+                             : cJSON_IsString(unit) ? unit->valuestring : "";
+        if (suffix[0] != '\0') {
+            const size_t used = strlen(current);
+            snprintf(current + used, sizeof(current) - used, " %.8s", suffix);
+        }
+        cJSON_Delete(attrs);
+    }
+    free(state);
+    ui_history_popup_open_range(entity_id, title, current);
+}
+
 static void ui_runtime_clamp_widget_rect(ui_widget_def_t *def)
 {
     if (def == NULL) {
@@ -778,6 +816,10 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     cJSON *solar_forecast_bar_orientation = cJSON_GetObjectItemCaseSensitive(widget_json, "solar_forecast_bar_orientation");
     cJSON *sensor_show_age = cJSON_GetObjectItemCaseSensitive(widget_json, "sensor_show_age");
     cJSON *lock_confirm = cJSON_GetObjectItemCaseSensitive(widget_json, "lock_confirm");
+    cJSON *price_day_switch = cJSON_GetObjectItemCaseSensitive(widget_json, "price_day_switch");
+    cJSON *price_cheap_times = cJSON_GetObjectItemCaseSensitive(widget_json, "price_cheap_times");
+    cJSON *price_line = cJSON_GetObjectItemCaseSensitive(widget_json, "price_line");
+    cJSON *price_average = cJSON_GetObjectItemCaseSensitive(widget_json, "price_average");
     cJSON *history_popup = cJSON_GetObjectItemCaseSensitive(widget_json, "history_popup");
     cJSON *gauge_min = cJSON_GetObjectItemCaseSensitive(widget_json, "gauge_min");
     cJSON *gauge_max = cJSON_GetObjectItemCaseSensitive(widget_json, "gauge_max");
@@ -833,6 +875,10 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     out->room_controls = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "room_controls"));
     out->hide_name = !widget_show_name(widget_json);
     out->lock_confirm = cJSON_IsTrue(lock_confirm);
+    out->price_day_switch = cJSON_IsTrue(price_day_switch);
+    out->price_cheap_times = cJSON_IsTrue(price_cheap_times);
+    out->price_line = cJSON_IsTrue(price_line);
+    out->price_average = cJSON_IsNumber(price_average) && price_average->valuedouble > 0.0 ? (float)price_average->valuedouble : 0.0f;
     out->camera_live = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "camera_live"));
     out->alarm_actions = ha_alarm_action_mask_parse(cJSON_GetObjectItemCaseSensitive(widget_json, "alarm_actions"));
     out->history_popup = cJSON_IsTrue(history_popup);
@@ -1383,6 +1429,16 @@ static void ui_runtime_test_tap(const app_event_tap_t *tap)
         s_test_popup = NULL;
         return;
     }
+    if (strcmp(tap->widget_id, "topbar_stock") == 0 || strcmp(tap->widget_id, "topbar_stock_12m") == 0) {
+        /* the stock chip's double tap: a read-only history popup (the second id also selects its 12-month view) */
+        lv_obj_t *top = lv_layer_top();
+        const uint32_t before = lv_obj_get_child_count(top);
+        ui_runtime_stock_chip_double_tap();
+        if (strcmp(tap->widget_id, "topbar_stock_12m") == 0) ui_history_popup_range_select(true);
+        const uint32_t after = lv_obj_get_child_count(top);
+        if (after > before) s_test_popup = lv_obj_get_child(top, (int32_t)after - 1);
+        return;
+    }
     for (size_t i = 0; i < s_widget_count; i++) {
         if (strcmp(s_widgets[i].id, tap->widget_id) != 0) {
             continue;
@@ -1596,6 +1652,7 @@ esp_err_t ui_runtime_init(void)
     s_topbar_cache.valid = false;
     theme_default_init();
     ui_pages_init();
+    ui_pages_set_stock_chip_handler(ui_runtime_stock_chip_double_tap);
     ui_watchdog_attach_lvgl();
     ui_display_protection_init();
     ui_pages_set_show_callback(ui_runtime_on_page_shown);

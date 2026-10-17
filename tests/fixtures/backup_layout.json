@@ -428,6 +428,29 @@
         "water_entity_id": "sensor.water",
         "details": "side"
       }
+    },
+    {
+      "id": "p_price_forecast",
+      "title": "price_forecast",
+      "widgets": [
+        {
+          "id": "w_price_forecast",
+          "type": "price_forecast",
+          "title": "price_forecast",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 460,
+            "h": 250
+          },
+          "entity_id": "sensor.price",
+          "secondary_entity_id": "sensor.price_average",
+          "price_day_switch": true,
+          "price_cheap_times": true,
+          "price_line": true,
+          "price_average": 0.25
+        }
+      ]
     }
   ],
   "alerts": [

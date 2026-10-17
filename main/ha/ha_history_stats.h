@@ -141,3 +141,28 @@ ha_stats_outcome_t ha_stats_parse_hourly(const cJSON *result, const char *stat_i
 
 /* Sums the hourly changes of `series` (window from ha_stats_days_window) into local days. */
 bool ha_stats_sum_days(const ha_stats_series_t *series, int64_t now, int days, ha_stats_days_t *out);
+
+/* Longer ranges for a quote or any other measurement: 30 days as daily means or 12 months as weekly means (Recorder period day / week). */
+#define HA_RANGE_MAX_POINTS 64
+typedef enum { HA_RANGE_30_DAYS = 0, HA_RANGE_12_MONTHS } ha_range_kind_t;
+
+typedef struct {
+    int64_t start;         /* UTC epoch of the period's start (a local midnight, for weeks a Monday) */
+    float mean;
+    float min;
+    float max;
+    bool has_range;
+} ha_range_point_t;
+
+typedef struct {
+    ha_range_kind_t kind;
+    uint16_t count;
+    uint16_t rejected;     /* rows dropped: outside the window, out of order, not finite */
+    ha_range_point_t point[HA_RANGE_MAX_POINTS];
+} ha_range_series_t;
+
+/* The request window ending at now (start at a local midnight) and the period name for recorder/statistics_during_period. */
+bool ha_stats_range_window(int64_t now, ha_range_kind_t kind, ha_stats_window_t *out, const char **period);
+/* Reads the "result" object for one statistic ID into increasing points. A row without a mean is a gap and left out. */
+ha_stats_outcome_t ha_stats_parse_range(const cJSON *result, const char *stat_id, const ha_stats_window_t *window,
+                                        ha_range_kind_t kind, ha_range_series_t *out);

@@ -29,3 +29,7 @@ bool ha_client_serialize_cover_attrs_compact(cJSON *src_attrs, char *out_json, s
 bool ha_client_serialize_fan_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size);
 bool ha_client_serialize_alarm_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size);
 bool ha_client_serialize_image_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size);
+
+/* A price list in `data` (ha_price_series.h) and its compact form {"unit_of_measurement":...,"pf":{...}}. */
+bool ha_client_attrs_is_price_series(cJSON *attrs);
+bool ha_client_serialize_price_series_compact(cJSON *src_attrs, char *out_json, size_t out_json_size);

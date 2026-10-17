@@ -341,6 +341,22 @@ static void ui_pages_apply_tab_style(uint16_t selected_index)
     }
 }
 
+static void (*s_stock_chip_handler)(void);
+
+void ui_pages_set_stock_chip_handler(void (*handler)(void))
+{
+    s_stock_chip_handler = handler;
+}
+
+static void ui_pages_stock_chip_event_cb(lv_event_t *event)
+{
+    if (lv_event_get_code(event) != LV_EVENT_DOUBLE_CLICKED || s_stock_chip_handler == NULL) {
+        return;
+    }
+    ESP_LOGI("ui_pages", "top bar chip double tapped: stock");
+    s_stock_chip_handler();
+}
+
 static void ui_pages_wifi_chip_event_cb(lv_event_t *event)
 {
     if (lv_event_get_code(event) != LV_EVENT_CLICKED) {
@@ -814,12 +830,15 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
     lv_obj_set_style_pad_right(s_stock_chip, 8, LV_PART_MAIN);
     lv_obj_set_scrollable(s_stock_chip, false);
     lv_obj_set_hidden(s_stock_chip, true);
+    lv_obj_set_clickable(s_stock_chip, true);
+    lv_obj_add_event_cb(s_stock_chip, ui_pages_stock_chip_event_cb, LV_EVENT_DOUBLE_CLICKED, NULL);
     for (size_t i = 0; i < 3U; i++) {
         s_stock_rows[i] = lv_obj_create(s_stock_chip);
         lv_obj_remove_style_all(s_stock_rows[i]);
         lv_obj_set_size(s_stock_rows[i], LV_PCT(100), LV_PCT(100));
         lv_obj_center(s_stock_rows[i]);
         lv_obj_set_scrollable(s_stock_rows[i], false);
+        lv_obj_set_clickable(s_stock_rows[i], false); /* the taps reach the chip */
         lv_obj_set_layout(s_stock_rows[i], LV_LAYOUT_FLEX);
         lv_obj_set_flex_flow(s_stock_rows[i], LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(s_stock_rows[i], LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);

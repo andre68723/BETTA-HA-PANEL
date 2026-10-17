@@ -282,12 +282,74 @@ static void test_counter_and_sources(void)
     tzset();
 }
 
+/* 30 days of daily means and 12 months of weekly means (a quote's history): windows, rows, gaps and bad rows. */
+static void test_ranges(void)
+{
+    setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
+    tzset();
+    const int64_t now = 1792350000; /* 2026-10-18 */
+    ha_stats_window_t w;
+    const char *period = NULL;
+    CHECK(ha_stats_range_window(now, HA_RANGE_30_DAYS, &w, &period) && strcmp(period, "day") == 0);
+    CHECK(w.end_epoch == now && w.start_epoch == ha_stats_local_day_start(now, -29));
+    ha_stats_window_t wy;
+    CHECK(ha_stats_range_window(now, HA_RANGE_12_MONTHS, &wy, &period) && strcmp(period, "week") == 0);
+    CHECK(wy.start_epoch == ha_stats_local_day_start(now, -364));
+    CHECK(!ha_stats_range_window(-1, HA_RANGE_30_DAYS, &w, &period));
+
+    /* rows: epoch milliseconds like the hourly rows; one gap (null mean), one row out of the window, one out of order */
+    char json[1024];
+    const long long d0 = (long long)w.start_epoch * 1000;
+    snprintf(json, sizeof(json),
+             "{\"sensor.sap\":[{\"start\":%lld,\"end\":%lld,\"mean\":190.5,\"min\":188.0,\"max\":193.2},"
+             "{\"start\":%lld,\"mean\":null},"
+             "{\"start\":%lld,\"mean\":195.0},"
+             "{\"start\":%lld,\"mean\":196.0},"
+             "{\"start\":%lld,\"mean\":150.0}]}",
+             d0, d0 + 86400000LL, d0 + 86400000LL * 2, d0 + 86400000LL * 3, d0 + 86400000LL * 2, d0 - 86400000LL * 9);
+    cJSON *result = cJSON_Parse(json);
+    ha_range_series_t series;
+    CHECK(ha_stats_parse_range(result, "sensor.sap", &w, HA_RANGE_30_DAYS, &series) == HA_STATS_OUTCOME_OK);
+    CHECK(series.count == 2 && series.rejected == 2);
+    CHECK(series.point[0].start == w.start_epoch && NEAR(series.point[0].mean, 190.5) && series.point[0].has_range);
+    CHECK(NEAR(series.point[0].min, 188.0) && NEAR(series.point[0].max, 193.2));
+    CHECK(!series.point[1].has_range && NEAR(series.point[1].min, 195.0) && NEAR(series.point[1].max, 195.0));
+    cJSON_Delete(result);
+
+    /* a week row may start before the window (its Monday), a day row may not */
+    snprintf(json, sizeof(json), "{\"sensor.sap\":[{\"start\":%lld,\"mean\":1.5}]}", (long long)(wy.start_epoch - 3 * 86400) * 1000);
+    result = cJSON_Parse(json);
+    CHECK(ha_stats_parse_range(result, "sensor.sap", &wy, HA_RANGE_12_MONTHS, &series) == HA_STATS_OUTCOME_OK && series.count == 1);
+    CHECK(ha_stats_parse_range(result, "sensor.sap", &wy, HA_RANGE_30_DAYS, &series) == HA_STATS_OUTCOME_EMPTY && series.rejected == 1);
+    cJSON_Delete(result);
+
+    /* no rows, a missing id, the wrong shape and too many rows */
+    result = cJSON_Parse("{\"sensor.sap\":[]}");
+    CHECK(ha_stats_parse_range(result, "sensor.sap", &w, HA_RANGE_30_DAYS, &series) == HA_STATS_OUTCOME_EMPTY);
+    CHECK(ha_stats_parse_range(result, "sensor.other", &w, HA_RANGE_30_DAYS, &series) == HA_STATS_OUTCOME_EMPTY);
+    cJSON_Delete(result);
+    result = cJSON_Parse("[]");
+    CHECK(ha_stats_parse_range(result, "sensor.sap", &w, HA_RANGE_30_DAYS, &series) == HA_STATS_OUTCOME_INVALID);
+    cJSON_Delete(result);
+    char *many = malloc(4096);
+    strcpy(many, "{\"sensor.sap\":[");
+    for (int i = 0; i < HA_RANGE_MAX_POINTS + 1; i++) strcat(many, i ? ",{\"start\":1,\"mean\":1}" : "{\"start\":1,\"mean\":1}");
+    strcat(many, "]}");
+    result = cJSON_Parse(many);
+    CHECK(ha_stats_parse_range(result, "sensor.sap", &w, HA_RANGE_30_DAYS, &series) == HA_STATS_OUTCOME_INVALID);
+    cJSON_Delete(result);
+    free(many);
+    unsetenv("TZ");
+    tzset();
+}
+
 int main(void)
 {
     test_counter_and_sources();
     test_metadata_and_eligibility();
     test_week_window_and_rows();
     test_daily_sums();
+    test_ranges();
     printf("%s: %d checks, %d failed\n", failed == 0 ? "PASS statistics parser" : "FAIL statistics parser", checks, failed);
     return failed == 0 ? 0 : 1;
 }

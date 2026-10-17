@@ -2,7 +2,7 @@
 
 # Widget library
 
-31 widgets, grouped by what you want to do. Each guide shows its setup, a preview, the entities it works with, its touch interactions and its size limits.
+32 widgets, grouped by what you want to do. Each guide shows its setup, a preview, the entities it works with, its touch interactions and its size limits.
 
 Start with [your first light](../getting-started.md#5-control-your-first-light), then add more widgets in the [web editor](../editor.md). Whole pages (room overview, energy dashboard) are in [Pages and layouts](../pages.md). For a different look, use [Appearance](../appearance.md).
 
@@ -163,6 +163,12 @@ Forecasts, solar production and the energy balance.
     **[Solar forecast](solar_forecast.md)**
 
     Compare predicted solar production for today and the next four days.
+
+-   [![Price forecast](../img/gallery/price_forecast_glow.png)](price_forecast.md)
+
+    **[Price forecast](price_forecast.md)**
+
+    Show a day of electricity prices as bars, with the price now, today and tomorrow, and the cheap hours.
 
 -   [![Energy timeline](../img/gallery/energy_last_24_hours_glow.png)](energy_timeline.md)
 
