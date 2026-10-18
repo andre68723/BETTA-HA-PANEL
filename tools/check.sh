@@ -150,7 +150,7 @@ elif command -v cmake >/dev/null 2>&1 && command -v sdl2-config >/dev/null 2>&1;
   for variant in panel4 paneljc tab5; do
     in_group "sim-$variant" || continue
     step "simulator regressions $variant" "$sim_inputs" bash -c '
-      for r in controls wallbox bambu history energy fonts notification price; do
+      for r in controls wallbox bambu history energy fonts notification price parqet; do
         SDL_VIDEODRIVER=dummy tools/simulator.sh "$0" --regression "$r" || exit 1
       done' "$variant"
     for s in $steps; do

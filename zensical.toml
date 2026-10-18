@@ -63,6 +63,7 @@ nav = [
       { "Slider" = "widgets/slider.md" },
       { "Solar forecast" = "widgets/solar_forecast.md" },
       { "Price forecast" = "widgets/price_forecast.md" },
+      { "Parqet portfolio" = "widgets/parqet_portfolio.md" },
       { "Sonos favorites" = "widgets/sonos_favorites.md" },
       { "Todo list" = "widgets/todo_list.md" },
       { "Vacuum" = "widgets/vacuum_tile.md" },

@@ -204,6 +204,8 @@ for (const [input, type, entity, property, firstChecked, firstValue, secondValue
   ["fPriceDaySwitch", "price_forecast", "sensor.epex_spot_data_market_price", "price_day_switch", true, true, undefined],
   ["fPriceCheapTimes", "price_forecast", "sensor.epex_spot_data_market_price", "price_cheap_times", true, true, undefined],
   ["fPriceLine", "price_forecast", "sensor.epex_spot_data_market_price", "price_line", true, true, undefined],
+  ["fParqetHideAmounts", "parqet_portfolio", "sensor.portfolio_value", "parqet_hide_amounts", true, true, undefined],
+  ["fParqetSelector", "parqet_portfolio", "sensor.portfolio_value", "parqet_selector", true, true, undefined],
   ["fShowName", "sensor", "sensor.temperature", "show_name", false, false, undefined],
   ["fSensorShowAge", "sensor", "sensor.temperature", "sensor_show_age", false, false, undefined],
   ["fWeatherShowPrecip", "weather_3day", "weather.home", "show_precipitation", false, false, undefined],
@@ -220,6 +222,25 @@ for (const [input, type, entity, property, firstChecked, firstValue, secondValue
     assert.equal(run(`savedLayout.pages[0].widgets[0].${property}`), secondValue);
   });
 }
+
+test("portfolio view and interval: choose, save, reload and return to the defaults through Inspector events", async () => {
+  const run = setupInspector("parqet_portfolio", "sensor.portfolio_value");
+  run("populateMovePageOptions = renderEntityOptions = () => {}");
+  run('el.fParqetView.value = "holdings"; el.fParqetView.dispatch("change")');
+  run('el.fParqetInterval.value = "1m"; el.fParqetInterval.dispatch("change")');
+  assert.equal(run("selectedWidget().parqet_view"), "holdings");
+  assert.equal(run("selectedWidget().parqet_interval"), "1m");
+  await run("el.saveBtn.onclick()");
+  assert.equal(run("savedLayout.pages[0].widgets[0].parqet_view"), "holdings");
+  assert.equal(run("savedLayout.pages[0].widgets[0].parqet_interval"), "1m");
+  run("editor.layout = savedLayout; renderInspector()");
+  assert.equal(run("el.fParqetView.value"), "holdings");
+  assert.equal(run("el.fParqetInterval.value"), "1m");
+  run('el.fParqetView.value = "performance"; el.fParqetView.dispatch("change"); el.fParqetInterval.value = ""; el.fParqetInterval.dispatch("change")');
+  await run("el.saveBtn.onclick()");
+  assert.equal(run("savedLayout.pages[0].widgets[0].parqet_view"), undefined);
+  assert.equal(run("savedLayout.pages[0].widgets[0].parqet_interval"), undefined);
+});
 
 test("price fixed average: edit, save, reload and clear through Inspector events", async () => {
   const run = setupInspector("price_forecast", "sensor.price");
@@ -445,6 +466,8 @@ const searchBindings = [
   ["car_widget", "car_lock", "fCarLock", "lock_entity_id", "binary_sensor.car_lock"],
   ["car_widget", "car_temp", "fCarTemp", "interior_temp_entity_id", "sensor.car_temp"],
   ["vacuum_tile", "vacuum_battery", "fVacuumBattery", "battery_entity_id", "sensor.battery"],
+  ["parqet_portfolio", "parqet_dividends", "fParqetDividends", "dividends_entity_id", "sensor.portfolio_dividends"],
+  ["parqet_portfolio", "parqet_return", "fParqetReturn", "return_entity_id", "sensor.portfolio_return"],
   ...["Nozzle", "Bed", "Progress", "Remaining", "Stage", "Job", "Pause", "Resume", "Stop"].map((field, i) =>
     ["bambu_printer", `bambu_${field.toLowerCase()}`, `fBambu${field}`,
       ["nozzle_temp_entity_id", "bed_temp_entity_id", "progress_entity_id", "remaining_time_entity_id", "stage_entity_id", "job_name_entity_id", "pause_entity_id", "resume_entity_id", "stop_entity_id"][i],
@@ -512,7 +535,7 @@ test("Every Inspector entity input has a Search button", () => {
   const html = fs.readFileSync("components/webui/www/index.html", "utf8");
   const entityInputs = [...html.matchAll(/<input\b[^>]*id="(f[^" ]+)"[^>]*list="[^"]*Options"[^>]*>/g)].map(match=>match[1]);
   entityInputs.push("fRoomEntities", "fRoomExtraEntity");
-  assert.equal(entityInputs.length, 38);
+  assert.equal(entityInputs.length, 40);
   for (const id of entityInputs) {
     const row = new RegExp(`<div class="entity-input-row">\\s*<(?:input|textarea|select)\\b[^>]*id="${id}"[^>]*>[\\s\\S]*?data-inspector-entity-target="[^"]+"[\\s\\S]*?</div>`);
     assert.match(html, row, `${id} lacks a Search button`);

@@ -30,6 +30,7 @@
 #include "ui/ui_i18n.h"
 #include "ui/ui_energy_page.h"
 #include "ui/ui_history_popup.h"
+#include "ha/parqet_performance.h"
 #include "ui/ui_boot_splash.h"
 #include "ui/ui_house_page.h"
 #include "ui/ui_notification_popup.h"
@@ -86,6 +87,8 @@ esp_err_t w_lock_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_
 void w_lock_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_alarm_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_alarm_apply_state(ui_widget_instance_t *, const ha_state_t *);
+esp_err_t w_parqet_portfolio_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
+void w_parqet_portfolio_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_price_forecast_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_price_forecast_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_energy_timeline_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
@@ -141,6 +144,7 @@ static const sim_widget_type_t k_types[] = {
     {"lock_tile", w_lock_create, w_lock_apply_state},
     {"alarm_tile", w_alarm_create, w_alarm_apply_state},
     {"price_forecast", w_price_forecast_create, w_price_forecast_apply_state},
+    {"parqet_portfolio", w_parqet_portfolio_create, w_parqet_portfolio_apply_state},
     {"energy_timeline", w_energy_timeline_create, w_energy_timeline_apply_state},
     {"binary_tile", w_binary_create, w_binary_apply_state},
     {"room_tile", w_room_create, w_room_apply_state},
@@ -271,6 +275,10 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     def->price_cheap_times = json_bool(json, "price_cheap_times", false);
     def->price_line = json_bool(json, "price_line", false);
     def->price_average = json_float(json, "price_average", 0.0f);
+    def->parqet_hide_amounts = json_bool(json, "parqet_hide_amounts", false);
+    def->parqet_selector = json_bool(json, "parqet_selector", false);
+    copy_field(def->parqet_view, sizeof(def->parqet_view), json, "parqet_view");
+    copy_field(def->parqet_interval, sizeof(def->parqet_interval), json, "parqet_interval");
     def->camera_live = json_bool(json, "camera_live", false);
     def->alarm_actions = ha_alarm_action_mask_parse(cJSON_GetObjectItemCaseSensitive(json, "alarm_actions"));
     def->history_popup = json_bool(json, "history_popup", false);
@@ -299,6 +307,10 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     }
     if (strcmp(def->type, "vacuum_tile") == 0 || strcmp(def->type, "roborock_tile") == 0) {
         copy_field(def->extra_entity_id[UI_VACUUM_EXTRA_BATTERY], APP_MAX_ENTITY_ID_LEN, json, "battery_entity_id");
+    }
+    if (strcmp(def->type, "parqet_portfolio") == 0) {
+        copy_field(def->extra_entity_id[UI_PARQET_EXTRA_DIVIDENDS], APP_MAX_ENTITY_ID_LEN, json, "dividends_entity_id");
+        copy_field(def->extra_entity_id[UI_PARQET_EXTRA_RETURN], APP_MAX_ENTITY_ID_LEN, json, "return_entity_id");
     }
     if (strcmp(def->type, "room_tile") == 0) {
         copy_field(def->display_mode, sizeof(def->display_mode), json, "room_extra_mode");
@@ -422,6 +434,64 @@ static char *read_text_file(const char *path)
 
 /* A fixture states a price list as {"price_series": {"shape": "epex"|"dao"|"raw", "interval_min": 60, "today": [...], "tomorrow": [...]}}: the prices of
  * the local calendar days around the moment the simulator runs, expanded to the `data` attribute a price sensor has in Home Assistant. */
+/* The answers the portfolio tile would get from the integration for an interval (see parqet_request_sim.c). */
+extern void sim_parqet_set(const char *portfolio_id, const char *interval, const parqet_perf_t *perf);
+
+static void load_parqet_perf(const cJSON *root)
+{
+    const cJSON *item = NULL;
+    cJSON_ArrayForEach(item, cJSON_GetObjectItemCaseSensitive(root, "parqet_perf")) {
+        parqet_perf_t perf;
+        memset(&perf, 0, sizeof(perf));
+        perf.value_start = json_float(item, "value_start", 0.0f);
+        perf.value_end = json_float(item, "value_end", 0.0f);
+        perf.unrealized_gain = json_float(item, "unrealized_gain", 0.0f);
+        perf.unrealized_return = json_float(item, "unrealized_return", 0.0f);
+        perf.realized_gain = json_float(item, "realized_gain", 0.0f);
+        perf.dividends = json_float(item, "dividends", 0.0f);
+        perf.xirr = json_float(item, "xirr", 0.0f);
+        perf.ttwror = json_float(item, "ttwror", 0.0f);
+        /* the holdings of the fixture fill the three rankings like parqet_perf_parse(): by value, best return, worst return */
+        parqet_perf_holding_t all[16];
+        int all_count = 0;
+        const cJSON *holding = NULL;
+        cJSON_ArrayForEach(holding, cJSON_GetObjectItemCaseSensitive(item, "holdings")) {
+            if (all_count >= 16) break;
+            parqet_perf_holding_t *h = &all[all_count++];
+            memset(h, 0, sizeof(*h));
+            snprintf(h->name, sizeof(h->name), "%s", json_string(holding, "name"));
+            h->value = json_float(holding, "value", 0.0f);
+            h->weight = json_float(holding, "weight", 0.0f);
+            h->gain = json_float(holding, "gain", 0.0f);
+            h->ret = json_float(holding, "ret", 0.0f);
+            h->has_return = cJSON_GetObjectItemCaseSensitive(holding, "ret") != NULL;
+        }
+        for (int mode = 0; mode < 3; mode++) {
+            parqet_perf_holding_t *list = mode == 0 ? perf.largest : mode == 1 ? perf.top : perf.flop;
+            int *count = mode == 0 ? &perf.largest_count : mode == 1 ? &perf.top_count : &perf.flop_count;
+            bool used[16] = {false};
+            while (*count < PARQET_PERF_RANK) {
+                int pick = -1;
+                for (int i = 0; i < all_count; i++) {
+                    if (used[i] || (mode > 0 && !all[i].has_return)) continue;
+                    if (mode == 2 && perf.top_count + *count >= all_count) break;
+                    const double a = mode == 0 ? all[i].value : mode == 1 ? all[i].ret : -all[i].ret;
+                    const double b = pick < 0 ? 0.0 : mode == 0 ? all[pick].value : mode == 1 ? all[pick].ret : -all[pick].ret;
+                    if (pick < 0 || a > b) pick = i;
+                }
+                if (pick < 0) break;
+                used[pick] = true;
+                list[(*count)++] = all[pick];
+            }
+        }
+        const cJSON *point = NULL;
+        cJSON_ArrayForEach(point, cJSON_GetObjectItemCaseSensitive(item, "points")) {
+            if (perf.point_count < PARQET_PERF_POINTS && cJSON_IsNumber(point)) perf.point[perf.point_count++] = (float)point->valuedouble;
+        }
+        sim_parqet_set(json_string(item, "portfolio_id"), json_string(item, "interval"), &perf);
+    }
+}
+
 static void expand_price_series(cJSON *attrs)
 {
     const cJSON *spec = cJSON_GetObjectItemCaseSensitive(attrs, "price_series");
@@ -837,6 +907,8 @@ int main(int argc, char **argv)
     extern int sim_notification_regression(void);
     bool notification_regression = false;
     extern int sim_price_regression(void);
+    extern int sim_parqet_regression(void);
+    bool parqet_regression = false;
     bool price_regression = false;
     bool font_budget_regression = false;
     bool energy_regression = false;
@@ -870,6 +942,7 @@ int main(int argc, char **argv)
         else if (strcmp(argv[i - 1], "--regression") == 0 && strcmp(value, "controls") == 0) controls_regression = true;
         else if (strcmp(argv[i - 1], "--regression") == 0 && strcmp(value, "notification") == 0) notification_regression = true;
         else if (strcmp(argv[i - 1], "--regression") == 0 && strcmp(value, "price") == 0) price_regression = true;
+        else if (strcmp(argv[i - 1], "--regression") == 0 && strcmp(value, "parqet") == 0) parqet_regression = true;
         else if (strcmp(argv[i - 1], "--regression") == 0 && strcmp(value, "fonts") == 0) font_budget_regression = true;
         else if (strcmp(argv[i - 1], "--fixture") == 0) fixture_path = value;
         else if (strcmp(argv[i - 1], "--page") == 0) page_id = value;
@@ -1021,6 +1094,10 @@ int main(int argc, char **argv)
         cJSON_Delete(root);
         return sim_price_regression();
     }
+    if (parqet_regression) {
+        cJSON_Delete(root);
+        return sim_parqet_regression();
+    }
     if (font_budget_regression) {
         cJSON_Delete(root);
         return sim_font_budget_regression();
@@ -1112,6 +1189,7 @@ int main(int argc, char **argv)
         }
     }
 
+    load_parqet_perf(root);
     const cJSON *states = cJSON_GetObjectItemCaseSensitive(root, "states");
     if (!load_display_precisions(states)) {
         fprintf(stderr, "Cannot load display precision metadata\n");

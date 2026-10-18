@@ -133,7 +133,7 @@ function allowedEntityDomainsForWidgetType(
 ) {
   if (type === "wallbox_evcc") return ["select"];
   if (type === "empty_tile") return [];
-  if (type === "sensor" || type === "graph" || type === "gauge" || type === "solar_forecast" || type === "price_forecast" || type === "car_widget" || type === "bambu_printer" || type === "energy_timeline") return ["sensor"];
+  if (type === "sensor" || type === "graph" || type === "gauge" || type === "solar_forecast" || type === "price_forecast" || type === "parqet_portfolio" || type === "car_widget" || type === "bambu_printer" || type === "energy_timeline") return ["sensor"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     return buttonModeRequiresMediaPlayer(normalizedMode) ? ["media_player"] : ["switch", "media_player"];
@@ -236,6 +236,16 @@ function secondaryEntityConfigForWidgetType(type) {
       invalidStatusKey: "layout.status.secondary_sensor_required",
     };
   }
+  if (type === "parqet_portfolio") {
+    return {
+      enabled: true,
+      domain: "sensor",
+      optional: true,
+      labelKey: "layout.inspector.secondary_entity_parqet_portfolio",
+      labelFallback: "Unrealised gain sensor (optional)",
+      invalidStatusKey: "layout.status.secondary_sensor_required",
+    };
+  }
   if (type === "price_forecast") {
     return {
       enabled: true,
@@ -286,6 +296,16 @@ function tertiaryEntityConfigForWidgetType(type) {
       optional: true,
       labelKey: "layout.inspector.tertiary_entity_car",
       labelFallback: "Range entity (sensor, optional)",
+      invalidStatusKey: "layout.status.tertiary_sensor_required",
+    };
+  }
+  if (type === "parqet_portfolio") {
+    return {
+      enabled: true,
+      domain: "sensor",
+      optional: true,
+      labelKey: "layout.inspector.tertiary_entity_parqet_portfolio",
+      labelFallback: "XIRR sensor (optional)",
       invalidStatusKey: "layout.status.tertiary_sensor_required",
     };
   }
@@ -638,6 +658,8 @@ const INSPECTOR_EXTRA_ENTITY_FIELDS = [
   ["car_widget", "car_lock", "fCarLock", "lock,binary_sensor", "car_lock"],
   ["car_widget", "car_temp", "fCarTemp", "sensor", "car_temp"],
   ["vacuum_tile", "vacuum_battery", "fVacuumBattery", "sensor", "vacuum_battery"],
+  ["parqet_portfolio", "parqet_dividends", "fParqetDividends", "sensor", "parqet_dividends"],
+  ["parqet_portfolio", "parqet_return", "fParqetReturn", "sensor", "parqet_return"],
   ["bambu_printer", "bambu_camera", "fBambuCamera", "camera", "bambu_camera"],
   ...["Nozzle", "Bed", "Progress", "Remaining", "Stage", "Job", "Pause", "Resume", "Stop"].map(field =>
     ["bambu_printer", `bambu_${field.toLowerCase()}`, `fBambu${field}`,

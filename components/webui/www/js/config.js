@@ -354,6 +354,17 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Alarm widget",
     itemsFallback: "alarm panels",
   },
+  parqet_portfolio: {
+    domain: "sensor",
+    titleKey: "entity_picker.title_parqet_portfolio",
+    blankKey: "entity_picker.blank_parqet_portfolio",
+    widgetKey: "entity_picker.widget_parqet_portfolio",
+    itemsKey: "entity_picker.items_sensor",
+    titleFallback: "Choose the portfolio value sensor",
+    blankFallback: "Blank Parqet Portfolio widget",
+    widgetFallback: "Parqet Portfolio widget",
+    itemsFallback: "sensors",
+  },
   price_forecast: {
     domain: "sensor",
     titleKey: "entity_picker.title_price_forecast",
@@ -578,6 +589,6 @@ const ALARM_ACTION_FIELDS = [
   ["fAlarmArmVacation", "arm_vacation"],
   ["fAlarmArmCustom", "arm_custom_bypass"],
 ];
-const WIDGET_NAME_TYPES = new Set(["wallbox_evcc", "sensor", "button", "slider", "gauge", "graph", "empty_tile", "light_tile", "heating_tile", "weather_tile", "weather_3day", "solar_forecast", "price_forecast", "car_widget", "bambu_printer", "todo_list", "media_player", "sonos_favorites", "cover_tile", "fan_tile", "contact_tile", "camera_tile", "climate_tile", "scene_tile", "select_tile", "energy_timeline", "datetime_tile", "lock_tile", "alarm_tile", "binary_tile", "room_tile", "vacuum_tile", "roborock_tile"]);
+const WIDGET_NAME_TYPES = new Set(["wallbox_evcc", "sensor", "button", "slider", "gauge", "graph", "empty_tile", "light_tile", "heating_tile", "weather_tile", "weather_3day", "solar_forecast", "price_forecast", "parqet_portfolio", "car_widget", "bambu_printer", "todo_list", "media_player", "sonos_favorites", "cover_tile", "fan_tile", "contact_tile", "camera_tile", "climate_tile", "scene_tile", "select_tile", "energy_timeline", "datetime_tile", "lock_tile", "alarm_tile", "binary_tile", "room_tile", "vacuum_tile", "roborock_tile"]);
 // Widget types whose name is hidden unless show_name is true: the weather tiles show the weather, not the place.
 const WIDGET_NAME_HIDDEN_BY_DEFAULT = new Set(["weather_tile", "weather_3day"]);

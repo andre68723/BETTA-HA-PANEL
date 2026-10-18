@@ -186,7 +186,7 @@ function normalizeLayoutWidgets(layout) {
         if (typeof widget.tertiary_entity_id !== "string") {
           widget.tertiary_entity_id = "";
         }
-      } else if (widget.type === "vacuum_tile" || widget.type === "energy_timeline") {
+      } else if (widget.type === "vacuum_tile" || widget.type === "energy_timeline" || widget.type === "parqet_portfolio") {
         if (typeof widget.tertiary_entity_id !== "string") {
           delete widget.tertiary_entity_id;
         }

@@ -33,6 +33,7 @@ INTRO = {
     "weather_3day": "Compare forecast days, temperatures and precipitation in configurable columns.",
     "solar_forecast": "Compare predicted solar production for today and the next four days.",
     "price_forecast": "Show a day of electricity prices as bars, with the price now, today and tomorrow, and the cheap hours.",
+    "parqet_portfolio": "Show a Parqet portfolio: total value, gain, XIRR, dividends and the largest holdings.",
     "car_widget": "Show a car's battery or charge level, with optional range and vehicle controls.",
     "bambu_printer": "Show a Bambu Lab printer's status, temperatures, progress and remaining time, with Pause/Resume and Stop buttons.",
     "todo_list": "Show a Home Assistant to-do list and mark individual items done.",
@@ -78,6 +79,23 @@ GUIDANCE = {
                       "- **Day switch**: Today/Tomorrow buttons, one toggle button on a narrow tile. Off shows the 24 hours around now, the running interval in the middle (tomorrow once published).\n"
                       "- **Cheap times**: shade the cheap windows and name the next one. A window is the lowest quarter of the day's prices (rounded to 0.001 EUR/kWh), at least one hour long and not over yet.\n"
                       "- **Line**: draw the prices as a stepped line instead of filled bars (the default).",
+    "parqet_portfolio": "Choose the total value sensor of the portfolio (for example `sensor.trade_republic_gesamtwert`). The tile shows the value, and with the optional sensors the gain, XIRR and dividends. "
+                        "On a taller tile the largest holdings follow as weight bars.\n\n"
+                        "**Options**\n\n"
+                        "- **Unrealised gain sensor** (secondary entity): the gain in the currency, under the value.\n"
+                        "- **Unrealised return sensor** (percent): shown beside the gain. The integration disables this sensor by default (*Unrealised return (gross)*): enable it in the entity settings. "
+                        "The widget does not compute the percentage, because the total value includes cash and the result would differ from Parqet's figure.\n"
+                        "- **XIRR sensor** (third entity) and **Dividends sensor**: two figures side by side when the tile is tall enough.\n"
+                        "- **Hide amounts**: shows percentages and weights only. The value is replaced by the return in percent (or the XIRR without a return sensor), and the dividends are not shown.\n"
+                        "- **Show tabs and interval buttons**: **Performance** and **Holdings** tabs and the intervals **1D, 1W, 1M, YTD** and **MAX** on the tile, to change what it shows by touch. "
+                        "**View** and **Interval** set what it starts with. Without the buttons they simply choose the view and interval.\n\n"
+                        "**Intervals**\n\n"
+                        "- **MAX** shows the sensors' own figures (the integration reports one interval, Max by default).\n"
+                        "- **1D, 1W, 1M and YTD** are asked from the integration for the portfolio (the sensor's `entry_id` and `portfolio_id` attributes). "
+                        "Performance shows the value, the gain with its return, XIRR, TTWROR, dividends, realised gain and the value curve of the interval; "
+                        "Holdings lists five holdings with their return in the interval: the largest by value, the best (**Top 5**) or the worst (**Flop 5**). The choice is made by touch on the tile and is not saved; best and worst need an interval other than MAX.\n"
+                        "- The integration's reply contains every holding and can be large (about 76 KB for a month and 119 KB for the year to date, with 49 holdings). "
+                        "The panel receives at most 128 KB: a reply above that does not arrive and the tile says so. Later in the year the interval YTD can reach that limit.",
     "car_widget": "Assign the battery sensor first, then optional range, charging, temperature, lock and pre-conditioning entities.",
     "bambu_printer": "Select the print status sensor, then the temperature, progress and remaining-time sensors. Pause, Resume and Stop buttons, the current step and the job name are optional. "
                      "The example cards are 354 × 420 px; the minimum is 320 × 320 px.",
@@ -115,6 +133,7 @@ FIELD_LABELS = {
     "graph_point_count": "number of displayed points", "graph_line_color": "line colour",
     "solar_forecast_bar_orientation": "bar orientation", "show_precipitation": "show precipitation",
     "slider_accent_color": "accent colour", "arc_opening": "arc opening direction",
+    "dividends_entity_id": "dividends entity", "return_entity_id": "return entity", "parqet_hide_amounts": "hide amounts",
     "price_day_switch": "Today/Tomorrow buttons", "price_cheap_times": "cheap times", "price_line": "line instead of bars", "price_average": "fixed average (EUR/kWh)",
     "lock_confirm": "confirm unlocking/opening", "alarm_actions": "offered alarm actions", "display_mode": "state presentation",
     "supported_features": "the entity's supported capabilities",
@@ -132,6 +151,11 @@ REQUIRED_INTEGRATION = {
     "bambu_printer": "This widget reads a printer through the **[Bambu Lab integration (`ha-bambulab`)](https://github.com/greghesp/ha-bambulab)** "
                      "in Home Assistant. The panel only talks to Home Assistant; it has no direct connection to the printer. "
                      "Setting up the integration is described by its own project.",
+    "parqet_portfolio": "The widget reads the sensors of the **[Parqet Companion integration](https://github.com/cubinet-code/ha-parqet-companion)** (HACS) for a portfolio you track on [Parqet](https://www.parqet.com). "
+                        "The panel only talks to Home Assistant. Setting up the integration is described by its own project.\n\n"
+                        "The sensors report one **interval**, set in the integration's options (default Max). The tile names the interval in its corner. "
+                        "The largest holdings come from the attribute `top_holdings` of the total value sensor (five entries, long names are shortened).\n\n"
+                        "Disabled by default in the integration: its detailed sensors. Only the unrealised return in percent is useful here, as an optional sensor.",
     "price_forecast": "The widget reads a price sensor that carries the list of prices as an attribute named `data`, in EUR per kWh, hourly or every 15 minutes. "
                       "Home Assistant keeps the full list; the panel reduces it to a compact series, so two days of 15-minute prices fit. "
                       "If a list is still too large, whole hours are averaged; missing intervals stay gaps. "

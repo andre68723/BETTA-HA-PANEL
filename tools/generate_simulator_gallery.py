@@ -98,6 +98,7 @@ def prepare_fixture(data, variant="panel4"):
     if demo is not None:
         fixture["pages"].append(demo)
     fixture["states"] = data["states"]
+    fixture["parqet_perf"] = data.get("parqet_perf", [])
     for state in fixture["states"]:
         picture = state.get("attributes", {}).get("entity_picture", "")
         if picture.startswith("file:"):

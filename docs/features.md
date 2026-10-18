@@ -45,6 +45,13 @@ Choose bars or a stepped line. Missing intervals stay gaps, and all upcoming che
 
 **Set it up:** [Price forecast](widgets/price_forecast.md) lists supported price sensors, units and helper formats.
 
+## Parqet portfolio
+
+Show the value of a Parqet portfolio with its gain, XIRR, dividends and largest holdings with a Parqet portfolio widget.
+It reads the sensors of the Parqet Companion integration. Tabs for Performance and Holdings, the intervals 1D, 1W, 1M, YTD and MAX and the choice of largest, best or worst holdings can be shown on the tile. An option hides all amounts and shows percentages only.
+
+**Set it up:** [Parqet portfolio](widgets/parqet_portfolio.md) lists the sensors and what the tile shows at each size.
+
 ## Doorbell and messages
 
 A doorbell or sensor can wake the screen and show a message, camera snapshot and optional action button.

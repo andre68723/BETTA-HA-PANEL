@@ -61,7 +61,9 @@ function renderEntityOptions() {
       ? "layout.inspector.solar_remaining_entity"
       : inspectorType === "energy_timeline"
         ? "layout.inspector.entity_energy_timeline"
-        : "layout.inspector.entity";
+        : inspectorType === "parqet_portfolio"
+          ? "layout.inspector.parqet_total_value"
+          : "layout.inspector.entity";
     setTextById("fEntityLabel", primaryLabelKey);
     el.fSecondaryEntityLabel.textContent = t(secondaryConfig.labelKey, {}, secondaryConfig.labelFallback);
   }
@@ -306,6 +308,7 @@ const WIDGET_TYPE_LABEL_KEYS = {
   select_tile: "layout.widgets.add_select",
   energy_timeline: "layout.widgets.add_energy_timeline",
   price_forecast: "layout.widgets.add_price_forecast",
+  parqet_portfolio: "layout.widgets.add_parqet_portfolio",
   datetime_tile: "layout.widgets.add_datetime",
   lock_tile: "layout.widgets.add_lock",
   alarm_tile: "layout.widgets.add_alarm",
@@ -1180,6 +1183,14 @@ function renderInspector() {
     }
     if (el.cameraOptions) el.cameraOptions.classList.add("hidden");
     if (el.priceOptions) el.priceOptions.classList.add("hidden");
+    if (el.parqetOptions) el.parqetOptions.classList.add("hidden");
+    if (el.parqetEntities) el.parqetEntities.classList.add("hidden");
+    if (el.fParqetDividends) el.fParqetDividends.value = "";
+    if (el.fParqetReturn) el.fParqetReturn.value = "";
+    if (el.fParqetSelector) el.fParqetSelector.checked = false;
+    if (el.fParqetView) el.fParqetView.value = "performance";
+    if (el.fParqetInterval) el.fParqetInterval.value = "";
+    if (el.fParqetHideAmounts) el.fParqetHideAmounts.checked = false;
     if (el.fCameraLive) el.fCameraLive.checked = false;
     bambuResetInspector(); evccResetInspector();
     for (const input of [el.fCarPrecond, el.fCarLock, el.fCarTemp, el.fEtlStyle, el.fEtlCharge, el.fEtlDischarge, el.fEtlSoc, el.fEtlForecast]) {
@@ -1350,6 +1361,14 @@ function renderInspector() {
   if (el.fCameraLive) el.fCameraLive.checked = widget.type === "camera_tile" && widget.camera_live === true;
   if (el.lockOptions) el.lockOptions.classList.toggle("hidden", widget.type !== "lock_tile");
   if (el.fLockConfirm) el.fLockConfirm.checked = widget.type === "lock_tile" && widget.lock_confirm === true;
+  if (el.parqetOptions) el.parqetOptions.classList.toggle("hidden", widget.type !== "parqet_portfolio");
+  if (el.parqetEntities) el.parqetEntities.classList.toggle("hidden", widget.type !== "parqet_portfolio");
+  if (el.fParqetDividends) el.fParqetDividends.value = widget.type === "parqet_portfolio" ? String(widget.dividends_entity_id || "") : "";
+  if (el.fParqetReturn) el.fParqetReturn.value = widget.type === "parqet_portfolio" ? String(widget.return_entity_id || "") : "";
+  if (el.fParqetHideAmounts) el.fParqetHideAmounts.checked = widget.type === "parqet_portfolio" && widget.parqet_hide_amounts === true;
+  if (el.fParqetSelector) el.fParqetSelector.checked = widget.type === "parqet_portfolio" && widget.parqet_selector === true;
+  if (el.fParqetView) el.fParqetView.value = widget.type === "parqet_portfolio" && widget.parqet_view === "holdings" ? "holdings" : "performance";
+  if (el.fParqetInterval) el.fParqetInterval.value = widget.type === "parqet_portfolio" && ["1d", "1w", "1m", "ytd"].includes(widget.parqet_interval) ? widget.parqet_interval : "";
   if (el.priceOptions) el.priceOptions.classList.toggle("hidden", widget.type !== "price_forecast");
   if (el.fPriceDaySwitch) el.fPriceDaySwitch.checked = widget.type === "price_forecast" && widget.price_day_switch === true;
   if (el.fPriceCheapTimes) el.fPriceCheapTimes.checked = widget.type === "price_forecast" && widget.price_cheap_times === true;
@@ -2019,6 +2038,7 @@ function addWidget(type, options = {}) {
       : type === "bambu_printer" ? 360
       : type === "energy_timeline" ? 420
       : type === "price_forecast" ? 460
+      : type === "parqet_portfolio" ? 360
       : type === "todo_list" ? 360
       : type === "media_player" ? 360
       : type === "sonos_favorites" ? 360
@@ -2040,6 +2060,7 @@ function addWidget(type, options = {}) {
       : type === "bambu_printer" ? 420
       : type === "energy_timeline" ? 260
       : type === "price_forecast" ? 250
+      : type === "parqet_portfolio" ? 330
       : type === "todo_list" ? 360
       : type === "media_player" ? 280
       : type === "sonos_favorites" ? 300
@@ -2316,6 +2337,22 @@ function applyInspector(options = {}) {
   } else {
     delete widget.lock_confirm; // default: no confirmation
   }
+  // parqet_portfolio: the dividends sensor and the percentages-only option (gain is the secondary entity, XIRR the tertiary one)
+  const dividends = (el.fParqetDividends?.value || "").trim();
+  if (widgetType === "parqet_portfolio" && dividends) widget.dividends_entity_id = dividends;
+  else delete widget.dividends_entity_id;
+  const portfolioReturn = (el.fParqetReturn?.value || "").trim();
+  if (widgetType === "parqet_portfolio" && portfolioReturn) widget.return_entity_id = portfolioReturn;
+  else delete widget.return_entity_id;
+  if (widgetType === "parqet_portfolio" && el.fParqetHideAmounts?.checked) widget.parqet_hide_amounts = true;
+  else delete widget.parqet_hide_amounts;
+  if (widgetType === "parqet_portfolio" && el.fParqetSelector?.checked) widget.parqet_selector = true;
+  else delete widget.parqet_selector;
+  if (widgetType === "parqet_portfolio" && el.fParqetView?.value === "holdings") widget.parqet_view = "holdings"; // performance is the default
+  else delete widget.parqet_view;
+  const parqetInterval = el.fParqetInterval?.value || "";
+  if (widgetType === "parqet_portfolio" && ["1d", "1w", "1m", "ytd"].includes(parqetInterval)) widget.parqet_interval = parqetInterval; // max (the sensors) is the default
+  else delete widget.parqet_interval;
   // price_forecast: the price timeline card's options, all off by default; the average sensor is the secondary entity
   if (widgetType === "price_forecast" && el.fPriceDaySwitch?.checked) widget.price_day_switch = true;
   else delete widget.price_day_switch;

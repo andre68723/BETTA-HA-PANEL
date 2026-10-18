@@ -161,6 +161,7 @@
               <button id="addWeather3DayBtn" type="button">+ Weather Forecast</button>
               <button id="addSolarForecastBtn" type="button">+ Solar Forecast</button>
               <button id="addPriceForecastBtn" type="button">+ Price Forecast</button>
+              <button id="addParqetPortfolioBtn" type="button">+ Parqet Portfolio</button>
               <button id="addTodoListBtn" type="button">+ Todo List</button>
               <button id="addMediaPlayerBtn" type="button">+ Media Player</button>
               <button id="addSonosFavoritesBtn" type="button">+ Sonos Favorites</button>
@@ -1090,6 +1091,20 @@
                       <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="tertiary">Search</button>
                     </div>
                   </label>
+                  <div id="parqetEntities" class="hidden">
+                  <label><span id="fParqetDividendsLabel">Dividends sensor (optional)</span>
+                    <div class="entity-input-row">
+                      <input id="fParqetDividends" type="text" list="sensorEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="parqet_dividends">Search</button>
+                    </div>
+                  </label>
+                  <label><span id="fParqetReturnLabel">Unrealised return sensor (%, optional)</span>
+                    <div class="entity-input-row">
+                      <input id="fParqetReturn" type="text" list="sensorEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="parqet_return">Search</button>
+                    </div>
+                  </label>
+                  </div>
                   <div id="vacuumOptions" class="hidden">
                     <label><span id="fVacuumDefaultModeLabel">Default cleaning program</span>
                       <select id="fVacuumDefaultMode"></select>
@@ -1549,6 +1564,32 @@
                     </label>
                     <label><span id="fPriceAverageLabel">Average (fixed, EUR/kWh)</span>
                       <input id="fPriceAverage" type="number" min="0" max="5" step="0.001" placeholder="calculated" />
+                    </label>
+                  </div>
+                  <div id="parqetOptions" class="slider-options hidden">
+                    <div class="field-hint" id="fParqetHint">The tile reads the sensors above for MAX. The other intervals (1D, 1W, 1M, YTD) are requested from the Parqet integration; the start view and interval apply when the tile is built, the tabs and buttons change them on the panel. Hide amounts shows percentages only.</div>
+                    <label class="row">
+                      <input id="fParqetHideAmounts" type="checkbox" />
+                      <span id="fParqetHideAmountsLabel">Hide amounts (percentages only)</span>
+                    </label>
+                    <label class="row">
+                      <input id="fParqetSelector" type="checkbox" />
+                      <span id="fParqetSelectorLabel">Show tabs and interval buttons on the tile</span>
+                    </label>
+                    <label><span id="fParqetViewLabel">View</span>
+                      <select id="fParqetView">
+                        <option value="performance">Performance</option>
+                        <option value="holdings">Holdings</option>
+                      </select>
+                    </label>
+                    <label><span id="fParqetIntervalLabel">Interval</span>
+                      <select id="fParqetInterval">
+                        <option value="">Max (sensor values)</option>
+                        <option value="1d">1D</option>
+                        <option value="1w">1W</option>
+                        <option value="1m">1M</option>
+                        <option value="ytd">YTD</option>
+                      </select>
                     </label>
                   </div>
                   <div id="alarmOptions" class="slider-options hidden">

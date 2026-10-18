@@ -451,6 +451,32 @@
           "price_average": 0.25
         }
       ]
+    },
+    {
+      "id": "p_parqet_portfolio",
+      "title": "parqet_portfolio",
+      "widgets": [
+        {
+          "id": "w_parqet_portfolio",
+          "type": "parqet_portfolio",
+          "title": "parqet_portfolio",
+          "rect": {
+            "x": 20,
+            "y": 20,
+            "w": 360,
+            "h": 330
+          },
+          "entity_id": "sensor.portfolio_value",
+          "secondary_entity_id": "sensor.portfolio_gain",
+          "tertiary_entity_id": "sensor.portfolio_xirr",
+          "dividends_entity_id": "sensor.portfolio_dividends",
+          "return_entity_id": "sensor.portfolio_return",
+          "parqet_hide_amounts": true,
+          "parqet_selector": true,
+          "parqet_view": "holdings",
+          "parqet_interval": "1m"
+        }
+      ]
     }
   ],
   "alerts": [

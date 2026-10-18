@@ -63,6 +63,7 @@ function widgetSizeLimitsForCanvas(type) {
       return { minW: 160, minH: 70, maxW: CANVAS_WIDTH, maxH: 160 };
     case "energy_timeline":
       return { minW: 300, minH: 200, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "parqet_portfolio":
     case "price_forecast":
       return { minW: 240, minH: 150, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "select_tile":
@@ -334,6 +335,21 @@ const el = {
   fPriceLineLabel: document.getElementById("fPriceLineLabel"),
   fPriceAverage: document.getElementById("fPriceAverage"),
   fPriceAverageLabel: document.getElementById("fPriceAverageLabel"),
+  addParqetPortfolioBtn: document.getElementById("addParqetPortfolioBtn"),
+  parqetOptions: document.getElementById("parqetOptions"),
+  parqetEntities: document.getElementById("parqetEntities"),
+  fParqetDividends: document.getElementById("fParqetDividends"),
+  fParqetDividendsLabel: document.getElementById("fParqetDividendsLabel"),
+  fParqetReturn: document.getElementById("fParqetReturn"),
+  fParqetReturnLabel: document.getElementById("fParqetReturnLabel"),
+  fParqetSelector: document.getElementById("fParqetSelector"),
+  fParqetSelectorLabel: document.getElementById("fParqetSelectorLabel"),
+  fParqetView: document.getElementById("fParqetView"),
+  fParqetViewLabel: document.getElementById("fParqetViewLabel"),
+  fParqetInterval: document.getElementById("fParqetInterval"),
+  fParqetIntervalLabel: document.getElementById("fParqetIntervalLabel"),
+  fParqetHideAmounts: document.getElementById("fParqetHideAmounts"),
+  fParqetHideAmountsLabel: document.getElementById("fParqetHideAmountsLabel"),
   fAlarmDisarm: document.getElementById("fAlarmDisarm"),
   fAlarmArmHome: document.getElementById("fAlarmArmHome"),
   fAlarmArmAway: document.getElementById("fAlarmArmAway"),

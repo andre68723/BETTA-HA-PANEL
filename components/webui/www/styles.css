@@ -2093,6 +2093,29 @@ aside.actions-panel section {
 .tp-price-bars { position: relative; }
 .tp-price-band { position: absolute; top: 0; bottom: 0; background: rgba(79, 203, 126, 0.2); pointer-events: none; }
 .tp-price-cheap { font-size: 11px; color: #4fcb7e; }
+.tp-pq { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; overflow: hidden; }
+.tp-pq .tp-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+.tp-pq-head { display: flex; align-items: baseline; gap: 6px; }
+.tp-pq-head b { font-size: clamp(18px, 22cqh, 32px); line-height: 1.1; }
+.tp-pq-head small { margin-left: auto; opacity: 0.7; }
+.tp-pq .up { color: #4fcb7e; }
+.tp-pq .down { color: #f26d6d; }
+.tp-pq { position: relative; }
+.tp-pq-interval { position: absolute; top: 10px; right: 12px; opacity: 0.7; font-size: 11px; }
+.tp-pq-chips { display: flex; gap: 4px; font-size: 11px; }
+.tp-pq-chips em { font-style: normal; padding: 2px 8px; border-radius: 8px; opacity: 0.7; }
+.tp-pq-chips em.on { background: rgba(255, 255, 255, 0.2); opacity: 1; }
+.tp-pq-gain { font-size: 14px; white-space: pre; }
+.tp-pq-kpis { display: flex; gap: 12px; }
+.tp-pq-kpis span { flex: 1; display: flex; flex-direction: column; font-size: 14px; }
+.tp-pq-kpis small { font-size: 11px; opacity: 0.7; }
+.tp-pq-kpis em { font-style: normal; }
+.tp-pq-spark { flex: 1; min-height: 28px; max-height: 90px; width: 100%; }
+.tp-pq-spark polyline { fill: none; stroke: #4fcb7e; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.tp-pq-row { position: relative; display: flex; justify-content: space-between; gap: 6px; font-size: 11px; padding-bottom: 7px; }
+.tp-pq-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-pq-row small { opacity: 0.7; }
+.tp-pq-row i { position: absolute; left: 0; bottom: 1px; height: 3px; border-radius: 2px; background: #4aa8ff; }
 .tp-price-foot { position: relative; height: 12px; font-size: 10px; opacity: 0.6; }
 .tp-price-foot span { position: absolute; top: 0; }
 

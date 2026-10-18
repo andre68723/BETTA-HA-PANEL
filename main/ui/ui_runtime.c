@@ -820,6 +820,7 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     cJSON *price_cheap_times = cJSON_GetObjectItemCaseSensitive(widget_json, "price_cheap_times");
     cJSON *price_line = cJSON_GetObjectItemCaseSensitive(widget_json, "price_line");
     cJSON *price_average = cJSON_GetObjectItemCaseSensitive(widget_json, "price_average");
+    cJSON *parqet_hide_amounts = cJSON_GetObjectItemCaseSensitive(widget_json, "parqet_hide_amounts");
     cJSON *history_popup = cJSON_GetObjectItemCaseSensitive(widget_json, "history_popup");
     cJSON *gauge_min = cJSON_GetObjectItemCaseSensitive(widget_json, "gauge_min");
     cJSON *gauge_max = cJSON_GetObjectItemCaseSensitive(widget_json, "gauge_max");
@@ -878,6 +879,10 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     out->price_day_switch = cJSON_IsTrue(price_day_switch);
     out->price_cheap_times = cJSON_IsTrue(price_cheap_times);
     out->price_line = cJSON_IsTrue(price_line);
+    out->parqet_hide_amounts = cJSON_IsTrue(parqet_hide_amounts);
+    out->parqet_selector = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "parqet_selector"));
+    ui_runtime_copy_json_string(widget_json, "parqet_view", out->parqet_view, sizeof(out->parqet_view));
+    ui_runtime_copy_json_string(widget_json, "parqet_interval", out->parqet_interval, sizeof(out->parqet_interval));
     out->price_average = cJSON_IsNumber(price_average) && price_average->valuedouble > 0.0 ? (float)price_average->valuedouble : 0.0f;
     out->camera_live = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "camera_live"));
     out->alarm_actions = ha_alarm_action_mask_parse(cJSON_GetObjectItemCaseSensitive(widget_json, "alarm_actions"));
@@ -942,6 +947,12 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     if (strcmp(out->type, "vacuum_tile") == 0 || strcmp(out->type, "roborock_tile") == 0) {
         ui_runtime_copy_json_string(widget_json, "battery_entity_id", out->extra_entity_id[UI_VACUUM_EXTRA_BATTERY],
             sizeof(out->extra_entity_id[UI_VACUUM_EXTRA_BATTERY]));
+    }
+    if (strcmp(out->type, "parqet_portfolio") == 0) {
+        ui_runtime_copy_json_string(widget_json, "dividends_entity_id", out->extra_entity_id[UI_PARQET_EXTRA_DIVIDENDS],
+            sizeof(out->extra_entity_id[UI_PARQET_EXTRA_DIVIDENDS]));
+        ui_runtime_copy_json_string(widget_json, "return_entity_id", out->extra_entity_id[UI_PARQET_EXTRA_RETURN],
+            sizeof(out->extra_entity_id[UI_PARQET_EXTRA_RETURN]));
     }
     if (strcmp(out->type, "energy_timeline") == 0) {
         ui_runtime_copy_json_string(widget_json, "battery_charge_entity_id",

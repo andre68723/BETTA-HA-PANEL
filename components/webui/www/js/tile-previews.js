@@ -415,6 +415,100 @@ function tilePreviewMarkup(widget) {
         <div class="tp-price-slot">${interval}</div>
         <div class="tp-price-bars${widget.price_line === true ? " line" : ""}">${band}${bars}</div><div class="tp-price-foot">${ticks}</div>${foot}</div>${handle}`;
     }
+    case "parqet_portfolio": {
+      const number = (id) => {
+        const raw = Number(String(editor.states.get(id) ?? "").replace(",", "."));
+        return id && Number.isFinite(raw) && String(editor.states.get(id) ?? "") !== "" ? raw : null;
+      };
+      const locale = t("preview.parqet.locale");
+      const fmt = (v, digits = 0, plus = false) => (plus && v > 0 ? "+" : "") + v.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+      const value = number(widget.entity_id) ?? 52841;
+      const gain = widget.secondary_entity_id ? (number(widget.secondary_entity_id) ?? 8425) : null;
+      const xirr = widget.tertiary_entity_id ? (number(widget.tertiary_entity_id) ?? 9.8) : null;
+      const dividends = widget.dividends_entity_id ? (number(widget.dividends_entity_id) ?? 1820) : null;
+      const hide = widget.parqet_hide_amounts === true;
+      const pct = widget.return_entity_id ? (number(widget.return_entity_id) ?? 27.7) : null;
+      const sign = (v) => (v > 0 ? "up" : v < 0 ? "down" : "");
+      // The panel's layout (pq_layout in w_parqet_portfolio.c), with its line heights in tile pixels: the same rows appear
+      // or drop out as the tile gets smaller. MAX uses the sensors; the other intervals show a sample of the integration's answer.
+      const intervalCode = ["1d", "1w", "1m", "ytd"].includes(widget.parqet_interval) ? widget.parqet_interval : "max";
+      const ws = intervalCode !== "max";
+      const selector = widget.parqet_selector === true;
+      const holdingsView = widget.parqet_view === "holdings";
+      const heightPx = Number(widget.rect?.h) || 0;
+      const limit = heightPx - 6;
+      const chipsOn = selector && heightPx >= 200;
+      const tabsOn = selector && heightPx >= 260;
+      let y = 40;
+      if (tabsOn) y += 34;
+      if (chipsOn) y += 34;
+      const chipEm = (label, on) => `<em class="${on ? "on" : ""}">${label}</em>`;
+      const tabsRow = tabsOn
+        ? `<div class="tp-pq-chips">${chipEm(escapeHtml(t("layout.option.parqet_view.performance")), !holdingsView)}${chipEm(escapeHtml(t("layout.option.parqet_view.holdings")), holdingsView)}</div>` : "";
+      const chipsRow = chipsOn
+        ? `<div class="tp-pq-chips">${["1d", "1w", "1m", "ytd", "max"].map((code) => chipEm(code.toUpperCase(), code === intervalCode)).join("")}</div>` : "";
+      const sortsOn = tabsOn && holdingsView; // the choice of holdings, like the panel's sort chips
+      const sortRow = sortsOn
+        ? `<div class="tp-pq-chips">${chipEm(escapeHtml(t("preview.parqet.largest")), true)}${chipEm("Top 5", false)}${chipEm("Flop 5", false)}</div>` : "";
+      if (sortsOn) y += 34;
+      const intervalText = chipsOn ? "" : `<small class="tp-pq-interval">${intervalCode === "max" ? "Max" : intervalCode.toUpperCase()}</small>`;
+      const sample = [["Alpha Utilities", 6.0, 12.4], ["Beta Global Dividend ETF", 5.5, 8.1], ["Gamma Telecom", 4.8, -2.3],
+        ["Delta Consumer Holdings", 4.4, 5.6], ["Epsilon Industrial", 4.0, 3.0]];
+      const rowsHtml = (startY) => {
+        let rows = Math.floor((limit - startY) / 38);
+        rows = Math.min(rows, sample.length);
+        if (rows < 2) return "";
+        const top = Math.max(...sample.slice(0, rows).map((h) => h[1]));
+        return sample.slice(0, rows).map(([n, wgt, ret]) => {
+          const right = ws ? `<small class="${sign(ret)}">${fmt(ret, 1, true)} %</small>` : `<small>${fmt(wgt, 1)} %</small>`;
+          return `<div class="tp-pq-row"><span>${n}</span>${right}<i style="width:${Math.max(2, Math.round((wgt / top) * 100))}%"></i></div>`;
+        }).join("");
+      };
+      let body = "";
+      if (holdingsView) {
+        body = rowsHtml(y);
+      } else {
+        const wsValue = number(widget.entity_id) ?? 52841;
+        const wsGain = 1240, wsPct = 2.4;
+        let hero, gainText = "", gainSign = 0, kpiItems = [];
+        const kpi = (label, text, cls) => `<span><small>${escapeHtml(label)}</small><em class="${cls || ""}">${text}</em></span>`;
+        if (ws) {
+          if (hide) { hero = `<b class="${sign(wsPct)}">${fmt(wsPct, 1, true)} %</b>`; }
+          else {
+            hero = `<b>${fmt(wsValue)} €</b>`;
+            gainText = `${fmt(wsGain, 0, true)} €  ${fmt(wsPct, 1, true)} %`; gainSign = wsGain;
+          }
+          kpiItems.push(kpi(t("preview.parqet.xirr"), `${fmt(9.8, 1, true)} %`, "up"), kpi(t("preview.parqet.ttwror"), `${fmt(8.1, 1, true)} %`, "up"));
+          if (!hide) kpiItems.push(kpi(t("preview.parqet.dividends"), `${fmt(410)} €`), kpi(t("preview.parqet.realized"), `${fmt(120, 0, true)} €`, "up"));
+        } else {
+          if (hide) hero = pct !== null ? `<b class="${sign(pct)}">${fmt(pct, 1, true)} %</b>` : xirr !== null ? `<b class="${sign(xirr)}">${fmt(xirr, 1, true)} %</b>` : "<b>•••</b>";
+          else {
+            hero = `<b>${fmt(value)} €</b>`;
+            if (gain !== null || pct !== null) gainText = `${gain !== null ? `${fmt(gain, 0, true)} €` : ""}${gain !== null && pct !== null ? "  " : ""}${pct !== null ? `${fmt(pct, 1, true)} %` : ""}`;
+            gainSign = gain !== null ? gain : pct;
+          }
+          if (xirr !== null) kpiItems.push(kpi(t("preview.parqet.xirr"), `${fmt(xirr, 1, true)} %`, sign(xirr)));
+          if (dividends !== null && !hide) kpiItems.push(kpi(t("preview.parqet.dividends"), `${fmt(dividends)} €`));
+        }
+        y += 52;
+        let gainHtml = "";
+        if (gainText && y + 28 <= limit) { gainHtml = `<div class="tp-pq-gain ${sign(gainSign)}">${gainText}</div>`; y += 34; }
+        const kpiRows = [];
+        for (let i = 0; i < kpiItems.length; i += 2) {
+          if (y + 56 > limit) break;
+          kpiRows.push(`<div class="tp-pq-kpis">${kpiItems.slice(i, i + 2).join("")}</div>`);
+          y += 60;
+        }
+        let tail = "";
+        if (ws) {
+          if (limit - y >= 28) tail = `<svg class="tp-pq-spark" viewBox="0 0 100 30" preserveAspectRatio="none"><polyline points="0,26 6,20 10,22 16,17 22,18 28,21 34,16 40,14 46,15 52,11 58,12 64,9 70,12 76,8 82,9 88,5 94,6 100,4" /></svg>`;
+        } else {
+          tail = rowsHtml(y);
+        }
+        body = `<div class="tp-pq-head">${hero}</div>${gainHtml}${kpiRows.join("")}${tail}`;
+      }
+      return `<div class="tp tp-pq">${name('div', 'class="tp-name"')}${intervalText}${tabsRow}${chipsRow}${sortRow}${body}</div>${handle}`;
+    }
     case "select_tile":
       return `<div class="tp tp-select"><div class="tp-blind-text">${name('small', '')}<b>${previewEntityValue(widget.entity_id, "pv")}</b></div><span class="tp-select-chevron">\u2304</span></div>${handle}`;
     case "datetime_tile": {

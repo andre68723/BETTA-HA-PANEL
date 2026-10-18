@@ -28,10 +28,14 @@
 #define UI_ETL_EXTRA_BATTERY_CHARGE 0
 #define UI_ETL_EXTRA_BATTERY_DISCHARGE 1
 #define UI_ETL_EXTRA_BATTERY_SOC 2
+/* extra_entity_id[] of the portfolio tile (JSON key dividends_entity_id): the dividends sensor. The unrealised gain is secondary_entity_id and
+ * the XIRR tertiary_entity_id. */
+#define UI_PARQET_EXTRA_DIVIDENDS 0
+#define UI_PARQET_EXTRA_RETURN 1 /* JSON key return_entity_id: the unrealised return in percent */
 
 typedef struct {
     char id[APP_MAX_WIDGET_ID_LEN];
-    char type[16];
+    char type[24]; /* the longest type name is parqet_portfolio (16 characters) */
     char title[APP_MAX_NAME_LEN];
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char secondary_entity_id[APP_MAX_ENTITY_ID_LEN];
@@ -82,6 +86,10 @@ typedef struct {
     bool price_day_switch;  /* price_forecast: Today/Tomorrow buttons, default false */
     bool price_line; /* price_forecast: a stepped line instead of filled bars, default false */
     bool price_cheap_times; /* price_forecast: shade the cheap times and name the next one, default false */
+    bool parqet_hide_amounts; /* parqet_portfolio: percentages only, no amounts, default false */
+    bool parqet_selector;     /* parqet_portfolio: tabs and interval chips to change the view by touch, default false */
+    char parqet_view[16];     /* parqet_portfolio: "performance" (default) or "holdings" */
+    char parqet_interval[8];  /* parqet_portfolio: "1d", "1w", "1m", "ytd" or "max" (default: the sensors' own figures) */
     float price_average;    /* price_forecast: fixed average in EUR/kWh, 0 = none (the day's own average, or the sensor in secondary_entity_id) */
     int x;
     int y;
@@ -92,7 +100,7 @@ typedef struct {
 typedef struct {
     char id[APP_MAX_WIDGET_ID_LEN];
     char page_id[APP_MAX_PAGE_ID_LEN];
-    char type[16];
+    char type[24]; /* the longest type name is parqet_portfolio (16 characters) */
     char title[APP_MAX_NAME_LEN];
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char secondary_entity_id[APP_MAX_ENTITY_ID_LEN];

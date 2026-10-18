@@ -1,0 +1,533 @@
+{
+ "version": 1,
+ "pages": [
+  {
+   "id": "parqet",
+   "title": "Portfolio",
+   "widgets": [
+    {
+     "id": "big",
+     "type": "parqet_portfolio",
+     "title": "Trade Account",
+     "entity_id": "sensor.pq_value",
+     "secondary_entity_id": "sensor.pq_gain",
+     "tertiary_entity_id": "sensor.pq_xirr",
+     "dividends_entity_id": "sensor.pq_div",
+     "x": 16,
+     "y": 12,
+     "w": 360,
+     "h": 330,
+     "return_entity_id": "sensor.pq_ret"
+    },
+    {
+     "id": "mid",
+     "type": "parqet_portfolio",
+     "title": "Portfolio",
+     "entity_id": "sensor.pq_value",
+     "secondary_entity_id": "sensor.pq_gain",
+     "tertiary_entity_id": "sensor.pq_xirr",
+     "dividends_entity_id": "sensor.pq_div",
+     "x": 388,
+     "y": 12,
+     "w": 320,
+     "h": 210,
+     "return_entity_id": "sensor.pq_ret"
+    },
+    {
+     "id": "small",
+     "type": "parqet_portfolio",
+     "title": "Portfolio (small)",
+     "entity_id": "sensor.pq_value",
+     "secondary_entity_id": "sensor.pq_gain",
+     "tertiary_entity_id": "",
+     "dividends_entity_id": "",
+     "x": 388,
+     "y": 234,
+     "w": 320,
+     "h": 110,
+     "return_entity_id": "sensor.pq_ret"
+    },
+    {
+     "id": "pct",
+     "type": "parqet_portfolio",
+     "title": "Percent only",
+     "entity_id": "sensor.pq_value",
+     "secondary_entity_id": "sensor.pq_gain",
+     "tertiary_entity_id": "sensor.pq_xirr",
+     "dividends_entity_id": "sensor.pq_div",
+     "x": 16,
+     "y": 354,
+     "w": 340,
+     "h": 210,
+     "parqet_hide_amounts": true,
+     "return_entity_id": "sensor.pq_ret"
+    },
+    {
+     "id": "year",
+     "type": "parqet_portfolio",
+     "title": "One year",
+     "entity_id": "sensor.pq_value_1y",
+     "secondary_entity_id": "sensor.pq_gain",
+     "tertiary_entity_id": "sensor.pq_xirr",
+     "dividends_entity_id": "sensor.pq_div",
+     "x": 368,
+     "y": 354,
+     "w": 340,
+     "h": 210,
+     "return_entity_id": "sensor.pq_ret"
+    },
+    {
+     "id": "none",
+     "type": "parqet_portfolio",
+     "title": "No data",
+     "entity_id": "sensor.pq_missing",
+     "x": 16,
+     "y": 576,
+     "w": 340,
+     "h": 130
+    },
+    {
+     "id": "neg",
+     "type": "parqet_portfolio",
+     "title": "Loss",
+     "entity_id": "sensor.pq_value_neg",
+     "secondary_entity_id": "sensor.pq_gain_neg",
+     "tertiary_entity_id": "sensor.pq_xirr_neg",
+     "dividends_entity_id": "sensor.pq_div",
+     "x": 368,
+     "y": 576,
+     "w": 340,
+     "h": 130,
+     "return_entity_id": "sensor.pq_ret_neg"
+    }
+   ]
+  },
+  {
+   "id": "parqet_ws",
+   "title": "Portfolio (interval)",
+   "widgets": [
+    {
+     "id": "ws_perf",
+     "type": "parqet_portfolio",
+     "title": "1 month",
+     "entity_id": "sensor.pq_value",
+     "secondary_entity_id": "sensor.pq_gain",
+     "tertiary_entity_id": "sensor.pq_xirr",
+     "dividends_entity_id": "sensor.pq_div",
+     "x": 16,
+     "y": 12,
+     "w": 380,
+     "h": 400,
+     "return_entity_id": "sensor.pq_ret",
+     "parqet_selector": true,
+     "parqet_interval": "1m"
+    },
+    {
+     "id": "ws_hold",
+     "type": "parqet_portfolio",
+     "title": "1 week, holdings",
+     "entity_id": "sensor.pq_value",
+     "secondary_entity_id": "sensor.pq_gain",
+     "tertiary_entity_id": "sensor.pq_xirr",
+     "dividends_entity_id": "sensor.pq_div",
+     "x": 408,
+     "y": 12,
+     "w": 380,
+     "h": 400,
+     "return_entity_id": "sensor.pq_ret",
+     "parqet_selector": true,
+     "parqet_interval": "1w",
+     "parqet_view": "holdings"
+    },
+    {
+     "id": "ws_pct",
+     "type": "parqet_portfolio",
+     "title": "Percent only",
+     "entity_id": "sensor.pq_value",
+     "secondary_entity_id": "sensor.pq_gain",
+     "tertiary_entity_id": "sensor.pq_xirr",
+     "dividends_entity_id": "sensor.pq_div",
+     "x": 16,
+     "y": 424,
+     "w": 380,
+     "h": 240,
+     "return_entity_id": "sensor.pq_ret",
+     "parqet_interval": "ytd",
+     "parqet_hide_amounts": true
+    },
+    {
+     "id": "ws_none",
+     "type": "parqet_portfolio",
+     "title": "No answer",
+     "entity_id": "sensor.pq_value_2",
+     "secondary_entity_id": "sensor.pq_gain",
+     "tertiary_entity_id": "sensor.pq_xirr",
+     "dividends_entity_id": "sensor.pq_div",
+     "x": 408,
+     "y": 424,
+     "w": 380,
+     "h": 240,
+     "return_entity_id": "sensor.pq_ret",
+     "parqet_interval": "1d"
+    }
+   ]
+  }
+ ],
+ "states": [
+  {
+   "entity_id": "sensor.pq_value",
+   "state": "52840.55",
+   "attributes": {
+    "unit_of_measurement": "EUR",
+    "friendly_name": "sensor.pq_value",
+    "interval": "max",
+    "holdings_count": 24,
+    "top_holdings": [
+     {
+      "name": "Alpha Utilities",
+      "value": 3170.43,
+      "weight": 6.0
+     },
+     {
+      "name": "Beta Global Dividend ETF",
+      "value": 2900.1,
+      "weight": 5.5
+     },
+     {
+      "name": "Gamma Telecom",
+      "value": 2536.35,
+      "weight": 4.8
+     },
+     {
+      "name": "iShares STOXX Global Select Dividend 100 UCITS ETF (DE) - EUR DIS",
+      "value": 2325.0,
+      "weight": 4.4
+     },
+     {
+      "name": "Epsilon ‘B’ Real Estate Trust",
+      "value": 2113.62,
+      "weight": 4.0
+     }
+    ],
+    "entry_id": "e1",
+    "portfolio_id": "p1"
+   }
+  },
+  {
+   "entity_id": "sensor.pq_gain",
+   "state": "8425.1",
+   "attributes": {
+    "unit_of_measurement": "EUR"
+   }
+  },
+  {
+   "entity_id": "sensor.pq_xirr",
+   "state": "9.8",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.pq_div",
+   "state": "1820.4",
+   "attributes": {
+    "unit_of_measurement": "EUR"
+   }
+  },
+  {
+   "entity_id": "sensor.pq_value_1y",
+   "state": "52840.55",
+   "attributes": {
+    "unit_of_measurement": "EUR",
+    "friendly_name": "sensor.pq_value_1y",
+    "interval": "1y",
+    "holdings_count": 24,
+    "top_holdings": [
+     {
+      "name": "Alpha Utilities",
+      "value": 3170.43,
+      "weight": 6.0
+     },
+     {
+      "name": "Beta Global Dividend ETF",
+      "value": 2900.1,
+      "weight": 5.5
+     },
+     {
+      "name": "Gamma Telecom",
+      "value": 2536.35,
+      "weight": 4.8
+     },
+     {
+      "name": "iShares STOXX Global Select Dividend 100 UCITS ETF (DE) - EUR DIS",
+      "value": 2325.0,
+      "weight": 4.4
+     },
+     {
+      "name": "Epsilon ‘B’ Real Estate Trust",
+      "value": 2113.62,
+      "weight": 4.0
+     }
+    ]
+   }
+  },
+  {
+   "entity_id": "sensor.pq_value_neg",
+   "state": "18400.2",
+   "attributes": {
+    "unit_of_measurement": "EUR",
+    "friendly_name": "sensor.pq_value_neg",
+    "interval": "max",
+    "holdings_count": 24
+   }
+  },
+  {
+   "entity_id": "sensor.pq_gain_neg",
+   "state": "-1210.75",
+   "attributes": {
+    "unit_of_measurement": "EUR"
+   }
+  },
+  {
+   "entity_id": "sensor.pq_xirr_neg",
+   "state": "-4.2",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.pq_ret",
+   "state": "27.72",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.pq_ret_neg",
+   "state": "-6.17",
+   "attributes": {
+    "unit_of_measurement": "%"
+   }
+  },
+  {
+   "entity_id": "sensor.pq_value_2",
+   "state": "52840.55",
+   "attributes": {
+    "unit_of_measurement": "EUR",
+    "interval": "max",
+    "entry_id": "e1",
+    "portfolio_id": "p2"
+   }
+  }
+ ],
+ "parqet_perf": [
+  {
+   "portfolio_id": "p1",
+   "interval": "1d",
+   "value_start": 52610.3,
+   "value_end": 52840.55,
+   "unrealized_gain": 230.2,
+   "unrealized_return": 0.44,
+   "realized_gain": -12.4,
+   "dividends": 211.2,
+   "xirr": 0.0,
+   "ttwror": 0.44,
+   "holdings": [
+    {
+     "name": "Alpha Utilities",
+     "value": 3170.43,
+     "weight": 6.0,
+     "gain": 50,
+     "ret": 2.1
+    },
+    {
+     "name": "Beta Global Dividend ETF",
+     "value": 2900.1,
+     "weight": 5.5,
+     "gain": -11,
+     "ret": -0.4
+    },
+    {
+     "name": "Gamma Telecom",
+     "value": 2536.35,
+     "weight": 4.8,
+     "gain": 9,
+     "ret": 0.7
+    },
+    {
+     "name": "Delta Consumer Holdings",
+     "value": 2325.0,
+     "weight": 4.4,
+     "gain": 3,
+     "ret": 0.1
+    }
+   ],
+   "points": [
+    52610,
+    52650,
+    52700,
+    52690,
+    52760,
+    52840
+   ]
+  },
+  {
+   "portfolio_id": "p1",
+   "interval": "1w",
+   "value_start": 51950.0,
+   "value_end": 52840.55,
+   "unrealized_gain": 890.5,
+   "unrealized_return": 1.72,
+   "realized_gain": -12.4,
+   "dividends": 211.2,
+   "xirr": 0.0,
+   "ttwror": 1.72,
+   "holdings": [
+    {
+     "name": "Alpha Utilities",
+     "value": 3170.43,
+     "weight": 6.0,
+     "gain": 50,
+     "ret": 2.1
+    },
+    {
+     "name": "Beta Global Dividend ETF",
+     "value": 2900.1,
+     "weight": 5.5,
+     "gain": -11,
+     "ret": -0.4
+    },
+    {
+     "name": "Gamma Telecom",
+     "value": 2536.35,
+     "weight": 4.8,
+     "gain": 9,
+     "ret": 0.7
+    },
+    {
+     "name": "Delta Consumer Holdings",
+     "value": 2325.0,
+     "weight": 4.4,
+     "gain": 3,
+     "ret": 0.1
+    }
+   ],
+   "points": [
+    51950,
+    52100,
+    52050,
+    52400,
+    52300,
+    52700,
+    52840
+   ]
+  },
+  {
+   "portfolio_id": "p1",
+   "interval": "1m",
+   "value_start": 50420.8,
+   "value_end": 52840.55,
+   "unrealized_gain": 2419.8,
+   "unrealized_return": 4.8,
+   "realized_gain": -12.4,
+   "dividends": 211.2,
+   "xirr": 0.0,
+   "ttwror": 4.8,
+   "holdings": [
+    {
+     "name": "Alpha Utilities",
+     "value": 3170.43,
+     "weight": 6.0,
+     "gain": 50,
+     "ret": 2.1
+    },
+    {
+     "name": "Beta Global Dividend ETF",
+     "value": 2900.1,
+     "weight": 5.5,
+     "gain": -11,
+     "ret": -0.4
+    },
+    {
+     "name": "Gamma Telecom",
+     "value": 2536.35,
+     "weight": 4.8,
+     "gain": 9,
+     "ret": 0.7
+    },
+    {
+     "name": "Delta Consumer Holdings",
+     "value": 2325.0,
+     "weight": 4.4,
+     "gain": 3,
+     "ret": 0.1
+    }
+   ],
+   "points": [
+    50420,
+    50600,
+    50500,
+    51000,
+    50900,
+    51500,
+    51400,
+    52100,
+    52000,
+    52840
+   ]
+  },
+  {
+   "portfolio_id": "p1",
+   "interval": "ytd",
+   "value_start": 44100.0,
+   "value_end": 52840.55,
+   "unrealized_gain": 8740.5,
+   "unrealized_return": 19.8,
+   "realized_gain": -12.4,
+   "dividends": 211.2,
+   "xirr": 0.0,
+   "ttwror": 19.8,
+   "holdings": [
+    {
+     "name": "Alpha Utilities",
+     "value": 3170.43,
+     "weight": 6.0,
+     "gain": 50,
+     "ret": 2.1
+    },
+    {
+     "name": "Beta Global Dividend ETF",
+     "value": 2900.1,
+     "weight": 5.5,
+     "gain": -11,
+     "ret": -0.4
+    },
+    {
+     "name": "Gamma Telecom",
+     "value": 2536.35,
+     "weight": 4.8,
+     "gain": 9,
+     "ret": 0.7
+    },
+    {
+     "name": "Delta Consumer Holdings",
+     "value": 2325.0,
+     "weight": 4.4,
+     "gain": 3,
+     "ret": 0.1
+    }
+   ],
+   "points": [
+    44100,
+    45000,
+    46500,
+    46000,
+    48000,
+    49500,
+    49000,
+    51000,
+    52840
+   ]
+  }
+ ]
+}

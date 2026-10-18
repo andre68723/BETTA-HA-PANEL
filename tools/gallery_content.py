@@ -401,7 +401,7 @@ def build_spec(entities):
                            "Size": "min 180x90"}),
             ],
         },
-    ] + bambu_pages(entities) + wallbox_pages(entities) + price_pages(entities)
+    ] + bambu_pages(entities) + wallbox_pages(entities) + price_pages(entities) + parqet_pages(entities)
 
 
 # The public example list of the simulator preview (a real panel reads it from the todo entity).
@@ -461,6 +461,36 @@ def price_pages(entities):
                  fields={"entity_id": price, "price_day_switch": True, "price_cheap_times": True}, caps=caps),
             dict(slot="price_forecast", type="price_forecast", title="Price forecast (small)", rect=(10, 330, 260, 170),
                  fields={"entity_id": price, "price_day_switch": True, "price_line": True}, caps=caps),
+        ],
+    }]
+
+
+def parqet_pages(entities):
+    parqet = entities.get("parqet")
+    if not parqet:
+        return []
+    caps = {"Domain": "sensors of the Parqet Companion integration: the total value sensor, and optionally its gain, return, XIRR and dividends sensors",
+            "Display": "the total value, the gain in the currency and the return in percent, XIRR and dividends, and the largest holdings as weight bars as far as the tile is tall enough",
+            "Options": "parqet_hide_amounts: show percentages only, no amounts; parqet_selector: tabs (Performance, Holdings) and interval chips (1D, 1W, 1M, YTD, MAX) to change the view by touch; parqet_view and parqet_interval: the start view and interval (MAX are the sensors' own figures)",
+            "Extras": "the tile names the interval; the intervals 1D to YTD are asked from the integration (the reply of a large portfolio can exceed what the panel receives), MAX are the sensors' own figures",
+            "Size": "min 240x150, max CBWxCBH"}
+    return [{
+        "page": "gallery_parqet",
+        "tiles": [
+            dict(slot="parqet_portfolio", type="parqet_portfolio", title="Portfolio", rect=(10, 10, 360, 330),
+                 fields=dict(parqet), caps=caps),
+            dict(slot="parqet_portfolio", type="parqet_portfolio", title="Portfolio (small)", rect=(390, 10, 260, 150),
+                 fields={"entity_id": parqet["entity_id"], "secondary_entity_id": parqet["secondary_entity_id"], "return_entity_id": parqet["return_entity_id"]}, caps=caps),
+            dict(slot="parqet_portfolio", type="parqet_portfolio", title="Portfolio (percent only)", rect=(390, 180, 300, 200),
+                 fields=dict(parqet, parqet_hide_amounts=True), caps=caps),
+        ],
+    }, {
+        "page": "gallery_parqet_selector",
+        "tiles": [
+            dict(slot="parqet_portfolio", type="parqet_portfolio", title="Portfolio (1 month)", rect=(10, 10, 380, 400),
+                 fields=dict(parqet, parqet_selector=True, parqet_interval="1m"), caps=caps),
+            dict(slot="parqet_portfolio", type="parqet_portfolio", title="Portfolio (holdings)", rect=(400, 10, 380, 400),
+                 fields=dict(parqet, parqet_selector=True, parqet_interval="1w", parqet_view="holdings"), caps=caps),
         ],
     }]
 
@@ -585,7 +615,7 @@ def collect_images(img_dir, spec, styles=STYLES):
 # How the library index groups the widgets: what the user wants to do. Every widget type is in exactly one group.
 WIDGET_GROUPS = [
     ("Show values", "Numbers, trends and states you want to read at a glance.",
-     ["sensor", "gauge", "graph", "binary_tile", "contact_tile"]),
+     ["sensor", "gauge", "graph", "binary_tile", "contact_tile", "parqet_portfolio"]),
     ("Control your home", "Switches, lights, heating, blinds and other things you operate by touch.",
      ["button", "slider", "light_tile", "heating_tile", "climate_tile", "cover_tile", "fan_tile", "lock_tile", "alarm_tile", "select_tile", "datetime_tile", "scene_tile"]),
     ("Rooms", "Everything about one room in a single card.", ["room_tile"]),
@@ -600,7 +630,7 @@ WIDGET_GROUPS = [
 # title ("Vertical", "Horizontal"), which said nothing about which widget it even was.
 ROW_DISPLAY_NAME = {
     "sensor": "Sensor", "gauge": "Gauge", "car_widget": "Car", "bambu_printer": "Bambu printer", "wallbox_evcc": "Wallbox", "graph": "Graph",
-    "solar_forecast": "Solar forecast", "price_forecast": "Price forecast", "weather_tile": "Weather (now)", "weather_3day": "Weather forecast",
+    "solar_forecast": "Solar forecast", "price_forecast": "Price forecast", "parqet_portfolio": "Parqet portfolio", "weather_tile": "Weather (now)", "weather_3day": "Weather forecast",
     "button": "Button", "scene_tile": "Scene", "select_tile": "Select", "lock_tile": "Lock", "alarm_tile": "Alarm", "datetime_tile": "Date/Time", "slider": "Slider", "cover_tile": "Cover",
     "light_tile": "Light", "fan_tile": "Fan", "climate_tile": "Climate", "heating_tile": "Heating",
     "media_player": "Media player", "sonos_favorites": "Sonos favorites", "contact_tile": "Contact",

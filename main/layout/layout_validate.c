@@ -438,6 +438,39 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         }
     }
 
+    if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "parqet_portfolio") == 0) {
+        /* Optional gain (secondary), XIRR (tertiary), dividends and return sensors, and the percentages-only option. */
+        const char *keys[] = {"secondary_entity_id", "tertiary_entity_id", "dividends_entity_id", "return_entity_id"};
+        for (size_t k = 0; k < sizeof(keys) / sizeof(keys[0]); k++) {
+            cJSON *item = cJSON_GetObjectItemCaseSensitive(widget, keys[k]);
+            if (cJSON_IsString(item) && item->valuestring != NULL && item->valuestring[0] != '\0' &&
+                (!is_valid_entity_id(item->valuestring) || !entity_in_domain(item->valuestring, "sensor"))) {
+                snprintf(msg, sizeof(msg), "widget %s: %s must be sensor.*", cJSON_IsString(id) ? id->valuestring : "?", keys[k]);
+                layout_validation_add(result, msg);
+            }
+        }
+        cJSON *hide = cJSON_GetObjectItemCaseSensitive(widget, "parqet_hide_amounts");
+        cJSON *selector = cJSON_GetObjectItemCaseSensitive(widget, "parqet_selector");
+        if ((hide != NULL && !cJSON_IsBool(hide)) || (selector != NULL && !cJSON_IsBool(selector))) {
+            snprintf(msg, sizeof(msg), "widget %s: parqet_hide_amounts and parqet_selector must be true or false", cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+        cJSON *view = cJSON_GetObjectItemCaseSensitive(widget, "parqet_view");
+        if (view != NULL && (!cJSON_IsString(view) || view->valuestring == NULL ||
+                             (strcmp(view->valuestring, "performance") != 0 && strcmp(view->valuestring, "holdings") != 0))) {
+            snprintf(msg, sizeof(msg), "widget %s: parqet_view must be performance or holdings", cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+        cJSON *interval = cJSON_GetObjectItemCaseSensitive(widget, "parqet_interval");
+        if (interval != NULL && (!cJSON_IsString(interval) || interval->valuestring == NULL ||
+                                 (strcmp(interval->valuestring, "1d") != 0 && strcmp(interval->valuestring, "1w") != 0 &&
+                                  strcmp(interval->valuestring, "1m") != 0 && strcmp(interval->valuestring, "ytd") != 0 &&
+                                  strcmp(interval->valuestring, "max") != 0))) {
+            snprintf(msg, sizeof(msg), "widget %s: parqet_interval must be 1d, 1w, 1m, ytd or max", cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+    }
+
     if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "heating_tile") == 0) {
         if (cJSON_IsString(secondary_entity_id) && secondary_entity_id->valuestring != NULL &&
             secondary_entity_id->valuestring[0] != '\0') {

@@ -2,7 +2,7 @@
 
 # Widget library
 
-32 widgets, grouped by what you want to do. Each guide shows its setup, a preview, the entities it works with, its touch interactions and its size limits.
+33 widgets, grouped by what you want to do. Each guide shows its setup, a preview, the entities it works with, its touch interactions and its size limits.
 
 Start with [your first light](../getting-started.md#5-control-your-first-light), then add more widgets in the [web editor](../editor.md). Whole pages (room overview, energy dashboard) are in [Pages and layouts](../pages.md). For a different look, use [Appearance](../appearance.md).
 
@@ -43,6 +43,12 @@ Numbers, trends and states you want to read at a glance.
     **[Contact](contact_tile.md)**
 
     Show whether a door or window is open, with optional Recorder history on tap.
+
+-   [![Parqet portfolio](../img/gallery/portfolio_glow.png)](parqet_portfolio.md)
+
+    **[Parqet portfolio](parqet_portfolio.md)**
+
+    Show a Parqet portfolio: total value, gain, XIRR, dividends and the largest holdings.
 
 </div>
 

@@ -64,6 +64,37 @@ int main(void)
     ha_layout_entities_collect(root, &set);
     CHECK(set.count == 1 && ha_layout_entities_contains(ids, set.count, "sensor.epex_spot_data_market_price"));
     cJSON_Delete(root);
+
+    /* the Parqet portfolio tile: a sensor, optional gain (secondary), XIRR (tertiary) and dividends sensors, the percentages-only option */
+    CHECK(widget_type_known("parqet_portfolio") && widget_type_supports_name("parqet_portfolio"));
+    const widget_size_limits_t pq = widget_type_size_limits("parqet_portfolio");
+    CHECK(pq.min_w == 240 && pq.min_h == 150);
+    const char *pq_head = "{\"version\":1,\"pages\":[{\"id\":\"p\",\"title\":\"P\",\"widgets\":[{\"id\":\"w\",\"type\":\"parqet_portfolio\",\"title\":\"P\",\"entity_id\":\"sensor.value\",";
+    const char *pq_good[] = {"\"secondary_entity_id\":\"sensor.gain\",", "\"tertiary_entity_id\":\"sensor.xirr\",", "\"dividends_entity_id\":\"sensor.dividends\",", "\"return_entity_id\":\"sensor.return\",",
+                             "\"parqet_selector\":true,", "\"parqet_view\":\"holdings\",", "\"parqet_interval\":\"ytd\",", "\"parqet_interval\":\"max\",",
+                             "\"parqet_hide_amounts\":true,", "\"secondary_entity_id\":\"\",", ""};
+    const char *pq_bad[] = {"\"secondary_entity_id\":\"light.kitchen\",", "\"tertiary_entity_id\":\"switch.a\",", "\"dividends_entity_id\":\"not an id\",",
+                            "\"dividends_entity_id\":\"sensor.A\",", "\"return_entity_id\":\"climate.a\",", "\"parqet_hide_amounts\":\"yes\",", "\"parqet_hide_amounts\":1,", "\"parqet_selector\":\"on\",",
+                            "\"parqet_view\":\"table\",", "\"parqet_view\":1,", "\"parqet_interval\":\"1y\",", "\"parqet_interval\":5,"};
+    for (size_t i = 0; i < sizeof(pq_good) / sizeof(pq_good[0]); i++) {
+        snprintf(json, sizeof(json), "%s%s%s", pq_head, pq_good[i], tail);
+        CHECK(layout_validate_json(json, &result));
+    }
+    for (size_t i = 0; i < sizeof(pq_bad) / sizeof(pq_bad[0]); i++) {
+        snprintf(json, sizeof(json), "%s%s%s", pq_head, pq_bad[i], tail);
+        CHECK(!layout_validate_json(json, &result));
+    }
+    snprintf(json, sizeof(json), "{\"version\":1,\"pages\":[{\"id\":\"p\",\"title\":\"P\",\"widgets\":[{\"id\":\"w\",\"type\":\"parqet_portfolio\",\"title\":\"P\",\"entity_id\":\"light.kitchen\",%s", tail);
+    CHECK(!layout_validate_json(json, &result));      /* the total value is a sensor */
+    snprintf(json, sizeof(json), "%s\"secondary_entity_id\":\"sensor.gain\",\"tertiary_entity_id\":\"sensor.xirr\",\"dividends_entity_id\":\"sensor.dividends\",\"return_entity_id\":\"sensor.return\",%s", pq_head, tail);
+    root = cJSON_Parse(json);
+    CHECK(root != NULL);
+    memset(ids, 0, sizeof(ids));
+    set = (ha_layout_entity_set_t){.ids = ids, .capacity = 8};
+    ha_layout_entities_collect(root, &set);
+    CHECK(set.count == 5 && ha_layout_entities_contains(ids, set.count, "sensor.return") && ha_layout_entities_contains(ids, set.count, "sensor.value") && ha_layout_entities_contains(ids, set.count, "sensor.gain") &&
+          ha_layout_entities_contains(ids, set.count, "sensor.xirr") && ha_layout_entities_contains(ids, set.count, "sensor.dividends"));
+    cJSON_Delete(root);
     printf("Price layout: %u checks passed\n", checks);
     return 0;
 }
