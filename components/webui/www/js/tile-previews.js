@@ -147,6 +147,130 @@ function previewEntityValue(entityId, sample, format = (value) => value) {
   return escapeHtml(`${known ? format(String(raw)) : "--"}${unit ? ` ${unit}` : ""}`);
 }
 
+// A sensor state as the panel shows it by device class (w_sensor.c, ha_sensor_value.c, ha_timestamp_format.c):
+// timestamps in local time or relative, dates, durations, readable enum values, binary sensor words, the unit
+// choice and the decimal comma of the language. Null before a first state, so previewEntityValue shows "--".
+const PREVIEW_COMMA_LANGUAGES = ["de", "fr", "it", "es", "nl", "pt", "pl", "cs", "da", "sv", "nb", "fi", "ru", "tr"];
+const PREVIEW_UNIT_LADDERS = [["W", "kW", "MW", "GW"], ["Wh", "kWh", "MWh", "GWh"], ["VA", "kVA", "MVA", "GVA"],
+  ["var", "kvar", "Mvar", "Gvar"]];
+const PREVIEW_CURRENCY_SYMBOLS = { EUR: "€", USD: "$", GBP: "£", JPY: "¥" };
+
+function previewLocalizeNumber(text) {
+  const language = String(editor.i18nLanguage || "en").slice(0, 2);
+  return PREVIEW_COMMA_LANGUAGES.includes(language) && /^[+-]?\d*\.?\d*$/.test(text) && /\d/.test(text)
+    ? text.replace(".", ",") : text;
+}
+
+function previewSensorNumber(raw, unit, dc, mode) {
+  let number = raw;
+  const numeric = /^[+-]?\d*\.?\d*$/.test(raw) && /\d/.test(raw);
+  if (numeric && mode === "auto") {
+    const ladder = PREVIEW_UNIT_LADDERS.find((units) => units.includes(unit));
+    let value = Number(raw);
+    let index = ladder ? ladder.indexOf(unit) : -1;
+    const start = index;
+    while (ladder && Math.abs(value) >= 1000 && index < 3) { value /= 1000; index += 1; }
+    if (index !== start) {
+      const a = Math.abs(value);
+      number = value.toFixed(a < 10 ? 2 : a < 100 ? 1 : 0);
+      unit = ladder[index];
+    }
+  }
+  // A currency code rounds like Home Assistant's frontend; the panel does so only without a display precision.
+  if (numeric && dc === "monetary" && /^[A-Z]{3}$/.test(unit)) number = Number(raw).toFixed(unit === "JPY" ? 0 : 2);
+  if (numeric) number = previewLocalizeNumber(number);
+  if (mode === "hide" || !unit) return number;
+  if (mode === "degree" && unit.startsWith("°")) return `${number}°`;
+  if (mode !== "code" && dc === "monetary") return `${number} ${PREVIEW_CURRENCY_SYMBOLS[unit] || unit}`;
+  return `${number} ${unit}`;
+}
+
+function previewSensorDuration(raw, unit, style) {
+  const factor = { s: 1, ms: 0.001, min: 60, h: 3600, d: 86400 }[unit];
+  if (!factor || !/^[+-]?\d*\.?\d+$/.test(raw)) return null;
+  const total = Math.round(Number(raw) * factor);
+  const sign = total < 0 ? "-" : "";
+  const s = Math.abs(total);
+  const [d, h, m, sec] = [Math.floor(s / 86400), Math.floor(s % 86400 / 3600), Math.floor(s % 3600 / 60), s % 60];
+  const pad = (v) => String(v).padStart(2, "0");
+  if (style === "clock") return `${sign}${Math.floor(s / 3600)}:${pad(m)}:${pad(sec)}`;
+  const word = (key) => t(`preview.sensor.dur_${key}`);
+  const pair = (a, ka, b, kb) => `${sign}${a} ${word(ka)}${b ? ` ${b} ${word(kb)}` : ""}`;
+  if (s < 60) return `${sign}${sec} ${word("s")}`;
+  if (s < 3600) return pair(m, "min", sec, "s");
+  if (s < 86400) return pair(h, "h", m, "min");
+  return pair(d, "d", h, "h");
+}
+
+// The Binary tile's word for the state of a binary sensor of this class (binary_kind_text() in w_binary.c).
+function previewBinaryStateText(dc, on) {
+  const pairs = [
+    [["presence", "occupancy"], "home", "away"], [["motion", "moving", "vibration"], "motion", "clear"],
+    [["door", "window", "opening", "garage_door"], "open", "closed"], [["lock"], "unlocked", "locked"],
+    [["moisture"], "wet", "dry"],
+    [["smoke", "gas", "carbon_monoxide", "safety", "problem", "tamper", "heat"], "alarm", "ok"],
+    [["battery"], "low", "ok"], [["connectivity"], "connected", "disconnected"],
+  ];
+  const pair = pairs.find(([classes]) => classes.includes(dc));
+  return t(`preview.binary_state.${pair ? (on ? pair[1] : pair[2]) : (on ? "on" : "off")}`);
+}
+
+function previewSensorTimestamp(raw, style) {
+  const match = raw.match(/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/);
+  const instant = match ? new Date(raw.replace(" ", "T")) : null;
+  if (!instant || Number.isNaN(instant.getTime())) return null;
+  if (style === "relative") {
+    const diff = Math.round((instant.getTime() - Date.now()) / 1000);
+    const span = Math.abs(diff);
+    const future = diff > 0;
+    const [unit, n] = span < 60 ? ["", 0] : span < 3600 ? ["min", Math.floor(span / 60)]
+      : span < 48 * 3600 ? ["hour", Math.floor(span / 3600)] : ["day", Math.floor(span / 86400)];
+    const key = !unit ? (future ? "now" : "just_now") : `${future ? "in" : "ago"}_${unit}${n === 1 ? "_one" : ""}`;
+    return t(`preview.sensor.${key}`, { n });
+  }
+  const pad = (v) => String(v).padStart(2, "0");
+  const date = previewDateTimeValue(`${instant.getFullYear()}-${pad(instant.getMonth() + 1)}-${pad(instant.getDate())}`);
+  const time = `${pad(instant.getHours())}:${pad(instant.getMinutes())}`;
+  return style === "date" ? date : style === "time" ? time : `${date} ${time}`;
+}
+
+function previewSensorDate(raw, style) {
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  if (style !== "relative") return previewDateTimeValue(raw);
+  const today = new Date();
+  const days = Math.round((Date.UTC(+match[1], +match[2] - 1, +match[3]) -
+    Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000);
+  if (days === 0) return t("preview.sensor.today");
+  if (days === 1) return t("preview.sensor.tomorrow");
+  if (days === -1) return t("preview.sensor.yesterday");
+  return t(days > 0 ? "preview.sensor.in_day" : "preview.sensor.ago_day", { n: Math.abs(days) });
+}
+
+function previewSensorValue(widget) {
+  const id = widget.entity_id;
+  if (!id) return null;
+  const info = editor.entities.find((entity) => entity?.id === id) || editor.stateMeta?.get(id) || {};
+  const raw = String(editor.states.get(id) ?? "");
+  if (!raw || ["unavailable", "unknown"].includes(raw)) return null;
+  const dc = info.device_class || "";
+  const unit = info.unit || "";
+  const format = widget.sensor_format || "";
+  const timestampStyles = ["datetime", "date", "time", "relative"];
+  let text = null;
+  if (dc === "timestamp" || (!dc && timestampStyles.includes(format))) {
+    text = previewSensorTimestamp(raw, timestampStyles.includes(format) ? format : "datetime");
+  }
+  if (text === null && dc === "date") text = previewSensorDate(raw, format);
+  if (text === null && id.startsWith("binary_sensor.") && (raw === "on" || raw === "off")) text = previewBinaryStateText(dc, raw === "on");
+  if (text === null && dc === "duration" && format !== "raw") text = previewSensorDuration(raw, unit, format);
+  if (text === null && dc === "enum" && /^[a-z0-9_]*[a-z][a-z0-9_]*$/.test(raw)) {
+    text = raw.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  }
+  if (text === null) text = previewSensorNumber(raw, unit, dc, widget.sensor_unit || "");
+  return escapeHtml(text);
+}
+
 function previewDateTimeValue(raw) {
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$/.test(raw)) {
     const instant = new Date(raw);
@@ -571,7 +695,8 @@ function tilePreviewMarkup(widget) {
       // The panel shows the value in its largest font when it is all the tile shows.
       const showLabel = widgetShowsName(widget);
       const valueOnly = !showLabel && widget.sensor_show_age === false;
-      return `<div class="tp tp-sensor${valueOnly ? " tp-sensor-value-only" : ""}">${showLabel ? `${name('small', '')}` : ""}<b>${previewEntityValue(widget.entity_id, "23.4 \u00B0C")}</b></div>${handle}`;
+      const value = previewSensorValue(widget) ?? previewEntityValue(widget.entity_id, "23.4 \u00B0C");
+      return `<div class="tp tp-sensor${valueOnly ? " tp-sensor-value-only" : ""}">${showLabel ? `${name('small', '')}` : ""}<b>${value}</b></div>${handle}`;
     }
     case "graph": {
       // Like the panel: the name and the current value on top, the chart below; the window sits after the value.

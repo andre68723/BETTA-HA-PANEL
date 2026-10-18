@@ -223,7 +223,7 @@ font and icon changes apply across the visible widgets.
 | [Room card](widgets/room_tile.md) | <span class="release-status release-status--new">New</span> | HA area status/actions, plus an optional humidity, cover or media field. |
 | [Scene](widgets/scene_tile.md) | <span class="release-status release-status--new">New</span> | Dedicated tile for scenes, scripts and momentary HA actions. |
 | [Select](widgets/select_tile.md) | <span class="release-status release-status--new">New</span> | Choose a select/input-select option through its popup. |
-| [Sensor](widgets/sensor.md) | <span class="release-status release-status--changed">Changed</span> | HA display precision, optional name/age and Recorder history. |
+| [Sensor](widgets/sensor.md) | <span class="release-status release-status--changed">Changed</span> | HA display precision, optional name/age and Recorder history. The value follows the device class: timestamps and dates in local time or relative, durations as text or clock, units hidden, as ° or scaled to kW/kWh, currency symbols with two decimals, readable enum values, binary sensor state words and the decimal comma of the panel language. |
 | [Slider](widgets/slider.md) | <span class="release-status release-status--changed">Changed</span> | Improved fitting, controls and wider Matte presentation. |
 | [Price forecast](widgets/price_forecast.md) | <span class="release-status release-status--new">New</span> | A day of electricity prices as bars (hourly or 15-minute) from the list attribute of a price sensor (EPEX Spot directly; Nord Pool and Tibber through a helper that stores the list as `data`): the price now, Today/Tomorrow, the day's minimum and maximum and the next cheap window. Raw EUR/cent units are converted before display; missing intervals stay gaps and all upcoming cheap windows remain available. Design inspired by the community's price timeline cards. |
 | [Parqet portfolio](widgets/parqet_portfolio.md) | <span class="release-status release-status--new">New</span> | A Parqet portfolio from the Parqet Companion sensors: total value, gain, the unrealised return in percent (from the integration's own sensor), XIRR, dividends and the largest holdings as weight bars; the tile names the interval the integration is set to. An option hides amounts and shows percentages only. Tabs (Performance, Holdings), interval buttons (1D, 1W, 1M, YTD, MAX) and, in Holdings, the choice Largest, Top 5 or Flop 5 can be shown on the tile; the intervals other than MAX are asked from the integration. |
@@ -417,6 +417,8 @@ style; text and symbols use the same fonts throughout. See
 - **Finding and adding widgets:** one searchable dialog combines widget types
   with compatible Home Assistant entities. The page menu groups blank, room,
   house and energy pages; an empty page offers immediate add actions.
+  Search results and the entity picker name a sensor's device class; the inspector shows it
+  with the unit below the main entity of every tile bound to a sensor or binary sensor.
 
 - **Editing layouts:** the existing drag/resize editor gains a page inspector,
   room import, keyboard controls, reorder, widget duplication and list search

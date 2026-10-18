@@ -12,6 +12,33 @@ Show an entity's current value and unit, with optional name, age and Recorder hi
 
 Choose whether to show the name and last-update age. Enable history only when Home Assistant Recorder retains this entity.
 
+The inspector names the entity's device class and unit below the entity ("Device class: none" when Home Assistant gives none). The value follows the device class; the inspector offers only the options of the entity's class, and the first choice is the default.
+
+### Device classes
+
+| Device class | Option | Choices | Example |
+| --- | --- | --- | --- |
+| Any numeric with a unit | Unit | Show, Hide | `48 %`, `48` |
+| Temperature, temperature difference | Unit | °C, °, Hide | `21,5 °C`, `21,5°`, `21,5` |
+| Power, apparent power, reactive power, energy, stored energy | Unit | As in Home Assistant, Automatic, Hide | `2350 W`, `2,35 kW` |
+| Duration | Format | Text, Clock, As in Home Assistant | `1 h 2 min`, `1:02:05`, `3725 s` |
+| Timestamp | Time format | Date and time, Date, Time, Relative | `21.10.2026 07:56`, `21.10.2026`, `07:56`, `in 9 hours` |
+| Date | Format | Date, Relative | `21.10.2026`, `tomorrow` |
+| Monetary | Currency | Symbol, Code, Hide | `12,34 €`, `12,34 EUR` |
+
+Without an option:
+
+| Device class | Shown as | Example |
+| --- | --- | --- |
+| Any numeric | Decimal separator of the panel language | `21,5` (German), `21.5` (English) |
+| Monetary in a currency | Two decimals unless Home Assistant sets a display precision | `0.9682` → `0,97 €` |
+| Enum | Readable text | `no_risk` → `No risk` |
+| Binary sensor | State text of its class, as on the Binary tile | `on` → `Open` (door) |
+
+**Automatic** switches to kW, kWh or MWh from 1000 of the smaller unit. A duration as text drops the seconds from an hour and the minutes from a day (`2 d 3 h`). Timestamps are shown in the panel's local time; the date follows the panel language like the Date/Time tile. Relative needs the synchronised clock and otherwise shows the date (and time).
+
+Units Home Assistant can convert (power, energy, duration, temperature, distance, pressure, speed) are set per entity in Home Assistant: *Settings → Entities → Unit of measurement*.
+
 ## Preview
 
 <div class="widget-previews">

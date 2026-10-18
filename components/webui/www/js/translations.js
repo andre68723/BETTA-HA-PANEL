@@ -285,6 +285,7 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("fWeatherShowPrecipLabel", "layout.inspector.weather_show_precip");
   setTextById("fShowNameLabel", "layout.inspector.show_name");
   setTextById("fSensorShowAgeLabel", "layout.inspector.sensor_show_age");
+  updateSensorEntityInfo(); // the format and unit choices follow the device class and carry their own texts
   setTextById("fSolarForecastBarOrientationLabel", "layout.inspector.solar_bar_orientation");
   setTextById("fGaugeStyleLabel", "layout.inspector.gauge_style");
   for (const opt of el.fGaugeStyle?.options || []) opt.textContent = t(`layout.inspector.gauge_style_${opt.value}`);

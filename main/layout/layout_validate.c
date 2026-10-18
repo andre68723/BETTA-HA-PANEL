@@ -3,6 +3,7 @@
  * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ha/ha_alarm_state.h"
+#include "ha/ha_sensor_value.h"
 #include "layout/layout_validate.h"
 
 #include "layout/bambu_printer_slots.h"
@@ -938,6 +939,21 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         }
         if (sensor_show_age != NULL && !cJSON_IsBool(sensor_show_age)) {
             snprintf(msg, sizeof(msg), "widget %s: sensor_show_age must be true or false",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+        /* The device class decides which values the editor offers; any of them is valid for any sensor. */
+        cJSON *format = cJSON_GetObjectItemCaseSensitive(widget, "sensor_format");
+        if (format != NULL && (!cJSON_IsString(format) || !ha_sv_format_valid(format->valuestring))) {
+            snprintf(msg, sizeof(msg), "widget %s: sensor_format must be datetime, date, time, relative, text, clock or raw",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+        cJSON *unit = cJSON_GetObjectItemCaseSensitive(widget, "sensor_unit");
+        ha_sv_unit_t unit_mode;
+        if (unit != NULL && (!cJSON_IsString(unit) || unit->valuestring == NULL || unit->valuestring[0] == '\0' ||
+                             !ha_sv_unit_from_string(unit->valuestring, &unit_mode))) {
+            snprintf(msg, sizeof(msg), "widget %s: sensor_unit must be hide, degree, auto or code",
                 cJSON_IsString(id) ? id->valuestring : "?");
             layout_validation_add(result, msg);
         }

@@ -165,7 +165,8 @@ function refreshInspectorLayout() {
   const ui = inspectorLayout, widget = selectedWidget();
   if (ui.page !== editor.selectedPageId) {
     ui.page = editor.selectedPageId;
-    for (const group of [ui.navigation, ui.pageBattery, ui.meters]) group.open = false;
+    ui.navigation.open = true;
+    for (const group of [ui.pageBattery, ui.meters]) group.open = false;
     ui.root.closest("aside").scrollTop = 0;
   }
   ui.navigation.querySelector("summary").textContent = t("layout.inspector.navigation");

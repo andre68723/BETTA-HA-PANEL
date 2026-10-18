@@ -1385,6 +1385,7 @@ function renderInspector() {
   if (el.fSensorShowAge) {
     el.fSensorShowAge.checked = widget.type !== "sensor" || widget.sensor_show_age !== false;
   }
+  updateSensorEntityInfo(widget);
   if (el.gaugeOptions) {
     el.gaugeOptions.classList.toggle("hidden", !isGauge);
   }
@@ -2379,6 +2380,25 @@ function applyInspector(options = {}) {
   } else {
     delete widget.sensor_show_age; // default: shown
   }
+  if (widgetType !== "sensor") {
+    delete widget.sensor_format;
+    delete widget.sensor_unit;
+  } else {
+    // A choice the device class does not offer (hidden, or the list of another class still shown) keeps the saved
+    // value for when such a sensor is chosen again; the first choice is the default and is not saved.
+    const format = sensorFormatChoices(widget, nextEntityId);
+    const formatValue = el.fSensorFormat?.value || "";
+    if (format && format.values.includes(formatValue)) {
+      if (formatValue === format.values[0]) delete widget.sensor_format;
+      else widget.sensor_format = formatValue;
+    }
+    const unit = sensorUnitChoices(widget, nextEntityId);
+    const unitValue = el.fSensorUnit?.value ?? "";
+    if (unit && unit.values.includes(unitValue)) {
+      if (!unitValue) delete widget.sensor_unit;
+      else widget.sensor_unit = unitValue;
+    }
+  }
   if (secondaryConfig.enabled) {
     const typedSecondaryEntityId = el.fSecondaryEntity.value.trim();
     const defaultSecondaryEntityId = widgetType === "sonos_favorites"
@@ -2547,10 +2567,128 @@ function applyInspector(options = {}) {
 }
 
 function autoApplyInspector(options = {}) {
-  return applyInspector({
+  const result = applyInspector({
     refreshInspector: false,
     ...options,
   });
+  updateSensorEntityInfo();
+  return result;
+}
+
+// A sensor or binary sensor names its device class (and unit) below the main entity: the tiles choose icons, state
+// texts, filters and the Sensor tile's time format from it. The Sensor tile offers the time format for a timestamp
+// sensor (device_class timestamp, or a format saved before the entity list was loaded).
+function sensorEntityInfo(entityId) {
+  if (!entityId) return {};
+  return editor.entities.find((entity) => entity?.id === entityId) || editor.stateMeta?.get(entityId) || {};
+}
+
+function entityHasDeviceClass(entityId) {
+  return /^(sensor|binary_sensor)\./.test(entityId || "");
+}
+
+// A binary sensor's class can mean something else than a sensor's of the same name (power: on/off, not watts).
+function deviceClassLabel(deviceClass, entityId = "") {
+  if (!deviceClass) return "";
+  const fallback = t(`device_class.${deviceClass}`, {}, deviceClass);
+  return String(entityId).startsWith("binary_sensor.") ? t(`device_class.binary.${deviceClass}`, {}, fallback) : fallback;
+}
+
+// "Device class: Temperature \u00B7 Unit: \u00B0C"; "none" only for an entity Home Assistant listed, so a list that is not
+// loaded yet shows nothing rather than a wrong "none".
+function entityClassText(entityId) {
+  if (!entityHasDeviceClass(entityId)) return "";
+  const listed = editor.entities.find((entity) => entity?.id === entityId);
+  const info = listed || editor.stateMeta?.get(entityId);
+  if (!info) return "";
+  const label = deviceClassLabel(info.device_class || "", entityId);
+  if (!label && !listed) return "";
+  const parts = [t("inspector.device_class", { value: label || t("inspector.device_class_none") })];
+  if (info.unit) parts.push(t("inspector.unit", { value: info.unit }));
+  return parts.join(" \u00B7 ");
+}
+
+// The Sensor tile's sensor_format and sensor_unit choices by device class (ha_sensor_value.h, w_sensor.c); the first
+// value is the default. Without a known class a saved value names its class, so it stays editable before the entity
+// list has loaded.
+const SENSOR_FORMAT_CLASSES = {
+  timestamp: { label: "sensor_time_format", values: ["datetime", "date", "time", "relative"] },
+  duration: { label: "sensor_format", values: ["text", "clock", "raw"] },
+  date: { label: "sensor_format", values: ["date", "relative"] },
+};
+const SENSOR_UNIT_CLASSES = {
+  temperature: { label: "sensor_unit", values: ["", "degree", "hide"] }, // the default reads as the unit itself
+  power: { label: "sensor_unit", values: ["", "auto", "hide"], defaultText: "ha" },
+  monetary: { label: "sensor_currency", values: ["", "code", "hide"], defaultText: "symbol" },
+  plain: { label: "sensor_unit", values: ["", "hide"], defaultText: "show" },
+};
+const SENSOR_UNIT_CLASS_OF = {
+  temperature: "temperature", temperature_delta: "temperature", power: "power", apparent_power: "power",
+  reactive_power: "power", energy: "power", energy_storage: "power", monetary: "monetary",
+};
+const SENSOR_NO_UNIT_CHOICE = ["timestamp", "date", "duration", "enum"];
+
+function sensorFormatChoices(widget, entityId) {
+  if ((el.fType?.value || widget?.type) !== "sensor" || !entityId.startsWith("sensor.")) return null;
+  const dc = sensorEntityInfo(entityId).device_class || "";
+  if (SENSOR_FORMAT_CLASSES[dc]) return SENSOR_FORMAT_CLASSES[dc];
+  const saved = widget?.sensor_format;
+  if (dc || !saved) return null;
+  return ["text", "clock", "raw"].includes(saved) ? SENSOR_FORMAT_CLASSES.duration : SENSOR_FORMAT_CLASSES.timestamp;
+}
+
+function sensorUnitChoices(widget, entityId) {
+  if ((el.fType?.value || widget?.type) !== "sensor" || !entityId.startsWith("sensor.")) return null;
+  const info = sensorEntityInfo(entityId);
+  const dc = info.device_class || "";
+  if (SENSOR_UNIT_CLASS_OF[dc]) return SENSOR_UNIT_CLASSES[SENSOR_UNIT_CLASS_OF[dc]];
+  if (info.unit && !SENSOR_NO_UNIT_CHOICE.includes(dc)) return SENSOR_UNIT_CLASSES.plain;
+  const saved = widget?.sensor_unit;
+  if (dc || !saved) return null;
+  return SENSOR_UNIT_CLASSES[{ degree: "temperature", auto: "power", code: "monetary" }[saved] || "plain"];
+}
+
+function sensorChoiceText(choices, kind, value, unit) {
+  if (kind !== "unit") return t(`layout.option.sensor_format.${value}`);
+  if (value) return t(`layout.option.sensor_unit.${value}`);
+  return choices.defaultText || !unit ? t(`layout.option.sensor_unit.${choices.defaultText || "show"}`) : unit;
+}
+
+// Fills a select with the class's choices (only when they change, so an open list is not rebuilt) and selects the
+// saved value, or the default when the class does not offer it.
+function fillSensorChoice(select, wrap, labelEl, choices, kind, saved, unit) {
+  wrap?.classList.toggle("hidden", !choices);
+  if (!choices || !select) return;
+  if (labelEl) labelEl.textContent = t(`layout.inspector.${choices.label}`);
+  const texts = choices.values.map((value) => sensorChoiceText(choices, kind, value, unit));
+  const key = `${choices.values.join("|")}#${texts.join("|")}`;
+  if (select.dataset?.choices !== key) {
+    select.innerHTML = choices.values.map((value, i) => `<option value="${value}">${escapeHtml(texts[i])}</option>`).join("");
+    if (select.dataset) select.dataset.choices = key;
+  }
+  select.value = choices.values.includes(saved || "") ? (saved || "") : choices.values[0];
+}
+
+function sensorTimeFormatShown(widget, entityId) {
+  return sensorFormatChoices(widget, entityId) === SENSOR_FORMAT_CLASSES.timestamp;
+}
+
+function updateSensorEntityInfo(widget = selectedWidget()) {
+  const type = el.fType?.value || widget?.type;
+  const sensor = type === "sensor";
+  const entityId = el.fEntity?.value.trim() || "";
+  const text = type === "empty_tile" || type === "wallbox_evcc" ? "" : entityClassText(entityId);
+  if (el.fEntityClass) {
+    el.fEntityClass.textContent = text;
+    el.fEntityClass.classList.toggle("hidden", !text);
+  }
+  const format = sensor ? sensorFormatChoices(widget, entityId) : null;
+  const unit = sensor ? sensorUnitChoices(widget, entityId) : null;
+  const shownWidget = sensor && widget?.type === "sensor" ? widget : {};
+  fillSensorChoice(el.fSensorFormat, el.fSensorFormatWrap, el.fSensorFormatLabel, format, "format",
+    format ? shownWidget.sensor_format || format.values[0] : "", "");
+  fillSensorChoice(el.fSensorUnit, el.fSensorUnitWrap, el.fSensorUnitLabel, unit, "unit",
+    shownWidget.sensor_unit || "", sensorEntityInfo(entityId).unit || "");
 }
 
 // The bar-look choice (smooth/segmented) only means anything for the linear gauge style; the

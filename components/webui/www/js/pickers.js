@@ -129,6 +129,12 @@ function normalizeEntityPickerItems(items, domain) {
     }));
 }
 
+// Sensors of one device are often named alike (battery, temperature, humidity): the class tells them apart.
+function entityIdWithClass(item) {
+  const label = entityHasDeviceClass(item.id) ? deviceClassLabel(item.device_class, item.id) : "";
+  return label ? `${item.id} · ${label}` : item.id;
+}
+
 function entityPickerRoomLabel(item) {
   return item.room || t("entity_picker.unassigned_room");
 }
@@ -401,7 +407,7 @@ function renderLightEntityPicker(data = {}) {
       button.title = item.id;
       button.innerHTML = `<strong></strong><span></span>`;
       button.querySelector("strong").textContent = item.name || item.id;
-      button.querySelector("span").textContent = item.id;
+      button.querySelector("span").textContent = entityIdWithClass(item);
       button.onclick = () => {
         if (editor.lightPicker.inspectorTarget?.input) {
           if (!assignInspectorEntity(editor.lightPicker.inspectorTarget, item.id)) return;
@@ -565,7 +571,7 @@ function entityFirstRow(item) {
   const name = document.createElement("strong");
   name.textContent = item.name || item.id;
   const id = document.createElement("span");
-  id.textContent = item.id;
+  id.textContent = entityIdWithClass(item);
   text.append(name, id);
   row.appendChild(text);
   const chips = document.createElement("div");

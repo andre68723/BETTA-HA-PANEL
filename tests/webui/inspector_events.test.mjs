@@ -242,6 +242,113 @@ test("portfolio view and interval: choose, save, reload and return to the defaul
   assert.equal(run("savedLayout.pages[0].widgets[0].parqet_interval"), undefined);
 });
 
+test("sensor format and unit: offered by device class, saved, kept while hidden and reset to the default", async () => {
+  const run = setupInspector("sensor", "sensor.sun_next_rising");
+  run("populateMovePageOptions = renderEntityOptions = () => {}");
+  run(`editor.entities = [{ id: "sensor.sun_next_rising", device_class: "timestamp", unit: "" },
+    { id: "sensor.temperature", device_class: "temperature", unit: "°C" },
+    { id: "sensor.runtime", device_class: "duration", unit: "s" },
+    { id: "sensor.power", device_class: "power", unit: "W" },
+    { id: "sensor.cost", device_class: "monetary", unit: "EUR" },
+    { id: "sensor.mode", device_class: "enum", unit: "" }]; renderInspector()`);
+  assert.equal(run("sensorTimeFormatShown(selectedWidget(), el.fEntity.value)"), true);
+  assert.equal(run("el.fEntityClass.textContent"), "Device class: Timestamp");
+  assert.equal(run("el.fSensorFormatLabel.textContent"), "Time format");
+  assert.equal(run("sensorUnitChoices(selectedWidget(), el.fEntity.value)"), null);
+  run('el.fSensorFormat.value = "relative"; el.fSensorFormat.dispatch("change")');
+  assert.equal(run("selectedWidget().sensor_format"), "relative");
+  await run("el.saveBtn.onclick()");
+  assert.equal(run("savedLayout.pages[0].widgets[0].sensor_format"), "relative");
+  run("editor.layout = savedLayout; renderInspector()");
+  assert.equal(run("el.fSensorFormat.value"), "relative");
+
+  // A temperature sensor: no format, a unit choice whose default reads as the unit; the saved format stays.
+  run('el.fEntity.value = "sensor.temperature"; el.fEntity.onchange()');
+  assert.equal(run("el.fEntityClass.textContent"), "Device class: Temperature · Unit: °C");
+  assert.equal(run("sensorFormatChoices(selectedWidget(), el.fEntity.value)"), null);
+  assert.equal(run("JSON.stringify(sensorUnitChoices(selectedWidget(), el.fEntity.value).values)"), JSON.stringify(["", "degree", "hide"]));
+  assert.match(run("el.fSensorUnit.innerHTML"), />°C</);
+  run('el.fSensorUnit.value = "degree"; el.fSensorUnit.dispatch("change")');
+  await run("el.saveBtn.onclick()");
+  assert.equal(run("savedLayout.pages[0].widgets[0].sensor_unit"), "degree");
+  assert.equal(run("savedLayout.pages[0].widgets[0].sensor_format"), "relative");
+  run("editor.layout = savedLayout; renderInspector()");
+  assert.equal(run("el.fSensorUnit.value"), "degree");
+
+  // A duration: the format list changes; "relative" is not offered, so it is kept until a duration format is chosen.
+  run('el.fEntity.value = "sensor.runtime"; el.fEntity.onchange()');
+  assert.equal(run("el.fSensorFormatLabel.textContent"), "Format");
+  assert.equal(run("el.fSensorFormat.value"), "text");
+  assert.equal(run("selectedWidget().sensor_format"), "relative");
+  run('el.fSensorFormat.value = "clock"; el.fSensorFormat.dispatch("change")');
+  assert.equal(run("selectedWidget().sensor_format"), "clock");
+  run('el.fSensorFormat.value = "text"; el.fSensorFormat.dispatch("change")');
+  assert.equal(run("selectedWidget().sensor_format"), undefined);
+
+  // Power and monetary: their own unit choices and default texts.
+  run('el.fEntity.value = "sensor.power"; el.fEntity.onchange()');
+  assert.equal(run("JSON.stringify(sensorUnitChoices(selectedWidget(), el.fEntity.value).values)"), JSON.stringify(["", "auto", "hide"]));
+  assert.match(run("el.fSensorUnit.innerHTML"), /As in Home Assistant/);
+  run('el.fSensorUnit.value = "auto"; el.fSensorUnit.dispatch("change")');
+  assert.equal(run("selectedWidget().sensor_unit"), "auto");
+  run('el.fEntity.value = "sensor.cost"; el.fEntity.onchange()');
+  assert.equal(run("el.fSensorUnitLabel.textContent"), "Currency");
+  assert.equal(run("el.fSensorUnit.value"), ""); // "auto" is no currency choice: shown as the default, kept saved
+  assert.equal(run("selectedWidget().sensor_unit"), "auto");
+  run('el.fSensorUnit.value = ""; el.fSensorUnit.dispatch("change")');
+  await run("el.saveBtn.onclick()");
+  assert.equal(run("savedLayout.pages[0].widgets[0].sensor_unit"), undefined);
+  run('el.fEntity.value = "sensor.mode"; el.fEntity.onchange()');
+  assert.equal(run("sensorUnitChoices(selectedWidget(), el.fEntity.value)"), null);
+  assert.equal(run("sensorFormatChoices(selectedWidget(), el.fEntity.value)"), null);
+});
+
+test("sensor preview: formats the state like the panel by device class", () => {
+  const run = setupInspector("sensor", "sensor.temperature");
+  run(`editor.i18nLanguage = "de"; editor.entities = [
+    { id: "sensor.temperature", device_class: "temperature", unit: "°C" },
+    { id: "sensor.power", device_class: "power", unit: "W" },
+    { id: "sensor.runtime", device_class: "duration", unit: "s" },
+    { id: "sensor.cost", device_class: "monetary", unit: "EUR" },
+    { id: "sensor.pickup", device_class: "date", unit: "" },
+    { id: "sensor.risk", device_class: "enum", unit: "" },
+    { id: "binary_sensor.door", device_class: "door", unit: "" }];
+    editor.states = new Map([["sensor.temperature", "21.5"], ["sensor.power", "2350"], ["sensor.runtime", "3725"],
+      ["sensor.cost", "12.34"], ["sensor.pickup", "2026-10-21"], ["sensor.risk", "no_risk"], ["binary_sensor.door", "on"]]);`);
+  const value = (id, extra = {}) => run(`previewSensorValue(${JSON.stringify({ entity_id: id, ...extra })})`);
+  assert.equal(value("sensor.temperature"), "21,5 °C");
+  assert.equal(value("sensor.temperature", { sensor_unit: "degree" }), "21,5°");
+  assert.equal(value("sensor.temperature", { sensor_unit: "hide" }), "21,5");
+  assert.equal(value("sensor.power"), "2350 W");
+  assert.equal(value("sensor.power", { sensor_unit: "auto" }), "2,35 kW");
+  assert.equal(value("sensor.runtime"), "1 h 2 min");
+  assert.equal(value("sensor.runtime", { sensor_format: "clock" }), "1:02:05");
+  assert.equal(value("sensor.runtime", { sensor_format: "raw" }), "3725 s");
+  assert.equal(value("sensor.cost"), "12,34 €");
+  assert.equal(value("sensor.cost", { sensor_unit: "code" }), "12,34 EUR");
+  run('editor.states.set("sensor.cost", "0.968200683593693")');
+  assert.equal(value("sensor.cost"), "0,97 €");
+  assert.equal(value("sensor.pickup"), "21.10.2026");
+  assert.equal(value("sensor.risk"), "No risk");
+  assert.equal(value("binary_sensor.door"), "Open");
+});
+
+test("device class line: named for sensors and binary sensors, none only for a listed entity, absent elsewhere", () => {
+  const run = setupInspector("binary_tile", "binary_sensor.washer");
+  run("populateMovePageOptions = renderEntityOptions = () => {}");
+  run(`editor.entities = [{ id: "binary_sensor.washer", device_class: "power", unit: "" },
+    { id: "sensor.counter", device_class: "", unit: "" }, { id: "light.desk", device_class: "", unit: "" }]; renderInspector()`);
+  assert.equal(run("el.fEntityClass.textContent"), "Device class: Power on/off");
+  run('el.fEntity.value = "sensor.counter"; el.fEntity.onchange()');
+  assert.equal(run("el.fEntityClass.textContent"), "Device class: none");
+  run('el.fEntity.value = "sensor.not_listed"; el.fEntity.onchange()');
+  assert.equal(run("el.fEntityClass.textContent"), "");
+  run('el.fEntity.value = "light.desk"; el.fEntity.onchange()');
+  assert.equal(run("el.fEntityClass.textContent"), "");
+  assert.equal(run('entityIdWithClass({ id: "sensor.t", device_class: "temperature" })'), "sensor.t · Temperature");
+  assert.equal(run('entityIdWithClass({ id: "light.desk", device_class: "" })'), "light.desk");
+});
+
 test("price fixed average: edit, save, reload and clear through Inspector events", async () => {
   const run = setupInspector("price_forecast", "sensor.price");
   run("populateMovePageOptions = renderEntityOptions = () => {}"); // unrelated select/datalist presentation

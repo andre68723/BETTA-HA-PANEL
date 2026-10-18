@@ -75,13 +75,9 @@ static bin_kind_t binary_kind(const char *dc)
     return BIN_GENERIC;
 }
 
-static const char *binary_state_text(const w_binary_ctx_t *ctx)
+static const char *binary_kind_text(bin_kind_t kind, const char *device_class, bool on)
 {
-    if (ctx->unavailable) {
-        return ui_i18n_get("common.unavailable", "unavailable");
-    }
-    const bool on = ctx->on;
-    switch (ctx->kind) {
+    switch (kind) {
     case BIN_PRESENCE:
         return on ? ui_i18n_get("binary.home", "Home") : ui_i18n_get("binary.away", "Away");
     case BIN_MOTION:
@@ -91,7 +87,7 @@ static const char *binary_state_text(const w_binary_ctx_t *ctx)
     case BIN_LOCK:
         return on ? ui_i18n_get("binary.unlocked", "Unlocked") : ui_i18n_get("binary.locked", "Locked");
     case BIN_ALERT:
-        if (strcmp(ctx->device_class, "moisture") == 0) {
+        if (strcmp(device_class, "moisture") == 0) {
             return on ? ui_i18n_get("binary.wet", "Wet") : ui_i18n_get("binary.dry", "Dry");
         }
         return on ? ui_i18n_get("binary.alarm", "Alarm") : ui_i18n_get("binary.ok", "OK");
@@ -104,6 +100,20 @@ static const char *binary_state_text(const w_binary_ctx_t *ctx)
     default:
         return on ? ui_i18n_get("binary.on", "On") : ui_i18n_get("binary.off", "Off");
     }
+}
+
+static const char *binary_state_text(const w_binary_ctx_t *ctx)
+{
+    if (ctx->unavailable) {
+        return ui_i18n_get("common.unavailable", "unavailable");
+    }
+    return binary_kind_text(ctx->kind, ctx->device_class, ctx->on);
+}
+
+const char *w_binary_class_state_text(const char *device_class, bool on)
+{
+    const char *dc = device_class != NULL ? device_class : "";
+    return binary_kind_text(binary_kind(dc), dc, on);
 }
 
 /* Colour of the active state: calm for presence, warm for open/low, red for alarms. */

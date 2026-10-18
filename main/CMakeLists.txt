@@ -199,6 +199,8 @@ idf_component_register(
     "ha/ha_evcc_sessions.c"
         "ha/ha_control_options.c"
         "ha/ha_datetime_value.c"
+        "ha/ha_timestamp_format.c"
+        "ha/ha_sensor_value.c"
         "ha/ha_history.c"
         "ha/ha_history_reduce.c"
         "ha/ha_energy_prefs.c"

@@ -1070,6 +1070,7 @@
                     </div>
                     <datalist id="entityOptions"></datalist>
                   </label>
+                  <div id="fEntityClass" class="meta hidden"></div>
                   <label id="fSecondaryEntityWrap" class="hidden"><span id="fSecondaryEntityLabel">Actual entity (sensor)</span>
                     <div class="entity-input-row">
                       <input id="fSecondaryEntity" type="text" list="sensorEntityOptions" />
@@ -1535,6 +1536,12 @@
                     <label class="row">
                       <input id="fSensorShowAge" type="checkbox" checked />
                       <span id="fSensorShowAgeLabel">Show last-updated time</span>
+                    </label>
+                    <label id="fSensorFormatWrap" class="hidden"><span id="fSensorFormatLabel">Format</span>
+                      <select id="fSensorFormat"></select>
+                    </label>
+                    <label id="fSensorUnitWrap" class="hidden"><span id="fSensorUnitLabel">Unit</span>
+                      <select id="fSensorUnit"></select>
                     </label>
                   </div>
                   <div id="cameraOptions" class="slider-options hidden">

@@ -344,7 +344,7 @@ if (el.addBambuPrinterBtn) {
     }
   };
   if (el.fEntity) {
-    el.fEntity.oninput = () => scheduleEntityAutocomplete("primary");
+    el.fEntity.oninput = () => { scheduleEntityAutocomplete("primary"); updateSensorEntityInfo(); };
     el.fEntity.onfocus = () => scheduleEntityAutocomplete("primary", true);
     el.fEntity.onchange = () => autoApplyInspector();
     el.fEntity.onblur = () => autoApplyInspector();
@@ -453,6 +453,8 @@ if (el.addBambuPrinterBtn) {
   bindInspectorAutoApply(el.fAlignForecast, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fShowName, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSensorShowAge, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSensorFormat, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSensorUnit, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fCameraLive, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fLockConfirm, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fPriceDaySwitch, ["change"], { softEntityValidation: true });

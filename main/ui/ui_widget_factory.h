@@ -79,6 +79,8 @@ typedef struct {
     float gauge_target_high; /* range only: end of the in-range band */
     bool hide_name; /* shared show_name=false; zero-initialized widgets keep their name */
     bool sensor_show_age; /* sensor: "N min ago" freshness text below the value, default true */
+    char sensor_format[12]; /* sensor: timestamp "date"/"time"/"relative", duration "clock"/"raw", date "relative" */
+    char sensor_unit[8];    /* sensor: "hide", "degree" (temperature), "auto" (power, energy), "code" (monetary) */
     bool lock_confirm; /* lock_tile: ask before unlocking or opening, default false */
     bool camera_live; /* camera_tile: HA MJPEG while visible; opt-in, default false */
     unsigned alarm_actions; /* alarm_tile: bit (1 << ha_alarm_action_t) per action offered, 0 = all */
@@ -149,3 +151,6 @@ esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent,
 void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance);
 void ui_widget_factory_set_visible(ui_widget_instance_t *instance, bool visible);
+/* The Binary tile's state word for a binary sensor of this device class ("Open", "Motion", "On"), also
+ * used by the Sensor tile (w_binary.c). */
+const char *w_binary_class_state_text(const char *device_class, bool on);

@@ -17,6 +17,8 @@
           },
           "entity_id": "sensor.t",
           "sensor_show_age": false,
+          "sensor_format": "relative",
+          "sensor_unit": "degree",
           "history_popup": true
         },
         {

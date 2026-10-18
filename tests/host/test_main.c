@@ -38,6 +38,8 @@
 #include "net/setup_passphrase.h"
 #include "layout/layout_validate.h"
 bool test_energy_timeline_colors(void);
+bool test_sensor_value(void);
+bool test_timestamp_format(void);
 #include "layout/widget_types.h"
 #include "settings/brightness_model.h"
 #include "settings/settings_restart.h"
@@ -225,6 +227,13 @@ static void test_layout(void)
     expect_valid("light tile", W("\"type\":\"light_tile\",\"title\":\"L\",\"entity_id\":\"light.a\",%s", rect));
     expect_valid("alarm tile actions", W("\"type\":\"alarm_tile\",\"title\":\"A\",\"entity_id\":\"alarm_control_panel.a\",\"alarm_actions\":[\"arm_home\"],%s", rect));
     expect_invalid("alarm tile bad action", W("\"type\":\"alarm_tile\",\"title\":\"A\",\"entity_id\":\"alarm_control_panel.a\",\"alarm_actions\":[\"trigger\"],%s", rect), "alarm_actions");
+    expect_valid("sensor format", W("\"type\":\"sensor\",\"title\":\"S\",\"entity_id\":\"sensor.a\",\"sensor_format\":\"relative\",%s", rect));
+    expect_valid("sensor duration format", W("\"type\":\"sensor\",\"title\":\"S\",\"entity_id\":\"sensor.a\",\"sensor_format\":\"clock\",%s", rect));
+    expect_invalid("sensor bad format", W("\"type\":\"sensor\",\"title\":\"S\",\"entity_id\":\"sensor.a\",\"sensor_format\":\"iso\",%s", rect), "sensor_format");
+    expect_invalid("sensor empty format", W("\"type\":\"sensor\",\"title\":\"S\",\"entity_id\":\"sensor.a\",\"sensor_format\":\"\",%s", rect), "sensor_format");
+    expect_valid("sensor unit", W("\"type\":\"sensor\",\"title\":\"S\",\"entity_id\":\"sensor.a\",\"sensor_unit\":\"degree\",%s", rect));
+    expect_invalid("sensor bad unit", W("\"type\":\"sensor\",\"title\":\"S\",\"entity_id\":\"sensor.a\",\"sensor_unit\":\"kW\",%s", rect), "sensor_unit");
+    expect_invalid("sensor empty unit", W("\"type\":\"sensor\",\"title\":\"S\",\"entity_id\":\"sensor.a\",\"sensor_unit\":\"\",%s", rect), "sensor_unit");
     expect_invalid("unknown type", W("\"type\":\"nope\",\"title\":\"L\",\"entity_id\":\"light.a\",%s", rect), NULL);
     expect_invalid("light tile with a sensor", W("\"type\":\"light_tile\",\"title\":\"L\",\"entity_id\":\"sensor.a\",%s", rect), "must be light.*");
     expect_invalid("button with a light", W("\"type\":\"button\",\"title\":\"B\",\"entity_id\":\"light.a\",%s", rect), "must be switch.* or media_player.*");
@@ -2878,6 +2887,8 @@ int main(void)
     test_energy_timeline_model();
     test_room_extra();
     test_datetime_value();
+    CHECK(test_timestamp_format());
+    CHECK(test_sensor_value());
     test_lock_state();
     test_select_options();
     test_settings_restart();

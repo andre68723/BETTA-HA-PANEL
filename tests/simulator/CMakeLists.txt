@@ -124,6 +124,8 @@ add_executable(betta-widget-sim
     "${REPO_ROOT}/main/ha/ha_evcc_sessions.c"
     "${REPO_ROOT}/main/ha/ha_control_options.c"
     "${REPO_ROOT}/main/ha/ha_datetime_value.c"
+    "${REPO_ROOT}/main/ha/ha_timestamp_format.c"
+    "${REPO_ROOT}/main/ha/ha_sensor_value.c"
     "${REPO_ROOT}/main/ui/widgets/w_lock.c"
     "${REPO_ROOT}/main/ui/widgets/w_alarm.c"
     "${REPO_ROOT}/main/ui/ui_pin_pad.c"
