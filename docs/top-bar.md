@@ -23,10 +23,11 @@ How many slots there are depends on the display: **two** on the 4-inch panel and
 the 10-inch panels (the third is **Left item 3**). A choice that is used twice appears once, and weather or stock
 disappear while their entity has no usable value. New panels show only the date.
 
-**Quote history:** a double tap on the stock item opens its history: the daily means of the last 30 days, and with the second
+**Quote history:** a tap on the stock item opens its history: the daily means of the last 30 days, and with the second
 button the weekly means of the last 12 months, with the change over the range. The data comes from the Home Assistant
 statistics of the sensor, so it needs a numeric sensor with a `state_class` (Yahoo Finance sensors have `measurement`);
 a sensor that Home Assistant has recorded for a short time shows less.
+Missing days or weeks leave gaps in the line. Dates keep their elapsed-time positions, including across clock changes.
 
 !!! tip "Example: an ETF quote"
 

@@ -2,7 +2,7 @@
  * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  *
  * POST /api/ui/tap {"widget": "<widget id>"} taps a tile the way a finger would, for device tests without touch
- * (the tile's popup opens; "topbar_stock" is the stock chip, a double tap there, "topbar_stock_12m" also selects the year); {"close": true} dismisses the popup that tap opened. Only tiles whose tap opens a
+ * (the tile's popup opens; "topbar_stock" is the stock chip, a tap there, "topbar_stock_12m" also selects the year); {"close": true} dismisses the popup that tap opened. Only tiles whose tap opens a
  * read-only popup answer (the UI task checks the type), so this cannot switch a light or unlock a door. Like every
  * write endpoint it needs the admin login when one is set.
  */

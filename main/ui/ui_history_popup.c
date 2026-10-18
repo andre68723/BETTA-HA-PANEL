@@ -123,11 +123,12 @@ typedef struct {
 
 /* A value of point i, or false for a gap. */
 typedef bool (*plot_value_fn)(const void *data, size_t i, float *out);
+typedef int64_t (*plot_time_fn)(const void *data, size_t i);
 
 /* The shared line chart: summary line, scaled axis, grid, the series with gaps, value ticks and time labels. */
 static void render_plot(history_popup_t *popup, float lowest, float highest, size_t points, uint8_t vertical_divs,
                         int label_w, plot_value_fn value_at, const void *data, const axis_label_t *labels,
-                        size_t label_count)
+                        size_t label_count, plot_time_fn time_at)
 {
     /* round ticks that enclose the data, with their unit: 0 .. 10000 W instead of -201.6 .. 10085.6 */
     chart_scale_t scale;
@@ -156,11 +157,16 @@ static void render_plot(history_popup_t *popup, float lowest, float highest, siz
     lv_obj_set_style_border_width(chart, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(chart, 4, LV_PART_MAIN);
     lv_obj_set_style_line_width(chart, 2, LV_PART_ITEMS);
-    lv_obj_set_style_size(chart, 0, 0, LV_PART_INDICATOR); /* a line, not a dot per bucket */
+    lv_obj_set_style_size(chart, time_at != NULL ? 4 : 0, time_at != NULL ? 4 : 0, LV_PART_INDICATOR);
     lv_obj_set_style_line_color(chart, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
     lv_obj_set_style_line_opa(chart, LV_OPA_30, LV_PART_MAIN);
-    lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
+    lv_chart_set_type(chart, time_at != NULL ? LV_CHART_TYPE_SCATTER : LV_CHART_TYPE_LINE);
     lv_chart_set_point_count(chart, (uint32_t)points);
+    const int64_t first_time = time_at != NULL ? time_at(data, 0) : 0;
+    if (time_at != NULL) {
+        /* LVGL maps X with int32 multiplication by chart width: minutes keep a full year within that budget. */
+        lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_X, 0, (int32_t)((time_at(data, points - 1) - first_time) / 60));
+    }
     lv_chart_set_div_line_count(chart, (uint8_t)(scale.intervals + 1), vertical_divs); /* grid lines on the ticks */
 
     /* integer chart values: tenths of the step's last digit, kept far from int32 overflow */
@@ -172,8 +178,9 @@ static void render_plot(history_popup_t *popup, float lowest, float highest, siz
                                                     LV_CHART_AXIS_PRIMARY_Y);
     for (size_t i = 0; i < points; i++) {
         float value;
-        lv_chart_set_value_by_id(chart, series, i, value_at(data, i, &value) ? (int32_t)lroundf(value * mult)
-                                                                            : LV_CHART_POINT_NONE);
+        const int32_t y = value_at(data, i, &value) ? (int32_t)lroundf(value * mult) : LV_CHART_POINT_NONE;
+        if (time_at != NULL) lv_chart_set_series_value_by_id2(chart, series, i, (int32_t)((time_at(data, i) - first_time) / 60), y);
+        else lv_chart_set_value_by_id(chart, series, i, y);
     }
     lv_chart_refresh(chart);
 
@@ -226,7 +233,7 @@ static void render_numeric(history_popup_t *popup, const ha_history_snapshot_t *
         if (localtime_r(&at, &local)) strftime(labels[i].text, sizeof(labels[i].text), "%H:%M", &local);
         labels[i].frac = (float)i / 4.0f;
     }
-    render_plot(popup, lowest, highest, HA_HISTORY_BUCKETS, 5, 80, day_value_at, snapshot, labels, 5); /* grid every 6 h */
+    render_plot(popup, lowest, highest, HA_HISTORY_BUCKETS, 5, 80, day_value_at, snapshot, labels, 5, NULL); /* grid every 6 h */
 }
 
 static bool week_value_at(const void *data, size_t i, float *out)
@@ -269,7 +276,7 @@ static void render_week(history_popup_t *popup, const ha_history_week_t *week)
         count++;
     }
     /* no vertical grid: its lines would not meet the day labels, which sit at local midnights */
-    render_plot(popup, lowest, highest, series->slots, 0, 60, week_value_at, series, labels, count);
+    render_plot(popup, lowest, highest, series->slots, 0, 60, week_value_at, series, labels, count, NULL);
 }
 
 /* ---- Range view: 30 days of daily means or 12 months of weekly means (a quote) ---- */
@@ -277,9 +284,14 @@ static void render_week(history_popup_t *popup, const ha_history_week_t *week)
 static bool range_value_at(const void *data, size_t i, float *out)
 {
     const ha_range_series_t *series = (const ha_range_series_t *)data;
-    if (i >= series->count) return false;
+    if (i >= series->count || !isfinite(series->point[i].mean)) return false;
     *out = series->point[i].mean;
     return true;
+}
+
+static int64_t range_time_at(const void *data, size_t i)
+{
+    return ((const ha_range_series_t *)data)->point[i].start;
 }
 
 static void render_range(history_popup_t *popup, const ha_range_series_t *series)
@@ -300,10 +312,11 @@ static void render_range(history_popup_t *popup, const ha_range_series_t *series
         if (localtime_r(&at, &local) == NULL) continue;
         if (months) snprintf(labels[count].text, sizeof(labels[count].text), "%02d/%02d", local.tm_mon + 1, local.tm_year % 100);
         else snprintf(labels[count].text, sizeof(labels[count].text), "%02d.%02d.", local.tm_mday, local.tm_mon + 1);
-        labels[count].frac = (float)index / (float)(series->count - 1);
+        labels[count].frac = (float)(at - series->point[0].start) /
+                             (float)(series->point[series->count - 1].start - series->point[0].start);
         count++;
     }
-    render_plot(popup, lowest, highest, series->count, 0, 72, range_value_at, series, labels, count);
+    render_plot(popup, lowest, highest, series->count, 0, 72, range_value_at, series, labels, count, range_time_at);
 }
 
 static void range_received(uint32_t generation, ha_history_range_t *range)
@@ -336,6 +349,17 @@ static void range_received(uint32_t generation, ha_history_range_t *range)
 }
 
 #ifdef BETTA_SIMULATOR
+void ui_history_popup_simulator_set_range(const ha_range_series_t *series)
+{
+    if (s_popup == NULL || !s_popup->range_mode || series == NULL) return;
+    ha_history_range_t *range = calloc(1, sizeof(*range));
+    if (range == NULL) return;
+    range->status = ESP_OK;
+    range->outcome = series->count > 0 ? HA_STATS_OUTCOME_OK : HA_STATS_OUTCOME_EMPTY;
+    range->series = *series;
+    range_received(s_popup->range_generation, range);
+}
+
 /* A synthetic quote for the layout screenshots: a drifting wave over the range, ending at the value the chip shows. */
 static void simulator_show_range(history_popup_t *popup)
 {
@@ -351,7 +375,7 @@ static void simulator_show_range(history_popup_t *popup)
     for (uint16_t i = 0; i < range->series.count; i++) {
         const float t = (float)i / (float)(range->series.count - 1);
         const float mean = 190.0f + 14.0f * sinf(t * (year ? 9.0f : 5.5f)) + 22.0f * t;
-        range->series.point[i] = (ha_range_point_t){.start = range->window.start_epoch + (int64_t)i * (year ? 7 : 1) * 86400,
+        range->series.point[i] = (ha_range_point_t){.start = ha_stats_local_day_start(range->window.start_epoch, i * (year ? 7 : 1)),
                                                     .mean = mean, .min = mean - 3.0f, .max = mean + 3.5f, .has_range = true};
     }
     range->outcome = HA_STATS_OUTCOME_OK;

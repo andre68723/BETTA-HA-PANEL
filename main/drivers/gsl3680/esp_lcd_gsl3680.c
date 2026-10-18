@@ -244,6 +244,7 @@ static esp_err_t esp_lcd_touch_gsl3680_read_data(esp_lcd_touch_handle_t tp)
     uint8_t touch_data[24] = {0};
 
     esp_err_t err = touch_gsl3680_i2c_read(tp, ESP_LCD_TOUCH_GSL3680_READ_XY_REG, touch_data, sizeof(touch_data));
+    touch_track_note_read(esp_timer_get_time(), err != ESP_OK, err == ESP_OK && (touch_data[0] & 0x0F) == 0);
     ESP_RETURN_ON_ERROR(err, TAG, "I2C read error!");
 
     uint8_t touch_cnt = touch_data[0] & 0x0F;
@@ -259,12 +260,21 @@ static esp_err_t esp_lcd_touch_gsl3680_read_data(esp_lcd_touch_handle_t tp)
     uint16_t px[GSL3680_REPORT_POINTS];
     uint16_t py[GSL3680_REPORT_POINTS];
     int valid = 0;
+    unsigned flagged = 0;
+    unsigned invalid = 0;
     for (int i = 0; i < touch_cnt; i++) {
         size_t offset = 4 + (i * 4);
 
         uint16_t raw_x = ((uint16_t)(touch_data[offset + 3] & 0x0F) << 8) | touch_data[offset + 2];
         uint16_t raw_y = ((uint16_t)(touch_data[offset + 1]) << 8) | touch_data[offset + 0];
+        /* The controller sets 0x4000 in the Y word when the signal is weak, typically in the first frames of a contact
+         * and near the edges. The coordinate in the low bits is still the touch point, so it is kept. */
+        if ((raw_y & TOUCH_TRACK_Y_FLAG) != 0) {
+            flagged++;
+        }
+        raw_y &= TOUCH_TRACK_Y_MASK;
         if (!touch_track_raw_valid(raw_x, raw_y, RAW_MAX_X, RAW_MAX_Y)) {
+            invalid++;
             if (now_us - s_last_log_us >= GSL3680_LOG_GAP_US) {
                 s_last_log_us = now_us;
                 ESP_LOGW(TAG, "touch point out of range ignored: raw (%u,%u) of %u point(s)", raw_x, raw_y, (unsigned)touch_cnt);
@@ -288,6 +298,7 @@ static esp_err_t esp_lcd_touch_gsl3680_read_data(esp_lcd_touch_handle_t tp)
         valid++;
     }
 
+    touch_track_note_frame(flagged, invalid);
     const bool was_tracking = s_track.tracking;
     uint16_t out_x = 0;
     uint16_t out_y = 0;

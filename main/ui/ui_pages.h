@@ -42,5 +42,5 @@ void ui_pages_set_crash_warning(bool visible);
 void ui_pages_set_topbar_left_slots(const char *slot_1, const char *slot_2, const char *slot_3);
 void ui_pages_set_topbar_weather(bool visible, float temperature, const char *unit, uint32_t icon_codepoint);
 void ui_pages_set_topbar_stocks(const ui_pages_stock_item_t *items, size_t count);
-/* A double tap on the stock chip (the history of the quote); NULL removes the handler. Runs on the UI task. */
+/* A tap on the stock chip (the history of the quote); NULL removes the handler. Runs on the UI task. */
 void ui_pages_set_stock_chip_handler(void (*handler)(void));

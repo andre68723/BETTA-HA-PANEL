@@ -135,9 +135,12 @@ Follow [Installation](getting-started.md) and [partition migration](development/
     The fork's JC support uses Espressif's Apache-2.0 `esp_lcd_touch_gsl3680`
     driver with raw coordinates and host-tested nearest-point tracking in
     `drivers/touch_track.c`. Stray or reordered reports are held and logged as
-    `touch jump held`. There is no two-finger zoom tracking. The current driver
-    revision is compile checked; its orientation and touch behavior still need
-    checking on a paneljc unit.
+    `touch jump held`. There is no two-finger zoom tracking. A separate scan task
+    reads the controller every 5 ms and hands every tap to LVGL one by one
+    (`drivers/touch_latch.c`); the controller's weak-signal flag in the Y word is
+    removed instead of dropping the point. Contact counters are in
+    `GET /api/version` (`touch`). Measured on a 10-inch unit (2026-10-18), see
+    `docs/development/learnings.md`, "Touch contacts".
 
 - **Display settings:** one page with headings, and one compact reset at the bottom
   that restores every Display group and the board-specific camera and rotation
@@ -372,7 +375,7 @@ style; text and symbols use the same fonts throughout. See
   Detail cards grow for larger text, wrap long values and scroll when necessary, keeping Wi-Fi and firmware information readable at Largest.
 
 - **Top bar items:** the 1280 px boards (10-inch and Tab5) show up to three items left of the clock (date, weather, stock quote); the 4-inch panel shows two. The third item is set in Settings > Top bar.
-- **Quote history:** a double tap on the top bar stock item opens its price history, 30 days of daily means or 12 months of weekly means, from the Home Assistant statistics of the sensor.
+- **Quote history:** a tap on the top bar stock item opens its price history, 30 days of daily means or 12 months of weekly means, from the Home Assistant statistics of the sensor. Missing periods stay gaps and dates follow elapsed time across clock changes.
 
 - **Top bar and navigation:** date, weather and stock slots sit beside live
   Wi-Fi/Home Assistant/MQTT status popups. The stock quote fits beside the date

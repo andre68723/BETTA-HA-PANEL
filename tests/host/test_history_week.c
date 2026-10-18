@@ -299,13 +299,18 @@ esp_err_t ha_client_send_command_with_response(cJSON *cmd, ha_client_response_cb
         const bool mean = strcmp(cJSON_GetArrayItem(cJSON_GetObjectItemCaseSensitive(cmd, "types"), 0)->valuestring, "mean") == 0;
         cJSON *rows = cJSON_AddArrayToObject(reply, ids->child->valuestring);
         const char *period = cJSON_GetObjectItemCaseSensitive(cmd, "period")->valuestring;
-        const time_t step = strcmp(period, "day") == 0 ? 86400 : strcmp(period, "week") == 0 ? 7 * 86400 : 0;
-        if (s != NULL && mode != MODE_BAD_SHAPE && step > 0) {
+        const int step_days = strcmp(period, "day") == 0 ? 1 : strcmp(period, "week") == 0 ? 7 : 0;
+        if (s != NULL && mode != MODE_BAD_SHAPE && step_days > 0) {
             /* a long period: one row per day or week from the window's start (a local midnight) */
-            for (time_t t = start; t < end; t += step) {
+            if (step_days == 7) {
+                struct tm local;
+                localtime_r(&start, &local);
+                start = (time_t)ha_stats_local_day_start(start, -((local.tm_wday + 6) % 7));
+            }
+            for (time_t t = start; t < end; t = (time_t)ha_stats_local_day_start(t, step_days)) {
                 cJSON *r = cJSON_CreateObject();
                 cJSON_AddNumberToObject(r, "start", (double)t * 1000.0);
-                cJSON_AddNumberToObject(r, "end", ((double)t + (double)step) * 1000.0);
+                cJSON_AddNumberToObject(r, "end", (double)ha_stats_local_day_start(t, step_days) * 1000.0);
                 cJSON_AddNumberToObject(r, "mean", s->per_hour);
                 cJSON_AddNumberToObject(r, "min", s->per_hour - 1);
                 cJSON_AddNumberToObject(r, "max", s->per_hour + 1);
@@ -507,6 +512,7 @@ static void test_range(void)
     CHECK(ha_history_request_range("sensor.temp", HA_RANGE_12_MONTHS, 5, on_range) == ESP_OK);
     CHECK(wait_callbacks(1, 3000));
     CHECK(g_range->status == ESP_OK && g_range->series.count >= 52 && g_range->series.count <= 53);
+    CHECK(g_range->series.rejected == 0);
     CHECK(strstr(g_ws.last_stats_cmd, "\"period\":\"week\"") != NULL);
 
     /* an entity without statistics, a wrong shape, silence, and arguments */

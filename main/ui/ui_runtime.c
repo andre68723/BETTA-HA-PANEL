@@ -467,8 +467,8 @@ static void ui_runtime_refresh_topbar_stocks(void)
     ui_pages_set_topbar_stocks(items, count);
 }
 
-/* A double tap on the stock chip: the quote's history of the last 30 days or 12 months, from the Recorder statistics. */
-static void ui_runtime_stock_chip_double_tap(void)
+/* A tap on the stock chip: the quote's history of the last 30 days or 12 months, from the Recorder statistics. */
+static void ui_runtime_stock_chip_tap(void)
 {
     const char *entity_id = s_topbar_stock_entity_ids[0];
     if (entity_id[0] == '\0') return;
@@ -1430,10 +1430,10 @@ static void ui_runtime_test_tap(const app_event_tap_t *tap)
         return;
     }
     if (strcmp(tap->widget_id, "topbar_stock") == 0 || strcmp(tap->widget_id, "topbar_stock_12m") == 0) {
-        /* the stock chip's double tap: a read-only history popup (the second id also selects its 12-month view) */
+        /* the stock chip's tap: a read-only history popup (the second id also selects its 12-month view) */
         lv_obj_t *top = lv_layer_top();
         const uint32_t before = lv_obj_get_child_count(top);
-        ui_runtime_stock_chip_double_tap();
+        ui_runtime_stock_chip_tap();
         if (strcmp(tap->widget_id, "topbar_stock_12m") == 0) ui_history_popup_range_select(true);
         const uint32_t after = lv_obj_get_child_count(top);
         if (after > before) s_test_popup = lv_obj_get_child(top, (int32_t)after - 1);
@@ -1652,7 +1652,7 @@ esp_err_t ui_runtime_init(void)
     s_topbar_cache.valid = false;
     theme_default_init();
     ui_pages_init();
-    ui_pages_set_stock_chip_handler(ui_runtime_stock_chip_double_tap);
+    ui_pages_set_stock_chip_handler(ui_runtime_stock_chip_tap);
     ui_watchdog_attach_lvgl();
     ui_display_protection_init();
     ui_pages_set_show_callback(ui_runtime_on_page_shown);

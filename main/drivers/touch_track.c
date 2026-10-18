@@ -5,9 +5,64 @@
 
 #include <string.h>
 
+static touch_track_stats_t s_stats;
+
+const touch_track_stats_t *touch_track_stats(void)
+{
+    return &s_stats;
+}
+
+void touch_track_stats_clear(void)
+{
+    memset(&s_stats, 0, sizeof(s_stats));
+}
+
+void touch_track_note_frame(unsigned flagged, unsigned invalid)
+{
+    s_stats.frames++;
+    s_stats.flagged += flagged;
+    s_stats.invalid += invalid;
+}
+
+void touch_track_note_ui(touch_ui_event_t event)
+{
+    switch (event) {
+    case TOUCH_UI_PRESSED: s_stats.ui_pressed++; break;
+    case TOUCH_UI_RELEASED: s_stats.ui_released++; break;
+    case TOUCH_UI_CLICKED: s_stats.ui_clicked++; break;
+    case TOUCH_UI_SCROLLED: s_stats.ui_scrolled++; break;
+    case TOUCH_UI_LONG: s_stats.ui_long++; break;
+    case TOUCH_UI_LOST: s_stats.ui_lost++; break;
+    }
+}
+
+void touch_track_note_read(int64_t now_us, bool i2c_error, bool empty)
+{
+    static int64_t last_us;
+    if (last_us != 0 && now_us > last_us) {
+        const int64_t gap = now_us - last_us;
+        if (gap > TOUCH_TRACK_LATE_US) {
+            s_stats.late++;
+        }
+        if ((uint64_t)(gap / 1000) > s_stats.max_gap_ms) {
+            s_stats.max_gap_ms = (uint32_t)(gap / 1000);
+        }
+    }
+    last_us = now_us;
+    s_stats.reads++;
+    if (i2c_error) {
+        s_stats.i2c_errors++;
+    } else if (empty) {
+        s_stats.empty++;
+    }
+}
+
 void touch_track_reset(touch_track_t *track)
 {
     if (track != NULL) {
+        if (track->pending && !track->tracking) {
+            s_stats.lost++; /* the contact ended before anything was reported */
+        }
         memset(track, 0, sizeof(*track));
     }
 }
@@ -48,9 +103,13 @@ touch_track_result_t touch_track_update(touch_track_t *t, const uint16_t *x, con
     if (n <= 0) {
         if (t->tracking && t->held < TOUCH_TRACK_MAX_HELD) {
             t->held++;
+            s_stats.held++;
             *out_x = t->x;
             *out_y = t->y;
             return TOUCH_TRACK_HELD;
+        }
+        if (t->pending && now_us - t->at_us <= TOUCH_TRACK_TIMEOUT_US) {
+            return TOUCH_TRACK_NONE; /* a weak frame while a contact waits: keep the candidate, skip this frame */
         }
         touch_track_reset(t);
         return TOUCH_TRACK_NONE;
@@ -58,6 +117,10 @@ touch_track_result_t touch_track_update(touch_track_t *t, const uint16_t *x, con
 
     if (!t->tracking) {
         if (!t->pending || now_us - t->at_us > TOUCH_TRACK_TIMEOUT_US) {
+            if (t->pending) {
+                s_stats.lost++; /* the candidate went stale without a confirmation */
+            }
+            s_stats.contacts++;
             t->pending = true;
             t->pending_frames = 1;
             t->x = x[0];
@@ -75,6 +138,7 @@ touch_track_result_t touch_track_update(touch_track_t *t, const uint16_t *x, con
             t->at_us = now_us;
             return TOUCH_TRACK_NONE;
         }
+        s_stats.confirmed++;
         t->tracking = true;
         t->pending = false;
         t->held = 0;
@@ -92,6 +156,7 @@ touch_track_result_t touch_track_update(touch_track_t *t, const uint16_t *x, con
     const int64_t limit = TOUCH_TRACK_SLACK_PX + (int64_t)TOUCH_TRACK_MAX_SPEED_PX_PER_MS * dt_ms;
     if (d2 > limit * limit && t->held < TOUCH_TRACK_MAX_HELD) {
         t->held++;
+        s_stats.held++;
         *out_x = t->x;
         *out_y = t->y;
         return TOUCH_TRACK_HELD; /* t->at_us stays: the allowed distance keeps growing with the time since the last report */

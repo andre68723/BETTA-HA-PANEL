@@ -310,11 +310,43 @@ static void test_ranges(void)
     cJSON *result = cJSON_Parse(json);
     ha_range_series_t series;
     CHECK(ha_stats_parse_range(result, "sensor.sap", &w, HA_RANGE_30_DAYS, &series) == HA_STATS_OUTCOME_OK);
-    CHECK(series.count == 2 && series.rejected == 2);
+    CHECK(series.count == 4 && series.rejected == 2);
     CHECK(series.point[0].start == w.start_epoch && NEAR(series.point[0].mean, 190.5) && series.point[0].has_range);
     CHECK(NEAR(series.point[0].min, 188.0) && NEAR(series.point[0].max, 193.2));
-    CHECK(!series.point[1].has_range && NEAR(series.point[1].min, 195.0) && NEAR(series.point[1].max, 195.0));
+    CHECK(isnan(series.point[1].mean) && isnan(series.point[2].mean));
+    CHECK(series.point[1].start == w.start_epoch + 86400 && series.point[2].start == w.start_epoch + 2 * 86400);
+    CHECK(!series.point[3].has_range && NEAR(series.point[3].min, 195.0) && NEAR(series.point[3].max, 195.0));
     cJSON_Delete(result);
+
+    /* A one-day move followed by a 28-day gap must retain the same calendar/time span as a complete month. */
+    snprintf(json, sizeof(json), "{\"sensor.sap\":[{\"start\":%lld,\"mean\":100},{\"start\":%lld,\"mean\":101},"
+             "{\"start\":%lld,\"mean\":102}]}", d0, d0 + 86400000LL,
+             (long long)ha_stats_local_day_start(w.start_epoch, 29) * 1000);
+    result = cJSON_Parse(json);
+    CHECK(ha_stats_parse_range(result, "sensor.sap", &w, HA_RANGE_30_DAYS, &series) == HA_STATS_OUTCOME_OK);
+    CHECK(series.count == 30 && NEAR(series.point[1].mean, 101) && isnan(series.point[2].mean));
+    CHECK(NEAR(series.point[29].mean, 102) && series.point[29].start == ha_stats_local_day_start(w.start_epoch, 29));
+    cJSON_Delete(result);
+
+    /* Missing local days and weeks across both clock changes retain real UTC coordinates. */
+    const int64_t transitions[] = {1774738800LL, 1792879200LL}; /* Sundays at local midnight */
+    for (size_t i = 0; i < sizeof(transitions) / sizeof(transitions[0]); i++) {
+        const int64_t begin = ha_stats_local_day_start(transitions[i], -1);
+        for (int weekly = 0; weekly < 2; weekly++) {
+            const int step = weekly ? 7 : 1;
+            ha_stats_window_t dst = {.start_epoch = begin, .end_epoch = ha_stats_local_day_start(begin, 3 * step)};
+            const int64_t last = ha_stats_local_day_start(begin, 2 * step);
+            snprintf(json, sizeof(json), "{\"sensor.sap\":[{\"start\":%lld,\"mean\":100},{\"start\":%lld,\"mean\":102}]}",
+                     (long long)begin * 1000, (long long)last * 1000);
+            result = cJSON_Parse(json);
+            CHECK(ha_stats_parse_range(result, "sensor.sap", &dst, weekly ? HA_RANGE_12_MONTHS : HA_RANGE_30_DAYS,
+                                       &series) == HA_STATS_OUTCOME_OK);
+            CHECK(series.count == 3 && isnan(series.point[1].mean));
+            CHECK(series.point[1].start == ha_stats_local_day_start(begin, step) && series.point[2].start == last);
+            CHECK(last - begin == 2 * step * 86400 + (i == 0 ? -3600 : 3600));
+            cJSON_Delete(result);
+        }
+    }
 
     /* a week row may start before the window (its Monday), a day row may not */
     snprintf(json, sizeof(json), "{\"sensor.sap\":[{\"start\":%lld,\"mean\":1.5}]}", (long long)(wy.start_epoch - 3 * 86400) * 1000);

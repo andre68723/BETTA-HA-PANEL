@@ -46,7 +46,8 @@ first, then review on hardware.
   JSON and its size budget, day statistics, the cheap windows across local days (negative and equal prices, the 23 and 25 hour clock-change days)
   and the serializer. Regression cases cover EUR/cent unit conversion and rejection, sparse lists with explicit ends, and more than eight cheap windows.
   `tests/host/test_price_layout.c` checks the widget's domain, size limits and subscription. `--regression price` taps the
-  real Today/Tomorrow buttons (both on a wide tile, one toggle on a narrow one) and the no-data states.
+  real Today/Tomorrow buttons (both on a wide tile, one toggle on a narrow one) and the no-data states. It also feeds a sparse Recorder month into
+  the stock popup and checks the real chart's elapsed-time coordinates and missing points; parser tests cover daily/weekly gaps across both clock changes.
 - Host tests need cJSON (`libcjson-dev`, `brew install cjson`, or fetched sources); `tools/test_host.sh` exits with 2
   when neither exists.
 - `tests/host/test_coredump_store.c` checks two-report retention, failed imports, duplicate imports,

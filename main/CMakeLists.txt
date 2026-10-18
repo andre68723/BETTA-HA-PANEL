@@ -359,6 +359,7 @@ idf_component_register(
         "drivers/display_rotation.c"
         "drivers/display_policy.c"
         "drivers/touch_track.c"
+        "drivers/touch_latch.c"
         "drivers/audio_out.c"
         "api/api_sound.c"
     INCLUDE_DIRS

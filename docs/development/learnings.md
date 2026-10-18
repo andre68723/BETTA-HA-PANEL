@@ -204,6 +204,23 @@ history, Wi-Fi diagnostics). Match the wall-clock time of a visible flash agains
 work as is: the DSI driver then requires IRAM callbacks and an internal-RAM context, and `esp_lvgl_port` registers flash-resident callbacks that touch a PSRAM
 display object, so `display_init()` fails on the first boot (tried 2026-10-07, rolled back).
 
+## Touch contacts
+
+Taps on the 10-inch paneljc sometimes needed a second try. Counters in `GET /api/version` ("touch", `drivers/touch_track.c`) separate the stages; read them after
+a fixed series of taps (all values since boot): `contacts`/`confirmed`/`lost` (tracker), `frames`, `flagged` (weak-signal bit 0x4000 in the Y word),
+`reads`/`empty`/`i2c_errors`/`late`/`max_gap_ms` (controller polls), and `ui_pressed`/`ui_released`/`ui_clicked`/`ui_scrolled`/`ui_long`/`ui_lost` (what LVGL made of them).
+
+Findings (2026-10-18, one unit, taps on the bottom bar and the top chips):
+
+- With the adapter's interrupt mode the controller was read only after an INT edge (about 150 reads in 90 s); 6 of 21 quick taps caused no read at all.
+  Reading on every LVGL timer tick (no INT pin for the adapter) was worse, because the LVGL task wakes only as often as its timers ask (about 18 reads/s).
+- The Y word carries a weak-signal bit (0x4000, for example raw Y 16408 = 0x4018 = 24); comparing the whole word with the raw range dropped such points. About
+  2 to 4 % of the frames carry it.
+- A scan task (5 ms) plus a queue (`touch_latch.c`) gives every tap to LVGL, press and release in order. Merging taps into one pending press (first attempt)
+  lost 8 of 30 contacts when LVGL was busy with a page build (30 contacts, 22 presses); with the queue 20 contacts gave 18 presses in a short check.
+- Every press LVGL saw became a click (`ui_clicked` equals `ui_pressed`, `ui_scrolled` 0), so scroll detection is not the cause.
+- Not established: whether the missing 2 of 20 were finished taps dropped as older than 600 ms (UI busy) or very short contacts.
+
 ## JC8012P4A1 reference sources
 
 ESPHome `mipi_dsi/models/guition.py` (init tables and timing), the `gsl3670` component and the

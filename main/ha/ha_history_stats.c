@@ -309,6 +309,27 @@ ha_stats_outcome_t ha_stats_parse_range(const cJSON *result, const char *stat_id
             out->rejected++;
             continue;
         }
+        if (out->count > 0) {
+            const int days = kind == HA_RANGE_12_MONTHS ? 7 : 1;
+            const int64_t first_gap = ha_stats_local_day_start(out->point[out->count - 1].start, days);
+            int64_t next = first_gap;
+            size_t gaps = 0;
+            /* Calendar stepping preserves the 23/25-hour days; check the grid before changing the series. */
+            while (next > 0 && next < start && gaps < HA_RANGE_MAX_POINTS) {
+                gaps++;
+                const int64_t following = ha_stats_local_day_start(next, days);
+                if (following <= next) return HA_STATS_OUTCOME_INVALID;
+                next = following;
+            }
+            if (next != start) { out->rejected++; continue; }
+            if (out->count + gaps >= HA_RANGE_MAX_POINTS) return HA_STATS_OUTCOME_INVALID;
+            next = first_gap;
+            for (size_t i = 0; i < gaps; i++) {
+                out->point[out->count++] = (ha_range_point_t){.start = next, .mean = NAN, .min = NAN, .max = NAN};
+                next = ha_stats_local_day_start(next, days);
+            }
+        }
+        if (out->count >= HA_RANGE_MAX_POINTS) return HA_STATS_OUTCOME_INVALID;
         ha_range_point_t *p = &out->point[out->count++];
         p->start = start;
         p->mean = (float)mean;

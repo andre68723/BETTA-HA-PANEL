@@ -37,7 +37,10 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_touch.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "drivers/display_port.h"
+#include "drivers/touch_latch.h"
+#include "drivers/touch_track.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lvgl.h"
@@ -61,6 +64,9 @@
 #define PANELJC_TOUCH_Y_MAX      1280
 
 #define PANELJC_TOUCH_POLL_MS    10
+#define PANELJC_TOUCH_SCAN_MS    5     /* controller scan period, independent of LVGL's read timer */
+#define PANELJC_TOUCH_SCAN_STACK 4096
+#define PANELJC_TOUCH_SCAN_PRIO  10
 #define PANELJC_TOUCH_INIT_RETRIES 8
 #define PANELJC_TOUCH_RETRY_MS   250
 
@@ -70,12 +76,72 @@ static lv_indev_t             *s_touch_indev   = NULL;
 static esp_lcd_touch_handle_t  s_touch_handle  = NULL;
 static esp_lcd_panel_io_handle_t s_touch_io    = NULL;
 static i2c_master_bus_handle_t   s_i2c_bus     = NULL;
+static TaskHandle_t              s_scan_task    = NULL;
+static touch_latch_t             s_latch;
+static portMUX_TYPE              s_latch_lock   = portMUX_INITIALIZER_UNLOCKED;
+
+/* ── Scan task and LVGL read ─────────────────────────────────────────────── */
+/* LVGL reads its pointer only when its own timer runs (tens of milliseconds apart, more while a page is built), and a
+ * quick tap that starts and ends between two reads was never seen: measured on the 10-inch (2026-10-18, /api/version
+ * "touch"), 6 of 21 taps on the bottom bar produced no controller read at all. This task scans the controller every few
+ * milliseconds and the latch (touch_latch.c) hands each press to LVGL at least once. */
+static void touch_scan_task(void *arg)
+{
+    esp_lcd_touch_handle_t handle = (esp_lcd_touch_handle_t)arg;
+    for (;;) {
+        esp_lcd_touch_point_data_t point = {0};
+        uint8_t count = 0;
+        bool ok = esp_lcd_touch_read_data(handle) == ESP_OK &&
+                  esp_lcd_touch_get_data(handle, &point, &count, 1) == ESP_OK;
+        if (ok) {
+            portENTER_CRITICAL(&s_latch_lock);
+            touch_latch_scan(&s_latch, esp_timer_get_time(), count > 0, point.x, point.y);
+            portEXIT_CRITICAL(&s_latch_lock);
+        }
+        vTaskDelay(pdMS_TO_TICKS(PANELJC_TOUCH_SCAN_MS));
+    }
+}
+
+/* Replaces the adapter's own controller read: LVGL takes what the scan task latched. */
+static esp_err_t touch_latched_read(esp_lcd_touch_handle_t tp, esp_lcd_touch_point_data_t *points, uint8_t *count,
+                                    uint8_t max_count, void *user_ctx)
+{
+    (void)tp;
+    (void)user_ctx;
+    uint16_t x = 0;
+    uint16_t y = 0;
+    portENTER_CRITICAL(&s_latch_lock);
+    const bool pressed = touch_latch_read(&s_latch, esp_timer_get_time(), &x, &y);
+    portEXIT_CRITICAL(&s_latch_lock);
+    *count = (pressed && max_count > 0) ? 1 : 0;
+    if (*count > 0) {
+        points[0].x = x;
+        points[0].y = y;
+        points[0].strength = 0;
+        points[0].track_id = 0;
+    }
+    return ESP_OK;
+}
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 static void touch_activity_event_cb(lv_event_t *event)
 {
     (void)event;
     display_note_activity();
+}
+
+/* What LVGL made of the contacts: compare with the controller counters in /api/version "touch". */
+static void touch_ui_event_cb(lv_event_t *event)
+{
+    switch (lv_event_get_code(event)) {
+    case LV_EVENT_PRESSED: touch_track_note_ui(TOUCH_UI_PRESSED); break;
+    case LV_EVENT_RELEASED: touch_track_note_ui(TOUCH_UI_RELEASED); break;
+    case LV_EVENT_CLICKED: touch_track_note_ui(TOUCH_UI_CLICKED); break;
+    case LV_EVENT_SCROLL_BEGIN: touch_track_note_ui(TOUCH_UI_SCROLLED); break;
+    case LV_EVENT_LONG_PRESSED: touch_track_note_ui(TOUCH_UI_LONG); break;
+    case LV_EVENT_PRESS_LOST: touch_track_note_ui(TOUCH_UI_LOST); break;
+    default: break;
+    }
 }
 
 static lv_display_t *touch_get_display(void)
@@ -209,10 +275,22 @@ esp_err_t touch_init(void)
         return (err == ESP_OK) ? ESP_FAIL : err;
     }
 
+    /* The scan task reads the controller; the adapter must not wait for an interrupt before it asks for data. The INT
+     * pin stays configured for the reset sequence above; only the adapter's view of it changes. */
+    s_touch_handle->config.int_gpio_num = GPIO_NUM_NC;
+    touch_latch_reset(&s_latch);
+    if (s_scan_task == NULL &&
+        xTaskCreatePinnedToCore(touch_scan_task, "touch_scan", PANELJC_TOUCH_SCAN_STACK, s_touch_handle,
+                                PANELJC_TOUCH_SCAN_PRIO, &s_scan_task, 0) != pdPASS) {
+        touch_release_handles();
+        return ESP_ERR_NO_MEM;
+    }
+
     const esp_lv_adapter_touch_config_t touch_cfg = {
         .disp   = disp,
         .handle = s_touch_handle,
         .scale  = { .x = 1.0f, .y = 1.0f },
+        .callbacks = { .custom_touch_read = touch_latched_read },
     };
 
     if (!display_lock(1000)) {
@@ -223,6 +301,7 @@ esp_err_t touch_init(void)
     if (s_touch_indev != NULL) {
         lv_indev_add_event_cb(s_touch_indev, touch_activity_event_cb,
             LV_EVENT_PRESSED, NULL);
+        lv_indev_add_event_cb(s_touch_indev, touch_ui_event_cb, LV_EVENT_ALL, NULL);
     }
     display_unlock();
 

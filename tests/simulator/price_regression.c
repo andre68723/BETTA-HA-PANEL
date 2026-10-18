@@ -41,6 +41,16 @@ static lv_obj_t *find_prefix(lv_obj_t *root, const char *prefix)
     return NULL;
 }
 
+static lv_obj_t *find_chart(lv_obj_t *root)
+{
+    if (lv_obj_check_type(root, &lv_chart_class)) return root;
+    for (uint32_t i = 0; i < lv_obj_get_child_count(root); i++) {
+        lv_obj_t *chart = find_chart(lv_obj_get_child(root, i));
+        if (chart != NULL) return chart;
+    }
+    return NULL;
+}
+
 static void apply_attrs(ui_widget_instance_t *widget, const char *entity, const char *state, cJSON *attrs)
 {
     ha_state_t s = {0};
@@ -244,6 +254,59 @@ int sim_price_regression(void)
     lv_obj_send_event(lv_obj_get_parent(find_prefix(top, "30 d")), LV_EVENT_CLICKED, NULL);
     advance(50);
     CHECK(find_prefix(top, "Daily means") != NULL);
+
+    /* A parsed sparse month is drawn at elapsed-time X coordinates and leaves a real hole in the line. */
+    const int64_t begin = 1792188000LL;
+    ha_stats_window_t window = {.start_epoch = begin, .end_epoch = ha_stats_local_day_start(begin, 30)};
+    cJSON *reply = cJSON_CreateObject();
+    cJSON *rows = cJSON_AddArrayToObject(reply, "sensor.quote");
+    const int offsets[] = {0, 1, 29};
+    for (size_t i = 0; i < sizeof(offsets) / sizeof(offsets[0]); i++) {
+        cJSON *row = cJSON_CreateObject();
+        cJSON_AddNumberToObject(row, "start", (double)ha_stats_local_day_start(begin, offsets[i]) * 1000.0);
+        cJSON_AddNumberToObject(row, "mean", 100 + i);
+        cJSON_AddItemToArray(rows, row);
+    }
+    ha_range_series_t range_series;
+    CHECK(ha_stats_parse_range(reply, "sensor.quote", &window, HA_RANGE_30_DAYS, &range_series) == HA_STATS_OUTCOME_OK);
+    cJSON_Delete(reply);
+    ui_history_popup_simulator_set_range(&range_series);
+    advance(50);
+    lv_obj_t *chart = find_chart(top);
+    CHECK(chart != NULL && lv_chart_get_type(chart) == LV_CHART_TYPE_SCATTER);
+    CHECK(lv_chart_get_point_count(chart) == 30);
+    lv_chart_series_t *line = lv_chart_get_series_next(chart, NULL);
+    int32_t *xs = lv_chart_get_series_x_array(chart, line);
+    int32_t *ys = lv_chart_get_series_y_array(chart, line);
+    CHECK(xs[0] == 0 && xs[1] == (ha_stats_local_day_start(begin, 1) - begin) / 60);
+    CHECK(xs[29] == (ha_stats_local_day_start(begin, 29) - begin) / 60 && xs[1] * 2 < xs[29]);
+    CHECK(ys[0] != LV_CHART_POINT_NONE && ys[1] != LV_CHART_POINT_NONE && ys[29] != LV_CHART_POINT_NONE);
+    CHECK(ys[2] == LV_CHART_POINT_NONE && ys[28] == LV_CHART_POINT_NONE);
+
+    /* A year must fit LVGL's int32 coordinate mapping, including the multiplication by the chart width. */
+    reply = cJSON_CreateObject();
+    rows = cJSON_AddArrayToObject(reply, "sensor.quote");
+    window.end_epoch = ha_stats_local_day_start(begin, 365);
+    for (int i = 0; i < 3; i++) {
+        cJSON *row = cJSON_CreateObject();
+        cJSON_AddNumberToObject(row, "start", (double)ha_stats_local_day_start(begin, i * 26 * 7) * 1000.0);
+        cJSON_AddNumberToObject(row, "mean", 100 + i);
+        cJSON_AddItemToArray(rows, row);
+    }
+    CHECK(ha_stats_parse_range(reply, "sensor.quote", &window, HA_RANGE_12_MONTHS, &range_series) == HA_STATS_OUTCOME_OK);
+    cJSON_Delete(reply);
+    CHECK(range_series.count == 53);
+    ui_history_popup_simulator_set_range(&range_series);
+    advance(50);
+    chart = find_chart(top);
+    line = lv_chart_get_series_next(chart, NULL);
+    lv_obj_update_layout(chart);
+    lv_point_t first_point, middle_point, last_point;
+    lv_chart_get_point_pos_by_id(chart, line, 0, &first_point);
+    lv_chart_get_point_pos_by_id(chart, line, 26, &middle_point);
+    lv_chart_get_point_pos_by_id(chart, line, 52, &last_point);
+    CHECK(middle_point.x > first_point.x && middle_point.x < last_point.x);
+    CHECK(abs(2 * (middle_point.x - first_point.x) - (last_point.x - first_point.x)) <= 2);
 
     printf("price forecast: %u checks passed\n", checks);
     return 0;

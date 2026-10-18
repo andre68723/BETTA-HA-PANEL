@@ -350,10 +350,10 @@ void ui_pages_set_stock_chip_handler(void (*handler)(void))
 
 static void ui_pages_stock_chip_event_cb(lv_event_t *event)
 {
-    if (lv_event_get_code(event) != LV_EVENT_DOUBLE_CLICKED || s_stock_chip_handler == NULL) {
+    if (lv_event_get_code(event) != LV_EVENT_CLICKED || s_stock_chip_handler == NULL) {
         return;
     }
-    ESP_LOGI("ui_pages", "top bar chip double tapped: stock");
+    ESP_LOGI("ui_pages", "top bar chip tapped: stock");
     s_stock_chip_handler();
 }
 
@@ -831,7 +831,7 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
     lv_obj_set_scrollable(s_stock_chip, false);
     lv_obj_set_hidden(s_stock_chip, true);
     lv_obj_set_clickable(s_stock_chip, true);
-    lv_obj_add_event_cb(s_stock_chip, ui_pages_stock_chip_event_cb, LV_EVENT_DOUBLE_CLICKED, NULL);
+    lv_obj_add_event_cb(s_stock_chip, ui_pages_stock_chip_event_cb, LV_EVENT_CLICKED, NULL);
     for (size_t i = 0; i < 3U; i++) {
         s_stock_rows[i] = lv_obj_create(s_stock_chip);
         lv_obj_remove_style_all(s_stock_rows[i]);

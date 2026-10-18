@@ -27,6 +27,7 @@
 #include "drivers/ambient_camera.h"
 #include "drivers/display_init.h"
 #include "drivers/display_backlight.h"
+#include "drivers/touch_track.h"
 #include "net/wifi_diag_store.h"
 #include "net/wifi_mgr.h"
 #include "settings/night_mode.h"
@@ -449,6 +450,29 @@ esp_err_t api_version_get_handler(httpd_req_t *req)
     if (wifi_diag_store_load(&wifi_diag_prev)) {
         api_version_add_wifi_diag(cJSON_AddObjectToObject(wifi_diag_obj, "prev_boot"), &wifi_diag_prev);
     }
+
+    /* Touch contact counters since boot (all zero on boards whose driver does not feed them): "lost" are contacts that
+     * ended before they were reported, "flagged" points carried the controller's weak-signal flag. */
+    const touch_track_stats_t *touch = touch_track_stats();
+    cJSON *touch_obj = cJSON_AddObjectToObject(root, "touch");
+    cJSON_AddNumberToObject(touch_obj, "frames", (double)touch->frames);
+    cJSON_AddNumberToObject(touch_obj, "flagged", (double)touch->flagged);
+    cJSON_AddNumberToObject(touch_obj, "invalid", (double)touch->invalid);
+    cJSON_AddNumberToObject(touch_obj, "contacts", (double)touch->contacts);
+    cJSON_AddNumberToObject(touch_obj, "confirmed", (double)touch->confirmed);
+    cJSON_AddNumberToObject(touch_obj, "lost", (double)touch->lost);
+    cJSON_AddNumberToObject(touch_obj, "held", (double)touch->held);
+    cJSON_AddNumberToObject(touch_obj, "reads", (double)touch->reads);
+    cJSON_AddNumberToObject(touch_obj, "empty", (double)touch->empty);
+    cJSON_AddNumberToObject(touch_obj, "i2c_errors", (double)touch->i2c_errors);
+    cJSON_AddNumberToObject(touch_obj, "late", (double)touch->late);
+    cJSON_AddNumberToObject(touch_obj, "max_gap_ms", (double)touch->max_gap_ms);
+    cJSON_AddNumberToObject(touch_obj, "ui_pressed", (double)touch->ui_pressed);
+    cJSON_AddNumberToObject(touch_obj, "ui_released", (double)touch->ui_released);
+    cJSON_AddNumberToObject(touch_obj, "ui_clicked", (double)touch->ui_clicked);
+    cJSON_AddNumberToObject(touch_obj, "ui_scrolled", (double)touch->ui_scrolled);
+    cJSON_AddNumberToObject(touch_obj, "ui_long", (double)touch->ui_long);
+    cJSON_AddNumberToObject(touch_obj, "ui_lost", (double)touch->ui_lost);
 
     cJSON_AddNumberToObject(root, "uptime_s", (double)(esp_timer_get_time() / 1000000));
     sample_cpu_load();
