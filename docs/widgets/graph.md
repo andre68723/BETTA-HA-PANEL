@@ -2,68 +2,70 @@
 
 # Graph
 
-Follow a numeric value over time as a line, smoothed line or bar chart.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Graph**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-Choose the graph style and the time window. The data source is selected separately; see **History source** below.
-
-## Preview
+Follows a numeric value over time as a line, smoothed line or bar chart; usually a `sensor.*`, any entity with a numeric state works.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/graph_line_glow.png"><img src="../img/gallery/graph_line_glow.png" alt="Graph (line), Glow style" loading="lazy" width="340" height="150" style="width: 272px"></a>
-<figcaption>Graph (line)</figcaption></figure>
-<figure><a href="../img/gallery/graph_bars_glow.png"><img src="../img/gallery/graph_bars_glow.png" alt="Graph (bars), Glow style" loading="lazy" width="340" height="150" style="width: 272px"></a>
-<figcaption>Graph (bars)</figcaption></figure>
+<figure><a href="../img/gallery/graph_line_glow.png"><img src="../img/gallery/graph_line_glow.png" alt="Graph (line), Glow style" loading="lazy" width="340" height="150" style="width: 272px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** A sensor or another entity with a numeric state.
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Display | graph presentation: line, smoothed line, smoothed line with points, bars |
-| Options | time window in minutes, bar interval in minutes (bars only), History from Home Assistant (24 h from the Home Assistant Recorder), number of displayed points (render points, empty = auto) |
-| Colors | line colour |
-| Interaction | read-only |
+| Numeric entity | a sensor or another entity with a numeric state |
 
-## History source
+## Requirements
 
-| Inspector option | Data source | After a restart |
+For **History from Home Assistant**: the [Recorder](https://www.home-assistant.io/integrations/recorder/) must retain the entity.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Display mode | line, smoothed line, smoothed line with points, or bars |
+| Time window (minutes) | the period shown |
+| Bar interval (min) | bars only: the period one bar covers |
+| History from Home Assistant | the last 24 hours from the Recorder instead of samples collected on the panel; see below |
+| Render points (empty = auto) | the number of points drawn |
+| Graph line color | the line colour |
+
+<a href="../img/examples/inspector-graph.png"><img src="../img/examples/inspector-graph.png" alt="Inspector of the Graph widget" loading="lazy" width="340" height="514"></a>
+
+*Inspector in the web editor, with the widget of the preview above.*
+
+### History source
+
+| History from Home Assistant | Data source | After a restart |
 | --- | --- | --- |
-| **History from Home Assistant** off (default) | Samples collected on the panel, retained locally for 24 hours | Restores its saved samples; a new graph starts collecting |
-| **History from Home Assistant** on | Last 24 hours from Home Assistant Recorder; no samples stored on the panel | Fetches existing Recorder records when its page is shown |
+| Off (default) | Samples collected on the panel, retained locally for 24 hours | Restores its saved samples; a new graph starts collecting |
+| On | Last 24 hours from Home Assistant Recorder; no samples stored on the panel | Fetches existing Recorder records when its page is shown |
 
-To use Recorder history:
-
-1. Select the Graph widget and its numeric entity.
-2. In **Data**, enable **History from Home Assistant** (**Verlauf aus Home Assistant** in German).
-3. The default two-hour time window expands to **1440 minutes (24 hours)**; a custom window is retained.
-4. Save the layout. The checkbox remains selected when the layout is reloaded.
+Switching it on expands the default two-hour time window to **1440 minutes (24 hours)**; a custom window is kept. Recorder data refreshes every **15 minutes while the page is shown**. Up to **eight** graphs can use this source; requests run one after another. See [history requirements and troubleshooting](../history.md#requirements-and-troubleshooting).
 
 ![Bedroom temperature over 24 hours with Home Assistant history enabled](../img/examples/graph-ha-history-24h.png)
 
 *LVGL/SDL simulator, Flat style: bedroom temperature over 24 hours (1440 minutes), line graph and **History from Home Assistant** enabled. Public synthetic data; click to enlarge.*
 
-Recorder data refreshes every **15 minutes while the page is shown**. Up to **eight** graphs can use this source; requests run sequentially. Home Assistant must be connected and Recorder must retain the entity. See [history requirements and troubleshooting](../history.md#requirements-and-troubleshooting).
+**History on tap** on the Sensor, Binary sensor, Contact and Lock widgets opens a detail popup; it does not select the Graph's source.
 
-The separate **History on tap** option on Sensor, Binary sensor, Contact and Lock widgets opens a detail popup; it does not select the Graph's source.
+## On the panel
 
-## Layout limits
+- Read-only.
+
+## Variants
+
+<div class="widget-previews">
+<figure><a href="../img/gallery/graph_bars_glow.png"><img src="../img/gallery/graph_bars_glow.png" alt="Graph (bars), Glow style" loading="lazy" width="340" height="150" style="width: 272px"></a>
+<figcaption>Graph (bars)</figcaption></figure>
+</div>
+
+## Size
 
 - Minimum: **220 × 140 px**.
-- Maximum: **dashboard width × dashboard height**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

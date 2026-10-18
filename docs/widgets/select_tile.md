@@ -2,47 +2,44 @@
 
 # Select
 
-Choose an option from a select or input-select entity.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Select**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-Use enough width for the title and longest option; the example is 360 × 100 px. Tap the tile to open its option list.
-
-## Preview
+Chooses an option of a `select.*` or `input_select.*` entity.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/charge_mode_glow.png"><img src="../img/gallery/charge_mode_glow.png" alt="Charge mode, Glow style" loading="lazy" width="360" height="100" style="width: 288px"></a>
-<figcaption>Charge mode</figcaption></figure>
+<figure><a href="../img/gallery/charge_mode_glow.png"><img src="../img/gallery/charge_mode_glow.png" alt="Charge mode, Glow style" loading="lazy" width="360" height="100" style="width: 288px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `select.*`, `input_select.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Interaction | tap opens a list of the entity's options; picking one calls the selected option |
+| Select | `select.*`, `input_select.*` |
 
-## Detail popup
+## Requirements
 
-Tap the tile to open the option picker. The current option is marked. Tap another option to request it, or close the popup to leave it unchanged. The tile updates only after Home Assistant reports the new state.
+None beyond the entities.
+
+## Options
+
+No options beyond the entities; the controls follow what the entity supports.
+
+## On the panel
+
+- A tap opens the option list; picking one requests it.
+- Leave enough width for the title and the longest option; the example is 360 × 100 px.
+
+### Option picker
+
+The current option is marked. Tap another option to request it, or close the popup to leave it unchanged. The tile updates only after Home Assistant reports the new state.
 
 <a href="../img/gallery/gallery_select_detail_glow.png"><img src="../img/gallery/gallery_select_detail_glow.png" alt="Charge mode option picker, glow" loading="lazy" width="720" height="720" style="width: 576px"></a>
 
-## Layout limits
+## Size
 
 - Minimum: **160 × 80 px**.
-- Maximum: **dashboard width × 200 px**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × 200 px**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

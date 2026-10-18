@@ -24,6 +24,9 @@ from generate_simulator_gallery import DATA, REPO, TOP_BAR_H, build_simulator, c
 
 OUT = REPO / "docs/img/examples"
 WWW = REPO / "components/webui/www"
+# Widgets whose guide shows the inspector: many options, or options that depend on the entity.
+# Wallbox and Bambu printer are left out: their inspector fills from device detection, which the demo API does not offer.
+INSPECTOR_KINDS = ["sensor", "graph", "gauge", "price_forecast", "parqet_portfolio", "room_tile", "energy_timeline"]
 
 
 def fixtures():
@@ -372,6 +375,80 @@ def capture_editor(fixture, output, executable, setup_only=False, hero=False, fi
         thread.join()
 
 
+def capture_inspectors(output, executable):
+    """The Properties tab of the inspector for INSPECTOR_KINDS, each with the widget of its guide's main preview (the
+    first gallery tile of that type) selected, at twice the pixel density for legible text."""
+    from playwright.sync_api import sync_playwright
+
+    _spec, fixture = prepare_fixture(json.loads(DATA.read_text()))
+    for state in fixture["states"]:
+        attributes = state.setdefault("attributes", {})
+        if attributes.get("unit_of_measurement") == "°C" and not attributes.get("device_class"):
+            attributes["device_class"] = "temperature"  # as Home Assistant reports it, so the class choices show
+    responses = demo_api(fixture)
+    failures = []
+
+    class Handler(SimpleHTTPRequestHandler):
+        def log_message(self, *_):
+            pass
+
+        def do_GET(self):
+            url = urlsplit(self.path)
+            if not url.path.startswith("/api/"):
+                return super().do_GET()
+            payload = responses.get(url.path)
+            if payload is None:
+                self.send_error(404)
+                return
+            body = json.dumps(payload).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_POST(self):
+            self.send_error(405, "Documentation demo is read-only")
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(WWW)))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with sync_playwright() as p:
+            options = {"headless": True}
+            if executable:
+                options["executable_path"] = executable
+            browser = p.chromium.launch(**options)
+            page = browser.new_page(viewport={"width": 1536, "height": 2400}, device_scale_factor=2, locale="en-GB")
+            page.on("pageerror", lambda error: failures.append(str(error)))
+            page.route("**/*", lambda route: route.continue_() if urlsplit(route.request.url).hostname == "127.0.0.1"
+                       else (failures.append(f"External request: {route.request.url}"), route.abort()))
+            for kind in INSPECTOR_KINDS:
+                widget = next((pg["widgets"][0] for pg in fixture["pages"]
+                               if pg["widgets"] and pg["widgets"][0]["type"] == kind), None)
+                if widget is None:
+                    failures.append(f"No gallery tile of type {kind}")
+                    continue
+                # The gallery has more tiles than a layout has pages: each capture loads a layout of this tile alone.
+                responses["/api/layout"] = {"version": 1, "alerts": [], "pages": [{"id": "inspector", "title": "Demo",
+                                                                                    "widgets": [widget]}]}
+                page.goto(f"http://127.0.0.1:{server.server_port}", wait_until="networkidle")
+                page.wait_for_function("editor.editorStarted && editor.entities.length > 0")
+                page.evaluate("(id) => { editor.selectedPageId = 'inspector'; editor.selectedWidgetId = id; renderAll(); "
+                              "selectInspectorTab('properties'); }", widget["id"])
+                page.locator("#inspectorSection").wait_for(state="visible")
+                page.wait_for_timeout(200)
+                page.locator("#inspectorSection").screenshot(path=str(output / f"inspector-{kind}.png"))
+                print(f"Captured the inspector of {kind}")
+            browser.close()
+        if failures:
+            raise RuntimeError("\n".join(failures))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=OUT)
@@ -385,9 +462,13 @@ def main():
     selection.add_argument("--weather-report-only", action="store_true", help="Render weather forecasts with synthetic DWD report text")
     selection.add_argument("--history-only", action="store_true", help="Render a 24-hour temperature graph and motion history popup")
     selection.add_argument("--energy-details-only", action="store_true", help="Render the Energy page's seven-day details (side panel and popup)")
+    selection.add_argument("--inspector-only", action="store_true", help="Capture the inspector of the widgets whose guide shows it")
     parser.add_argument("--browser-executable", help="Use an installed Chromium browser instead of Playwright's")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
+    if args.inspector_only:
+        capture_inspectors(args.output, args.browser_executable)
+        return
     wide, compact, devices = fixtures()
     if not args.editor_only:
         render_panels(wide, compact, devices, args.output, args.appearance_only, args.setup_only, args.topbar_only,

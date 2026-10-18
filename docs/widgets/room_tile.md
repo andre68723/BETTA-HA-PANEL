@@ -2,21 +2,44 @@
 
 # Room card
 
-Group a room's values and controls in one card with a popup for its entities.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Room card**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-Select the main room entity and up to seven additional entities, or import an area in the editor. Choose humidity, cover or media as the optional extra readout/action, or tick Controls on the card for lights, switches and covers as buttons (needs a card of about 400 x 240 px).
-
-## Preview
+Groups a room's values and controls in one card, with a popup for its entities; any domain, filled from a Home Assistant area or by hand.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/room_humidity_glow.png"><img src="../img/gallery/room_humidity_glow.png" alt="Room, humidity, Glow style" loading="lazy" width="320" height="200" style="width: 256px"></a>
-<figcaption>Room, humidity</figcaption></figure>
+<figure><a href="../img/gallery/room_humidity_glow.png"><img src="../img/gallery/room_humidity_glow.png" alt="Room, humidity, Glow style" loading="lazy" width="320" height="200" style="width: 256px"></a></figure>
+</div>
+
+## Entities
+
+| Entity | Domains |
+| --- | --- |
+| Main entity | any |
+| Room entities (up to 7) *(optional)* | any |
+| Extra field *(optional)* | one of the room entities |
+
+## Requirements
+
+None beyond the entities.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Room entities | one entity per line, up to seven; importing an area in the editor fills them |
+| Extra field | humidity, cover (status and open/close) or media player (status and play/pause) |
+| Controls on the card | lights, switches and covers as buttons, on a card of about 400 × 240 px |
+
+<a href="../img/examples/inspector-room_tile.png"><img src="../img/examples/inspector-room_tile.png" alt="Inspector of the Room card widget" loading="lazy" width="340" height="564"></a>
+
+*Inspector in the web editor, with the widget of the preview above.*
+
+## On the panel
+
+- A tap opens a popup with every entity and toggles for lights, switches, covers, fans and media players.
+- With **Controls on the card** lights and switches toggle together and covers get up and down.
+
+## Variants
+
+<div class="widget-previews">
 <figure><a href="../img/gallery/room_cover_glow.png"><img src="../img/gallery/room_cover_glow.png" alt="Room, cover, Glow style" loading="lazy" width="320" height="200" style="width: 256px"></a>
 <figcaption>Room, cover</figcaption></figure>
 <figure><a href="../img/gallery/room_media_player_glow.png"><img src="../img/gallery/room_media_player_glow.png" alt="Room, media player, Glow style" loading="lazy" width="320" height="200" style="width: 256px"></a>
@@ -25,25 +48,13 @@ Select the main room entity and up to seven additional entities, or import an ar
 <figcaption>Room card</figcaption></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
-
-## Entities and interaction
-
-**Supported primary entities:** The chosen area's entities, or a manually configured group.
-
-| Setting / behaviour | What it does |
-| --- | --- |
-| Extras | primary entity plus up to 7 more in additional room entities; filled from a Home Assistant area in the editor |
-| Interaction | tap opens a popup listing every entity, with toggles for lights/switches/covers/fans/media players; with "Controls on the card" a large card also shows one button per device type (lights and switches toggle together, covers get up and down) |
-
-## Layout limits
+## Size
 
 - Minimum: **220 × 120 px**.
-- Maximum: **640 px × 320 px**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **640 px × 320 px**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

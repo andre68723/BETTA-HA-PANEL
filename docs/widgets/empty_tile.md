@@ -2,32 +2,31 @@
 
 # Empty spacer
 
-Reserve dashboard space without adding a control or subscribing to an entity.
+Reserves dashboard space. It has no entity and subscribes to nothing.
 
-## Configure in the editor
+## Entities
 
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Empty**.
-2. Place the spacer; no entity is required.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
+None; the spacer has no entity.
 
-Choose Empty in the Add menu and size it as a spacer. No primary entity is required.
+## Requirements
 
-## Preview
+None beyond the entities.
 
-No public screenshot is included for this widget yet.
+## Options
 
-## Entities and interaction
+No options beyond the entities; the controls follow what the entity supports.
 
-**Supported primary entities:** None; the spacer has no entity.
+## On the panel
 
-## Layout limits
+- Empty space, no touch action. In the editor it is added as **Empty**.
+
+## Size
 
 - Minimum: **120 × 80 px**.
-- Maximum: **dashboard width × dashboard height**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

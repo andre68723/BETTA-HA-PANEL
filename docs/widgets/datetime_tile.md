@@ -2,42 +2,38 @@
 
 # Date/Time
 
-View and edit a date, time or combined date/time entity with a roller popup.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Date/Time**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-The available controls follow the selected entity's capabilities.
-
-## Preview
+Shows and edits an `input_datetime.*`, `time.*`, `date.*` or `datetime.*` entity with a roller popup.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/morning_routine_glow.png"><img src="../img/gallery/morning_routine_glow.png" alt="Morning routine, Glow style" loading="lazy" width="280" height="90" style="width: 224px"></a>
-<figcaption>Morning routine</figcaption></figure>
+<figure><a href="../img/gallery/morning_routine_glow.png"><img src="../img/gallery/morning_routine_glow.png" alt="Morning routine, Glow style" loading="lazy" width="280" height="90" style="width: 224px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `input_datetime.*`, `time.*`, `date.*`, `datetime.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Display | localized date and/or time; seconds appear only when non-zero |
-| Interaction | tap opens date/time rollers; Save sends one HA service call |
+| Date or time | `input_datetime.*`, `time.*`, `date.*`, `datetime.*` |
 
-## Layout limits
+## Requirements
+
+None beyond the entities.
+
+## Options
+
+No options beyond the entities; the controls follow what the entity supports.
+
+## On the panel
+
+- Date and/or time in the panel language; seconds only when not zero.
+- A tap opens date and time rollers; **Save** sends one service call.
+
+## Size
 
 - Minimum: **180 × 90 px**.
-- Maximum: **dashboard width × 220 px**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × 220 px**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

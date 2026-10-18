@@ -2,51 +2,50 @@
 
 # Weather forecast
 
-Compare forecast days, temperatures and precipitation in configurable columns.
-
-## Required Home Assistant integration
-
-The forecast needs a **[weather](https://www.home-assistant.io/integrations/weather/)** entity from any provider that supplies daily forecasts. The optional German report text additionally needs the **[DWD Weather integration](https://github.com/FL550/dwd_weather)** and its separate *Weather report* sensor (see [DWD report setup](../home-assistant.md#what-a-feature-needs)).
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Weather forecast**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-Choose forecast columns and optional rain details. Leave enough width for each day and use a weather integration that supplies forecasts.
-
-For text, select **Weather report sensor (DWD text, optional)**. Enable the DWD Weather integration's separate Weather report sensor in Home Assistant first; see [DWD report setup](../home-assistant.md#what-a-feature-needs). The report is German. Tap the temperature for the full report, or a forecast day for that day's text. The compact 4-inch layout shows the text in these popups; larger layouts also show a summary when the header has enough space.
-
-## Preview
+Compares forecast days of a `weather.*` entity: temperatures and precipitation in configurable columns.
 
 <div class="widget-previews">
-<figure><a href="../img/examples/weather-forecast-report_glow.png"><img src="../img/examples/weather-forecast-report_glow.png" alt="Forecast with optional DWD report, Glow style" loading="lazy" width="680" height="520" style="width: 544px"></a>
-<figcaption>Forecast with optional DWD report</figcaption></figure>
+<figure><a href="../img/examples/weather-forecast-report_glow.png"><img src="../img/examples/weather-forecast-report_glow.png" alt="Forecast with optional DWD report, Glow style" loading="lazy" width="680" height="520" style="width: 544px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-This 680 × 520 px example uses the 10-inch layout with synthetic English report text (real DWD reports are German).
-
-## Entities and interaction
-
-**Supported primary entities:** `weather.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Toggles | show precipitation (rain chance and amount, default on) |
-| Extras | secondary entity: an optional DWD weather report sensor, shown as a summary line in the header if there is room (needs roughly 150x40 px free there, so a wider tile) and per-day in the day popup |
-| Interaction | tapping a day card opens a popup (pressure, wind, UV, the report text) |
+| Weather | `weather.*` |
+| DWD weather report *(optional)* | `sensor.*` |
 
-## Layout limits
+## Requirements
+
+A **[weather](https://www.home-assistant.io/integrations/weather/)** entity with daily forecasts. The report text needs the **[DWD Weather integration](https://github.com/FL550/dwd_weather)** and its separate *Weather report* sensor (see [DWD report setup](../home-assistant.md#what-a-feature-needs)); the report is German.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Visible days | fewer days give each column more room; Auto shows as many as are readable |
+| Show rain chance and amount | on by default |
+| Show name | off by default |
+
+## On the panel
+
+- A tap on a day opens a popup with pressure, wind, UV and that day's report.
+- With the report, a tap on the temperature shows the full text; a wide header shows a summary (about 150 × 40 px free).
+
+## Variants
+
+<div class="widget-previews">
+<figure><a href="../img/gallery/weather_forecast_glow.png"><img src="../img/gallery/weather_forecast_glow.png" alt="Weather forecast, Glow style" loading="lazy" width="680" height="400" style="width: 544px"></a>
+<figcaption>Weather forecast</figcaption></figure>
+</div>
+
+## Size
 
 - Minimum: **260 × 220 px**.
-- Maximum: **dashboard width × dashboard height**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

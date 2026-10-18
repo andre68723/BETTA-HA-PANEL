@@ -2,41 +2,41 @@
 
 # Camera
 
-Show camera snapshots or an optional MJPEG live picture.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Camera**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-By default, the widget refreshes its snapshot every 10 seconds while visible; a tap loads a new snapshot. Enable **Live picture (MJPEG)** in the Inspector to stream while visible and tap to open a full-screen view. Live is off by default. It accepts Home Assistant camera entities that provide MJPEG; RTSP, H.264/H.265 and audio are not supported. The source camera determines how often a new image is available. Streams pause on hidden pages, under popups and during display protection. At most two streams run at once; other live tiles wait. This feature is separate from the onboard ambient-light camera.
-
-## Preview
+Shows snapshots of a `camera.*` or `image.*` entity, or an optional MJPEG live picture.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/camera_glow.png"><img src="../img/gallery/camera_glow.png" alt="Camera, Glow style" loading="lazy" width="220" height="180" style="width: 176px"></a>
-<figcaption>Camera</figcaption></figure>
+<figure><a href="../img/gallery/camera_glow.png"><img src="../img/gallery/camera_glow.png" alt="Camera, Glow style" loading="lazy" width="220" height="180" style="width: 176px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `camera.*`, `image.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Interaction | tap refreshes the snapshot; with optional Live picture (MJPEG), tap opens full screen |
+| Camera or image | `camera.*`, `image.*` |
 
-## Layout limits
+## Requirements
+
+None beyond the entities.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Live picture (MJPEG) | streams while visible; off by default. Only cameras with MJPEG; RTSP, H.264/H.265 and audio are not supported |
+
+## On the panel
+
+- The snapshot refreshes every 10 seconds while visible; a tap loads a new one.
+- With Live picture a tap opens a full-screen view. Streams pause on hidden pages, under popups and during display protection; at most two run at once.
+- The source camera decides how often a new image is available. The onboard ambient-light camera is separate.
+
+## Size
 
 - Minimum: **160 × 120 px**.
-- Maximum: **dashboard width × dashboard height**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

@@ -2,50 +2,47 @@
 
 # Contact
 
-Show whether a door or window is open, with optional Recorder history on tap.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Contact**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-The available controls follow the selected entity's capabilities.
-
-## Preview
+Shows whether a door or window `binary_sensor.*` is open, with optional history on tap.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/contact_glow.png"><img src="../img/gallery/contact_glow.png" alt="Contact, Glow style" loading="lazy" width="180" height="70" style="width: 144px"></a>
-<figcaption>Contact</figcaption></figure>
+<figure><a href="../img/gallery/contact_glow.png"><img src="../img/gallery/contact_glow.png" alt="Contact, Glow style" loading="lazy" width="180" height="70" style="width: 144px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `binary_sensor.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Display | state words by device class, or an icon-only / door-window pictogram look |
-| Interaction | read-only; optional history popup opens Recorder history on tap |
+| Door or window sensor | `binary_sensor.*` |
 
-## History detail popup
+## Requirements
 
-In the inspector, enable **History on tap (Lock, Vacuum: long press)**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only.
+None beyond the entities.
 
-See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Display | state words, an icon only, or a door/window pictogram |
+| History on tap (Lock, Vacuum: long press) | a tap opens the Recorder history |
+
+## On the panel
+
+- Door or window follows the device class, otherwise the name.
+- Read-only.
+
+### History
+
+Enable **History on tap (Lock, Vacuum: long press)**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
 
 <a href="../img/gallery/gallery_history_contact_de_glow.png"><img src="../img/gallery/gallery_history_contact_de_glow.png" alt="Front-door contact history (German), glow" loading="lazy" width="720" height="720" style="width: 576px"></a>
 
-## Layout limits
+## Size
 
 - Minimum: **180 × 70 px**.
-- Maximum: **dashboard width × 160 px**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × 160 px**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

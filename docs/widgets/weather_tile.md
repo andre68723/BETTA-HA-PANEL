@@ -2,47 +2,41 @@
 
 # Weather (now)
 
-Show current weather conditions, temperature and the available extra readings.
-
-## Required Home Assistant integration
-
-The tile needs a **[weather](https://www.home-assistant.io/integrations/weather/)** entity from any provider. Extra readings such as UV or pressure appear only when that provider supplies them.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Weather (now)**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-The weather widgets hide their name by default to leave more room for conditions and forecasts.
-
-## Preview
+Shows the current conditions of a `weather.*` entity, its temperature and the extra readings the provider supplies.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/weather_now_glow.png"><img src="../img/gallery/weather_now_glow.png" alt="Weather (now), Glow style" loading="lazy" width="220" height="240" style="width: 176px"></a>
-<figcaption>Weather (now)</figcaption></figure>
+<figure><a href="../img/gallery/weather_now_glow.png"><img src="../img/gallery/weather_now_glow.png" alt="Weather (now), Glow style" loading="lazy" width="220" height="240" style="width: 176px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `weather.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Options | weather entity and optional Show name (off by default) |
-| Interaction | read-only |
-| Extras | Today’s low and precipitation when space permits; the same colored Meteocons as the forecast on P4 |
+| Weather | `weather.*` |
 
-## Layout limits
+## Requirements
+
+None beyond the entities.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Show name | off by default, to leave room for the conditions |
+
+## On the panel
+
+- Today's low and precipitation when there is room; the same Meteocons as the forecast.
+- UV, pressure and other extras appear only when the provider supplies them.
+- Read-only.
+
+## Size
 
 - Minimum: **220 × 200 px**.
-- Maximum: **480 px × 480 px**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **480 px × 480 px**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

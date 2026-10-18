@@ -2,43 +2,55 @@
 
 # Parqet portfolio
 
-Show a Parqet portfolio: total value, gain, XIRR, dividends and the largest holdings.
+Shows a Parqet portfolio from its `sensor.*` entities: total value, gain, XIRR, dividends and the largest holdings.
 
-## Required Home Assistant integration
+<div class="widget-previews">
+<figure><a href="../img/gallery/portfolio_glow.png"><img src="../img/gallery/portfolio_glow.png" alt="Portfolio, Glow style" loading="lazy" width="360" height="330" style="width: 288px"></a></figure>
+</div>
 
-The widget reads the sensors of the **[Parqet Companion integration](https://github.com/cubinet-code/ha-parqet-companion)** (HACS) for a portfolio you track on [Parqet](https://www.parqet.com). The panel only talks to Home Assistant. Setting up the integration is described by its own project.
+## Entities
 
-The sensors report one **interval**, set in the integration's options (default Max). The tile names the interval in its corner. The largest holdings come from the attribute `top_holdings` of the total value sensor (five entries, long names are shortened).
+| Entity | Domains |
+| --- | --- |
+| Total value entity | `sensor.*` |
+| Unrealised gain sensor *(optional)* | `sensor.*` |
+| Unrealised return sensor (%) *(optional)* | `sensor.*` |
+| XIRR sensor *(optional)* | `sensor.*` |
+| Dividends sensor *(optional)* | `sensor.*` |
 
-Disabled by default in the integration: its detailed sensors. Only the unrealised return in percent is useful here, as an optional sensor.
+## Requirements
 
-## Configure in the editor
+The **[Parqet Companion integration](https://github.com/cubinet-code/ha-parqet-companion)** (HACS) for a portfolio you track on [Parqet](https://www.parqet.com). The panel only talks to Home Assistant; setting up the integration is described by its own project.
 
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Parqet portfolio**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
+The sensors report one **interval**, set in the integration's options (default Max). The largest holdings come from the attribute `top_holdings` of the total value sensor (five entries). The integration disables its detailed sensors by default; only the unrealised return in percent is useful here: enable *Unrealised return (gross)* in its entity settings.
 
-Choose the total value sensor of the portfolio (for example `sensor.trade_republic_gesamtwert`). The tile shows the value, and with the optional sensors the gain, XIRR and dividends. On a taller tile the largest holdings follow as weight bars.
+## Options
 
-**Options**
+| Option | Effect |
+| --- | --- |
+| Hide amounts (percentages only) | percentages and weights only; the value is replaced by the return (or the XIRR), dividends are not shown |
+| Show tabs and interval buttons on the tile | **Performance** and **Holdings** tabs and the intervals **1D, 1W, 1M, YTD, MAX** |
+| Start view, Start interval | what the tile starts with; without the buttons they choose what it shows |
 
-- **Unrealised gain sensor** (secondary entity): the gain in the currency, under the value.
-- **Unrealised return sensor** (percent): shown beside the gain. The integration disables this sensor by default (*Unrealised return (gross)*): enable it in the entity settings. The widget does not compute the percentage, because the total value includes cash and the result would differ from Parqet's figure.
-- **XIRR sensor** (third entity) and **Dividends sensor**: two figures side by side when the tile is tall enough.
-- **Hide amounts**: shows percentages and weights only. The value is replaced by the return in percent (or the XIRR without a return sensor), and the dividends are not shown.
-- **Show tabs and interval buttons**: **Performance** and **Holdings** tabs and the intervals **1D, 1W, 1M, YTD** and **MAX** on the tile, to change what it shows by touch. **View** and **Interval** set what it starts with. Without the buttons they simply choose the view and interval.
+<a href="../img/examples/inspector-parqet_portfolio.png"><img src="../img/examples/inspector-parqet_portfolio.png" alt="Inspector of the Parqet portfolio widget" loading="lazy" width="340" height="673"></a>
 
-**Intervals**
+*Inspector in the web editor, with the widget of the preview above.*
+
+### Intervals
 
 - **MAX** shows the sensors' own figures (the integration reports one interval, Max by default).
 - **1D, 1W, 1M and YTD** are asked from the integration for the portfolio (the sensor's `entry_id` and `portfolio_id` attributes). Performance shows the value, the gain with its return, XIRR, TTWROR, dividends, realised gain and the value curve of the interval; Holdings lists five holdings with their return in the interval: the largest by value, the best (**Top 5**) or the worst (**Flop 5**). The choice is made by touch on the tile and is not saved; best and worst need an interval other than MAX.
 - The integration's reply contains every holding and can be large (about 76 KB for a month and 119 KB for the year to date, with 49 holdings). The panel receives at most 128 KB: a reply above that does not arrive and the tile says so. Later in the year the interval YTD can reach that limit.
 
-## Preview
+## On the panel
+
+- The value, the gain with the return in percent, XIRR and dividends, and on a taller tile the largest holdings as weight bars.
+- The tile names the interval in its corner.
+- The widget does not compute the return: the total value includes cash, and the result would differ from Parqet's figure.
+
+## Variants
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/portfolio_glow.png"><img src="../img/gallery/portfolio_glow.png" alt="Portfolio, Glow style" loading="lazy" width="360" height="330" style="width: 288px"></a>
-<figcaption>Portfolio</figcaption></figure>
 <figure><a href="../img/gallery/portfolio_small_glow.png"><img src="../img/gallery/portfolio_small_glow.png" alt="Portfolio (small), Glow style" loading="lazy" width="260" height="150" style="width: 208px"></a>
 <figcaption>Portfolio (small)</figcaption></figure>
 <figure><a href="../img/gallery/portfolio_percent_only_glow.png"><img src="../img/gallery/portfolio_percent_only_glow.png" alt="Portfolio (percent only), Glow style" loading="lazy" width="300" height="200" style="width: 240px"></a>
@@ -49,26 +61,13 @@ Choose the total value sensor of the portfolio (for example `sensor.trade_republ
 <figcaption>Portfolio (holdings)</figcaption></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
-
-## Entities and interaction
-
-**Supported primary entities:** `sensor.*`
-
-| Setting / behaviour | What it does |
-| --- | --- |
-| Display | the total value, the gain in the currency and the return in percent, XIRR and dividends, and the largest holdings as weight bars as far as the tile is tall enough |
-| Options | hide amounts: show percentages only, no amounts; parqet_selector: tabs (Performance, Holdings) and interval chips (1D, 1W, 1M, YTD, MAX) to change the view by touch; parqet_view and parqet_interval: the start view and interval (MAX are the sensors' own figures) |
-| Extras | the tile names the interval; the intervals 1D to YTD are asked from the integration (the reply of a large portfolio can exceed what the panel receives), MAX are the sensors' own figures |
-
-## Layout limits
+## Size
 
 - Minimum: **240 × 150 px**.
-- Maximum: **dashboard width × dashboard height**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

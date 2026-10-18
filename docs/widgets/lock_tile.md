@@ -2,51 +2,48 @@
 
 # Lock
 
-Show a lock's state and lock or unlock it; optional history opens with a long press.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Lock**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-The available controls follow the selected entity's capabilities.
-
-## Preview
+Shows the state of a `lock.*` entity and locks or unlocks it; optional history opens with a long press.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/front_door_glow.png"><img src="../img/gallery/front_door_glow.png" alt="Front door, Glow style" loading="lazy" width="240" height="94" style="width: 192px"></a>
-<figcaption>Front door</figcaption></figure>
+<figure><a href="../img/gallery/front_door_glow.png"><img src="../img/gallery/front_door_glow.png" alt="Front door, Glow style" loading="lazy" width="240" height="94" style="width: 192px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `lock.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| States | locked, unlocked, locking, unlocking, open, opening, jammed (error colour) |
-| Options | confirm unlocking/opening: ask before unlocking or opening (default off); an Open button (lock.open) from 260 px width when the lock supports it |
-| Interaction | tap locks or unlocks (a jammed lock is locked again); optional history popup opens on long press |
+| Lock | `lock.*` |
 
-## History detail popup
+## Requirements
 
-In the inspector, enable **History on tap (Lock, Vacuum: long press)**, save, then long-press the tile. History is loaded from Home Assistant Recorder when opened; it is read-only.
+None beyond the entities.
 
-See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Ask before unlocking or opening | a confirmation before unlocking or opening; off by default |
+| History on tap (Lock, Vacuum: long press) | a long press opens the Recorder history |
+
+## On the panel
+
+- States: locked, unlocked, locking, unlocking, open, opening; jammed in the error colour.
+- A tap locks or unlocks; a jammed lock is locked again.
+- From 260 px width an **Open** button when the lock supports it.
+
+### History
+
+Enable **History on tap (Lock, Vacuum: long press)**, save, then long-press the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
 
 <a href="../img/gallery/gallery_history_lock_en_glow.png"><img src="../img/gallery/gallery_history_lock_en_glow.png" alt="Front-door lock history, glow" loading="lazy" width="720" height="720" style="width: 576px"></a>
 
-## Layout limits
+## Size
 
 - Minimum: **180 × 80 px**.
-- Maximum: **dashboard width × 200 px**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × 200 px**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

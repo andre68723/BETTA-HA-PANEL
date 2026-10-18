@@ -2,55 +2,47 @@
 
 # Wallbox
 
-Show an evcc loadpoint's charging mode, vehicle assignment and target SOC, with charging status, power, charged energy, remaining time and current vehicle SOC.
-
-## Required Home Assistant integration
-
-Install the **[evcc Home Assistant integration](https://github.com/marq24/ha-evcc)** (HACS) and connect it to an evcc server, either the add-on or a standalone server. Enable the loadpoint mode, vehicle, charge limit, power, charged energy, remaining duration, SOC and connection entities. Smart mode requires integration 2026.8.3 or later; the checked contract uses integration 2026.10.2. All actions pass through Home Assistant.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Wallbox**.
-2. Choose the evcc loadpoint in the inspector.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-Choose the loadpoint in the inspector. Find loadpoints reads the evcc integration; existing bindings are preserved until you accept a replacement. Advanced entities shows every binding and the target domain. Enable missing entities in Home Assistant, then repeat the lookup.
-
-## Preview
+Shows and controls an evcc loadpoint through its entities (the mode `select.*` and the related sensors, numbers and selects): charging mode, vehicle, target SOC, power, energy and remaining time.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/wallbox_glow.png"><img src="../img/gallery/wallbox_glow.png" alt="Wallbox, Glow style" loading="lazy" width="360" height="360" style="width: 288px"></a>
-<figcaption>Wallbox</figcaption></figure>
+<figure><a href="../img/gallery/wallbox_glow.png"><img src="../img/gallery/wallbox_glow.png" alt="Wallbox, Glow style" loading="lazy" width="360" height="360" style="width: 288px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `select.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Display | status, power, charged energy, remaining time and current SOC on a solid green bar |
-| Interaction | Off requests charging stop; Smart/Fast choose modes; Vehicle changes assignment; Target SOC applies one value; Sessions lists completed charges |
+| Loadpoint mode | `select.*` |
+| Vehicle, target SOC *(optional)* | `select.*`, `number.*` |
+| Status, power, energy, remaining time, SOC *(optional)* | `sensor.*`, `binary_sensor.*` |
 
-## Charging controls
+## Requirements
 
-**Off** requests stop through the loadpoint mode entity. **Smart** and **Fast** send the exact HA options `smart` and `now`. Older mode options use a picker. A request stays pending until Home Assistant confirms the entity state; the Charging status reports whether the charger is actually charging.
+The **[evcc Home Assistant integration](https://github.com/marq24/ha-evcc)** (HACS), connected to an evcc server (the add-on or a standalone server). Enable the loadpoint mode, vehicle, charge limit, power, charged energy, remaining duration, SOC and connection entities. Smart mode needs integration 2026.8.3 or later; checked with 2026.10.2. All actions pass through Home Assistant.
 
-**Vehicle** changes this loadpoint's car assignment, including No vehicle. The box is as wide as the status line with the name on the left. It remains usable when the SOC is missing. Names are displayed when supplied by Home Assistant; the raw selection value is sent unchanged.
+## Options
 
-**Target SOC** opens a slider using the number entity's minimum, maximum and step. **Apply** sends one value. A select fallback shows the complete reported options when no number binding is available. The number charge limit takes precedence over the similarly named arrival-plan select during detection.
+| Option | Effect |
+| --- | --- |
+| Loadpoint | **Find loadpoints** reads the integration; existing bindings stay until you accept a replacement |
+| Advanced entities | every binding and its target domain |
 
-The current SOC is a solid green horizontal bar from 0 to 100%. Missing or invalid values show `-- %`; the target is separate. Unavailable or disabled controls cannot issue commands. With no cable connected, Off/Smart/Fast remain available to preset the next charge; vehicle and target controls are disabled.
+## On the panel
 
-## Sessions
+- Status, power, charged energy, remaining time and the current SOC on a green bar.
 
-**Sessions** opens the activity popup with Start, Vehicle and Charged columns, newest first, without a total row. It shows up to 20 completed sessions from the last 24 calendar months, including the current month. Dates use the panel's local time zone. Sessions are read through the evcc integration's WebSocket commands; the checked contract is ha-evcc 2026.10.2. The Lovelace card and Home Assistant Recorder are not required.
+### Charging controls
 
-Without a connected vehicle the mode buttons and three readings keep their positions. The vehicle row reads **No vehicle** and cannot be changed. The last completed session's energy replaces the live charged amount; its vehicle and start time replace the status, SOC gauge and charge target. Remaining time is unavailable. An empty history, unsupported session interface or failed request has its own message; unavailable data is never treated as zero.
+- **Off** requests stop through the loadpoint mode entity. **Smart** and **Fast** send the exact HA options `smart` and `now`. Older mode options use a picker. A request stays pending until Home Assistant confirms the entity state; the Charging status reports whether the charger is actually charging.
+- **Vehicle** changes this loadpoint's car assignment, including No vehicle. It remains usable when the SOC is missing. Names are displayed when supplied by Home Assistant; the raw selection value is sent unchanged.
+- **Target SOC** opens a slider using the number entity's minimum, maximum and step. **Apply** sends one value. A select fallback shows the complete reported options when no number binding is available.
+- Missing or invalid values show `-- %`. Unavailable or disabled controls cannot issue commands. With no cable connected, Off/Smart/Fast remain available to preset the next charge; vehicle and target controls are disabled.
 
-Session data is cached for five minutes and refreshed when a connected vehicle disconnects. Older integrations can still provide charging controls while reporting sessions unavailable.
+### Sessions
+
+**Sessions** opens the activity popup with Start, Vehicle and Charged columns, newest first. It shows up to 20 completed sessions from the last 24 calendar months, in the panel's local time zone, read through the evcc integration's WebSocket commands (checked with ha-evcc 2026.10.2). The Lovelace card and the Recorder are not required.
+
+Without a connected vehicle the vehicle row reads **No vehicle**. The last completed session's energy, vehicle and start time replace the live values; remaining time is unavailable. An empty history, unsupported session interface or failed request has its own message; unavailable data is never treated as zero. Session data is cached for five minutes and refreshed when a connected vehicle disconnects.
 
 <a href="../img/gallery/gallery_wallbox_sessions_glow.png"><img src="../img/gallery/gallery_wallbox_sessions_glow.png" alt="Wallbox sessions, glow" loading="lazy" width="720" height="720" style="width: 576px"></a>
 
@@ -58,14 +50,13 @@ Session data is cached for five minutes and refreshed when a connected vehicle d
 
 Simulator examples in Glow style, using the synthetic `wallbox_sessions.json` and `wallbox_disconnected.json` fixtures.
 
-## Layout limits
+## Size
 
 - Minimum: **320 × 360 px**.
-- Maximum: **dashboard width × dashboard height**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

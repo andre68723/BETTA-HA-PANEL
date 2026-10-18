@@ -2,45 +2,37 @@
 
 # Todo list
 
-Show a Home Assistant to-do list and mark individual items done.
-
-## Required Home Assistant integration
-
-The widget shows a list of Home Assistant's **[To-do](https://www.home-assistant.io/integrations/todo/)** integration: a to-do list of any provider, for example Local To-do, Shopping List or Todoist, must exist as a `todo.*` entity.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Todo list**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-Choose a todo entity with items; tap a row to mark that item done.
-
-## Preview
+Shows a `todo.*` list and marks single items done.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/todo_list_glow.png"><img src="../img/gallery/todo_list_glow.png" alt="Todo list, Glow style" loading="lazy" width="300" height="380" style="width: 240px"></a>
-<figcaption>Todo list</figcaption></figure>
+<figure><a href="../img/gallery/todo_list_glow.png"><img src="../img/gallery/todo_list_glow.png" alt="Todo list, Glow style" loading="lazy" width="300" height="380" style="width: 240px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `todo.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Interaction | tapping a row toggles that item done, no popup |
+| To-do list | `todo.*` |
 
-## Layout limits
+## Requirements
+
+A list of Home Assistant's **[To-do](https://www.home-assistant.io/integrations/todo/)** integration from any provider, for example Local To-do, Shopping List or Todoist.
+
+## Options
+
+No options beyond the entities; the controls follow what the entity supports.
+
+## On the panel
+
+- A tap on a row marks that item done.
+
+## Size
 
 - Minimum: **220 × 200 px**.
-- Maximum: **640 px × 640 px**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **640 px × 640 px**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

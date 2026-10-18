@@ -2,17 +2,34 @@
 
 # Sensor
 
-Show an entity's current value and unit, with optional name, age and Recorder history.
+Shows the value of a `sensor.*` or `binary_sensor.*` entity, formatted by its device class, with optional name, age and Recorder history.
 
-## Configure in the editor
+<div class="widget-previews">
+<figure><a href="../img/gallery/sensor_glow.png"><img src="../img/gallery/sensor_glow.png" alt="Sensor, Glow style" loading="lazy" width="200" height="140" style="width: 160px"></a></figure>
+</div>
 
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Sensor**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
+## Entities
 
-Choose whether to show the name and last-update age. Enable history only when Home Assistant Recorder retains this entity.
+| Entity | Domains |
+| --- | --- |
+| Sensor | `sensor.*`, `binary_sensor.*` |
 
-The inspector shows the entity's device class and unit as chips below the entity ("No device class" when Home Assistant gives none). The value follows the device class; the inspector offers only the options of the entity's class, and the first choice is the default.
+## Requirements
+
+None beyond the entities.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Show name | the widget name; on by default |
+| Show last-updated time | the age of the value; on by default |
+| Unit, Format, Time format, Currency | by device class, see below. The inspector shows the class and unit as chips below the entity ("No device class" when Home Assistant gives none) and offers only that class's choices |
+| History on tap (Lock, Vacuum: long press) | a tap opens the Recorder history; only when the Recorder retains the entity |
+
+<a href="../img/examples/inspector-sensor.png"><img src="../img/examples/inspector-sensor.png" alt="Inspector of the Sensor widget" loading="lazy" width="340" height="374"></a>
+
+*Inspector in the web editor, with the widget of the preview above.*
 
 ### Device classes
 
@@ -26,7 +43,7 @@ The inspector shows the entity's device class and unit as chips below the entity
 | Date | Format | Date, Relative | `21.10.2026`, `tomorrow` |
 | Monetary | Currency | Symbol, Code, Hide | `12,34 €`, `12,34 EUR` |
 
-Without an option:
+The first choice is the default. Without an option:
 
 | Device class | Shown as | Example |
 | --- | --- | --- |
@@ -39,40 +56,24 @@ Without an option:
 
 Units Home Assistant can convert (power, energy, duration, temperature, distance, pressure, speed) are set per entity in Home Assistant: *Settings → Entities → Unit of measurement*.
 
-## Preview
+## On the panel
 
-<div class="widget-previews">
-<figure><a href="../img/gallery/sensor_glow.png"><img src="../img/gallery/sensor_glow.png" alt="Sensor, Glow style" loading="lazy" width="200" height="140" style="width: 160px"></a>
-<figcaption>Sensor</figcaption></figure>
-</div>
+- The value as formatted for its device class (see Options).
+- Read-only.
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+### History
 
-## Entities and interaction
-
-**Supported primary entities:** `sensor.*`, `binary_sensor.*`
-
-| Setting / behaviour | What it does |
-| --- | --- |
-| Toggles | show widget name, show update age (both default on) |
-| Interaction | read-only; optional history popup opens Recorder history on tap |
-
-## History detail popup
-
-In the inspector, enable **History on tap (Lock, Vacuum: long press)**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only.
-
-See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
+Enable **History on tap (Lock, Vacuum: long press)**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
 
 <a href="../img/gallery/gallery_history_sensor_en_glow.png"><img src="../img/gallery/gallery_history_sensor_en_glow.png" alt="Room temperature history, glow" loading="lazy" width="720" height="720" style="width: 576px"></a>
 
-## Layout limits
+## Size
 
 - Minimum: **120 × 80 px**.
-- Maximum: **dashboard width × dashboard height**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

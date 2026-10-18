@@ -2,42 +2,39 @@
 
 # Light
 
-Switch a light and adjust the brightness or colour controls reported by Home Assistant.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Light**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-Brightness, RGB, colour-temperature and effect controls appear only if the selected light supports them. Tap the colour button to open its controls, then choose Effect; a light with effects only opens that picker directly.
-
-## Preview
+Switches a `light.*` entity and adjusts brightness, colour temperature, colour and effects as far as the light supports them.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/light_glow.png"><img src="../img/gallery/light_glow.png" alt="Light, Glow style" loading="lazy" width="200" height="220" style="width: 160px"></a>
-<figcaption>Light</figcaption></figure>
+<figure><a href="../img/gallery/light_glow.png"><img src="../img/gallery/light_glow.png" alt="Light, Glow style" loading="lazy" width="200" height="220" style="width: 160px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `light.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Options | brightness, color temperature, RGB and effects (only when Home Assistant reports the capability) |
-| Interaction | the brightness bar is a direct touch slider; tapping the lamp icon toggles on/off directly; the color button opens color and effect controls |
+| Light | `light.*` |
 
-## Layout limits
+## Requirements
+
+None beyond the entities.
+
+## Options
+
+No options beyond the entities; the controls follow what the entity supports.
+
+## On the panel
+
+- The brightness bar is a touch slider; a tap on the lamp icon switches the light.
+- The colour button opens colour, colour temperature and Effect; a light with effects only opens the effect picker.
+- Controls appear only for what Home Assistant reports the light supports.
+
+## Size
 
 - Minimum: **180 × 180 px**.
-- Maximum: **480 px × 480 px**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **480 px × 480 px**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

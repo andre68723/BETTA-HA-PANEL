@@ -2,43 +2,40 @@
 
 # Button
 
-Trigger a switch or a media action directly from a compact touch button.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Button**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-The available controls follow the selected entity's capabilities.
-
-## Preview
+Switches a `switch.*` entity or sends a `media_player.*` action from a compact touch button.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/button_glow.png"><img src="../img/gallery/button_glow.png" alt="Button, Glow style" loading="lazy" width="160" height="160" style="width: 128px"></a>
-<figcaption>Button</figcaption></figure>
+<figure><a href="../img/gallery/button_glow.png"><img src="../img/gallery/button_glow.png" alt="Button, Glow style" loading="lazy" width="160" height="160" style="width: 128px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `switch.*`, `media_player.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Display | button action: auto, play/pause, stop, next, previous |
-| Colors | accent colour |
-| Interaction | tap triggers the action directly, no popup |
+| Switch or media player | `switch.*`, `media_player.*` |
 
-## Layout limits
+## Requirements
+
+None beyond the entities.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Button mode | auto, play/pause, stop, next or previous |
+| Button accent color | the colour of the active button |
+
+## On the panel
+
+- A tap runs the action directly, without a popup.
+
+## Size
 
 - Minimum: **100 × 100 px**.
-- Maximum: **480 px × 320 px**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **480 px × 320 px**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

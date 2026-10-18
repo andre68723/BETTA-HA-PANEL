@@ -2,46 +2,39 @@
 
 # Sonos favorites
 
-Play a Sonos favourite directly from a list on the dashboard.
-
-## Required Home Assistant integration
-
-The widget needs the **[Sonos integration](https://www.home-assistant.io/integrations/sonos/)** for the player and its favorites sensor (`sensor.sonos_favorites`) as the list source.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Sonos favorites**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-Assign the target media player and the Sonos favourites sensor as the list source.
-
-## Preview
+Plays a Sonos favourite on a `media_player.*` from a list on the dashboard.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/sonos_favorites_glow.png"><img src="../img/gallery/sonos_favorites_glow.png" alt="Sonos favorites, Glow style" loading="lazy" width="280" height="240" style="width: 224px"></a>
-<figcaption>Sonos favorites</figcaption></figure>
+<figure><a href="../img/gallery/sonos_favorites_glow.png"><img src="../img/gallery/sonos_favorites_glow.png" alt="Sonos favorites, Glow style" loading="lazy" width="280" height="240" style="width: 224px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `media_player.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Extras | secondary entity: sensor.sonos_favorites, rendered as the list of favorite rows itself (one or two columns by name length), not a sub-label |
-| Interaction | tapping a favorite plays it directly (the player's play action), no popup |
+| Sonos player | `media_player.*` |
+| Favorites sensor | `sensor.sonos_favorites` |
 
-## Layout limits
+## Requirements
+
+The **[Sonos integration](https://www.home-assistant.io/integrations/sonos/)** with its favorites sensor.
+
+## Options
+
+No options beyond the entities; the controls follow what the entity supports.
+
+## On the panel
+
+- The favourites as rows, in one or two columns by name length.
+- A tap on a favourite plays it directly.
+
+## Size
 
 - Minimum: **280 × 240 px**.
-- Maximum: **dashboard width × dashboard height**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

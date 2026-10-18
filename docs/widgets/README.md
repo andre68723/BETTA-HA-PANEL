@@ -2,9 +2,9 @@
 
 # Widget library
 
-33 widgets, grouped by what you want to do. Each guide shows its setup, a preview, the entities it works with, its touch interactions and its size limits.
+33 widgets, grouped by what you want to do. Each guide starts with a summary and a preview, then lists the entities, requirements, options, behaviour on the panel and size limits. The previews are rendered by the LVGL simulator in the Glow style with synthetic data (click to enlarge); the other styles keep the same functions.
 
-Start with [your first light](../getting-started.md#5-control-your-first-light), then add more widgets in the [web editor](../editor.md). Whole pages (room overview, energy dashboard) are in [Pages and layouts](../pages.md). For a different look, use [Appearance](../appearance.md).
+To add one, open a page in the [web editor](../editor.md#layout-workspace), choose the widget in **Add**, pick its entity with **Search** beside the entity field, size it and **Save** the layout. Start with [your first light](../getting-started.md#5-control-your-first-light). Whole pages (room overview, energy dashboard) are in [Pages and layouts](../pages.md); for a different look, use [Appearance](../appearance.md).
 
 <div class="widget-index" markdown>
 
@@ -18,37 +18,37 @@ Numbers, trends and states you want to read at a glance.
 
     **[Sensor](sensor.md)**
 
-    Show an entity's current value and unit, with optional name, age and Recorder history.
+    Shows the value of a `sensor.*` or `binary_sensor.*` entity, formatted by its device class, with optional name, age and Recorder history.
 
 -   [![Gauge](../img/gallery/smooth_glow.png)](gauge.md)
 
     **[Gauge](gauge.md)**
 
-    Show a numeric sensor as a vertical, horizontal or radial gauge.
+    Shows a numeric `sensor.*` as a vertical, horizontal or radial gauge.
 
 -   [![Graph](../img/gallery/graph_line_glow.png)](graph.md)
 
     **[Graph](graph.md)**
 
-    Follow a numeric value over time as a line, smoothed line or bar chart.
+    Follows a numeric value over time as a line, smoothed line or bar chart; usually a `sensor.*`, any entity with a numeric state works.
 
 -   [![Binary sensor](../img/gallery/binary_sensor_glow.png)](binary_tile.md)
 
     **[Binary sensor](binary_tile.md)**
 
-    Show a binary sensor or event state, with optional history on tap.
+    Shows the state of a `binary_sensor.*` or `event.*` entity, with optional history on tap.
 
 -   [![Contact](../img/gallery/contact_glow.png)](contact_tile.md)
 
     **[Contact](contact_tile.md)**
 
-    Show whether a door or window is open, with optional Recorder history on tap.
+    Shows whether a door or window `binary_sensor.*` is open, with optional history on tap.
 
 -   [![Parqet portfolio](../img/gallery/portfolio_glow.png)](parqet_portfolio.md)
 
     **[Parqet portfolio](parqet_portfolio.md)**
 
-    Show a Parqet portfolio: total value, gain, XIRR, dividends and the largest holdings.
+    Shows a Parqet portfolio from its `sensor.*` entities: total value, gain, XIRR, dividends and the largest holdings.
 
 </div>
 
@@ -62,73 +62,73 @@ Switches, lights, heating, blinds and other things you operate by touch.
 
     **[Button](button.md)**
 
-    Trigger a switch or a media action directly from a compact touch button.
+    Switches a `switch.*` entity or sends a `media_player.*` action from a compact touch button.
 
 -   [![Slider](../img/gallery/vertical_glow.png)](slider.md)
 
     **[Slider](slider.md)**
 
-    Adjust a numeric value such as light brightness, cover position or an input number.
+    Adjusts a writable number such as light brightness, cover position or an input number.
 
 -   [![Light](../img/gallery/light_glow.png)](light_tile.md)
 
     **[Light](light_tile.md)**
 
-    Switch a light and adjust the brightness or colour controls reported by Home Assistant.
+    Switches a `light.*` entity and adjusts brightness, colour temperature, colour and effects as far as the light supports them.
 
 -   [![Heating](../img/gallery/heating_default_glow.png)](heating_tile.md)
 
     **[Heating](heating_tile.md)**
 
-    Show a heating thermostat's measured and target temperatures and adjust the target.
+    Shows a heating `climate.*` entity's measured and target temperatures and adjusts the target.
 
 -   [![Climate](../img/gallery/climate_glow.png)](climate_tile.md)
 
     **[Climate](climate_tile.md)**
 
-    Control an air conditioner or other climate entity using its supported HVAC modes.
+    Controls a `climate.*` entity such as an air conditioner through its supported HVAC modes.
 
 -   [![Cover](../img/gallery/cover_glow.png)](cover_tile.md)
 
     **[Cover](cover_tile.md)**
 
-    Show a blind or cover's position and operate its up, stop and down controls.
+    Shows the position of a `cover.*` entity such as a blind and operates it with up, stop and down.
 
 -   [![Fan](../img/gallery/fan_glow.png)](fan_tile.md)
 
     **[Fan](fan_tile.md)**
 
-    Control a fan using the speed, preset and oscillation capabilities reported by its entity.
+    Controls a `fan.*` entity with the speed, preset and oscillation controls it supports.
 
 -   [![Lock](../img/gallery/front_door_glow.png)](lock_tile.md)
 
     **[Lock](lock_tile.md)**
 
-    Show a lock's state and lock or unlock it; optional history opens with a long press.
+    Shows the state of a `lock.*` entity and locks or unlocks it; optional history opens with a long press.
 
 -   [![Alarm](../img/gallery/alarm_glow.png)](alarm_tile.md)
 
     **[Alarm](alarm_tile.md)**
 
-    Show an alarm panel's state and arm or disarm it, asking for a code when the entity needs one.
+    Shows the state of an `alarm_control_panel.*` entity and arms or disarms it, asking for a code when the entity needs one.
 
 -   [![Select](../img/gallery/charge_mode_glow.png)](select_tile.md)
 
     **[Select](select_tile.md)**
 
-    Choose an option from a select or input-select entity.
+    Chooses an option of a `select.*` or `input_select.*` entity.
 
 -   [![Date/Time](../img/gallery/morning_routine_glow.png)](datetime_tile.md)
 
     **[Date/Time](datetime_tile.md)**
 
-    View and edit a date, time or combined date/time entity with a roller popup.
+    Shows and edits an `input_datetime.*`, `time.*`, `date.*` or `datetime.*` entity with a roller popup.
 
 -   [![Scene](../img/gallery/scene_glow.png)](scene_tile.md)
 
     **[Scene](scene_tile.md)**
 
-    Run a scene, script or momentary action from a compact tile.
+    Runs a `scene.*`, `script.*`, `button.*`, `input_button.*` or `lock.*` action from a compact tile.
 
 </div>
 
@@ -142,7 +142,7 @@ Everything about one room in a single card.
 
     **[Room card](room_tile.md)**
 
-    Group a room's values and controls in one card with a popup for its entities.
+    Groups a room's values and controls in one card, with a popup for its entities; any domain, filled from a Home Assistant area or by hand.
 
 </div>
 
@@ -156,31 +156,31 @@ Forecasts, solar production and the energy balance.
 
     **[Weather (now)](weather_tile.md)**
 
-    Show current weather conditions, temperature and the available extra readings.
+    Shows the current conditions of a `weather.*` entity, its temperature and the extra readings the provider supplies.
 
 -   [![Weather forecast](../img/gallery/weather_forecast_glow.png)](weather_3day.md)
 
     **[Weather forecast](weather_3day.md)**
 
-    Compare forecast days, temperatures and precipitation in configurable columns.
+    Compares forecast days of a `weather.*` entity: temperatures and precipitation in configurable columns.
 
 -   [![Solar forecast](../img/gallery/solar_forecast_glow.png)](solar_forecast.md)
 
     **[Solar forecast](solar_forecast.md)**
 
-    Compare predicted solar production for today and the next four days.
+    Compares the predicted solar production from `sensor.*` forecasts for today and the next four days.
 
 -   [![Price forecast](../img/gallery/price_forecast_glow.png)](price_forecast.md)
 
     **[Price forecast](price_forecast.md)**
 
-    Show a day of electricity prices as bars, with the price now, today and tomorrow, and the cheap hours.
+    Shows a day of electricity prices from a price `sensor.*` as bars, with the price now, today and tomorrow, and the cheap hours.
 
 -   [![Energy timeline](../img/gallery/energy_last_24_hours_glow.png)](energy_timeline.md)
 
     **[Energy timeline](energy_timeline.md)**
 
-    Compare cumulative energy counters over 24 hours with rings and a detailed timeline.
+    Compares cumulative energy counters (`sensor.*`, kWh) over 24 hours, with rings and a detailed timeline.
 
 </div>
 
@@ -194,19 +194,19 @@ Playback, favourites and shopping lists.
 
     **[Media player](media_player.md)**
 
-    Control playback and volume while showing the current track and cover art.
+    Controls playback and volume of a `media_player.*` entity, with the current track and cover art.
 
 -   [![Sonos favorites](../img/gallery/sonos_favorites_glow.png)](sonos_favorites.md)
 
     **[Sonos favorites](sonos_favorites.md)**
 
-    Play a Sonos favourite directly from a list on the dashboard.
+    Plays a Sonos favourite on a `media_player.*` from a list on the dashboard.
 
 -   [![Todo list](../img/gallery/todo_list_glow.png)](todo_list.md)
 
     **[Todo list](todo_list.md)**
 
-    Show a Home Assistant to-do list and mark individual items done.
+    Shows a `todo.*` list and marks single items done.
 
 </div>
 
@@ -220,31 +220,31 @@ Vacuum, camera, car, wallbox and 3D printer.
 
     **[Vacuum](vacuum_tile.md)**
 
-    Show vacuum status, supported cleaning actions and an optional map preview inside the tile.
+    Shows a `vacuum.*` entity's status, its cleaning actions and an optional map in the tile.
 
 -   [![Camera](../img/gallery/camera_glow.png)](camera_tile.md)
 
     **[Camera](camera_tile.md)**
 
-    Show camera snapshots or an optional MJPEG live picture.
+    Shows snapshots of a `camera.*` or `image.*` entity, or an optional MJPEG live picture.
 
 -   [![Car](../img/gallery/car_glow.png)](car_widget.md)
 
     **[Car](car_widget.md)**
 
-    Show a car's battery or charge level, with optional range and vehicle controls.
+    Shows a car's battery level from a `sensor.*` entity as rings, with optional range, charging power and vehicle controls.
 
 -   [![Bambu printer](../img/gallery/bambu_a1_glow.png)](bambu_printer.md)
 
     **[Bambu printer](bambu_printer.md)**
 
-    Show a Bambu Lab printer's status, temperatures, progress and remaining time, with Pause/Resume and Stop buttons.
+    Shows a Bambu Lab printer's status, temperatures, progress and remaining time from its `sensor.*` entities, with Pause/Resume and Stop buttons.
 
 -   [![Wallbox](../img/gallery/wallbox_glow.png)](wallbox.md)
 
     **[Wallbox](wallbox.md)**
 
-    Show an evcc loadpoint's charging mode, vehicle assignment and target SOC, with charging status, power, charged energy, remaining time and current vehicle SOC.
+    Shows and controls an evcc loadpoint through its entities (the mode `select.*` and the related sensors, numbers and selects): charging mode, vehicle, target SOC, power, energy and remaining time.
 
 </div>
 
@@ -258,7 +258,7 @@ Space for the design itself.
 
     **[Empty spacer](empty_tile.md)**
 
-    Reserve dashboard space without adding a control or subscribing to an entity.
+    Reserves dashboard space. It has no entity and subscribes to nothing.
 
 </div>
 

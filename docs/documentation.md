@@ -126,6 +126,8 @@ cropped from the real widget at 680 × 520 pixels;
 use `--history-only` for the 24-hour temperature Graph (Recorder mode) and the
 Binary sensor motion-activity popup. Graph fixtures can set `history_step_minutes`
 (default 15) to span their selected window with synthetic samples.
+Use `--inspector-only` for the inspector images of the widget guides (`INSPECTOR_KINDS`): the editor with the gallery
+tile of each guide's main preview selected, at twice the pixel density.
 Top-bar captures crop the real LVGL frame
 to 60 pixels high at each display geometry, using the same Date + Stock demo
 and additional Date + Weather + Stock examples for 5- and 10-inch displays.
@@ -146,8 +148,10 @@ python3 tools/generate_simulator_gallery.py
 Only rerender it when its source freshness check reports a visual change. For gallery prose/layout changes
 use `python3 tools/generate_simulator_gallery.py --markdown-only` (also with `--variant tab5|paneljc`):
 this rewrites Markdown from existing images and leaves image hashes and the freshness stamp alone.
-The individual widget guides share the gallery's public descriptions and images,
-selected documentation examples, and the firmware's current size/domain table.
+The individual widget guides take their text from `tools/widget_docs_content.py`, their images from the
+gallery and selected documentation examples, and sizes and domains from the firmware's table. Every guide has
+the same sections: summary (naming the domains) and preview, Entities, Requirements, Options, On the panel,
+Variants, Size, Related guides.
 Regenerate their Markdown without
 a device or image rendering:
 
@@ -155,8 +159,8 @@ a device or image rendering:
 python3 tools/generate_widget_docs.py
 ```
 
-When adding a type, update the short summary and setup guidance in that script,
-the generated index and the Widgets navigation group in `zensical.toml`.
+When adding a type, add its entry to `tools/widget_docs_content.py` (the script fails while one is missing
+or its summary does not name a domain), and the Widgets navigation group in `zensical.toml`.
 For actual device captures, use the documented [capture workflow](development/testing.md#device-page-captures)
 and keep the images and metadata in ignored local storage. Published examples use public
 synthetic data and owned or licensed artwork; household names, presence, device values and

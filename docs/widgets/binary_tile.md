@@ -2,52 +2,50 @@
 
 # Binary sensor
 
-Show a binary sensor or event state, with optional history on tap.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Binary sensor**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-The available controls follow the selected entity's capabilities.
-
-## Preview
+Shows the state of a `binary_sensor.*` or `event.*` entity, with optional history on tap.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/binary_sensor_glow.png"><img src="../img/gallery/binary_sensor_glow.png" alt="Binary sensor, Glow style" loading="lazy" width="220" height="90" style="width: 176px"></a>
-<figcaption>Binary sensor</figcaption></figure>
+<figure><a href="../img/gallery/binary_sensor_glow.png"><img src="../img/gallery/binary_sensor_glow.png" alt="Binary sensor, Glow style" loading="lazy" width="220" height="90" style="width: 176px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `binary_sensor.*`, `event.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Display | state presentation: '' (text + since), icon, since; event.* shows 'Triggered'/'Last 5 min' |
-| Interaction | read-only; optional history popup opens Recorder history on tap |
+| Binary sensor or event | `binary_sensor.*`, `event.*` |
 
-## History detail popup
+## Requirements
 
-In the inspector, enable **History on tap (Lock, Vacuum: long press)**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only.
+None beyond the entities.
 
-See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Display | text with the time since the change, an icon, or the time since only |
+| History on tap (Lock, Vacuum: long press) | a tap opens the Recorder history |
+
+## On the panel
+
+- State words follow the device class (Open, Motion, Power on).
+- An `event.*` entity shows **Triggered** and **Last 5 min**.
+- Read-only.
+
+### History
+
+Enable **History on tap (Lock, Vacuum: long press)**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
 
 ![Hallway motion history with an activity timeline and timestamped Motion and Clear changes](../img/examples/binary-motion-history-24h.png)
 
 *LVGL/SDL simulator, Flat style: a motion sensor's last 24 hours, with its current **Clear** state, coloured activity timeline and recent **Motion / Clear** changes. Public synthetic events; click to enlarge.*
 
-## Layout limits
+## Size
 
 - Minimum: **160 × 70 px**.
-- Maximum: **dashboard width × 160 px**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × 160 px**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

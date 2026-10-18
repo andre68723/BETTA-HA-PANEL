@@ -2,42 +2,37 @@
 
 # Media player
 
-Control playback and volume while showing the current track and cover art.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Media player**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-The available controls follow the selected entity's capabilities.
-
-## Preview
+Controls playback and volume of a `media_player.*` entity, with the current track and cover art.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/media_player_glow.png"><img src="../img/gallery/media_player_glow.png" alt="Media player, Glow style" loading="lazy" width="340" height="360" style="width: 272px"></a>
-<figcaption>Media player</figcaption></figure>
+<figure><a href="../img/gallery/media_player_glow.png"><img src="../img/gallery/media_player_glow.png" alt="Media player, Glow style" loading="lazy" width="340" height="360" style="width: 272px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `media_player.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Options | relative volume dragging, minus/plus buttons |
-| Interaction | the volume bar is a direct drag slider; minus/plus/play-pause buttons tap directly, no popup |
+| Media player | `media_player.*` |
 
-## Layout limits
+## Requirements
+
+None beyond the entities.
+
+## Options
+
+No options beyond the entities; the controls follow what the entity supports.
+
+## On the panel
+
+- The volume bar is a drag slider; minus, plus and play/pause act directly.
+
+## Size
 
 - Minimum: **260 × 220 px**.
-- Maximum: **dashboard width × dashboard height**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

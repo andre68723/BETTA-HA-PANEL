@@ -54,6 +54,7 @@ tools/*
 !tools/ui_styles.py
 !tools/generate_docs_examples.py
 !tools/generate_widget_docs.py
+!tools/widget_docs_content.py
 !tools/generate_check_diagram.py
 !tools/gallery_entities.example.json
 !tools/stress_test.py

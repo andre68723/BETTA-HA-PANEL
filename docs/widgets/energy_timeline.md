@@ -2,52 +2,59 @@
 
 # Energy timeline
 
-Compare cumulative energy counters over 24 hours with rings and a detailed timeline.
-
-## Required Home Assistant integration
-
-The widget needs cumulative energy counters in kWh from your meter, inverter or battery integrations, and Home Assistant's **[Recorder](https://www.home-assistant.io/integrations/recorder/)**, which keeps their long-term statistics (enabled by default).
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Energy timeline**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-Use cumulative energy counters with Recorder statistics. A wider card reveals more details; rings and the timeline share the selected presentation. Under Appearance → Colors, change the six flow colors using the swatches or HEX values. Reset to defaults restores the original palette. Colors also apply to the detail popup.
-
-## Preview
+Compares cumulative energy counters (`sensor.*`, kWh) over 24 hours, with rings and a detailed timeline.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/energy_last_24_hours_glow.png"><img src="../img/gallery/energy_last_24_hours_glow.png" alt="Energy last 24 hours, Glow style" loading="lazy" width="680" height="520" style="width: 544px"></a>
-<figcaption>Energy last 24 hours</figcaption></figure>
+<figure><a href="../img/gallery/energy_last_24_hours_glow.png"><img src="../img/gallery/energy_last_24_hours_glow.png" alt="Energy last 24 hours, Glow style" loading="lazy" width="680" height="520" style="width: 544px"></a></figure>
+</div>
+
+## Entities
+
+| Entity | Domains |
+| --- | --- |
+| Grid import · kWh | `sensor.*` |
+| Grid export · kWh *(optional)* | `sensor.*` |
+| Solar production · kWh *(optional)* | `sensor.*` |
+| Battery charge and discharge · kWh *(optional)* | `sensor.*` |
+| State of charge · % *(optional)* | `sensor.*` |
+| Solcast sensor *(optional)* | `sensor.*` |
+
+## Requirements
+
+Cumulative counters in kWh (state class `total` or `total_increasing`) from your meter, inverter or battery integrations, and Home Assistant's **[Recorder](https://www.home-assistant.io/integrations/recorder/)** with their long-term statistics (enabled by default).
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Look | nested rings with values, or rings in a row with the timeline below |
+| Colors (Appearance) | the six flow colours, as swatches or HEX; **Reset to defaults** restores them |
+
+<a href="../img/examples/inspector-energy_timeline.png"><img src="../img/examples/inspector-energy_timeline.png" alt="Inspector of the Energy timeline widget" loading="lazy" width="340" height="541"></a>
+
+*Inspector in the web editor, with the widget of the preview above.*
+
+## On the panel
+
+- A wider card shows more details.
+- A tap opens a popup with the measured counters and the estimated mix.
+
+## Variants
+
+<div class="widget-previews">
 <figure><a href="../img/gallery/nested_rings_glow.png"><img src="../img/gallery/nested_rings_glow.png" alt="Nested rings, Glow style" loading="lazy" width="680" height="520" style="width: 544px"></a>
 <figcaption>Nested rings</figcaption></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
-
-## Entities and interaction
-
-**Supported primary entities:** `sensor.*`
-
-| Setting / behaviour | What it does |
-| --- | --- |
-| Roles | primary entity grid import (required), secondary grid export, tertiary solar production, optional battery charge and discharge counters, battery level (battery-level entity) and a Solcast forecast (today's forecast entity) |
-| Interaction | tap opens a details popup with the measured counters and the estimated mix |
-
-## Source and inspiration
-
-The visual concept is inspired by [aharren/ios-energy-widget](https://github.com/aharren/ios-energy-widget) (MIT), which shows energy production and consumption over 24 hours. BETTA's implementation is newly written for LVGL and uses Home Assistant Recorder statistics.
-
-## Layout limits
+## Size
 
 - Minimum: **300 × 200 px**.
-- Maximum: **dashboard width × dashboard height**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+
+The visual concept is inspired by [aharren/ios-energy-widget](https://github.com/aharren/ios-energy-widget) (MIT); the panel's implementation is newly written for LVGL.

@@ -2,43 +2,41 @@
 
 # Alarm
 
-Show an alarm panel's state and arm or disarm it, asking for a code when the entity needs one.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Alarm**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-The available controls follow the selected entity's capabilities.
-
-## Preview
+Shows the state of an `alarm_control_panel.*` entity and arms or disarms it, asking for a code when the entity needs one.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/alarm_glow.png"><img src="../img/gallery/alarm_glow.png" alt="Alarm, Glow style" loading="lazy" width="280" height="110" style="width: 224px"></a>
-<figcaption>Alarm</figcaption></figure>
+<figure><a href="../img/gallery/alarm_glow.png"><img src="../img/gallery/alarm_glow.png" alt="Alarm, Glow style" loading="lazy" width="280" height="110" style="width: 224px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `alarm_control_panel.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| States | disarmed, armed home/away/night/vacation/custom bypass, arming, pending, triggered (error colour) |
-| Options | offered alarm actions: the arm and disarm actions the tile offers (default all the entity supports) |
-| Interaction | tap opens the action list, a PIN pad follows when the entity needs a code; optional history popup opens on long press |
+| Alarm panel | `alarm_control_panel.*` |
 
-## Layout limits
+## Requirements
+
+None beyond the entities.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| Actions offered on tap | the arm and disarm actions the tile offers; by default all the entity supports |
+| History on tap (Lock, Vacuum: long press) | a long press opens the Recorder history |
+
+## On the panel
+
+- States: disarmed, armed home, away, night, vacation and custom bypass, arming, pending; triggered in the error colour.
+- A tap opens the action list; a PIN pad follows when the entity needs a code.
+
+## Size
 
 - Minimum: **180 × 80 px**.
-- Maximum: **dashboard width × 200 px**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × 200 px**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)

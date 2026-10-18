@@ -2,43 +2,38 @@
 
 # Fan
 
-Control a fan using the speed, preset and oscillation capabilities reported by its entity.
-
-## Configure in the editor
-
-1. Open a page in the [web editor](../editor.md#layout-workspace) and add **Fan**.
-2. Use **Search** beside the entity field to choose an entity by name. Configure its options below.
-3. Resize the widget for its content, then **Save** the layout. Try its controls on the panel.
-
-The available controls follow the selected entity's capabilities.
-
-## Preview
+Controls a `fan.*` entity with the speed, preset and oscillation controls it supports.
 
 <div class="widget-previews">
-<figure><a href="../img/gallery/fan_glow.png"><img src="../img/gallery/fan_glow.png" alt="Fan, Glow style" loading="lazy" width="300" height="240" style="width: 240px"></a>
-<figcaption>Fan</figcaption></figure>
+<figure><a href="../img/gallery/fan_glow.png"><img src="../img/gallery/fan_glow.png" alt="Fan, Glow style" loading="lazy" width="300" height="240" style="width: 240px"></a></figure>
 </div>
 
-Glow style, LVGL simulator with synthetic data. Click to enlarge. Other styles keep the same functions.
+## Entities
 
-## Entities and interaction
-
-**Supported primary entities:** `fan.*`
-
-| Setting / behaviour | What it does |
+| Entity | Domains |
 | --- | --- |
-| Display | flat (minus/power/plus) below 220 px height, large (turning rotor) above it |
-| Options | one chip per speed step, oscillation, up to 3 preset modes -- all gated by the entity's supported capabilities |
-| Interaction | minus/power/plus and every chip (speed step, oscillation, preset) tap directly, no popup |
+| Fan | `fan.*` |
 
-## Layout limits
+## Requirements
+
+None beyond the entities.
+
+## Options
+
+No options beyond the entities; the controls follow what the entity supports.
+
+## On the panel
+
+- Below 220 px height minus, power and plus; above it a turning rotor.
+- One chip per speed step, oscillation and up to three presets, as the entity supports them; every control acts directly.
+
+## Size
 
 - Minimum: **240 × 80 px**.
-- Maximum: **dashboard width × dashboard height**, capped by the selected display device's dashboard area.
-- Leave space for the value, title and touch controls; the minimum is a validation limit, not a recommended size.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
-The [display device overview](../choose-display.md) lists usable dashboard geometry. [Widget anatomy](../widget-anatomy.md) explains title/content spacing and touch targets.
+The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 
 ## Related guides
 
-[Widget overview](README.md) · [Appearance comparison](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
+[Widget library](README.md) · [Web editor](../editor.md) · [Appearance](../appearance.md#compare-the-four-styles) · [Home Assistant requirements](../home-assistant.md)
