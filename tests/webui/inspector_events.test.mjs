@@ -112,13 +112,44 @@ test(`${view} Search selection updates the wrapping field and survives focus, sa
     searchButton.click();
     assignInspectorEntity(pickerOptions.inspectorTarget, "sensor.selected_battery_charge_counter");
   `);
-  assert.equal(run("wrapped.value"), "sensor.selected_battery_charge_counter");
+  assert.equal(run("entityWithoutSoftBreaks(wrapped.value)"), "sensor.selected_battery_charge_counter");
   run("wrapped.blur()");
   await run("el.saveBtn.onclick()");
   run("editor.layout = savedLayout");
   assert.equal(run("selectedWidget().battery_charge_entity_id"), "sensor.selected_battery_charge_counter");
 });
 }
+
+test("editor wrapping entity field breaks after dots and underscores but keeps the bound value clean", () => {
+  const run = setupInspector("sensor", "sensor.temperature");
+  run(`
+    globalThis.wrapped = { value: "", events: {},
+      addEventListener(type, callback) { this.events[type] = callback; },
+      dispatch(type) { this.events[type]?.({target:this}); }
+    };
+    bindWrappingEntityField(el.fEntity, wrapped, () => {});
+    el.fEntity.value = "sensor.office_air_quality"; el.fEntity.events.get("change")?.forEach(callback => callback());
+  `);
+  assert.equal(run("wrapped.value"), "sensor.\u200Boffice_\u200Bair_\u200Bquality");
+  run('wrapped.value = "sensor.\u200Bkitchen_\u200Bhumidity"; wrapped.dispatch("input"); wrapped.dispatch("change")');
+  assert.equal(run("el.fEntity.value"), "sensor.kitchen_humidity");
+  assert.equal(run("selectedWidget().entity_id"), "sensor.kitchen_humidity");
+});
+
+test("entity rows: names without the shared start, the ID while unnamed, Remove only for optional fields", () => {
+  const run = setupInspector("sensor", "sensor.tr_value");
+  run(`loadVacuumModeOptions = async () => {}; scheduleEntityAutocomplete = () => {};
+    editor.entities = [{ id: "sensor.tr_value", name: "Trade Republic Gesamtwert" },
+    { id: "sensor.tr_xirr", name: "Trade Republic XIRR" }, { id: "sensor.sun", name: "Sun Next rising" }]`);
+  assert.equal(run('JSON.stringify(inspectorEntityRowNames(["sensor.tr_value", "sensor.tr_xirr", "sensor.unknown", ""]))'),
+    JSON.stringify(["Gesamtwert", "XIRR", "", ""]));
+  assert.equal(run('JSON.stringify(inspectorEntityRowNames(["sensor.sun"]))'), JSON.stringify(["Sun Next rising"]));
+  run(`el.fTertiaryEntity.value = "sensor.tr_xirr"`);
+  assert.equal(run('removeInspectorEntity({ input: el.fTertiaryEntity, slot: "tertiary" })'), true);
+  assert.equal(run("el.fTertiaryEntity.value"), "");
+  assert.equal(run('removeInspectorEntity({ input: el.fEntity, slot: "primary" })'), false);
+  assert.equal(run('removeInspectorEntity({ input: el.fRoomEntities, slot: "room_entities", append: true })'), false);
+});
 
 for (const open of ["0", "1"]) {
   test(`prototype help restores the complete text from an existing info toggle (${open})`, () => {
@@ -169,7 +200,7 @@ for (const [input, property] of [
     run(`openLightEntityPicker("page_sensor", { inspectorTarget: { input: el.${input}, domain: "sensor" } })`);
     assert.equal(run("assignInspectorEntity(pickerOptions.inspectorTarget, 'light.invalid')"), false);
     assert.equal(run("assignInspectorEntity(pickerOptions.inspectorTarget, 'sensor.chosen_energy_page_sensor')"), true);
-    assert.equal(run("wrapped.value"), "sensor.chosen_energy_page_sensor");
+    assert.equal(run("entityWithoutSoftBreaks(wrapped.value)"), "sensor.chosen_energy_page_sensor");
     run("el.energySource.value = 'ha_energy'; el.energySource.onchange()");
     await run("el.saveBtn.onclick()");
     assert.equal(run(`savedLayout.pages[0].energy.${property}`), "sensor.chosen_energy_page_sensor");

@@ -207,6 +207,19 @@ if (el.addBambuPrinterBtn) {
       closeLightEntityPicker();
     };
   }
+  if (el.lightEntityPickerRemoveBtn) {
+    el.lightEntityPickerRemoveBtn.onclick = () => {
+      if (removeInspectorEntity(editor.lightPicker.inspectorTarget)) closeLightEntityPicker();
+    };
+  }
+  if (el.lightEntityPickerUseIdBtn) {
+    el.lightEntityPickerUseIdBtn.onclick = () => {
+      const id = entityPickerSearchValue().toLowerCase();
+      if (!assignInspectorEntity(editor.lightPicker.inspectorTarget, id)) return;
+      closeLightEntityPicker();
+      setStatus(t("entity_picker.assigned", { entity: id }));
+    };
+  }
   if (el.lightEntityPickerOverlay) {
     el.lightEntityPickerOverlay.addEventListener("click", (event) => {
       if (event.target === el.lightEntityPickerOverlay) {

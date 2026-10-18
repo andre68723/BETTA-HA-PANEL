@@ -376,7 +376,7 @@ def capture_editor(fixture, output, executable, setup_only=False, hero=False, fi
 
 
 def capture_inspectors(output, executable):
-    """The Properties tab of the inspector for INSPECTOR_KINDS, each with the widget of its guide's main preview (the
+    """The inspector (Placement collapsed) for INSPECTOR_KINDS, each with the widget of its guide's main preview (the
     first gallery tile of that type) selected, at twice the pixel density for legible text."""
     from playwright.sync_api import sync_playwright
 
@@ -432,10 +432,20 @@ def capture_inspectors(output, executable):
                 # The gallery has more tiles than a layout has pages: each capture loads a layout of this tile alone.
                 responses["/api/layout"] = {"version": 1, "alerts": [], "pages": [{"id": "inspector", "title": "Demo",
                                                                                     "widgets": [widget]}]}
+                # The demo's energy counters and similar have no state; list them so the rows do not read "not found".
+                listed = {item["id"] for item in responses["/api/entities"]["items"]}
+                for value in widget.values():
+                    if isinstance(value, str) and re.fullmatch(r"[a-z_]+\.[a-z0-9_]+", value) and value not in listed:
+                        responses["/api/entities"]["items"].append({"id": value, "name": value, "domain": value.split(".")[0],
+                                                                    "unit": "", "device_class": ""})
+                        listed.add(value)
                 page.goto(f"http://127.0.0.1:{server.server_port}", wait_until="networkidle")
-                page.wait_for_function("editor.editorStarted && editor.entities.length > 0")
-                page.evaluate("(id) => { editor.selectedPageId = 'inspector'; editor.selectedWidgetId = id; renderAll(); "
-                              "selectInspectorTab('properties'); }", widget["id"])
+                try:
+                    page.wait_for_function("editor.editorStarted && editor.entities.length > 0", timeout=15000)
+                except Exception as error:
+                    raise RuntimeError("\n".join(failures) or str(error)) from error
+                page.evaluate("(id) => { editor.selectedPageId = 'inspector'; editor.selectedWidgetId = id; renderAll(); }",
+                              widget["id"])
                 page.locator("#inspectorSection").wait_for(state="visible")
                 page.wait_for_timeout(200)
                 page.locator("#inspectorSection").screenshot(path=str(output / f"inspector-{kind}.png"))

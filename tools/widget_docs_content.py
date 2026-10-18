@@ -251,7 +251,7 @@ WIDGETS = {
         "requirements": None,
         "options": [("Show name", "the widget name; on by default"),
                     ("Show last-updated time", "the age of the value; on by default"),
-                    ("Unit, Format, Time format, Currency", "by device class, see below. The inspector shows the class and unit as chips below the entity (\"No device class\" when Home Assistant gives none) and offers only that class's choices"),
+                    ("Unit, Format, Time format, Currency", "by device class, see below. The inspector header shows the class and unit as chips (\"No device class\" when Home Assistant gives none) and offers only that class's choices"),
                     ("History on tap (Lock, Vacuum: long press)", "a tap opens the Recorder history; only when the Recorder retains the entity")],
         "panel": ["The value as formatted for its device class (see Options).", "Read-only."],
     },

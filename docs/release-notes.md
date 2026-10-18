@@ -26,9 +26,14 @@ Release candidate, not published. Changes since [v0.9.0](#v090-fork).
 
 ### Editor
 
-- **Device class:** search results and the entity picker name a sensor's device class; the inspector shows it with the unit as chips
-  below the main entity of every tile bound to a sensor or binary sensor, and offers the sensor's unit and format choices of
+- **Device class:** search results and the entity picker name a sensor's device class; the inspector header shows it with the unit as chips
+  for every tile bound to a sensor or binary sensor, and the inspector offers the sensor's unit and format choices of
   that class.
+- **Inspector:** one order for every widget: a header with type, name (edited in place) and device class, then
+  Entities, Display, Controls and Placement as foldable cards (empty ones left out; Placement open while it fits).
+  Short fields put the label beside the control. The Properties and Position & size tabs are gone.
+  Entities are rows with the role and the Home Assistant name; a click opens the search, which can also remove an
+  optional entity or use a typed ID, and an ID Home Assistant does not list is marked.
 
 ### Dependencies
 

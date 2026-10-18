@@ -30,7 +30,7 @@ Cumulative counters in kWh (state class `total` or `total_increasing`) from your
 | Look | nested rings with values, or rings in a row with the timeline below |
 | Colors (Appearance) | the six flow colours, as swatches or HEX; **Reset to defaults** restores them |
 
-<a href="../img/examples/inspector-energy_timeline.png"><img src="../img/examples/inspector-energy_timeline.png" alt="Inspector of the Energy timeline widget" loading="lazy" width="340" height="541"></a>
+<a href="../img/examples/inspector-energy_timeline.png"><img src="../img/examples/inspector-energy_timeline.png" alt="Inspector of the Energy timeline widget" loading="lazy" width="340" height="844"></a>
 
 *Inspector in the web editor, with the widget of the preview above.*
 

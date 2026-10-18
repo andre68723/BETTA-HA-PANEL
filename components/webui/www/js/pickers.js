@@ -301,6 +301,19 @@ function renderLightEntityPicker(data = {}) {
     // No blank tile for the doorbell: it needs an event entity to be useful.
     el.lightEntityPickerBlankBtn.classList.toggle("hidden", Boolean(inspectorTarget) || editor.lightPicker.widgetType === "doorbell_tile");
   }
+  // Filling an inspector field: Remove clears an optional binding, and a typed entity ID Home Assistant does not list
+  // can be used as it is.
+  if (el.lightEntityPickerRemoveBtn) {
+    el.lightEntityPickerRemoveBtn.textContent = t("entity_picker.remove");
+    el.lightEntityPickerRemoveBtn.classList.toggle("hidden", !inspectorTarget?.slot || inspectorTarget.slot === "primary"
+      || Boolean(inspectorTarget.append) || !inspectorTarget.input?.value.trim());
+  }
+  if (el.lightEntityPickerUseIdBtn) {
+    const typed = search.toLowerCase();
+    el.lightEntityPickerUseIdBtn.textContent = t("entity_picker.use_id", { id: typed });
+    el.lightEntityPickerUseIdBtn.classList.toggle("hidden", !inspectorTarget || !/^[a-z0-9_]+\.[a-z0-9_]+$/.test(typed)
+      || items.some(item => item.id === typed));
+  }
   if (el.lightEntityPickerRefreshBtn) {
     el.lightEntityPickerRefreshBtn.textContent = liveSearch ? t("entity_picker.refresh") : t("entity_picker.search");
   }

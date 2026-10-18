@@ -45,17 +45,22 @@ An Energy page has its own options in the page inspector: the data source and **
 The Inspector column stays reserved when changing selection. Its title has an info icon for each widget,
 the Energy page and Room overview, with a short explanation and a documentation link.
 
-The widget inspector separates **Properties** from **Position & size**. Main fields stay visible;
-**Appearance** opens automatically when it fits. The Energy timeline groups optional battery and
-forecast sensors separately. Extended explanations show a short label and an info icon;
+The widget inspector has the same order for every widget. Its header shows the widget type, the name (edit it
+in place) and the main entity's device class and unit. Below follow **Entities** (what the
+tile reads or controls, including its data source), **Display** (what it shows) and **Controls** (what tap and
+long press do); a section without options is left out. **Placement** comes last and shows position and size in
+its heading; it is open while the inspector fits without scrolling. A click on a section heading folds it. Optional groups such as the Energy timeline's battery and forecast sensors fold and
+start open when something is set in them. Extended explanations show a short label and an info icon;
 click the icon to read the complete text in a popup. Close it with Escape, the Close button or a click outside.
 Page title and navigation sit in a separate section; the Energy page also groups battery and
 gas/water sensors. Its main source and view options stay visible.
 
-Entity IDs wrap so the complete name stays readable. Each widget entity field and manual Energy-page
-sensor has a magnifying-glass **Search** button, including optional battery, forecast and control
-bindings. Search results match the field's allowed entity types. For Room entities, choosing a result
-adds it to the list; the extra field uses an entity already assigned to the card.
+A widget's entities are rows: the role and the entity's Home Assistant name, shortened by the words all of
+the widget's entities share; the entity ID is in the tooltip. A click opens the entity search, whose results
+match the field's allowed entity types. There, **Remove** clears an optional entity, and a typed ID that Home
+Assistant does not list can be used as it is; such an ID is marked as not found. Room entities stay a list
+(choosing a result adds it); the extra field uses an entity already assigned to the card. The manual
+Energy-page sensors are text fields with a magnifying-glass **Search** button; long IDs wrap after dots and underscores.
 
 Use the widget row's **⋯** menu to duplicate it or **Copy to page** / **Move to page**.
 Choose another normal page; all entity bindings and options are retained. The destination is selected

@@ -299,6 +299,8 @@ const el = {
   lightEntityPickerRefreshBtn: document.getElementById("lightEntityPickerRefreshBtn"),
   lightEntityPickerCloseBtn: document.getElementById("lightEntityPickerCloseBtn"),
   lightEntityPickerBlankBtn: document.getElementById("lightEntityPickerBlankBtn"),
+  lightEntityPickerRemoveBtn: document.getElementById("lightEntityPickerRemoveBtn"),
+  lightEntityPickerUseIdBtn: document.getElementById("lightEntityPickerUseIdBtn"),
   lightEntityPickerSearch: document.getElementById("lightEntityPickerSearch"),
   lightEntityPickerStatus: document.getElementById("lightEntityPickerStatus"),
   lightEntityPickerProgress: document.getElementById("lightEntityPickerProgress"),

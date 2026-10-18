@@ -24,10 +24,10 @@ None beyond the entities.
 | --- | --- |
 | Show name | the widget name; on by default |
 | Show last-updated time | the age of the value; on by default |
-| Unit, Format, Time format, Currency | by device class, see below. The inspector shows the class and unit as chips below the entity ("No device class" when Home Assistant gives none) and offers only that class's choices |
+| Unit, Format, Time format, Currency | by device class, see below. The inspector header shows the class and unit as chips ("No device class" when Home Assistant gives none) and offers only that class's choices |
 | History on tap (Lock, Vacuum: long press) | a tap opens the Recorder history; only when the Recorder retains the entity |
 
-<a href="../img/examples/inspector-sensor.png"><img src="../img/examples/inspector-sensor.png" alt="Inspector of the Sensor widget" loading="lazy" width="340" height="374"></a>
+<a href="../img/examples/inspector-sensor.png"><img src="../img/examples/inspector-sensor.png" alt="Inspector of the Sensor widget" loading="lazy" width="340" height="635"></a>
 
 *Inspector in the web editor, with the widget of the preview above.*
 

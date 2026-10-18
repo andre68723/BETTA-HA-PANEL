@@ -2,13 +2,6 @@
 .compact-inspector .actions-panel [hidden] { display:none !important; }
 .compact-inspector .actions-panel { max-height:var(--inspector-available,calc(100dvh - 36px)); }
 .compact-inspector #sidebarSubtitle { display:none; }
-.inspector-tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); }
-.inspector-tabs .btn { flex:1; background:transparent; border-radius:0; border-bottom:2px solid transparent; font-size:12px; padding:7px 4px; }
-.inspector-tabs [aria-selected=true] { border-bottom-color:var(--accent); color:var(--accent); }
-.inspector-tabs + .form { gap:5px; }
-.inspector-properties { display:grid; gap:5px; }
-.inspector-position .inspector-group > summary, .inspector-data > summary { display:none; }
-.inspector-position .inspector-group, .inspector-data { border:0; }
 .compact-inspector #inspectorSection .form, .compact-inspector #inspectorSection .inspector-group-body,
 .compact-inspector #pageInspectorSection .form, .compact-inspector .energy-page-options, .compact-inspector .energy-manual-options { gap:5px; }
 .compact-inspector #inspectorSection .inspector-group-body { padding:4px 0; background:none; }
@@ -16,17 +9,15 @@
 .compact-inspector #inspectorSection label, .compact-inspector #pageInspectorSection label { font-size:12px; gap:3px; }
 .compact-inspector #inspectorSection input, .compact-inspector #inspectorSection select,
 .compact-inspector #pageInspectorSection input, .compact-inspector #pageInspectorSection select { font-size:12px; padding:5px 7px; min-width:0; }
-.inspector-name { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:6px; }
-.inspector-name .row { margin:0; font-size:11px !important; align-items:center; min-height:30px; }
 .compact-inspector .actions-panel .entity-input-row:has(.entity-picker-btn) { display:grid; grid-template-columns:minmax(0,1fr) 30px; gap:4px; align-items:start; }
-.compact-inspector .actions-panel textarea.inspector-entity-editor { width:100%; min-height:30px; padding:5px 7px; font:11px/16px ui-monospace,monospace; resize:none; overflow:hidden; white-space:pre-wrap; overflow-wrap:break-word; word-break:normal; box-sizing:border-box; }
+.compact-inspector .actions-panel textarea.inspector-entity-editor { width:100%; min-height:30px; padding:5px 7px; font:10px/15px ui-monospace,monospace; resize:none; overflow:hidden; white-space:pre-wrap; overflow-wrap:break-word; word-break:normal; box-sizing:border-box; }
 .compact-inspector .actions-panel .entity-picker-btn { width:30px; height:30px; padding:6px; min-width:0; }
 .compact-inspector .actions-panel .entity-picker-btn svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; }
 .inspector-extra { border-top:1px solid var(--line); }
 .inspector-extra > summary { cursor:pointer; padding:6px 0; font-size:12px; color:var(--muted); }
 .inspector-extra-fields { display:grid; gap:5px; padding-bottom:5px; }
 .compact-inspector #inspectorSection details:not(.inspector-group) > summary { font-size:12px; padding:6px 0; }
-.compact-inspector #inspectorSection #fRoomEntities { min-height:64px; font:11px/16px ui-monospace,monospace; }
+.compact-inspector #inspectorSection #fRoomEntities { min-height:64px; font:10px/15px ui-monospace,monospace; }
 .compact-inspector #energyManualOptions .grid-2 { grid-template-columns:minmax(0,1fr); }
 .compact-inspector #energyPageHeading { display:none; }
 .compact-inspector #energyPageOptions { border-top:0; padding-top:0; margin-top:0; }
@@ -85,3 +76,46 @@ dialog.inspector-help-dialog { margin:auto; width:min(560px,calc(100vw - 36px));
 .entity-class-chip { padding:1px 8px; border-radius:999px; font-size:11px; line-height:18px; color:var(--text);
   border:1px solid color-mix(in srgb, var(--accent) 55%, transparent); background:color-mix(in srgb, var(--accent) 18%, transparent); }
 .entity-class-chip.is-none { color:var(--muted); border-color:var(--line); background:transparent; }
+
+/* Header, sections and Placement (js/inspector-layout.js): Entities, Display, Controls as plain headed sections. */
+.compact-inspector #inspectorHeading { font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.inspector-head { display:grid; gap:3px; padding:0 0 2px; }
+.compact-inspector #inspectorSection input.inspector-name-input { width:100%; padding:2px 0; border:0; border-bottom:1px dashed transparent;
+  border-radius:0; background:none; color:var(--text); font-size:17px; font-weight:600; }
+.compact-inspector #inspectorSection input.inspector-name-input:hover { border-bottom-color:var(--line); }
+.compact-inspector #inspectorSection input.inspector-name-input:focus { border-bottom-color:var(--accent); outline:none; }
+.inspector-head .entity-class-chips { margin-top:3px; }
+.inspector-sec { padding:10px 0 0; }
+.inspector-sec-body { display:grid; gap:6px; margin-top:5px; padding:9px 10px; border:1px solid var(--line-strong); border-radius:10px;
+  background:color-mix(in srgb, var(--panel-2) 90%, #fff); box-shadow:0 1px 3px #0005; }
+:root[data-theme="light"] .inspector-sec-body { background:var(--panel); border-color:var(--line-strong); box-shadow:0 1px 2px #0001; }
+.compact-inspector #inspectorSection .inspector-sec > summary { display:flex; align-items:center; gap:6px; margin:0 0 0 2px; padding:0;
+  list-style:none; cursor:pointer; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); border-radius:4px; }
+.compact-inspector #inspectorSection .inspector-sec > summary::-webkit-details-marker { display:none; }
+.compact-inspector #inspectorSection .inspector-sec > summary::before { content:"\25BE"; font-size:10px; }
+.compact-inspector #inspectorSection .inspector-sec:not([open]) > summary::before { content:"\25B8"; }
+.compact-inspector #inspectorSection .inspector-sec > summary:focus { outline:none; }
+.compact-inspector #inspectorSection .inspector-sec > summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.inspector-sec > summary b { margin-left:auto; font:400 11px ui-monospace,monospace; letter-spacing:0; text-transform:none; }
+.inspector-sec .slider-options:not(.hidden), .inspector-sec .inspector-follow:not(.hidden),
+.inspector-sec > div:not(.hidden) { display:grid; gap:6px; }
+/* Short fields: label left, control right; entity fields and text areas stay stacked. */
+.compact-inspector .inspector-sec label { gap:3px; }
+.compact-inspector .inspector-sec textarea { margin:0; }
+.compact-inspector .inspector-sec label:where(:not(.row):has(> select:only-of-type, > input[type=number], > input[type=color])) {
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,150px); align-items:center; gap:8px; }
+.compact-inspector .inspector-sec .grid-2 > label { display:flex; flex-direction:column; align-items:stretch; }
+.compact-inspector .inspector-sec label.row { display:flex; flex-direction:row-reverse; justify-content:space-between; align-items:center; gap:8px; margin:0; }
+
+/* Entity rows (js/inspector-layout.js): role on the left, the entity's name on the right; a click opens the picker. */
+.compact-inspector .inspector-sec label.inspector-entity-label { display:grid; grid-template-columns:minmax(0,40%) minmax(0,1fr);
+  align-items:center; gap:2px 6px; cursor:pointer; }
+.compact-inspector .inspector-sec label.inspector-entity-label > :not(span:first-child):not(.inspector-entity-row) { grid-column:1 / -1; }
+.inspector-entity-row { display:flex; align-items:center; gap:6px; min-width:0; padding:5px 7px; border:1px solid transparent;
+  border-radius:7px; background:none; color:var(--text); font-size:12px; text-align:left; cursor:pointer; }
+.inspector-entity-row:hover:not(:disabled) { border-color:var(--line-strong); background:var(--overlay-1); }
+.inspector-entity-row:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+.inspector-entity-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.inspector-entity-chevron { flex:none; color:var(--muted); }
+.inspector-entity-row.is-empty .inspector-entity-name { color:var(--muted); font-style:italic; }
+.inspector-entity-row.is-missing .inspector-entity-name { color:var(--danger); }

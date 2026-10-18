@@ -789,6 +789,34 @@ function assignInspectorEntity(target, id) {
   return true;
 }
 
+// Remove in the entity picker: clears an optional binding. The main entity and appended lists (room entities) have none.
+function removeInspectorEntity(target) {
+  if (!target?.input || target.input.disabled || !target.slot || target.slot === "primary" || target.append) return false;
+  target.input.value = "";
+  target.input.dispatchEvent(new Event("change", { bubbles: true }));
+  return true;
+}
+
+// Names in the inspector's entity rows: Home Assistant's name without the words all named entities start with
+// ("Trade Republic Gesamtwert", "Trade Republic XIRR" -> "Gesamtwert", "XIRR"); "" where the editor knows no name.
+function inspectorEntityRowNames(ids) {
+  const names = ids.map(id => {
+    const entity = id ? editor.entities.find(item => item?.id === id) : null;
+    return entity?.name && entity.name !== id ? String(entity.name) : "";
+  });
+  const named = names.filter(Boolean).map(name => name.split(" "));
+  let prefix = named.length >= 2 ? named[0] : [];
+  for (const words of named.slice(1)) {
+    let i = 0;
+    while (i < prefix.length && i < words.length && prefix[i] === words[i]) i++;
+    prefix = prefix.slice(0, i);
+  }
+  return names.map(name => {
+    const words = name.split(" ");
+    return name && prefix.length && words.length > prefix.length ? words.slice(prefix.length).join(" ") : name;
+  });
+}
+
 function openSettingsTopbarEntityPicker(kind, inputOverride = null) {
   const target = kind === "weather"
     ? {
