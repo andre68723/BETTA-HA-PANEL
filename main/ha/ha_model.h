@@ -43,3 +43,8 @@ uint32_t ha_model_state_revision(void);
 size_t ha_model_list_entities(
     const char *domain_filter, const char *search, ha_entity_info_t *out_entities, size_t max_out);
 size_t ha_model_list_states(ha_state_t *out_states, size_t max_out);
+/* One page of the list from offset; total (may be NULL) is the number of matches, so a caller such as the
+ * editor's HTTP API can ask for the following pages. */
+size_t ha_model_list_entities_page(const char *domain_filter, const char *search, size_t offset,
+    ha_entity_info_t *out_entities, size_t max_out, size_t *total);
+size_t ha_model_list_states_page(size_t offset, ha_state_t *out_states, size_t max_out, size_t *total);

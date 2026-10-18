@@ -12,7 +12,7 @@ Show an entity's current value and unit, with optional name, age and Recorder hi
 
 Choose whether to show the name and last-update age. Enable history only when Home Assistant Recorder retains this entity.
 
-The inspector names the entity's device class and unit below the entity ("Device class: none" when Home Assistant gives none). The value follows the device class; the inspector offers only the options of the entity's class, and the first choice is the default.
+The inspector shows the entity's device class and unit as chips below the entity ("No device class" when Home Assistant gives none). The value follows the device class; the inspector offers only the options of the entity's class, and the first choice is the default.
 
 ### Device classes
 

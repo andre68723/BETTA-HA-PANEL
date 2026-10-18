@@ -4,8 +4,8 @@
 BETTA HA Panel is ESP-IDF firmware for ESP32-P4 touch panels. An
 embedded browser editor configures a Home Assistant dashboard at runtime. This
 fork starts at upstream commit `420df764` (v0.8.2); user-facing changes are
-grouped under v0.9.0 in `docs/release-notes.md`. The intended local fork version
-is v0.9.0.
+grouped under v0.9.0 in `docs/release-notes.md`. The current development version
+is v0.9.1-rc1 (v0.9.0 is released).
 
 ## Essential commands
 

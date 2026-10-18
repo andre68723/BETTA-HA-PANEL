@@ -4,6 +4,36 @@
 
 Changes of **this fork**, compared with upstream v0.8.2. The release notes of the original project (v0.8.2 and earlier, by Cpt_Kirk) are kept unchanged in [Upstream release notes](release-notes-upstream.md).
 
+## v0.9.1-rc1 (fork)
+
+Release candidate, not published. Changes since [v0.9.0](#v090-fork).
+
+### Widgets
+
+| Widget | Status | What is new or changed |
+| --- | --- | --- |
+| [Price forecast](widgets/price_forecast.md) | <span class="release-status release-status--new">New</span> | A day of electricity prices as bars (hourly or 15-minute) from the list attribute of a price sensor (EPEX Spot directly; Nord Pool and Tibber through a helper that stores the list as `data`): the price now, Today/Tomorrow, the day's minimum and maximum and the next cheap window. Raw EUR/cent units are converted before display; missing intervals stay gaps and all upcoming cheap windows remain available. Design inspired by the community's price timeline cards. |
+| [Parqet portfolio](widgets/parqet_portfolio.md) | <span class="release-status release-status--new">New</span> | A Parqet portfolio from the Parqet Companion sensors: total value, gain, the unrealised return in percent (from the integration's own sensor), XIRR, dividends and the largest holdings as weight bars; the tile names the interval the integration is set to. An option hides amounts and shows percentages only. Tabs (Performance, Holdings), interval buttons (1D, 1W, 1M, YTD, MAX) and, in Holdings, the choice Largest, Top 5 or Flop 5 can be shown on the tile; the intervals other than MAX are asked from the integration. |
+| [Sensor](widgets/sensor.md) | <span class="release-status release-status--changed">Changed</span> | The value follows the device class: timestamps and dates in local time or relative, durations as text or clock, units hidden, as ° or scaled to kW/kWh, currency symbols with two decimals, readable enum values, binary sensor state words and the decimal comma of the panel language. |
+
+### Panel
+
+- **Quote history:** a tap on the top bar stock item opens its price history, 30 days of daily means or 12 months of weekly means, from the Home Assistant statistics of the sensor. Missing periods stay gaps and dates follow elapsed time across clock changes.
+- **Touch on the 10-inch JC panel:** a separate scan task reads the controller every 5 ms and hands every tap to LVGL one by one
+  (`drivers/touch_latch.c`); the controller's weak-signal flag in the Y word is removed instead of dropping the point. Contact
+  counters are in `GET /api/version` (`touch`). Measured on a 10-inch unit (2026-10-18), see `docs/development/learnings.md`,
+  "Touch contacts".
+
+### Editor
+
+- **Device class:** search results and the entity picker name a sensor's device class; the inspector shows it with the unit as chips
+  below the main entity of every tile bound to a sensor or binary sensor, and offers the sensor's unit and format choices of
+  that class.
+
+### Dependencies
+
+- `esp_sccb_intf` 0.0.9 → 1.0.0 for the JC and Tab5 camera stack, the version a fresh configure resolves.
+
 ## v0.9.0 (fork)
 
 !!! info "Development fork · based on upstream v0.8.2"
@@ -21,7 +51,7 @@ Changes of **this fork**, compared with upstream v0.8.2. The release notes of th
 | --- | --- |
 | [Toolchain](#toolchain-and-dependencies) | **ESP-IDF 5.5.2 → 6.1**, **LVGL 9.5.0 → 9.6.0**, updated and pinned shared dependencies |
 | [Display devices](choose-display.md) | Guition 10.1-inch and M5Stack Tab5 profiles join the Waveshare P4 devices; hardware validation is tracked per device |
-| [Widgets](#widgets-new-and-changed) | **20 new types**, **11 updated types**, plus the existing Empty spacer |
+| [Widgets](#widgets-new-and-changed) | **19 new types**, **11 updated types**, plus the existing Empty spacer |
 | [Appearance](appearance.md) | Flat, Glow, Glass and Matte, independent color themes, larger text and consistent icons |
 | [Pages and editor](editor.md) | Room/house imports, searchable entity picker, history options, live settings and more pages |
 | [Notifications](notifications.md) | MQTT/HTTP alerts, camera doorbells, Home Assistant triggers and optional sound |
@@ -135,12 +165,9 @@ Follow [Installation](getting-started.md) and [partition migration](development/
     The fork's JC support uses Espressif's Apache-2.0 `esp_lcd_touch_gsl3680`
     driver with raw coordinates and host-tested nearest-point tracking in
     `drivers/touch_track.c`. Stray or reordered reports are held and logged as
-    `touch jump held`. There is no two-finger zoom tracking. A separate scan task
-    reads the controller every 5 ms and hands every tap to LVGL one by one
-    (`drivers/touch_latch.c`); the controller's weak-signal flag in the Y word is
-    removed instead of dropping the point. Contact counters are in
-    `GET /api/version` (`touch`). Measured on a 10-inch unit (2026-10-18), see
-    `docs/development/learnings.md`, "Touch contacts".
+    `touch jump held`. There is no two-finger zoom tracking. The current driver
+    revision is compile checked; its orientation and touch behavior still need
+    checking on a paneljc unit.
 
 - **Display settings:** one page with headings, and one compact reset at the bottom
   that restores every Display group and the board-specific camera and rotation
@@ -223,10 +250,8 @@ font and icon changes apply across the visible widgets.
 | [Room card](widgets/room_tile.md) | <span class="release-status release-status--new">New</span> | HA area status/actions, plus an optional humidity, cover or media field. |
 | [Scene](widgets/scene_tile.md) | <span class="release-status release-status--new">New</span> | Dedicated tile for scenes, scripts and momentary HA actions. |
 | [Select](widgets/select_tile.md) | <span class="release-status release-status--new">New</span> | Choose a select/input-select option through its popup. |
-| [Sensor](widgets/sensor.md) | <span class="release-status release-status--changed">Changed</span> | HA display precision, optional name/age and Recorder history. The value follows the device class: timestamps and dates in local time or relative, durations as text or clock, units hidden, as ° or scaled to kW/kWh, currency symbols with two decimals, readable enum values, binary sensor state words and the decimal comma of the panel language. |
+| [Sensor](widgets/sensor.md) | <span class="release-status release-status--changed">Changed</span> | HA display precision, optional name/age and Recorder history. |
 | [Slider](widgets/slider.md) | <span class="release-status release-status--changed">Changed</span> | Improved fitting, controls and wider Matte presentation. |
-| [Price forecast](widgets/price_forecast.md) | <span class="release-status release-status--new">New</span> | A day of electricity prices as bars (hourly or 15-minute) from the list attribute of a price sensor (EPEX Spot directly; Nord Pool and Tibber through a helper that stores the list as `data`): the price now, Today/Tomorrow, the day's minimum and maximum and the next cheap window. Raw EUR/cent units are converted before display; missing intervals stay gaps and all upcoming cheap windows remain available. Design inspired by the community's price timeline cards. |
-| [Parqet portfolio](widgets/parqet_portfolio.md) | <span class="release-status release-status--new">New</span> | A Parqet portfolio from the Parqet Companion sensors: total value, gain, the unrealised return in percent (from the integration's own sensor), XIRR, dividends and the largest holdings as weight bars; the tile names the interval the integration is set to. An option hides amounts and shows percentages only. Tabs (Performance, Holdings), interval buttons (1D, 1W, 1M, YTD, MAX) and, in Holdings, the choice Largest, Top 5 or Flop 5 can be shown on the tile; the intervals other than MAX are asked from the integration. |
 | [Solar forecast](widgets/solar_forecast.md) | <span class="release-status release-status--new">New</span> | Daily yield with optional weather-date alignment; today shows the weekday and its total, with the remaining part bright; editor bars keep their full height. |
 | [Sonos favorites](widgets/sonos_favorites.md) | <span class="release-status release-status--new">New</span> | Play configured media favorites directly. |
 | [Todo list](widgets/todo_list.md) | <span class="release-status release-status--changed">Changed</span> | Improved state handling, controls and layout. |
@@ -376,7 +401,6 @@ style; text and symbols use the same fonts throughout. See
   Detail cards grow for larger text, wrap long values and scroll when necessary, keeping Wi-Fi and firmware information readable at Largest.
 
 - **Top bar items:** the 1280 px boards (10-inch and Tab5) show up to three items left of the clock (date, weather, stock quote); the 4-inch panel shows two. The third item is set in Settings > Top bar.
-- **Quote history:** a tap on the top bar stock item opens its price history, 30 days of daily means or 12 months of weekly means, from the Home Assistant statistics of the sensor. Missing periods stay gaps and dates follow elapsed time across clock changes.
 
 - **Top bar and navigation:** date, weather and stock slots sit beside live
   Wi-Fi/Home Assistant/MQTT status popups. The stock quote fits beside the date
@@ -417,8 +441,6 @@ style; text and symbols use the same fonts throughout. See
 - **Finding and adding widgets:** one searchable dialog combines widget types
   with compatible Home Assistant entities. The page menu groups blank, room,
   house and energy pages; an empty page offers immediate add actions.
-  Search results and the entity picker name a sensor's device class; the inspector shows it
-  with the unit below the main entity of every tile bound to a sensor or binary sensor.
 
 - **Editing layouts:** the existing drag/resize editor gains a page inspector,
   room import, keyboard controls, reorder, widget duplication and list search

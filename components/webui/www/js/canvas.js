@@ -2596,16 +2596,19 @@ function deviceClassLabel(deviceClass, entityId = "") {
 
 // "Device class: Temperature \u00B7 Unit: \u00B0C"; "none" only for an entity Home Assistant listed, so a list that is not
 // loaded yet shows nothing rather than a wrong "none".
-function entityClassText(entityId) {
-  if (!entityHasDeviceClass(entityId)) return "";
+// The device class and unit of a sensor or binary sensor as chips below the entity field; "no device class" only
+// for an entity the panel lists, nothing while its list or state is not loaded.
+function entityClassChips(entityId) {
+  if (!entityHasDeviceClass(entityId)) return [];
   const listed = editor.entities.find((entity) => entity?.id === entityId);
   const info = listed || editor.stateMeta?.get(entityId);
-  if (!info) return "";
+  if (!info) return [];
   const label = deviceClassLabel(info.device_class || "", entityId);
-  if (!label && !listed) return "";
-  const parts = [t("inspector.device_class", { value: label || t("inspector.device_class_none") })];
-  if (info.unit) parts.push(t("inspector.unit", { value: info.unit }));
-  return parts.join(" \u00B7 ");
+  if (!label && !listed) return [];
+  const chips = [label ? { text: label, title: t("inspector.device_class") }
+    : { text: t("inspector.device_class_none"), title: t("inspector.device_class"), none: true }];
+  if (info.unit) chips.push({ text: info.unit, title: t("inspector.unit") });
+  return chips;
 }
 
 // The Sensor tile's sensor_format and sensor_unit choices by device class (ha_sensor_value.h, w_sensor.c); the first
@@ -2677,10 +2680,12 @@ function updateSensorEntityInfo(widget = selectedWidget()) {
   const type = el.fType?.value || widget?.type;
   const sensor = type === "sensor";
   const entityId = el.fEntity?.value.trim() || "";
-  const text = type === "empty_tile" || type === "wallbox_evcc" ? "" : entityClassText(entityId);
+  const chips = type === "empty_tile" || type === "wallbox_evcc" ? [] : entityClassChips(entityId);
   if (el.fEntityClass) {
-    el.fEntityClass.textContent = text;
-    el.fEntityClass.classList.toggle("hidden", !text);
+    el.fEntityClass.innerHTML = chips.map((chip) => `<span class="entity-class-chip${chip.none ? " is-none" : ""}" `
+      + `title="${escapeHtml(chip.title)}">${escapeHtml(chip.text)}</span>`).join("");
+    el.fEntityClass.dataset.text = chips.map((chip) => chip.text).join(" · ");
+    el.fEntityClass.classList.toggle("hidden", chips.length === 0);
   }
   const format = sensor ? sensorFormatChoices(widget, entityId) : null;
   const unit = sensor ? sensorUnitChoices(widget, entityId) : null;

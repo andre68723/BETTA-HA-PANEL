@@ -26,9 +26,18 @@ static cJSON *state_to_json(const ha_state_t *state)
     return obj;
 }
 
+/* The first item of a page; 0 for a missing or invalid value. */
+static size_t parse_offset(const char *value)
+{
+    char *end_ptr = NULL;
+    long parsed = value[0] != '\0' ? strtol(value, &end_ptr, 10) : 0;
+    return (end_ptr != NULL && *end_ptr == '\0' && parsed > 0) ? (size_t)parsed : 0;
+}
+
 esp_err_t api_state_get_handler(httpd_req_t *req)
 {
     char entity_id[APP_MAX_ENTITY_ID_LEN] = {0};
+    char offset_raw[12] = {0};
     int query_len = httpd_req_get_url_query_len(req);
     if (query_len > 0) {
         char *query = calloc((size_t)query_len + 1U, sizeof(char));
@@ -37,6 +46,7 @@ esp_err_t api_state_get_handler(httpd_req_t *req)
         }
         if (httpd_req_get_url_query_str(req, query, query_len + 1) == ESP_OK) {
             httpd_query_key_value(query, "entity_id", entity_id, sizeof(entity_id));
+            httpd_query_key_value(query, "offset", offset_raw, sizeof(offset_raw));
         }
         free(query);
     }
@@ -50,11 +60,14 @@ esp_err_t api_state_get_handler(httpd_req_t *req)
     }
 
     size_t count = 0;
+    size_t total = 0;
+    const size_t offset = parse_offset(offset_raw);
     if (entity_id[0] != '\0') {
         ha_state_t state = {0};
         if (ha_model_get_state(entity_id, &state)) {
             cJSON_AddItemToArray(items, state_to_json(&state));
             count = 1;
+            total = 1;
         }
     } else {
         const size_t max_items = 128;
@@ -64,7 +77,7 @@ esp_err_t api_state_get_handler(httpd_req_t *req)
             cJSON_Delete(items);
             return httpd_resp_send_500(req);
         }
-        count = ha_model_list_states(states, max_items);
+        count = ha_model_list_states_page(offset, states, max_items, &total);
         for (size_t i = 0; i < count; i++) {
             cJSON_AddItemToArray(items, state_to_json(&states[i]));
         }
@@ -73,6 +86,8 @@ esp_err_t api_state_get_handler(httpd_req_t *req)
 
     cJSON_AddItemToObject(root, "items", items);
     cJSON_AddNumberToObject(root, "count", (double)count);
+    cJSON_AddNumberToObject(root, "offset", (double)offset);
+    cJSON_AddNumberToObject(root, "total", (double)total);
 
     char *payload = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);

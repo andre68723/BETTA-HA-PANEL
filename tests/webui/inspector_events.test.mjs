@@ -252,7 +252,7 @@ test("sensor format and unit: offered by device class, saved, kept while hidden 
     { id: "sensor.cost", device_class: "monetary", unit: "EUR" },
     { id: "sensor.mode", device_class: "enum", unit: "" }]; renderInspector()`);
   assert.equal(run("sensorTimeFormatShown(selectedWidget(), el.fEntity.value)"), true);
-  assert.equal(run("el.fEntityClass.textContent"), "Device class: Timestamp");
+  assert.equal(run("el.fEntityClass.dataset.text"), "Timestamp");
   assert.equal(run("el.fSensorFormatLabel.textContent"), "Time format");
   assert.equal(run("sensorUnitChoices(selectedWidget(), el.fEntity.value)"), null);
   run('el.fSensorFormat.value = "relative"; el.fSensorFormat.dispatch("change")');
@@ -264,7 +264,7 @@ test("sensor format and unit: offered by device class, saved, kept while hidden 
 
   // A temperature sensor: no format, a unit choice whose default reads as the unit; the saved format stays.
   run('el.fEntity.value = "sensor.temperature"; el.fEntity.onchange()');
-  assert.equal(run("el.fEntityClass.textContent"), "Device class: Temperature · Unit: °C");
+  assert.equal(run("el.fEntityClass.dataset.text"), "Temperature · °C");
   assert.equal(run("sensorFormatChoices(selectedWidget(), el.fEntity.value)"), null);
   assert.equal(run("JSON.stringify(sensorUnitChoices(selectedWidget(), el.fEntity.value).values)"), JSON.stringify(["", "degree", "hide"]));
   assert.match(run("el.fSensorUnit.innerHTML"), />°C</);
@@ -303,6 +303,23 @@ test("sensor format and unit: offered by device class, saved, kept while hidden 
   assert.equal(run("sensorFormatChoices(selectedWidget(), el.fEntity.value)"), null);
 });
 
+test("entity and state lists: every page of the panel's answer is loaded", async () => {
+  const run = setupInspector("sensor", "sensor.temperature");
+  run(`globalThis.requested = []; globalThis.apiGet = async (path) => {
+    requested.push(path);
+    const offset = Number((path.match(/offset=(\\d+)/) || [0, 0])[1]);
+    const ids = Array.from({ length: 300 }, (_, i) => "sensor.s" + i).slice(offset, offset + 128);
+    return { items: ids.map((id) => ({ entity_id: id, id, state: "1", attributes_json: "{}" })), total: 300 };
+  };`);
+  await run("refreshStates()");
+  assert.equal(run("editor.states.size"), 300);
+  assert.equal(run("JSON.stringify(requested)"), JSON.stringify(["/api/state", "/api/state?offset=128", "/api/state?offset=256"]));
+  run("requested.length = 0; apiGet = async (path) => { requested.push(path); return { items: [{ id: 'sensor.a' }] }; }");
+  await run("loadEntities()");
+  assert.equal(run("editor.entities.length"), 1); // an older panel without total: one page
+  assert.equal(run("requested.length"), 1);
+});
+
 test("sensor preview: formats the state like the panel by device class", () => {
   const run = setupInspector("sensor", "sensor.temperature");
   run(`editor.i18nLanguage = "de"; editor.entities = [
@@ -333,18 +350,24 @@ test("sensor preview: formats the state like the panel by device class", () => {
   assert.equal(value("binary_sensor.door"), "Open");
 });
 
-test("device class line: named for sensors and binary sensors, none only for a listed entity, absent elsewhere", () => {
+test("device class chips: named for sensors and binary sensors, none only for a listed entity, absent elsewhere", () => {
   const run = setupInspector("binary_tile", "binary_sensor.washer");
   run("populateMovePageOptions = renderEntityOptions = () => {}");
   run(`editor.entities = [{ id: "binary_sensor.washer", device_class: "power", unit: "" },
     { id: "sensor.counter", device_class: "", unit: "" }, { id: "light.desk", device_class: "", unit: "" }]; renderInspector()`);
-  assert.equal(run("el.fEntityClass.textContent"), "Device class: Power on/off");
+  assert.equal(run("el.fEntityClass.dataset.text"), "Power on/off");
+  assert.match(run("el.fEntityClass.innerHTML"), /^<span class="entity-class-chip" title="Device class">Power on\/off<\/span>$/);
+  run(`editor.entities.push({ id: "sensor.temperature_out", device_class: "temperature", unit: "°C" });
+    el.fEntity.value = "sensor.temperature_out"; el.fEntity.onchange()`);
+  assert.equal(run("el.fEntityClass.dataset.text"), "Temperature · °C");
+  assert.match(run("el.fEntityClass.innerHTML"), /title="Unit">°C</);
   run('el.fEntity.value = "sensor.counter"; el.fEntity.onchange()');
-  assert.equal(run("el.fEntityClass.textContent"), "Device class: none");
+  assert.equal(run("el.fEntityClass.dataset.text"), "No device class");
+  assert.match(run("el.fEntityClass.innerHTML"), /entity-class-chip is-none/);
   run('el.fEntity.value = "sensor.not_listed"; el.fEntity.onchange()');
-  assert.equal(run("el.fEntityClass.textContent"), "");
+  assert.equal(run("el.fEntityClass.dataset.text"), "");
   run('el.fEntity.value = "light.desk"; el.fEntity.onchange()');
-  assert.equal(run("el.fEntityClass.textContent"), "");
+  assert.equal(run("el.fEntityClass.dataset.text"), "");
   assert.equal(run('entityIdWithClass({ id: "sensor.t", device_class: "temperature" })'), "sensor.t · Temperature");
   assert.equal(run('entityIdWithClass({ id: "light.desk", device_class: "" })'), "light.desk");
 });

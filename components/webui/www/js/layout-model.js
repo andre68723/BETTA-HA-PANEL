@@ -1033,10 +1033,22 @@ async function loadLayout() {
   }
 }
 
+// The panel answers /api/entities and /api/state in pages of 128; a layout can use more entities than that.
+async function apiGetAllItems(path) {
+  const items = [];
+  for (let page = 0; page < 64; page += 1) {
+    const separator = path.includes("?") ? "&" : "?";
+    const data = await apiGet(page === 0 ? path : `${path}${separator}offset=${items.length}`);
+    const pageItems = Array.isArray(data.items) ? data.items : [];
+    items.push(...pageItems);
+    if (pageItems.length === 0 || !Number.isFinite(data.total) || items.length >= data.total) break;
+  }
+  return items;
+}
+
 async function loadEntities() {
   try {
-    const data = await apiGet("/api/entities");
-    editor.entities = Array.isArray(data.items) ? data.items : [];
+    editor.entities = await apiGetAllItems("/api/entities");
     renderEntityOptions();
     renderCanvas(); // the sensor and gauge previews show each entity's unit
   } catch (err) {
@@ -1046,24 +1058,22 @@ async function loadEntities() {
 
 async function refreshStates() {
   try {
-    const data = await apiGet("/api/state");
+    const items = await apiGetAllItems("/api/state");
     editor.states = new Map();
     editor.stateMeta = new Map();
-    if (Array.isArray(data.items)) {
-      for (const item of data.items) {
-        editor.states.set(item.entity_id, item.state);
-        try {
-          const attrs = JSON.parse(item.attributes_json || "{}");
-          if (attrs.device_class || attrs.unit_of_measurement || attrs.vehicle?.name || typeof attrs.current_temperature === "number") {
-            editor.stateMeta.set(item.entity_id, {
-              device_class: attrs.device_class || "",
-              unit: attrs.unit_of_measurement || "",
-              vehicle_name: typeof attrs.vehicle?.name === "string" ? attrs.vehicle.name : "",
-              current_temperature: typeof attrs.current_temperature === "number" ? attrs.current_temperature : null,
-            });
-          }
-        } catch (_) { /* attributes cut off by the size limit: no meta */ }
-      }
+    for (const item of items) {
+      editor.states.set(item.entity_id, item.state);
+      try {
+        const attrs = JSON.parse(item.attributes_json || "{}");
+        if (attrs.device_class || attrs.unit_of_measurement || attrs.vehicle?.name || typeof attrs.current_temperature === "number") {
+          editor.stateMeta.set(item.entity_id, {
+            device_class: attrs.device_class || "",
+            unit: attrs.unit_of_measurement || "",
+            vehicle_name: typeof attrs.vehicle?.name === "string" ? attrs.vehicle.name : "",
+            current_temperature: typeof attrs.current_temperature === "number" ? attrs.current_temperature : null,
+          });
+        }
+      } catch (_) { /* attributes cut off by the size limit: no meta */ }
     }
     renderCanvas();
   } catch (_) {

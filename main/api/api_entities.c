@@ -25,6 +25,14 @@ static void set_json_headers(httpd_req_t *req)
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
 }
 
+/* The first item of a page; 0 for a missing or invalid value. */
+static size_t parse_offset(const char *value)
+{
+    char *end_ptr = NULL;
+    long parsed = value[0] != '\0' ? strtol(value, &end_ptr, 10) : 0;
+    return (end_ptr != NULL && *end_ptr == '\0' && parsed > 0) ? (size_t)parsed : 0;
+}
+
 static size_t parse_max_items(const char *value)
 {
     if (value == NULL || value[0] == '\0') {
@@ -50,6 +58,7 @@ esp_err_t api_entities_get_handler(httpd_req_t *req)
     char domain[APP_MAX_NAME_LEN] = {0};
     char search[APP_MAX_NAME_LEN] = {0};
     char limit_raw[12] = {0};
+    char offset_raw[12] = {0};
 
     int query_len = httpd_req_get_url_query_len(req);
     if (query_len > 0) {
@@ -62,6 +71,7 @@ esp_err_t api_entities_get_handler(httpd_req_t *req)
             httpd_query_key_value(query, "search", search, sizeof(search));
             url_decode_in_place(search);
             httpd_query_key_value(query, "limit", limit_raw, sizeof(limit_raw));
+            httpd_query_key_value(query, "offset", offset_raw, sizeof(offset_raw));
         }
         free(query);
     }
@@ -71,8 +81,10 @@ esp_err_t api_entities_get_handler(httpd_req_t *req)
     if (items == NULL) {
         return httpd_resp_send_500(req);
     }
-    size_t count = ha_model_list_entities(
-        domain[0] ? domain : NULL, search[0] ? search : NULL, items, max_items);
+    const size_t offset = parse_offset(offset_raw);
+    size_t total = 0;
+    size_t count = ha_model_list_entities_page(
+        domain[0] ? domain : NULL, search[0] ? search : NULL, offset, items, max_items, &total);
 
     cJSON *root = cJSON_CreateObject();
     cJSON *arr = cJSON_CreateArray();
@@ -105,6 +117,8 @@ esp_err_t api_entities_get_handler(httpd_req_t *req)
 
     cJSON_AddItemToObject(root, "items", arr);
     cJSON_AddNumberToObject(root, "count", (double)count);
+    cJSON_AddNumberToObject(root, "offset", (double)offset);
+    cJSON_AddNumberToObject(root, "total", (double)total);
     char *payload = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     if (payload == NULL) {
