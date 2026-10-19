@@ -622,6 +622,7 @@ function renderSettings() {
   setPercentSlider(el.settingsSaverWeatherBrightness, el.settingsSaverWeatherBrightnessValue,
     hardware.saver_weather_brightness_percent ?? 5);
   if (el.settingsSaverWeatherEntity) el.settingsSaverWeatherEntity.value = hardware.saver_weather_entity_id || "";
+  refreshInspectorEntityRows();
   if (el.settingsSaverPixelRefresh) el.settingsSaverPixelRefresh.checked = hardware.saver_pixel_refresh !== false;
   syncSaverFields();
   if (el.settingsSoundEnabled) el.settingsSoundEnabled.checked = hardware.sound_enabled === true;
@@ -1482,7 +1483,7 @@ function renderTimezonePresets() {
   const current = (el.settingsTimezone?.value || "").trim();
   const match = TIMEZONE_PRESETS.find((preset) => preset.tz === current);
   select.replaceChildren(
-    ...TIMEZONE_PRESETS.map((preset) => new Option(preset.label, preset.id)),
+    ...TIMEZONE_PRESETS.map((preset) => new Option(t(`settings.time.preset.${preset.id}`), preset.id)),
     new Option(t("settings.time.custom"), "custom"),
   );
   select.value = match ? match.id : "custom";

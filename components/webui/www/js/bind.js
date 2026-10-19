@@ -511,11 +511,6 @@ if (el.addBambuPrinterBtn) {
   bindInspectorAutoApply(el.fY, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fW, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fH, ["change"], { refreshInspector: true, softEntityValidation: true });
-  if (el.fMovePage) {
-    el.fMovePage.onchange = () => {
-      if (el.fMovePage.value) moveSelectedWidgetToPage(el.fMovePage.value);
-    };
-  }
   el.reloadSettingsBtn.onclick = async () => {
     if (editor.settingsDirty && !window.confirm(t("settings.confirm_discard_reload"))) return;
     await loadSettings();

@@ -517,7 +517,7 @@ function renderWidgets() {
     const label = document.createElement("span");
     label.className = "list-item-label";
     label.textContent = `${widgetDisplayLabel(widget)}`;
-    label.title = `[${widget.id}] ${widget.type}`;
+    label.title = [widgetTypeLabel(widget.type), widget.entity_id].filter(Boolean).join(" \u00B7 ");
     li.appendChild(label);
     li.onclick = () => {
       editor.selectedWidgetId = widget.id;
@@ -564,10 +564,9 @@ function renderWidgets() {
   }
 }
 
+// The list names a widget by its title, or by its kind when it has none; the search still matches type and entity ID.
 function widgetDisplayLabel(widget) {
-  const title = (widget.title || "").trim();
-  if (title) return `${title} · ${widget.type}`;
-  return `${widget.type} [${widget.id}]`;
+  return (widget.title || "").trim() || widgetTypeLabel(widget.type);
 }
 
 // Widget-list search (item 6 of the WebUI polish pass): a page can hold up to 32 widgets, hard to
@@ -1050,51 +1049,6 @@ function renderCanvas() {
   }
 }
 
-// Widgets can be moved to any other regular (non-energy) page.
-function populateMovePageOptions() {
-  const select = el.fMovePage;
-  if (!select) return;
-  const current = selectedPage();
-  const widget = selectedWidget();
-  select.innerHTML = "";
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = t("layout.inspector.move_placeholder");
-  select.appendChild(placeholder);
-  const pages = editor.layout?.pages || [];
-  for (const page of pages) {
-    if (page === current || isFixedPage(page)) continue;
-    const option = document.createElement("option");
-    option.value = page.id;
-    option.textContent = page.title || page.id;
-    select.appendChild(option);
-  }
-  select.disabled = !widget || !current || isFixedPage(current) || select.options.length < 2;
-  select.value = "";
-}
-
-function moveSelectedWidgetToPage(targetPageId) {
-  const source = selectedPage();
-  const widget = selectedWidget();
-  const target = (editor.layout?.pages || []).find((p) => p.id === targetPageId);
-  if (!source || !widget || !target || target === source) return;
-  if (isFixedPage(source) || isFixedPage(target)) return;
-  source.widgets = source.widgets.filter((w) => w !== widget);
-  const used = new Set(target.widgets.map((w) => w.id));
-  let id = widget.id;
-  let n = 2;
-  while (used.has(id)) {
-    id = `${widget.id}_${n++}`;
-  }
-  widget.id = id;
-  widget.rect = clampRectToCanvas(widget.rect, widgetSizeType(widget));
-  target.widgets.push(widget);
-  editor.selectedPageId = target.id;
-  editor.selectedWidgetId = widget.id;
-  renderAll();
-  setStatus(t("layout.widgets.moved", { page: target.title || target.id }));
-}
-
 // alarm_tile: show the layout's alarm_actions (no key: every action is offered)
 function alarmLoadInspector(widget) {
   if (el.alarmOptions) el.alarmOptions.classList.toggle("hidden", widget.type !== "alarm_tile");
@@ -1120,7 +1074,6 @@ function renderInspector() {
     el.fY.value = "";
     el.fW.value = "";
     el.fH.value = "";
-    populateMovePageOptions();
     if (el.buttonOptions) {
       el.buttonOptions.classList.add("hidden");
     }
@@ -1307,7 +1260,6 @@ function renderInspector() {
   el.fY.value = widget.rect.y;
   el.fW.value = widget.rect.w;
   el.fH.value = widget.rect.h;
-  populateMovePageOptions();
 
   const isButton = widget.type === "button";
   const isSlider = widget.type === "slider";

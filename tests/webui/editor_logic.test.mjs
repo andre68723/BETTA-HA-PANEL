@@ -377,7 +377,7 @@ test("all named widget previews hide only the display name in English and German
       w.show_name=false;
       const hidden=renderer(w);
       assert.ok(!hidden.includes("NAME SENTINEL"),type+" hidden");
-      if(type==="media_player") assert.ok(hidden.includes("Song title"));
+      if(type==="media_player") assert.ok(hidden.includes(lang==="de"?"Musiktitel":"Song title"));
       if(type==="weather_3day") assert.ok(hidden.includes("22°"));
       if(type==="sensor") assert.ok(hidden.includes("1250 W"));
     }

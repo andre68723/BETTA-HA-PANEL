@@ -23,7 +23,7 @@ None beyond the entities.
 | Option | Effect |
 | --- | --- |
 | Display | state words, an icon only, or a door/window pictogram |
-| History on tap (Lock, Vacuum: long press) | a tap opens the Recorder history |
+| History on tap | a tap opens the Recorder history |
 
 ## On the panel
 
@@ -32,7 +32,7 @@ None beyond the entities.
 
 ### History
 
-Enable **History on tap (Lock, Vacuum: long press)**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
+Enable **History on tap**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
 
 <a href="../img/gallery/gallery_history_contact_de_glow.png"><img src="../img/gallery/gallery_history_contact_de_glow.png" alt="Front-door contact history (German), glow" loading="lazy" width="720" height="720" style="width: 576px"></a>
 

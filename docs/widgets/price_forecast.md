@@ -28,7 +28,7 @@ None beyond the entities.
 | Cheap times (shade and name the cheapest hours) | shades the cheap windows and names the next one |
 | Line instead of filled bars | a stepped line |
 
-<a href="../img/examples/inspector-price_forecast.png"><img src="../img/examples/inspector-price_forecast.png" alt="Inspector of the Price forecast widget" loading="lazy" width="340" height="715"></a>
+<a href="../img/examples/inspector-price_forecast.png"><img src="../img/examples/inspector-price_forecast.png" alt="Inspector of the Price forecast widget" loading="lazy" width="340" height="682"></a>
 
 *Inspector in the web editor, with the widget of the preview above.*
 

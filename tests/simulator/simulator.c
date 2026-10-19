@@ -680,7 +680,7 @@ static void print_usage(const char *program)
         fprintf(stderr, "%s%s", i > 0 ? "|" : "", ui_style_name(kind));
     }
     fprintf(stderr,
-            "] [--language de|en|es|fr] [--exit-after-ms duration] [--screenshot path.bmp] "
+            "] [--language de|en] [--exit-after-ms duration] [--screenshot path.bmp] "
             "[--dump-layout path.jsonl] [--tap x,y]... [--regression wallbox|bambu|history|energy|controls|fonts|notification|price]\n");
 }
 

@@ -18,6 +18,9 @@ Release candidate, not published. Changes since [v0.9.0](#v090-fork).
 
 ### Panel
 
+- **Translations:** common vacuum states and firmware-update progress follow German or English; energy, weather
+  and setup labels use clearer wording.
+
 - **Quote history:** a tap on the top bar stock item opens its price history, 30 days of daily means or 12 months of weekly means, from the Home Assistant statistics of the sensor. Missing periods stay gaps and dates follow elapsed time across clock changes.
 - **Touch on the 10-inch JC panel:** a separate scan task reads the controller every 5 ms and hands every tap to LVGL one by one
   (`drivers/touch_latch.c`); the controller's weak-signal flag in the Y word is removed instead of dropping the point. Contact
@@ -25,6 +28,11 @@ Release candidate, not published. Changes since [v0.9.0](#v090-fork).
   "Touch contacts".
 
 ### Editor
+
+- **German and English:** the colour-theme editor, time-zone choices and solar-preview days follow the selected
+  language. Entity-first Date/Time and Alarm choices have labels, and the add-widget message fills its placeholders
+  in both languages. Setup, update and notification hints match the current controls. Language files are separate,
+  with checks for missing keys, placeholders, empty texts and duplicate firmware entries.
 
 - **Device class:** search results and the entity picker name a sensor's device class; the inspector header shows it with the unit as chips
   for every tile bound to a sensor or binary sensor, and the inspector offers the sensor's unit and format choices of
@@ -34,6 +42,10 @@ Release candidate, not published. Changes since [v0.9.0](#v090-fork).
   Short fields put the label beside the control. The Properties and Position & size tabs are gone.
   Entities are rows with the role and the Home Assistant name; a click opens the search, which can also remove an
   optional entity or use a typed ID, and an ID Home Assistant does not list is marked.
+  A section's explanations open from an info icon behind its heading; the page inspector has the same form.
+  The info icon of a widget shows the summary of its guide.
+  The entity search keeps the current entity on top and starts with the entities of the same device; the Energy
+  page's sensors and the weather and stock entities in the settings use the same entity rows.
 
 ### Dependencies
 

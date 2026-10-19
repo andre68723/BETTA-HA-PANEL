@@ -345,11 +345,9 @@ def capture_editor(fixture, output, executable, setup_only=False, hero=False, fi
                 page.screenshot(path=str(output / "editor-layout.png"))
                 # the Energy page's own options: data source and the seven-day details (popup or right-hand panel)
                 page.evaluate("editor.selectedPageId = 'energy'; editor.selectedWidgetId = null; renderAll()")
-                page.locator("#energyPageOptions").wait_for(state="visible")
-                # The hints sit in the info popup now (js/inspector-layout.js), so the group's own box is the clip.
-                box = page.locator("#energyPageOptions").bounding_box()
-                clip = {"x": box["x"], "y": box["y"], "width": box["width"], "height": box["height"] + 10}
-                page.screenshot(path=str(output / "editor-energy.png"), clip=clip)
+                # The page inspector in the widget inspector's form (js/inspector-layout.js): header and sections.
+                page.locator("#pageInspectorSection .inspector-sec").first.wait_for(state="visible")
+                page.locator("#pageInspectorSection").screenshot(path=str(output / "editor-energy.png"))
                 page.evaluate("setActivePane('settings'); setActiveSettingsSection('settingsThemeSection')")
                 page.screenshot(path=str(output / "editor-appearance.png"))
                 page.evaluate("setActiveSettingsSection('settingsHardwareSection')")

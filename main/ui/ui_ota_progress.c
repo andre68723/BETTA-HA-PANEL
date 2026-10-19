@@ -15,6 +15,7 @@
 #include "app_config.h"
 #include "drivers/display_init.h"
 #include "ui/theme/ui_typography.h"
+#include "ui/ui_i18n.h"
 #include "ui/theme/theme_default.h"
 
 #if APP_HAVE_SMART86OS_BETTA_IMAGE
@@ -91,6 +92,27 @@ static void ota_ui_set_text_locked(lv_obj_t *label, const char *text)
     }
 }
 
+static void ota_ui_set_status_locked(const char *text)
+{
+    const char *translated = text;
+    char version[128];
+    if (text == NULL || strcmp(text, "Preparing update") == 0) {
+        translated = ui_i18n_get("ota.preparing", "Preparing update");
+    } else if (strcmp(text, "Downloading firmware...") == 0) {
+        translated = ui_i18n_get("ota.downloading", "Downloading firmware...");
+    } else if (strcmp(text, "Receiving firmware...") == 0) {
+        translated = ui_i18n_get("ota.receiving", "Receiving firmware...");
+    } else if (strcmp(text, "Writing firmware") == 0) {
+        translated = ui_i18n_get("ota.writing", "Writing firmware");
+    } else if (strncmp(text, "Writing firmware ", 17) == 0) {
+        snprintf(version, sizeof(version), ui_i18n_get("ota.writing_version", "Writing firmware %s"), text + 17);
+        translated = version;
+    } else if (strcmp(text, "Update written. Restarting...") == 0) {
+        translated = ui_i18n_get("ota.success", "Update written. Restarting...");
+    }
+    ota_ui_set_text_locked(s_ota_ui.status, translated);
+}
+
 static void ota_ui_update_detail_locked(size_t written, size_t total)
 {
     if (s_ota_ui.detail == NULL || s_ota_ui.percent == NULL || s_ota_ui.bar == NULL) {
@@ -117,7 +139,7 @@ static void ota_ui_update_detail_locked(size_t written, size_t total)
         lv_label_set_text(s_ota_ui.detail, detail);
     } else {
         char detail[64] = {0};
-        snprintf(detail, sizeof(detail), "%s / unknown", written_text);
+        snprintf(detail, sizeof(detail), ui_i18n_get("ota.unknown_size", "%s / unknown"), written_text);
         lv_label_set_text(s_ota_ui.detail, detail);
     }
 
@@ -186,7 +208,7 @@ static void ota_ui_create_locked(const char *status_text, size_t total_bytes)
             lv_obj_set_style_text_color(s_ota_ui.status, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
         }
         lv_obj_move_foreground(s_ota_ui.root);
-        ota_ui_set_text_locked(s_ota_ui.status, status_text);
+        ota_ui_set_status_locked(status_text);
         ota_ui_update_detail_locked(0, total_bytes);
         return;
     }
@@ -208,13 +230,13 @@ static void ota_ui_create_locked(const char *status_text, size_t total_bytes)
     s_ota_ui.logo = ota_ui_create_logo_locked(s_ota_ui.root);
 
     s_ota_ui.title = lv_label_create(s_ota_ui.root);
-    lv_label_set_text(s_ota_ui.title, "Firmware Update");
+    lv_label_set_text(s_ota_ui.title, ui_i18n_get("ota.title", "Firmware update"));
     lv_obj_set_style_text_color(s_ota_ui.title, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_font(s_ota_ui.title, ui_font_role(UI_TEXT_VALUE), LV_PART_MAIN);
     lv_obj_align(s_ota_ui.title, LV_ALIGN_TOP_MID, 0, 388);
 
     s_ota_ui.status = lv_label_create(s_ota_ui.root);
-    lv_label_set_text(s_ota_ui.status, status_text != NULL ? status_text : "Preparing update");
+    ota_ui_set_status_locked(status_text);
     lv_obj_set_width(s_ota_ui.status, 560);
     lv_obj_set_style_text_align(s_ota_ui.status, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_color(s_ota_ui.status, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
@@ -273,7 +295,7 @@ void ui_ota_progress_set_status(const char *status_text)
     if (!display_lock(30)) {
         return;
     }
-    ota_ui_set_text_locked(s_ota_ui.status, status_text);
+    ota_ui_set_status_locked(status_text);
     display_unlock();
 }
 
@@ -305,7 +327,7 @@ void ui_ota_progress_success(const char *status_text)
     if (!display_lock(OTA_PROGRESS_LOCK_MS)) {
         return;
     }
-    ota_ui_set_text_locked(s_ota_ui.status, status_text != NULL ? status_text : "Update written. Restarting...");
+    ota_ui_set_status_locked(status_text != NULL ? status_text : "Update written. Restarting...");
     if (s_ota_ui.status != NULL) {
         lv_obj_set_style_text_color(s_ota_ui.status, lv_color_hex(APP_UI_COLOR_OK), LV_PART_MAIN);
     }
@@ -326,7 +348,7 @@ void ui_ota_progress_error(const char *error_text)
     if (!display_lock(OTA_PROGRESS_LOCK_MS)) {
         return;
     }
-    ota_ui_set_text_locked(s_ota_ui.status, error_text != NULL ? error_text : "OTA failed");
+    ota_ui_set_text_locked(s_ota_ui.status, error_text != NULL ? error_text : ui_i18n_get("ota.failed", "Update failed"));
     if (s_ota_ui.status != NULL) {
         lv_obj_set_style_text_color(s_ota_ui.status, lv_color_hex(APP_UI_COLOR_ERROR), LV_PART_MAIN);
     }

@@ -314,6 +314,7 @@ function renderLightEntityPicker(data = {}) {
     el.lightEntityPickerUseIdBtn.classList.toggle("hidden", !inspectorTarget || !/^[a-z0-9_]+\.[a-z0-9_]+$/.test(typed)
       || items.some(item => item.id === typed));
   }
+  renderEntityPickerCurrent(inspectorTarget);
   if (el.lightEntityPickerRefreshBtn) {
     el.lightEntityPickerRefreshBtn.textContent = liveSearch ? t("entity_picker.refresh") : t("entity_picker.search");
   }
@@ -326,6 +327,7 @@ function renderLightEntityPicker(data = {}) {
     editor.lightPicker.items = items;
     if (data.status === "ready" || data.status === "refreshing") {
       editor.lightPicker.itemsByDomain[cacheKey] = cachedItems;
+      editor.lightPicker.truncatedByDomain[cacheKey] = data.truncated === true;
     }
     editor.lightPicker.hasLoaded = true;
     editor.lightPicker.loadedByDomain[cacheKey] = true;
@@ -421,6 +423,7 @@ function renderLightEntityPicker(data = {}) {
       button.innerHTML = `<strong></strong><span></span>`;
       button.querySelector("strong").textContent = item.name || item.id;
       button.querySelector("span").textContent = entityIdWithClass(item);
+      button.classList.toggle("is-current", !inspectorTarget?.append && item.id === inspectorTarget?.input?.value.trim());
       button.onclick = () => {
         if (editor.lightPicker.inspectorTarget?.input) {
           if (!assignInspectorEntity(editor.lightPicker.inspectorTarget, item.id)) return;
@@ -613,6 +616,38 @@ function entityFirstRow(item) {
 }
 // ===== end entity results ===================================================================
 
+// Changing an inspector entity: the current one stays on top of the dialog with Keep (and Remove for an optional
+// one), so opening the search never hides what is set.
+function renderEntityPickerCurrent(target) {
+  const box = el.lightEntityPickerCurrent;
+  if (!box) return;
+  const id = target && !target.append ? (target.input?.value || "").trim() : "";
+  box.classList.toggle("hidden", !id);
+  if (!id) { if (el.lightEntityPickerRemoveBtn && box.contains(el.lightEntityPickerRemoveBtn)) box.after(el.lightEntityPickerRemoveBtn); return; }
+  const info = sensorEntityInfo(id), state = editor.states?.get(id);
+  const name = info.name && info.name !== id ? info.name : id;
+  const dc = entityHasDeviceClass(id) ? deviceClassLabel(info.device_class, id) : "";
+  if (!box.firstChild) {
+    box.innerHTML = '<span class="entity-picker-current-tick" aria-hidden="true">\u2713</span><strong></strong><span class="meta"></span><span class="entity-picker-current-actions"></span>';
+    const keep = document.createElement("button"); keep.type = "button"; keep.className = "btn small";
+    keep.onclick = closeLightEntityPicker; box.lastChild.append(keep);
+  }
+  box.querySelector("strong").textContent = dc ? `${name} \u00B7 ${dc}` : name;
+  const value = state === undefined || state === "" ? "" : [state, info.unit].filter(Boolean).join(" ");
+  box.querySelector(".meta").textContent = value ? `${id} \u00B7 ${value}` : id;
+  box.title = t("entity_picker.current");
+  const actions = box.querySelector(".entity-picker-current-actions");
+  actions.firstChild.textContent = t("entity_picker.keep");
+  if (el.lightEntityPickerRemoveBtn && !actions.contains(el.lightEntityPickerRemoveBtn)) actions.append(el.lightEntityPickerRemoveBtn);
+}
+
+// The search an inspector entity starts with: its ID without the last word, so the list shows its siblings
+// ("dg_arbeitszimmer_klima" for sensor.dg_arbeitszimmer_klima_temperature); "" for short IDs.
+function entitySiblingSearch(id) {
+  const words = String(id || "").split(".")[1]?.split("_") || [];
+  return words.length >= 3 ? words.slice(0, -1).join("_") : "";
+}
+
 function openLightEntityPicker(widgetType = "light_tile", options = {}) {
   editor.lightPicker.inspectorTarget = options.inspectorTarget || null;
   editor.lightPicker.configOverride = options.configOverride || null;
@@ -646,6 +681,8 @@ function openLightEntityPicker(widgetType = "light_tile", options = {}) {
   if (shouldAutoFetch) {
     void fetchLightEntityPicker();
   }
+  // Typing replaces a start search the editor chose.
+  if (options.selectSearch && el.lightEntityPickerSearch) { el.lightEntityPickerSearch.focus(); el.lightEntityPickerSearch.select(); }
 }
 
 function closeLightEntityPicker() {
@@ -662,6 +699,8 @@ function closeLightEntityPicker() {
   if (el.lightEntityPickerBlankBtn) {
     el.lightEntityPickerBlankBtn.classList.remove("hidden");
   }
+  // A search may have named an entity the panel does not subscribe (an Energy timeline's battery counter).
+  refreshInspectorEntityRows();
 }
 
 // "+ Tile": one dialog for every way to add a tile. The search filters the tile types below it by name

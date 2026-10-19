@@ -42,27 +42,31 @@ An Energy page has its own options in the page inspector: the data source and **
 
 ![Energy page options in the inspector: data source and Seven-day details](img/examples/editor-energy.png){ width="314" }
 
-The Inspector column stays reserved when changing selection. Its title has an info icon for each widget,
-the Energy page and Room overview, with a short explanation and a documentation link.
+The Inspector column stays reserved when changing selection. Its title has an info icon for each widget and
+page, with the summary of its guide and a documentation link.
 
 The widget inspector has the same order for every widget. Its header shows the widget type, the name (edit it
 in place) and the main entity's device class and unit. Below follow **Entities** (what the
 tile reads or controls, including its data source), **Display** (what it shows) and **Controls** (what tap and
 long press do); a section without options is left out. **Placement** comes last and shows position and size in
 its heading; it is open while the inspector fits without scrolling. A click on a section heading folds it. Optional groups such as the Energy timeline's battery and forecast sensors fold and
-start open when something is set in them. Extended explanations show a short label and an info icon;
-click the icon to read the complete text in a popup. Close it with Escape, the Close button or a click outside.
-Page title and navigation sit in a separate section; the Energy page also groups battery and
-gas/water sensors. Its main source and view options stay visible.
+start open when something is set in them. A section with explanations has an info icon behind its heading;
+click it to read them in a popup. Close it with Escape, the Close button or a click outside.
+The page inspector has the same form: the kind of page and its title (edit it in place), then **Navigation**
+for the bar icon, **Rooms** on a Room overview, and **Entities** and **Display** on an Energy dashboard, where battery
+and gas/water sensors fold.
 
-A widget's entities are rows: the role and the entity's Home Assistant name, shortened by the words all of
-the widget's entities share; the entity ID is in the tooltip. A click opens the entity search, whose results
-match the field's allowed entity types. There, **Remove** clears an optional entity, and a typed ID that Home
-Assistant does not list can be used as it is; such an ID is marked as not found. Room entities stay a list
-(choosing a result adds it); the extra field uses an entity already assigned to the card. The manual
-Energy-page sensors are text fields with a magnifying-glass **Search** button; long IDs wrap after dots and underscores.
+Entities are rows: the role and the entity's Home Assistant name, for a widget shortened by the words all of
+its entities share; the entity ID is in the tooltip. The Energy page's sensors and the weather and stock entities
+in the settings use the same rows. A click opens the entity search, whose results match the field's allowed entity
+types. The entity that is set stays on top with **Keep**, and the search starts with its ID without the last word,
+which lists the other entities of the same device; typing replaces it. **Remove** clears an optional entity, and a
+typed ID that Home Assistant does not list can be used as it is; it is marked as not found once a completed search
+does not list it. Room
+entities stay a list (choosing a result adds it); the extra field uses an entity already assigned to the card.
 
-Use the widget row's **⋯** menu to duplicate it or **Copy to page** / **Move to page**.
+The widget list names each widget by its title (its kind and entity are in the tooltip); the search also finds
+the widget type and entity ID, such as `media_player`. Use the widget row's **⋯** menu to duplicate it or **Copy to page** / **Move to page**.
 Choose another normal page; all entity bindings and options are retained. The destination is selected
 and the widget is placed in free space when available. Energy and Room overview pages have no editable widgets.
 

@@ -17,54 +17,6 @@ function refreshInspectorSearchButtons(root) {
   }
 }
 
-// A long entity ID wraps after "." or "_" rather than inside a word: the field shows zero-width spaces there, which
-// never reach the bound input or the clipboard.
-const ENTITY_SOFT_BREAK = "\u200B";
-function entitySoftBreaks(value) {
-  return String(value || "").replace(/([._])(?=.)/g, `$1${ENTITY_SOFT_BREAK}`);
-}
-
-function entityWithoutSoftBreaks(value) {
-  return String(value || "").replaceAll(ENTITY_SOFT_BREAK, "");
-}
-
-function bindWrappingEntityField(input, field, resize) {
-  input.hidden = true;
-  // While typing the field already holds the input's value; only a change from elsewhere rewrites it.
-  const mirror = () => {
-    if (entityWithoutSoftBreaks(field.value) !== input.value) field.value = entitySoftBreaks(input.value);
-    resize(field);
-  };
-  for (const type of ["input", "change"]) input.addEventListener(type, mirror);
-  input.focus = (...args) => { mirror(); field.focus(...args); };
-  input.select = () => field.select();
-  const forward = type => {
-    input.value = entityWithoutSoftBreaks(field.value).replace(/[\r\n]/g, "");
-    input.dispatchEvent(new Event(type, { bubbles: true }));
-  };
-  field.addEventListener("input", () => { forward("input"); resize(field); });
-  for (const type of ["focus", "change", "blur"]) field.addEventListener(type, () => forward(type));
-  field.addEventListener("blur", () => { field.value = entitySoftBreaks(input.value); });
-  for (const type of ["copy", "cut"]) field.addEventListener(type, event => {
-    const text = field.value.slice(field.selectionStart, field.selectionEnd);
-    if (!event.clipboardData || !text.includes(ENTITY_SOFT_BREAK)) return;
-    event.preventDefault();
-    event.clipboardData.setData("text/plain", entityWithoutSoftBreaks(text));
-    if (type === "cut") field.setRangeText("", field.selectionStart, field.selectionEnd, "start"), forward("input");
-  });
-  field.addEventListener("keydown", event => {
-    if (event.key === "Enter") { event.preventDefault(); field.blur(); }
-  });
-}
-
-function resizeInspectorEntity(field) {
-  if (!field.getClientRects().length) return;
-  field.style.height = "auto";
-  field.style.height = Math.max(30, field.scrollHeight + 2) + "px";
-  if (document.activeElement !== field) { field.setSelectionRange(0, 0); field.scrollTop = 0; }
-  field.scrollLeft = 0;
-}
-
 // The widget inspector reads top to bottom like the widget guides: a header (type, name, page and entity, device class),
 // then Entities (what the tile reads or controls), Display (what it shows), Controls (what tap and long press do) and a
 // collapsed Placement. The fields keep their elements, handlers and visibility logic; this layer only moves them.
@@ -87,9 +39,19 @@ function initInspectorLayout() {
   root.querySelector(".section-body").prepend(head);
   const sections = {}, bodies = {};
   // Every section has the same form: its heading above a card with the fields, and the heading folds the card.
-  const section = name => {
-    const node = make("details", "inspector-sec"); node.dataset.section = name; node.open = true;
-    const body = make("div", "inspector-sec-body"); node.append(make("summary", "inspector-sec-title"), body);
+  const section = (name, labelKey = `layout.inspector.section_${name}`) => {
+    const node = make("details", "inspector-sec"); node.dataset.section = name; node.dataset.label = labelKey; node.open = true;
+    const body = make("div", "inspector-sec-body"), summary = make("summary", "inspector-sec-title");
+    // The section's hints open from an info button behind its title instead of a "Hints" row in the card.
+    const help = createInspectorInfoButton(); help.classList.add("inspector-sec-help"); help.hidden = true;
+    help.onclick = event => {
+      event.preventDefault(); event.stopPropagation();
+      openInspectorHelp(summary.firstChild.textContent, null, { sections: inspectorSectionHelpRows(node).map(row => ({
+        title: row.dataset.genericHint === "true" ? "" : row.querySelector(".inspector-help-caption").textContent,
+        source: row.querySelector(".inspector-help-content") })) });
+    };
+    summary.append(make("span", "inspector-sec-label"), help);
+    node.append(summary, body);
     sections[name] = node; bodies[name] = body;
     return node;
   };
@@ -116,46 +78,49 @@ function initInspectorLayout() {
   el.energyTimelineFields.append(counterHelp);
   const etlStyle = make("div", "slider-options hidden");
   etlStyle.append(label(el.fEtlStyle));
-  const editors = [], entityRows = [];
-  for (const input of document.querySelectorAll("#inspectorSection .entity-input-row input[type=text], #energyPageOptions input[type=text]")) {
-    let row = input.closest(".entity-input-row");
-    const search = row?.querySelector("[data-inspector-entity-target]");
-    if (search && input.closest("#inspectorSection")) {
-      // A widget entity is mostly set when the widget is added: the row names it, and a click opens the picker.
-      const field = label(input), button = make("button", "inspector-entity-row"); button.type = "button";
-      button.append(make("span", "inspector-entity-name"), make("span", "inspector-entity-chevron"));
-      button.lastChild.setAttribute("aria-hidden", "true");
-      button.onclick = () => search.click();
-      // The row shows the role before any parenthesis; "(optional)" and similar notes move to its tooltip.
-      const caption = field.querySelector("span"), role = make("span", "inspector-entity-role");
-      caption.hidden = true; field.prepend(role);
-      field.classList.add("inspector-entity-label"); row.hidden = true; row.after(button);
-      field.addEventListener("click", event => {
-        if (event.target.closest("button, a, .field-hint, .meta")) return;
-        event.preventDefault(); button.click();
-      });
-      input.addEventListener("change", () => refreshInspectorEntityRows());
-      entityRows.push({ input, button, field, caption, role });
-      continue;
-    }
-    if (!row) {
-      row = make("div", "entity-input-row"); input.before(row); row.append(input);
-      const search = make("button", "btn small entity-picker-btn"); search.type = "button";
-      search.dataset.inspectorPageSearch = "true";
-      search.onclick = () => openLightEntityPicker("page_sensor", {
-        inspectorTarget: { input, domain: "sensor", titleKey: "entity_picker.title_sensor", titleFallback: "Choose Sensor" },
-        configOverride: entityPickerConfigForDomain("sensor", "entity_picker.title_sensor", "Choose Sensor"),
-      });
-      row.append(search);
-    }
-    const field = make("textarea", "inspector-entity-editor");
-    field.id = input.id + "Editor"; field.rows = 1; field.wrap = "soft"; field.spellcheck = false;
-    field.placeholder = input.placeholder; if (input.maxLength > 0) field.maxLength = input.maxLength;
-    input.before(field); bindWrappingEntityField(input, field, resizeInspectorEntity); editors.push({ input, field });
+  const entityRows = [];
+  // Every entity field is a row with the role and the entity's name; a click opens the entity search. Widget entities
+  // are mostly set when the widget is added, so the name is what matters and the ID is in the tooltip.
+  const entityRow = (input, open, shorten = false) => {
+    const field = label(input), row = input.closest(".entity-input-row") || input;
+    const button = make("button", "inspector-entity-row"); button.type = "button";
+    button.append(make("span", "inspector-entity-name"), make("span", "inspector-entity-chevron"));
+    button.lastChild.setAttribute("aria-hidden", "true");
+    button.onclick = open;
+    // The row shows the role before any parenthesis; "(optional)" and similar notes move to its tooltip.
+    const caption = field.querySelector("span"), role = make("span", "inspector-entity-role");
+    caption.hidden = true; field.prepend(role);
+    field.classList.add("inspector-entity-label"); row.hidden = true; row.classList.add("hidden"); row.after(button);
+    field.addEventListener("click", event => {
+      if (event.target.closest("button, a, .field-hint, .meta")) return;
+      event.preventDefault(); button.click();
+    });
+    input.addEventListener("change", () => refreshInspectorEntityRows());
+    entityRows.push({ input, button, field, caption, role, shorten });
+  };
+  for (const input of document.querySelectorAll("#inspectorSection .entity-input-row input[type=text]")) {
+    const search = input.closest(".entity-input-row").querySelector("[data-inspector-entity-target]");
+    if (search) entityRow(input, () => search.click(), true);
   }
-  const pageForm = byId("pageInspectorSection").querySelector(".form");
-  const navigation = group("inspectorPageNavigation", [byId("pageIconSelect"), el.pageTitleInput], pageForm);
-  navigation.querySelector(".inspector-extra-fields").append(byId("pageIconHint")); pageForm.prepend(navigation);
+  for (const input of document.querySelectorAll("#energyPageOptions input[type=text]")) entityRow(input, () => openPageSensorPicker(input));
+  for (const [input, kind] of [[el.settingsTopbarWeatherEntity, "weather"], [el.settingsSaverWeatherEntity, "weather"],
+    [el.settingsTopbarStockEntity, "stock"]]) if (input) entityRow(input, () => openSettingsTopbarEntityPicker(kind, input));
+  // The page inspector has the same form: a header with the kind of page and its title edited in place, then Entities
+  // and Display (Energy dashboard), Rooms (Room overview) and Navigation, the page's counterpart of Placement.
+  const pageRoot = byId("pageInspectorSection"), pageForm = pageRoot.querySelector(".form");
+  const pageHead = make("div", "inspector-head"), titleRow = label(el.pageTitleInput);
+  el.pageTitleInput.classList.add("inspector-name-input");
+  el.pageTitleInput.addEventListener("change", applyPageName);
+  el.pageTitleInput.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); el.pageTitleInput.blur(); } });
+  pageHead.append(el.pageTitleInput, byId("pageNavWarning")); titleRow.hidden = true;
+  pageRoot.querySelector(".section-body").prepend(pageHead);
+  // Its text is the blank page's overview in the heading's info popup.
+  byId("pageInspectorHint").remove();
+  const PAGE_SECTIONS = ["page_entities", "page_display", "page_rooms", "page_navigation"];
+  for (const [name, key] of [["page_entities", "layout.inspector.section_entities"], ["page_display", "layout.inspector.section_display"],
+    ["page_rooms", "layout.inspector.section_rooms"], ["page_navigation", "layout.inspector.section_navigation"]]) section(name, key);
+  pageForm.prepend(...PAGE_SECTIONS.map(name => sections[name]));
+  move("page_navigation", label(byId("pageIconSelect")), byId("pageIconHint"));
   const energyOptions = byId("energyPageOptions");
   const pageBattery = group("inspectorPageBattery", [byId("energyBatterySoc")], energyOptions);
   const batteryManual = make("div", "inspector-extra-fields");
@@ -167,6 +132,10 @@ function initInspectorLayout() {
   const pageHelp = createInspectorHelpRow(helpBody, t("layout.inspector.energy_help")); energyOptions.append(pageHelp);
   // Changes apply through the existing handlers; this button repeats the same operation.
   byId("applyEnergyPageBtn").hidden = true;
+  follow(energyOptions, [label(el.energySource), byId("energyManualOptions"), label(byId("energySolarPower")), pageBattery, meters, pageHelp], "page_entities");
+  follow(energyOptions, [label(byId("energyDetails"))], "page_display");
+  const houseOptions = byId("housePageOptions");
+  follow(houseOptions, [byId("houseInfo"), byId("houseImportBtn"), byId("houseStatus"), byId("houseRoomList")], "page_rooms");
   // Entities: what the tile reads or controls, including where its data comes from.
   move("entities", label(el.fEntity), label(el.fSecondaryEntity), label(el.fTertiaryEntity), byId("parqetEntities"));
   follow(byId("vacuumOptions"), [label(el.fVacuumBattery)], "entities");
@@ -194,14 +163,15 @@ function initInspectorLayout() {
   follow(byId("roomEntitiesFields"), [label(el.fRoomControls), byId("fRoomControlsHint")], "controls");
   follow(byId("vacuumOptions"), [label(el.fVacuumDefaultMode), byId("fVacuumDefaultModeHint")], "controls");
   // The old groups are emptied; Placement is a section like the others, collapsed, at the end.
-  const placement = section("placement");
+  const placement = section("placement", "layout.inspector.placement");
   bodies.placement.append(...position.querySelector(".inspector-group-body").children);
   for (const group of form.querySelectorAll(":scope > .inspector-group")) group.hidden = true;
   form.append(placement);
-  inspectorLayout = { root, head, sections, follows, position: placement, placementChoice: null, battery, forecast, counterHelp, etlStyle, editors, entityRows,
-    navigation, pageBattery, batteryManual, meters, pageHelp, page: null, widget: null, frame: null };
+  inspectorLayout = { root, head, sections, pageSections: PAGE_SECTIONS, pageRoot, follows, position: placement, placementChoice: null, battery, forecast, counterHelp, etlStyle, entityRows,
+    pageBattery, batteryManual, meters, pageHelp, page: null, widget: null, frame: null };
   // Placement opens while the inspector fits without scrolling; a click on its heading decides until the next widget.
   placement.querySelector(":scope > summary").addEventListener("click", event => {
+    if (event.target.closest("button")) return;
     event.preventDefault(); inspectorLayout.placementChoice = !placement.open; placement.open = inspectorLayout.placementChoice;
   });
   root.closest("aside").addEventListener("toggle", event => {
@@ -224,7 +194,6 @@ function scheduleInspectorReflow() {
   if (!inspectorLayout || inspectorLayout.frame !== null) return;
   inspectorLayout.frame = requestAnimationFrame(() => {
     const ui = inspectorLayout; ui.frame = null;
-    for (const { field } of ui.editors) resizeInspectorEntity(field);
     const aside = ui.root.closest("aside");
     const available = Math.max(180, window.innerHeight - Math.max(18, aside.getBoundingClientRect().top) - 18);
     aside.style.setProperty("--inspector-available", available + "px");
@@ -244,13 +213,14 @@ function inspectorNodeShown(node, stop) {
 // optional binding and a warning for an ID Home Assistant does not list.
 function refreshInspectorEntityRows() {
   if (!inspectorLayout) return;
-  const rows = inspectorLayout.entityRows.filter(row => inspectorNodeShown(row.field, inspectorLayout.root));
-  const ids = rows.map(row => row.input.value.trim());
-  const names = inspectorEntityRowNames(ids);
-  rows.forEach((row, index) => {
-    const id = ids[index];
-    const known = !id || !editor.entities.length || editor.entities.some(item => item?.id === id) || editor.states?.has(id);
-    row.button.querySelector(".inspector-entity-name").textContent = !id ? t("layout.inspector.entity_unset") : names[index] || id;
+  // Only the widget's visible rows share a shortened name, and only its entities are known to the editor's list.
+  const widgetRows = inspectorLayout.entityRows.filter(row => row.shorten && inspectorNodeShown(row.field, row.field.closest(".inspector-sec")));
+  const shortNames = inspectorEntityRowNames(widgetRows.map(row => row.input.value.trim()));
+  for (const row of inspectorLayout.entityRows) {
+    const id = row.input.value.trim(), index = widgetRows.indexOf(row);
+    const name = (index >= 0 ? shortNames[index] : inspectorEntityRowNames([id])[0]).replace(/\s+/g, " ").trim();
+    const known = !id || editor.entities.some(item => item?.id === id) || editor.states?.has(id) || !entityMissingFromSearch(id);
+    row.button.querySelector(".inspector-entity-name").textContent = !id ? t("layout.inspector.entity_unset") : name || id;
     row.button.querySelector(".inspector-entity-chevron").textContent = id ? "\u203A" : "+";
     row.button.classList.toggle("is-empty", !id);
     row.button.classList.toggle("is-missing", !known);
@@ -260,7 +230,7 @@ function refreshInspectorEntityRows() {
     row.role.textContent = caption.replace(/\s*\(.*$/, "");
     row.role.title = row.role.textContent === caption ? "" : caption;
     row.button.setAttribute("aria-label", `${caption}: ${row.button.querySelector(".inspector-entity-name").textContent}`);
-  });
+  }
 }
 
 // A section is shown while one of its fields is: a field counts unless it or a container up to the section is hidden.
@@ -270,7 +240,13 @@ function inspectorSectionHasField(section) {
     for (let at = node; at && at !== section; at = at.parentElement) if (hidden(at)) return false;
     return true;
   };
-  return Array.from(section.querySelectorAll("label, details, button, select")).some(visible);
+  return Array.from(section.querySelectorAll(".inspector-sec-body :is(label, details, button, select)"))
+    .some(node => !node.closest(".inspector-help-row") && visible(node));
+}
+
+function inspectorSectionHelpRows(section) {
+  return Array.from(section.querySelectorAll(".inspector-sec-body .inspector-help-row"))
+    .filter(row => inspectorNodeShown(row, section));
 }
 
 function refreshInspectorLayout() {
@@ -278,11 +254,9 @@ function refreshInspectorLayout() {
   const ui = inspectorLayout, widget = selectedWidget();
   if (ui.page !== editor.selectedPageId) {
     ui.page = editor.selectedPageId;
-    ui.navigation.open = true;
     for (const group of [ui.pageBattery, ui.meters]) group.open = false;
     ui.root.closest("aside").scrollTop = 0;
   }
-  ui.navigation.querySelector("summary").textContent = t("layout.inspector.navigation");
   setInspectorHelpCaption(ui.pageHelp, t("layout.inspector.energy_help"));
   const manual = el.energySource.value === ENERGY_SOURCE_MANUAL;
   ui.batteryManual.hidden = !manual; ui.meters.hidden = !manual;
@@ -304,12 +278,14 @@ function refreshInspectorLayout() {
   }
   const heading = document.getElementById("inspectorHeading");
   if (heading && widget) heading.textContent = widgetTypeLabel(widget.type);
+  // Alarm, Lock and Vacuum open their history with a long press, since a tap operates them.
+  const historyLabel = document.getElementById("fHistoryPopupLabel");
+  if (historyLabel) historyLabel.textContent = t(["alarm_tile", "lock_tile", "vacuum_tile"].includes(widget?.type)
+    ? "layout.inspector.history_long_press" : "layout.inspector.history_popup");
   ui.head.hidden = !widget;
-  for (const name of INSPECTOR_SECTIONS) {
-    ui.sections[name].querySelector(":scope > summary").textContent = t(`layout.inspector.section_${name}`);
-  }
+  for (const node of Object.values(ui.sections)) node.querySelector(":scope > summary > .inspector-sec-label").textContent = t(node.dataset.label);
   const position = ui.position.querySelector(":scope > summary");
-  position.textContent = t("layout.inspector.placement");
+  position.querySelector("b")?.remove();
   if (widget?.rect) {
     const values = document.createElement("b");
     values.textContent = `${widget.rect.x} \u00B7 ${widget.rect.y} \u00B7 ${widget.rect.w} \u00D7 ${widget.rect.h}`;
@@ -327,15 +303,23 @@ function refreshInspectorLayout() {
     el.fSecondaryEntityWrap.classList.toggle("hidden", !extras);
     el.fTertiaryEntityWrap.classList.toggle("hidden", !extras);
   }
-  for (const { input, field } of ui.editors) {
-    if (document.activeElement !== field) field.value = entitySoftBreaks(input.value);
-    field.disabled = input.disabled;
-    const caption = input.closest("label").querySelector("span")?.textContent || t("layout.inspector.entity");
-    field.setAttribute("aria-label", caption);
-  }
   for (const { wrapper, copy } of ui.follows) copy.classList.toggle("hidden", wrapper.classList.contains("hidden"));
+  // A long caption beside a short field leaves neither enough room: it goes above, and the field takes the full width.
+  for (const root of [ui.root, ui.pageRoot]) {
+    for (const label of root.querySelectorAll(".inspector-sec label:not(.row):has(> select:only-of-type, > input[type=number], > input[type=color])")) {
+      label.classList.toggle("inspector-label-stacked", (label.querySelector(":scope > span")?.textContent.trim().length || 0) > 22);
+    }
+  }
   refreshInspectorEntityRows();
   for (const name of INSPECTOR_SECTIONS) ui.sections[name].hidden = !widget || !inspectorSectionHasField(ui.sections[name]);
+  for (const name of ui.pageSections) ui.sections[name].hidden = !selectedPage() || !inspectorSectionHasField(ui.sections[name]);
+  const pageHeading = document.getElementById("pageInspectorHeading"), page = selectedPage();
+  if (pageHeading && page) pageHeading.textContent = t(isHousePage(page) ? "layout.pages.menu_house" : isEnergyPage(page) ? "layout.pages.menu_energy" : "layout.pages.menu_normal");
+  for (const node of Object.values(ui.sections)) {
+    const help = node.querySelector(":scope > summary > .inspector-sec-help"), hidden = !inspectorSectionHelpRows(node).length;
+    if (help.hidden !== hidden) help.hidden = hidden;
+    help.title = t("inspector.help"); help.setAttribute("aria-label", `${t("inspector.help")}: ${node.querySelector(".inspector-sec-label").textContent}`);
+  }
   ui.position.hidden = !widget;
   refreshInspectorSearchButtons(ui.root.closest("aside"));
   scheduleInspectorReflow();

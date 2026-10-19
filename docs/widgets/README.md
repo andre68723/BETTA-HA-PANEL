@@ -4,7 +4,7 @@
 
 33 widgets, grouped by what you want to do. Each guide starts with a summary and a preview, then lists the entities, requirements, options, behaviour on the panel and size limits. The previews are rendered by the LVGL simulator in the Glow style with synthetic data (click to enlarge); the other styles keep the same functions.
 
-To add one, open a page in the [web editor](../editor.md#layout-workspace), choose the widget in **Add**, pick its entity with **Search** beside the entity field, size it and **Save** the layout. Start with [your first light](../getting-started.md#5-control-your-first-light). Whole pages (room overview, energy dashboard) are in [Pages and layouts](../pages.md); for a different look, use [Appearance](../appearance.md).
+To add one, open a page in the [web editor](../editor.md#layout-workspace), choose the widget in **Add**, pick its entity by clicking its entity row, size it and **Save** the layout. Start with [your first light](../getting-started.md#5-control-your-first-light). Whole pages (room overview, energy dashboard) are in [Pages and layouts](../pages.md); for a different look, use [Appearance](../appearance.md).
 
 <div class="widget-index" markdown>
 

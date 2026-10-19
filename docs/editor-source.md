@@ -23,7 +23,8 @@ www/css/layout-toolbar.css compact layout header, icon actions and JSON menu
 www/css/layout-actions.css widget context menu and page-transfer dialog
 www/css/inspector.css compact Inspector fields, tabs and independently scrolling desktop lists
 www/js/config.js      constants, the entity picker configurations
-www/js/i18n.js        built-in translations (en, de)
+www/js/i18n.js        built-in English translations
+www/js/i18n-de.js     built-in German translations
 www/js/state.js       size limits, the `editor` state object, the DOM element map `el`
 www/js/util.js        normalizers, layout normalization, status line, `t()`, storage
 www/js/ui-basics.js   style cards, firmware info, HA diagnostics, canvas geometry
@@ -118,7 +119,8 @@ Home Assistant and back without saving. Check for console errors and the generat
 - **Little scrolling.** At about 80-90 % of a desktop screen, finding a widget, editing its main fields and saving must
   not need trips between distant regions. Review Device and Layout at that size when adding controls; group or fold long,
   rare options.
-- **Texts:** keys in the `en` and `de` tables of `WEB_I18N_BUILTIN` (`js/i18n.js`). A new widget type also goes into
+- **Texts:** keys in the `en` and `de` tables of `WEB_I18N_BUILTIN` (`js/i18n.js`, `js/i18n-de.js`). Keys and interpolation variables must match; an empty string is allowed only
+  for the hidden disabled-update state. Dynamic colour-editor, time-zone and entity-picker labels use the same tables. A new widget type also goes into
   `ENTITY_PICKER_CONFIGS` (`js/config.js`), the Add menu, the size tables and `tilePreviewMarkup`
   (`js/tile-previews.js`).
 - **Text size** (`settingsUiTextStep`, beside the save controls) applies live and refreshes the preview and role-size

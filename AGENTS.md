@@ -62,7 +62,8 @@ history out of user and developer pages: describe the current state and the diff
 release candidates. Keep page title, navigation label and file name the same words.
 
 `docs/widgets/*.md` are generated: change the widget's entry in `tools/widget_docs_content.py`
-(the shared sections are in `tools/generate_widget_docs.py`), then regenerate. Capture UI examples with the real
+(the shared sections are in `tools/generate_widget_docs.py`), then regenerate. A widget's `summary` is also the
+English text of the editor's info popup (`inspector.help.widget_*`, checked by `tools/check_web.py`); update the German one with it. Capture UI examples with the real
 LVGL/SDL renderer or the current editor against public synthetic data. Match the
 fixture, device geometry and enabled extras to the feature being demonstrated;
 compact layouts can hide an extra even when its sensor is configured. Preserve

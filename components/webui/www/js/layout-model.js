@@ -768,7 +768,8 @@ function openInspectorEntityPicker(targetKey) {
     configOverride: { ...entityPickerConfigForDomain(target.domain, target.titleKey, target.titleFallback),
       allowedDomains: target.allowedDomains, allowedEntityIds: target.allowedEntityIds,
       excludedEntityIds: target.excludedEntityIds },
-    initialSearch: target.initialSearch || "",
+    initialSearch: target.initialSearch || (target.append ? "" : entitySiblingSearch(target.input?.value.trim())),
+    resetSearch: true, selectSearch: true,
   });
 }
 
@@ -799,6 +800,18 @@ function removeInspectorEntity(target) {
 
 // Names in the inspector's entity rows: Home Assistant's name without the words all named entities start with
 // ("Trade Republic Gesamtwert", "Trade Republic XIRR" -> "Gesamtwert", "XIRR"); "" where the editor knows no name.
+// An entity counts as missing only when a complete search result that would contain its ID lacks it. The editor's
+// entity list holds only what the panel subscribes; counters the panel reads as statistics (an Energy timeline's
+// battery) are not in it and are not missing.
+function entityMissingFromSearch(id) {
+  const domain = String(id || "").split(".")[0];
+  return Object.entries(editor.lightPicker.itemsByDomain).some(([key, items]) => {
+    const split = key.indexOf("|"), search = key.slice(split + 1);
+    return key.slice(0, split) === domain && id.includes(search) && editor.lightPicker.truncatedByDomain[key] === false
+      && !items.some(item => item?.id === id);
+  });
+}
+
 function inspectorEntityRowNames(ids) {
   const names = ids.map(id => {
     const entity = id ? editor.entities.find(item => item?.id === id) : null;
@@ -833,9 +846,22 @@ function openSettingsTopbarEntityPicker(kind, inputOverride = null) {
       };
   if (inputOverride) target.input = inputOverride;
   if (!target.input || target.input.disabled) return;
+  target.slot = "settings";
   openLightEntityPicker(`settings_topbar_${kind}`, {
     inspectorTarget: target,
     configOverride: entityPickerConfigForDomain(target.domain, target.titleKey, target.titleFallback),
+    initialSearch: entitySiblingSearch(target.input.value.trim()), resetSearch: true, selectSearch: true,
+  });
+}
+
+// The Energy page's sensors, all optional, use the same search as a widget's entities.
+function openPageSensorPicker(input) {
+  if (!input || input.disabled) return;
+  const titleKey = "entity_picker.title_sensor", titleFallback = "Choose Sensor";
+  openLightEntityPicker("page_sensor", {
+    inspectorTarget: { input, domain: "sensor", slot: "page", titleKey, titleFallback },
+    configOverride: entityPickerConfigForDomain("sensor", titleKey, titleFallback),
+    initialSearch: entitySiblingSearch(input.value.trim()), resetSearch: true, selectSearch: true,
   });
 }
 

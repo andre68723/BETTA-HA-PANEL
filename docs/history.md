@@ -29,7 +29,7 @@ simulator. Click to enlarge. Widget guides explain the controls for each tile.
 
 1. Select a [Sensor](widgets/sensor.md), [Binary sensor](widgets/binary_tile.md),
    [Contact](widgets/contact_tile.md), [Lock](widgets/lock_tile.md) or [Vacuum](widgets/vacuum_tile.md) in the editor.
-2. Enable **History on tap (Lock, Vacuum: long press)** in its inspector.
+2. Enable **History on tap** in its inspector; on a Lock or Vacuum it is called **History on long press**.
 3. Save the layout.
 4. On the panel, tap a Sensor, Binary sensor or Contact tile. **Long-press a Lock or Vacuum**;
    their regular controls keep their actions.

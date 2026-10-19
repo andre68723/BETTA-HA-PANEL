@@ -68,7 +68,7 @@ for (const [input, property] of [
   ["fEtlDischarge", "battery_discharge_entity_id"], ["fEtlSoc", "battery_soc_entity_id"],
   ["fEtlForecast", "forecast_today_entity_id"],
 ]) {
- for (const [view, binder] of [["prototype", "spikeBindEntityField"], ["editor", "bindWrappingEntityField"]]) {
+ for (const [view, binder] of [["prototype", "spikeBindEntityField"]]) {
   test(`${view} wrapping ${input}: edit, save, reload and clear ${property}`, async () => {
     const run = setupInspector("energy_timeline", "sensor.grid_import");
     run(fs.readFileSync(new URL("../../tools/editor_local/spike/entity-fields.js", import.meta.url), "utf8"));
@@ -97,7 +97,7 @@ for (const [input, property] of [
  }
 }
 
-for (const [view, binder] of [["prototype", "spikeBindEntityField"], ["editor", "bindWrappingEntityField"]]) {
+for (const [view, binder] of [["prototype", "spikeBindEntityField"]]) {
 test(`${view} Search selection updates the wrapping field and survives focus, save and reload`, async () => {
   const run = setupInspector("energy_timeline", "sensor.grid_import", "etl_charge");
   run(fs.readFileSync(new URL("../../tools/editor_local/spike/entity-fields.js", import.meta.url), "utf8"));
@@ -112,7 +112,7 @@ test(`${view} Search selection updates the wrapping field and survives focus, sa
     searchButton.click();
     assignInspectorEntity(pickerOptions.inspectorTarget, "sensor.selected_battery_charge_counter");
   `);
-  assert.equal(run("entityWithoutSoftBreaks(wrapped.value)"), "sensor.selected_battery_charge_counter");
+  assert.equal(run("wrapped.value"), "sensor.selected_battery_charge_counter");
   run("wrapped.blur()");
   await run("el.saveBtn.onclick()");
   run("editor.layout = savedLayout");
@@ -120,20 +120,16 @@ test(`${view} Search selection updates the wrapping field and survives focus, sa
 });
 }
 
-test("editor wrapping entity field breaks after dots and underscores but keeps the bound value clean", () => {
-  const run = setupInspector("sensor", "sensor.temperature");
-  run(`
-    globalThis.wrapped = { value: "", events: {},
-      addEventListener(type, callback) { this.events[type] = callback; },
-      dispatch(type) { this.events[type]?.({target:this}); }
-    };
-    bindWrappingEntityField(el.fEntity, wrapped, () => {});
-    el.fEntity.value = "sensor.office_air_quality"; el.fEntity.events.get("change")?.forEach(callback => callback());
-  `);
-  assert.equal(run("wrapped.value"), "sensor.\u200Boffice_\u200Bair_\u200Bquality");
-  run('wrapped.value = "sensor.\u200Bkitchen_\u200Bhumidity"; wrapped.dispatch("input"); wrapped.dispatch("change")');
-  assert.equal(run("el.fEntity.value"), "sensor.kitchen_humidity");
-  assert.equal(run("selectedWidget().entity_id"), "sensor.kitchen_humidity");
+test("Energy page and settings entities open the search with their siblings and can be removed", () => {
+  const run = setupInspector();
+  run(`el.energyGas.value = "sensor.gas_meter_total_volume"; openPageSensorPicker(el.energyGas);`);
+  assert.equal(run("pickerOptions.initialSearch"), "gas_meter_total");
+  assert.equal(run("pickerOptions.inspectorTarget.slot"), "page");
+  assert.equal(run("removeInspectorEntity(pickerOptions.inspectorTarget)"), true);
+  assert.equal(run("el.energyGas.value"), "");
+  run(`el.settingsTopbarWeatherEntity.value = "weather.home"; openSettingsTopbarEntityPicker("weather", el.settingsTopbarWeatherEntity);`);
+  assert.equal(run("pickerOptions.initialSearch"), "");
+  assert.equal(run("pickerOptions.inspectorTarget.input === el.settingsTopbarWeatherEntity"), true);
 });
 
 test("entity rows: names without the shared start, the ID while unnamed, Remove only for optional fields", () => {
@@ -149,6 +145,14 @@ test("entity rows: names without the shared start, the ID while unnamed, Remove 
   assert.equal(run("el.fTertiaryEntity.value"), "");
   assert.equal(run('removeInspectorEntity({ input: el.fEntity, slot: "primary" })'), false);
   assert.equal(run('removeInspectorEntity({ input: el.fRoomEntities, slot: "room_entities", append: true })'), false);
+  // Missing only when a complete search that would contain the ID lacks it, not because the panel does not subscribe it.
+  assert.equal(run('entityMissingFromSearch("sensor.battery_charge")'), false);
+  run(`editor.lightPicker.itemsByDomain = { "sensor|battery": [{ id: "sensor.battery_charge" }], "sensor|sensor.typed": [] };
+    editor.lightPicker.truncatedByDomain = { "sensor|battery": false, "sensor|sensor.typed": false };`);
+  assert.equal(run('entityMissingFromSearch("sensor.battery_charge")'), false);
+  assert.equal(run('entityMissingFromSearch("sensor.typed")'), true);
+  run(`editor.lightPicker.truncatedByDomain["sensor|sensor.typed"] = true`);
+  assert.equal(run('entityMissingFromSearch("sensor.typed")'), false);
 });
 
 for (const open of ["0", "1"]) {
@@ -177,7 +181,7 @@ for (const [input, property] of [
   ["energyBatteryCharge", "battery_charge_power_entity_id"], ["energyBatteryDischarge", "battery_discharge_power_entity_id"],
   ["energyBatterySoc", "battery_soc_entity_id"], ["energyGas", "gas_entity_id"], ["energyWater", "water_entity_id"],
 ]) {
-  for (const [view, binder] of [["prototype", "spikeBindEntityField"], ["editor", "bindWrappingEntityField"]]) {
+  for (const [view, binder] of [["prototype", "spikeBindEntityField"]]) {
   test(`${view} Energy page ${input}: edit, Search, source switch, save, reload and clear`, async () => {
     const run = setupInspector();
     run(fs.readFileSync(new URL("../../tools/editor_local/spike/entity-fields.js", import.meta.url), "utf8"));
@@ -200,7 +204,7 @@ for (const [input, property] of [
     run(`openLightEntityPicker("page_sensor", { inspectorTarget: { input: el.${input}, domain: "sensor" } })`);
     assert.equal(run("assignInspectorEntity(pickerOptions.inspectorTarget, 'light.invalid')"), false);
     assert.equal(run("assignInspectorEntity(pickerOptions.inspectorTarget, 'sensor.chosen_energy_page_sensor')"), true);
-    assert.equal(run("entityWithoutSoftBreaks(wrapped.value)"), "sensor.chosen_energy_page_sensor");
+    assert.equal(run("wrapped.value"), "sensor.chosen_energy_page_sensor");
     run("el.energySource.value = 'ha_energy'; el.energySource.onchange()");
     await run("el.saveBtn.onclick()");
     assert.equal(run(`savedLayout.pages[0].energy.${property}`), "sensor.chosen_energy_page_sensor");
@@ -256,7 +260,7 @@ for (const [input, type, entity, property, firstChecked, firstValue, secondValue
 
 test("portfolio view and interval: choose, save, reload and return to the defaults through Inspector events", async () => {
   const run = setupInspector("parqet_portfolio", "sensor.portfolio_value");
-  run("populateMovePageOptions = renderEntityOptions = () => {}");
+  run("renderEntityOptions = () => {}");
   run('el.fParqetView.value = "holdings"; el.fParqetView.dispatch("change")');
   run('el.fParqetInterval.value = "1m"; el.fParqetInterval.dispatch("change")');
   assert.equal(run("selectedWidget().parqet_view"), "holdings");
@@ -275,7 +279,7 @@ test("portfolio view and interval: choose, save, reload and return to the defaul
 
 test("sensor format and unit: offered by device class, saved, kept while hidden and reset to the default", async () => {
   const run = setupInspector("sensor", "sensor.sun_next_rising");
-  run("populateMovePageOptions = renderEntityOptions = () => {}");
+  run("renderEntityOptions = () => {}");
   run(`editor.entities = [{ id: "sensor.sun_next_rising", device_class: "timestamp", unit: "" },
     { id: "sensor.temperature", device_class: "temperature", unit: "°C" },
     { id: "sensor.runtime", device_class: "duration", unit: "s" },
@@ -383,7 +387,7 @@ test("sensor preview: formats the state like the panel by device class", () => {
 
 test("device class chips: named for sensors and binary sensors, none only for a listed entity, absent elsewhere", () => {
   const run = setupInspector("binary_tile", "binary_sensor.washer");
-  run("populateMovePageOptions = renderEntityOptions = () => {}");
+  run("renderEntityOptions = () => {}");
   run(`editor.entities = [{ id: "binary_sensor.washer", device_class: "power", unit: "" },
     { id: "sensor.counter", device_class: "", unit: "" }, { id: "light.desk", device_class: "", unit: "" }]; renderInspector()`);
   assert.equal(run("el.fEntityClass.dataset.text"), "Power on/off");
@@ -405,7 +409,7 @@ test("device class chips: named for sensors and binary sensors, none only for a 
 
 test("price fixed average: edit, save, reload and clear through Inspector events", async () => {
   const run = setupInspector("price_forecast", "sensor.price");
-  run("populateMovePageOptions = renderEntityOptions = () => {}"); // unrelated select/datalist presentation
+  run("renderEntityOptions = () => {}"); // unrelated select/datalist presentation
   run('el.fPriceAverage.value = "0.25"; el.fPriceAverage.dispatch("change")');
   assert.equal(run("selectedWidget().price_average"), 0.25);
   await run("el.saveBtn.onclick()");

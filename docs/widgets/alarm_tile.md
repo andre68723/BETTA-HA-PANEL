@@ -23,7 +23,7 @@ None beyond the entities.
 | Option | Effect |
 | --- | --- |
 | Actions offered on tap | the arm and disarm actions the tile offers; by default all the entity supports |
-| History on tap (Lock, Vacuum: long press) | a long press opens the Recorder history |
+| History on long press | a long press opens the Recorder history |
 
 ## On the panel
 

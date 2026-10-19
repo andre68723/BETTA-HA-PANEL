@@ -26,7 +26,7 @@ None beyond the entities.
 | Option | Effect |
 | --- | --- |
 | Default cleaning program | set on the mode entity before Start (not when resuming); empty keeps the last program |
-| History on tap (Lock, Vacuum: long press) | a long press opens the last 24 hours of activity |
+| History on long press | a long press opens the last 24 hours of activity |
 
 ## On the panel
 
@@ -36,7 +36,7 @@ None beyond the entities.
 
 ### Activity
 
-With **History on tap (Lock, Vacuum: long press)** a long press on the card (not a button) shows the last 24 hours of the vacuum's state from Home Assistant Recorder as a timeline and a list of changes (cleaning, returning, docked); it is read-only.
+With **History on long press** a long press on the card (not a button) shows the last 24 hours of the vacuum's state from Home Assistant Recorder as a timeline and a list of changes (cleaning, returning, docked); it is read-only.
 
 <a href="../img/gallery/gallery_vacuum_history_glow.png"><img src="../img/gallery/gallery_vacuum_history_glow.png" alt="Vacuum activity, glow" loading="lazy" width="720" height="720" style="width: 576px"></a>
 

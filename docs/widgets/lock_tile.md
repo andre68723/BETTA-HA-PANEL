@@ -23,7 +23,7 @@ None beyond the entities.
 | Option | Effect |
 | --- | --- |
 | Ask before unlocking or opening | a confirmation before unlocking or opening; off by default |
-| History on tap (Lock, Vacuum: long press) | a long press opens the Recorder history |
+| History on long press | a long press opens the Recorder history |
 
 ## On the panel
 
@@ -33,7 +33,7 @@ None beyond the entities.
 
 ### History
 
-Enable **History on tap (Lock, Vacuum: long press)**, save, then long-press the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
+Enable **History on long press**, save, then long-press the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
 
 <a href="../img/gallery/gallery_history_lock_en_glow.png"><img src="../img/gallery/gallery_history_lock_en_glow.png" alt="Front-door lock history, glow" loading="lazy" width="720" height="720" style="width: 576px"></a>
 

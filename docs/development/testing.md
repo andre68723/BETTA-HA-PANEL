@@ -10,7 +10,8 @@ first, then review on hardware.
 
 - `uv run --locked --only-group checks tools/check.sh` reproduces CI with pinned FontTools, Brotli and Pillow.
 - `tools/check.sh` runs editor JavaScript syntax, editor tests (`tests/webui/*.test.mjs`), HTML balance, `en`/`de`
-  tables with identical keys and an ASCII English firmware table (German may use umlauts and `ß`), the source and
+  tables with identical keys and interpolation variables, non-empty values, duplicate-free firmware JSON, matching
+  printf formats and an ASCII English firmware table (German may use umlauts and `ß`), the source and
   documentation size checks and, with cmake and SDL2, the simulator regressions, the widget layout check and the host
   tests. `--build` also builds all five variants (`panel4`, `panel10`, `paneljc`, `paneljc-v2`, `tab5`) with the full
   define set and checks the flash size in `flash_args`. Run it before committing editor or translation changes.

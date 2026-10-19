@@ -25,9 +25,9 @@ None beyond the entities.
 | Show name | the widget name; on by default |
 | Show last-updated time | the age of the value; on by default |
 | Unit, Format, Time format, Currency | by device class, see below. The inspector header shows the class and unit as chips ("No device class" when Home Assistant gives none) and offers only that class's choices |
-| History on tap (Lock, Vacuum: long press) | a tap opens the Recorder history; only when the Recorder retains the entity |
+| History on tap | a tap opens the Recorder history; only when the Recorder retains the entity |
 
-<a href="../img/examples/inspector-sensor.png"><img src="../img/examples/inspector-sensor.png" alt="Inspector of the Sensor widget" loading="lazy" width="340" height="635"></a>
+<a href="../img/examples/inspector-sensor.png"><img src="../img/examples/inspector-sensor.png" alt="Inspector of the Sensor widget" loading="lazy" width="340" height="601"></a>
 
 *Inspector in the web editor, with the widget of the preview above.*
 
@@ -63,7 +63,7 @@ Units Home Assistant can convert (power, energy, duration, temperature, distance
 
 ### History
 
-Enable **History on tap (Lock, Vacuum: long press)**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
+Enable **History on tap**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
 
 <a href="../img/gallery/gallery_history_sensor_en_glow.png"><img src="../img/gallery/gallery_history_sensor_en_glow.png" alt="Room temperature history, glow" loading="lazy" width="720" height="720" style="width: 576px"></a>
 

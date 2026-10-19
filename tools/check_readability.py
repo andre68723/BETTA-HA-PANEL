@@ -33,9 +33,10 @@ def coverage_problems(records, page_id):
     if page_id not in expected:
         return errors
     weather = [r for r in labels if 'weather' in r['widget'] and r.get('text_role') == 'label']
+    # The solar summary contains a value and its unit, not a day. Match the unit rather than
+    # a translated prefix (formerly "Rest "), so changing the language cannot add a forecast slot.
     solar = [r for r in labels if 'solar' in r['widget'] and r.get('text_role') == 'label'
-             and not r.get('text', '').startswith('Rest ')
-             and r.get('text', '').lower() != 'kwh']
+             and not r.get('text', '').strip().lower().endswith('kwh')]
     if len(weather) != expected[page_id][0] or len(solar) != expected[page_id][1]:
         errors.append(f'{page_id}: forecast day coverage changed: {len(weather)} weather / {len(solar)} solar slots')
     if page_id.startswith('readable_'):

@@ -19,12 +19,12 @@ function solarPreviewFormatValue(value, includeUnit = true) {
 
 function solarPreviewRows(widget) {
   const rows = [
-    { label: "Rest", entityId: widget.entity_id },
-    { label: "Heute", entityId: widget.forecast_today_entity_id },
-    { label: "Morgen", entityId: widget.forecast_tomorrow_entity_id },
-    { label: "Tag 3", entityId: widget.forecast_day_3_entity_id },
-    { label: "Tag 4", entityId: widget.forecast_day_4_entity_id },
-    { label: "Tag 5", entityId: widget.forecast_day_5_entity_id },
+    { label: t("preview.solar.rest"), entityId: widget.entity_id },
+    { label: t("preview.solar.today"), entityId: widget.forecast_today_entity_id },
+    { label: t("preview.solar.tomorrow"), entityId: widget.forecast_tomorrow_entity_id },
+    { label: t("preview.solar.day_3"), entityId: widget.forecast_day_3_entity_id },
+    { label: t("preview.solar.day_4"), entityId: widget.forecast_day_4_entity_id },
+    { label: t("preview.solar.day_5"), entityId: widget.forecast_day_5_entity_id },
   ];
   const values = rows.map((row) => solarPreviewValue(row.entityId));
   const configuredMax = Number(widget.solar_forecast_bar_max_kwh);
@@ -73,7 +73,7 @@ function solarPreviewMarkup(widget) {
   return `
     <div class="solar-preview ${orientation}">
       ${widgetNamePreview(widget, "div", 'class="solar-preview-title"')}
-      <div class="solar-preview-unit">${widget.align_forecast ? `Rest ${escapeHtml(solarPreviewFormatValue(allRows[0].value))}` : "kWh"}</div>
+      <div class="solar-preview-unit">${widget.align_forecast ? `${escapeHtml(t("preview.solar.rest"))} ${escapeHtml(solarPreviewFormatValue(allRows[0].value))}` : "kWh"}</div>
       <div class="solar-preview-body">${rowMarkup}</div>
     </div>
     <div class="resize-handle"></div>
@@ -447,7 +447,7 @@ function tilePreviewMarkup(widget) {
       const extras = w >= 280;
       const showArtist = showCover || h >= 234;
       return `<div class="tp tp-media${showCover ? "" : " tp-media-nocover"}">${name('div', 'class="tp-name"')}
-        ${showCover ? '<div class="tp-cover"></div>' : ""}<div class="tp-track"><b>Song title</b>${showArtist ? "<small>Artist</small>" : ""}</div>
+        ${showCover ? '<div class="tp-cover"></div>' : ""}<div class="tp-track"><b>${pvText("song")}</b>${showArtist ? `<small>${pvText("artist")}</small>` : ""}</div>
         <div class="tp-bar"><i style="width:35%"></i></div>
         <div class="tp-btns">${extras ? "<span>\u21C4</span>" : ""}<span>\u23EE</span><span class="tp-primary">\u23F5</span><span>\u23ED</span>${extras ? "<span>\u21BB</span>" : ""}</div>
         <div class="tp-vol"><span>\u2212</span><div class="tp-bar"><i style="width:55%"></i></div><span>+</span></div></div>${handle}`;
@@ -458,7 +458,7 @@ function tilePreviewMarkup(widget) {
       const wide = w >= h * 1.8;
       const robot = h >= 260 || wide;
       return `<div class="tp tp-vac${wide ? " tp-vac-wide" : ""}">${robot ? '<div class="tp-robot"><i></i></div>' : ""}<div class="tp-vac-body">${name('div', 'class="tp-name"')}<span class="tp-vac-battery">82 %</span>
-        <small>${state ? escapeHtml(state) : pvText("vacuum_docked")}</small><div class="tp-chip">Mode \u25BE</div>
+        <small>${state ? escapeHtml(t(`preview.vacuum.state.${state}`, {}, state)) : pvText("vacuum_docked")}</small><div class="tp-chip">${pvText("mode")} \u25BE</div>
         <div class="tp-btns"><span class="tp-primary">${cleaning ? "\u23F8" : "\u23F5"}</span><span>\u23F9</span><span>\u2302</span>${wide ? "" : "<span>\u25CE</span>"}</div></div></div>${handle}`;
     }
     case "cover_tile":
@@ -466,11 +466,11 @@ function tilePreviewMarkup(widget) {
         <div class="tp-btns"><span>\u2191</span><span>\u25A0</span><span>\u2193</span></div></div>${handle}`;
     case "fan_tile":
       if (h >= 220 && w >= 200) {
-        return `<div class="tp tp-fanbig"><div class="tp-fanbig-top">${name('b', '')}<small>${pvText("fan_on", { pct: 60 })} auto</small><span class="tp-fan-power">\u23FB</span></div><div class="tp-rotor"><svg viewBox="0 0 100 100" aria-hidden="true">
+        return `<div class="tp tp-fanbig"><div class="tp-fanbig-top">${name('b', '')}<small>${pvText("fan_on", { pct: 60 })} ${pvText("fan_auto")}</small><span class="tp-fan-power">\u23FB</span></div><div class="tp-rotor"><svg viewBox="0 0 100 100" aria-hidden="true">
           <circle class="tp-fan-guard" cx="50" cy="50" r="46"/>
           <g class="tp-fan-blades">${[0, 120, 240].map(angle => `<path transform="rotate(${angle} 50 50)" d="M47 46 C34 39 30 25 38 16 C43 10 57 12 66 18 C75 26 67 40 53 47 Z"/>`).join("")}</g>
           <circle class="tp-fan-hub" cx="50" cy="50" r="8"/></svg></div>
-          <div class="tp-chips"><i>1</i><i>2</i><i class="on">3</i><i>4</i><i>5</i></div><div class="tp-chips"><i class="on">auto</i><i>sleep</i><i>breeze</i></div></div>${handle}`;
+          <div class="tp-chips"><i>1</i><i>2</i><i class="on">3</i><i>4</i><i>5</i></div><div class="tp-chips"><i class="on">${pvText("fan_auto")}</i><i>${pvText("fan_sleep")}</i><i>${pvText("fan_breeze")}</i></div></div>${handle}`;
       }
       return `<div class="tp tp-blind"><div class="tp-blind-text">${name('b', '')}<small>${pvText("fan_on", { pct: 60 })}</small><div class="tp-bar"><i style="width:60%"></i></div></div>
         <div class="tp-btns"><span>\u2212</span><span class="tp-primary">\u23FB</span><span>+</span></div></div>${handle}`;
@@ -482,21 +482,21 @@ function tilePreviewMarkup(widget) {
     }
     case "lock_tile": {
       const state = editor.states.get(widget.entity_id) || "locked";
-      return `<div class="tp tp-contact"><div class="tp-icon-circle">${["locked", "locking"].includes(state) ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(state)}</small></div></div>${handle}`;
+      return `<div class="tp tp-contact"><div class="tp-icon-circle">${["locked", "locking"].includes(state) ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(t(`preview.lock.state.${state}`, {}, state))}</small></div></div>${handle}`;
     }
     case "alarm_tile": {
       const state = editor.states.get(widget.entity_id) || "disarmed";
       const armed = state.startsWith("armed");
-      return `<div class="tp tp-contact"><div class="tp-icon-circle">${armed ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(state.replace(/_/g, " "))}</small></div></div>${handle}`;
+      return `<div class="tp tp-contact"><div class="tp-icon-circle">${armed ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(t(`preview.alarm.state.${state}`, {}, state.replace(/_/g, " ")))}</small></div></div>${handle}`;
     }
     case "energy_timeline": {
       // The counters as rings (or nested rings with a legend), a bar chart with the forecast line below (w_energy_timeline.c).
       const nested = widget.style_variant === "nested";
       const palette = energyTimelinePalette(widget);
       const counters = [["home", palette.grid, 70, "23.1"], ["feed_in", palette.export, 100, "7.5"], ["solar", palette.solar_dest, 55, "31.5"], ["battery", palette.battery_out, 64, "64"]];
-      const labels = { home: t("layout.energy.home"), feed_in: "Feed-in", solar: t("layout.energy.solar"), battery: t("layout.energy.battery") };
+      const labels = { home: t("layout.energy.home"), feed_in: t("layout.energy.grid_export"), solar: t("layout.energy.solar"), battery: t("layout.energy.battery") };
       const top = nested
-        ? `<div class="tp-etl-nested"><i style="--r:100%;--p:64;--c:${palette.grid}"></i><i style="--r:76%;--p:90;--c:${palette.solar}"></i><i style="--r:52%;--p:55;--c:${palette.battery_out}"></i></div><span class="tp-etl-legend"><em class="e-solar">${escapeHtml(labels.solar)}</em><em class="e-grid">Grid</em><em class="e-out">Feed-in</em></span>`
+        ? `<div class="tp-etl-nested"><i style="--r:100%;--p:64;--c:${palette.grid}"></i><i style="--r:76%;--p:90;--c:${palette.solar}"></i><i style="--r:52%;--p:55;--c:${palette.battery_out}"></i></div><span class="tp-etl-legend"><em class="e-solar">${escapeHtml(labels.solar)}</em><em class="e-grid">${escapeHtml(t("layout.energy.grid"))}</em><em class="e-out">${escapeHtml(labels.feed_in)}</em></span>`
         : counters.map(([id, color, pct, value]) => `<span class="tp-etl-counter"><i style="--p:${pct};--c:${color}"><b>${value}</b></i><small>${escapeHtml(labels[id])}</small></span>`).join("");
       return `<div class="tp tp-etl${nested ? " tp-etl-is-nested" : ""}" style="${Object.entries(palette).map(([key, value]) => `--etl-${key}:${value}`).join(";")}">${name('small', '')}<div class="tp-etl-top">${top}</div><div class="tp-etl-bars">${Array.from({ length: 48 }, (_, i) => `<u style="height:${12 + Math.round(38 * Math.abs(Math.sin(i / 7.6)))}%;background:linear-gradient(var(--etl-grid) 0 50%,var(--etl-battery_out) 50% 65%,var(--etl-solar) 65%)"></u>`).join("")}<svg class="tp-etl-line" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M0,8 C12,10 22,30 40,32 S70,32 80,24 S92,6 100,10" fill="none" stroke="${palette.forecast}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg></div></div>${handle}`;
     }

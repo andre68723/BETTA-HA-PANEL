@@ -154,18 +154,20 @@ def check_editor_files():
                 fail(f"gzip round-trip differs for {name}")
 
 
+def web_i18n_source():
+    paths = [WWW / "js" / "i18n.js", *sorted((WWW / "js").glob("i18n-*.js"))]
+    return "\n".join(path.read_text(encoding="utf-8") for path in paths)
+
+
 def language_tables(text):
-    """Return {lang: [keys in order]} of WEB_I18N_BUILTIN (en, de)."""
-    start = text.index("const WEB_I18N_BUILTIN = {")
+    """Return {lang: [keys in order]} across the built-in language files."""
     tables, current = {}, None
-    for line in text[start:].splitlines():
+    for line in text.splitlines():
         m = re.match(r"^  (\w\w): \{$", line)
         if m:
             current = m.group(1)
             tables[current] = []
             continue
-        if line.startswith("};"):
-            break
         if current:
             k = re.match(r'^    "([^"]+)":', line)
             if k:
@@ -174,7 +176,21 @@ def language_tables(text):
 
 
 def check_web_i18n():
-    tables = language_tables((WWW / "js" / "i18n.js").read_text(encoding="utf-8"))
+    text = web_i18n_source()
+    tables = language_tables(text)
+    values, current = {}, None
+    for line in text.splitlines():
+        header = re.match(r"^  (\w\w): \{$", line)
+        if header:
+            current = header.group(1)
+            values[current] = {}
+        entry = re.match(r'^    ("(?:[^"\\]|\\.)*"): ("(?:[^"\\]|\\.)*"),?$', line)
+        if current and entry:
+            key, value = (json.loads(part) for part in entry.groups())
+            values[current][key] = value
+            # This state deliberately hides its message when automatic installation is disabled.
+            if not value.strip() and key != "update.auto.state.wait_disabled":
+                fail(f"web i18n {current}: {key!r} is empty")
     for lang, keys in tables.items():
         seen = set()
         for key in keys:
@@ -186,6 +202,25 @@ def check_web_i18n():
         fail(f"js/i18n.js: key {key!r} is in en but not in de")
     for key in sorted(de - en):
         fail(f"js/i18n.js: key {key!r} is in de but not in en")
+    for key in sorted(en & de):
+        placeholders = [sorted(re.findall(r"\{[a-zA-Z0-9_]+\}", values[lang].get(key, ""))) for lang in ("en", "de")]
+        if placeholders[0] != placeholders[1]:
+            fail(f"web i18n: {key!r} has different en/de placeholders: {placeholders}")
+
+
+def check_widget_help_summaries():
+    """The inspector's widget popup repeats the summary of the widget guide (tools/widget_docs_content.py)."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    from widget_docs_content import WIDGETS
+    text = web_i18n_source()
+    english = text[text.index("const WEB_I18N_BUILTIN = {"):text.index("\n  de: {")]
+    for kind, widget in WIDGETS.items():
+        m = re.search(r'"inspector\.help\.widget_' + kind + r'":\s*"((?:[^"\\]|\\.)*)"', english)
+        expected = widget["summary"].replace("`", "")
+        if not m:
+            fail(f"js/i18n.js: no inspector.help.widget_{kind}")
+        elif json.loads(f'"{m.group(1)}"') != expected:
+            fail(f"js/i18n.js: inspector.help.widget_{kind} differs from the guide summary: {expected!r}")
 
 
 def check_markdown_links():
@@ -225,33 +260,53 @@ def check_firmware_i18n():
             fail(f"i18n_store.c line {n}: non-ASCII text (the EN built-in table is ASCII on purpose)")
 
 
-def firmware_translation_keys(text, table):
-    """The leaf keys under "lvgl" of the built-in table `table` (I18N_BUILTIN_DE or _EN) in i18n_store.c."""
-    import json
+def firmware_translation_values(text, table):
+    """Decode the C strings separately, then check the actual JSON including duplicate members."""
     start = text.index(f"static const char *{table} =")
     end = text.index("\n\n", start)
-    parts = re.findall(r'^\s*"((?:[^"\\]|\\.)*)"\s*;?\s*$', text[start:end], re.M)
-    document = json.loads("".join(parts).replace('\\"', '"').replace("\\\\", "\\"))
-    keys = set()
+    parts = re.findall(r'^\s*("(?:[^"\\]|\\.)*")\s*;?\s*$', text[start:end], re.M)
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                fail(f"{table}: duplicate JSON member {key!r}")
+            result[key] = value
+        return result
+    document = json.loads("".join(json.loads(part) for part in parts), object_pairs_hook=unique_object)
+    if set(document) != {"lvgl"} or not isinstance(document["lvgl"], dict):
+        fail(f"{table}: the root must contain only the lvgl object")
+        return {}
+    values = {}
 
     def walk(node, prefix):
         for key, value in node.items():
             if isinstance(value, dict):
                 walk(value, prefix + key + ".")
             else:
-                keys.add(prefix + key)
+                if not isinstance(value, str) or not value.strip():
+                    fail(f"{table}: {prefix + key!r} is empty or not a string")
+                values[prefix + key] = value
 
     walk(document["lvgl"], "")
-    return keys
+    return values
+
+
+def firmware_translation_keys(text, table):
+    return set(firmware_translation_values(text, table))
 
 
 def check_firmware_translation_keys():
     """Every ui_i18n_get("key", ...) in main/ needs an entry in both built-in tables: a missing one silently shows the
     English fallback on a German panel."""
     text = (ROOT / "main" / "settings" / "i18n_store.c").read_text(encoding="utf-8")
-    de, en = firmware_translation_keys(text, "I18N_BUILTIN_DE"), firmware_translation_keys(text, "I18N_BUILTIN_EN")
-    for key in sorted(de ^ en):
+    de, en = (firmware_translation_values(text, table) for table in ("I18N_BUILTIN_DE", "I18N_BUILTIN_EN"))
+    for key in sorted(de.keys() ^ en.keys()):
         fail(f"i18n_store.c: key {key!r} is in only one of the two built-in tables")
+    for key in sorted(de.keys() & en.keys()):
+        formats = [re.findall(r"%(?:[-+ #0]*\d*(?:\.\d+)?(?:hh|ll|[hlzjt])?[diuoxXfFeEgGcsp]|%)", table[key])
+                   for table in (en, de)]
+        if formats[0] != formats[1]:
+            fail(f"i18n_store.c: {key!r} has different en/de printf formats: {formats}")
     used = {}
     for path in sorted((ROOT / "main").rglob("*.c")):
         for key in re.findall(r'ui_i18n_get\(\s*"([^"]+)"', path.read_text(encoding="utf-8", errors="ignore")):
@@ -402,7 +457,7 @@ def check_style_registry():
     for stem in sorted(css_files - set(c_ids) - {"depth"}):
         fail(f"css/style-{stem}.css belongs to no supported style (ui_style_registry.c)")
 
-    i18n = (WWW / "js" / "i18n.js").read_text(encoding="utf-8")
+    i18n = web_i18n_source()
     tables = language_tables(i18n)
     for style_id in c_ids:
         for key in (f"settings.appearance.{style_id}", f"settings.appearance.{style_id}_info"):
@@ -419,6 +474,7 @@ if __name__ == "__main__":
     check_editor_files()
     check_html()
     check_web_i18n()
+    check_widget_help_summaries()
     check_firmware_i18n()
     check_firmware_translation_keys()
     check_widget_type_tables()

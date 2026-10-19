@@ -23,7 +23,7 @@ None beyond the entities.
 | Option | Effect |
 | --- | --- |
 | Display | text with the time since the change, an icon, or the time since only |
-| History on tap (Lock, Vacuum: long press) | a tap opens the Recorder history |
+| History on tap | a tap opens the Recorder history |
 
 ## On the panel
 
@@ -33,7 +33,7 @@ None beyond the entities.
 
 ### History
 
-Enable **History on tap (Lock, Vacuum: long press)**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
+Enable **History on tap**, save, then tap the tile. History is loaded from Home Assistant Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state timeline, requirements and troubleshooting.
 
 ![Hallway motion history with an activity timeline and timestamped Motion and Clear changes](../img/examples/binary-motion-history-24h.png)
 

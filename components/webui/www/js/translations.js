@@ -93,6 +93,15 @@ async function loadI18nLanguage(language, refreshCatalog = false) {
   document.documentElement.lang = lang;
 
   applyWebTranslations();
+  if (typeof themePopulateSelect === "function") {
+    const select = document.getElementById("settingsThemeSelect");
+    const selected = select?.value;
+    themePopulateSelect();
+    if (select && selected) select.value = selected;
+    themeRenderColorGrid(themeState.editing);
+    themeSyncEditFields();
+    themeRenderPreview();
+  }
   renderLanguageOptions();
   if (editor.layout) {
     renderCanvas();
@@ -370,7 +379,6 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
     const key = ["layout.menu.group_control", "layout.menu.group_data", "layout.menu.group_info"][index];
     if (key) node.textContent = t(key);
   });
-  setTextById("fMovePageLabel", "layout.inspector.move_to_page");
   setActionTooltipById("reloadBtn", "layout.actions.reload");
   setActionTooltipById("saveBtn", "layout.actions.save");
   setActionTooltipById("layoutJsonMenuBtn", "layout.actions.json");

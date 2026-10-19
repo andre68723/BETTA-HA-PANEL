@@ -11,6 +11,7 @@
 set(WEBUI_JS_SOURCES
     js/config.js
     js/i18n.js
+    js/i18n-de.js
     js/state.js
     js/util.js
     js/ui-basics.js

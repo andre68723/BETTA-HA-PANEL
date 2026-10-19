@@ -120,21 +120,23 @@ function inspectorHelpTopic() {
   if (widget) {
     const type = widget.type === "roborock_tile" ? "vacuum_tile" : widget.type;
     if (!WIDGET_NAME_TYPES.has(type)) return null;
-    return { type, url: "https://andre68723.github.io/BETTA-HA-PANEL/widgets/" + type + ".html#configure-in-the-editor" };
+    // The popup repeats the guide's summary (tools/check_web.py compares them), so it links to the guide's top.
+    return { type, url: "https://andre68723.github.io/BETTA-HA-PANEL/widgets/" + (type === "wallbox_evcc" ? "wallbox" : type) + ".html" };
   }
   const page = selectedPage();
-  if (isFixedPage(page)) return { type: isHousePage(page) ? "house_dashboard" : "energy_dashboard", page: true, url: "https://andre68723.github.io/BETTA-HA-PANEL/pages.html#"
-    + (isHousePage(page) ? "room-overview" : "energy-dashboard") };
-  return null;
+  if (!page) return null;
+  const type = isHousePage(page) ? "house_dashboard" : isEnergyPage(page) ? "energy_dashboard" : "blank_page";
+  return { type, page: true, url: "https://andre68723.github.io/BETTA-HA-PANEL/pages.html#"
+    + { house_dashboard: "room-overview", energy_dashboard: "energy-dashboard", blank_page: "free-pages" }[type] };
 }
 
 function inspectorHelpSection(dialog, title, texts) {
   const section = document.createElement("section"); section.className = "inspector-help-section";
-  const heading = document.createElement("h3"); heading.textContent = title; section.append(heading);
+  if (title) { const heading = document.createElement("h3"); heading.textContent = title; section.append(heading); }
   for (const text of texts.flatMap(inspectorHelpParagraphs)) {
     const paragraph = document.createElement("p");
     // Only known technical identifiers are emphasized; explanations remain plain text.
-    const parts = text.split(/(state_class|total_increasing|\btotal\b|detailedForecast|sensor\.[\w.]+)/g);
+    const parts = text.split(/(state_class|total_increasing|\btotal\b|detailedForecast|\b[a-z_]+\.\*|sensor\.[\w.]+)/g);
     for (let i = 0; i < parts.length; i++) {
       const part = document.createElement(i % 2 ? "code" : "span"); part.textContent = parts[i]; paragraph.append(part);
     }
@@ -155,11 +157,13 @@ function openInspectorHelp(title, source, options = {}) {
   if (options.overview && topic?.type) {
     const descriptionKey = "inspector.help." + (topic.page ? "page_" : "widget_") + topic.type;
     inspectorHelpSection(dialog, t(topic.page ? "inspector.help.page_overview" : "inspector.help.overview"), [t(descriptionKey)]);
-    const domains = topic.page ? [] : allowedEntityDomainsForWidgetType(topic.type).filter(domain => domain !== "any");
-    if (domains.length) inspectorHelpSection(dialog, t("inspector.help.entities"), [domains.map(domain => domain + ".*").join(" · ")]);
   }
   const texts = source ? inspectorHelpTexts(source) : [];
   if (texts.length) inspectorHelpSection(dialog, t("inspector.help.configuration"), texts);
+  for (const part of options.sections || []) {
+    const partTexts = inspectorHelpTexts(part.source);
+    if (partTexts.length) inspectorHelpSection(dialog, part.title, partTexts);
+  }
   if (options.textSizes) {
     const section = inspectorHelpSection(dialog, t("inspector.help.text_sizes"), []);
     const values = document.createElement("dl"); values.className = "inspector-help-sizes";
@@ -194,21 +198,24 @@ function setInspectorHelpCaption(row, text) {
   const button = row.querySelector("button"); button.title = text; button.setAttribute("aria-label", text);
 }
 
-function createInspectorHelpRow(source, title) {
-  const row = document.createElement("div"); row.className = "inspector-help-row";
-  const caption = document.createElement("span"); caption.className = "inspector-help-caption";
+function createInspectorInfoButton() {
   const button = document.createElement("button"); button.type = "button"; button.className = "inspector-info-btn";
   button.setAttribute("aria-haspopup", "dialog");
   button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></svg>';
+  return button;
+}
+
+function createInspectorHelpRow(source, title) {
+  const row = document.createElement("div"); row.className = "inspector-help-row";
+  const caption = document.createElement("span"); caption.className = "inspector-help-caption";
+  const button = createInspectorInfoButton();
   button.onclick = event => { event.preventDefault(); event.stopPropagation(); openInspectorHelp(caption.textContent, source); };
   row.append(caption, button); source.before(row); source.classList.add("inspector-help-content"); row.append(source);
   setInspectorHelpCaption(row, title); return row;
 }
 
 function createInspectorOverviewButton() {
-  const button = document.createElement("button"); button.type = "button"; button.className = "inspector-info-btn inspector-overview-btn";
-  button.setAttribute("aria-haspopup", "dialog");
-  button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></svg>';
+  const button = createInspectorInfoButton(); button.classList.add("inspector-overview-btn");
   button.title = t("inspector.help.about"); button.setAttribute("aria-label", button.title);
   button.onclick = event => {
     event.preventDefault(); event.stopPropagation();

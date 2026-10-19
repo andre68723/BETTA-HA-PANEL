@@ -1692,9 +1692,6 @@
                     <label>W <input id="fW" type="number" /></label>
                     <label>H <input id="fH" type="number" /></label>
                   </div>
-                  <label><span id="fMovePageLabel">Move to page</span>
-                    <select id="fMovePage"></select>
-                  </label>
                 </div>
               </details>
               <button id="applyInspectorBtn" class="btn hidden" type="button" hidden>Apply</button>
@@ -1714,6 +1711,7 @@
           <button id="lightEntityPickerCloseBtn" class="btn small" type="button">X</button>
         </div>
       </div>
+      <div id="lightEntityPickerCurrent" class="entity-picker-current hidden"></div>
       <input id="lightEntityPickerSearch" class="light-picker-search" type="search" placeholder="Search entities" maxlength="63" />
       <div id="lightEntityPickerStatus" class="meta"></div>
       <div id="lightEntityPickerProgress" class="entity-picker-progress hidden" aria-hidden="true">
@@ -1854,6 +1852,7 @@
   <datalist id="energyEntityOptions"></datalist>
   <script src="/js/config.js"></script>
   <script src="/js/i18n.js"></script>
+  <script src="/js/i18n-de.js"></script>
   <script src="/js/state.js"></script>
   <script src="/js/util.js"></script>
   <script src="/js/ui-basics.js"></script>

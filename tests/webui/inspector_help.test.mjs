@@ -2,6 +2,7 @@
 // Copyright (c) 2026 andre68723
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { loadEditor } from "./load_editor.mjs";
 
 function setup() {
@@ -126,7 +127,10 @@ test("Every widget has translated top-level help and its own documentation secti
       const helpType = run("inspectorHelpTopic().type");
       const key = `inspector.help.widget_${helpType}`;
       assert.notEqual(run(`t('${key}')`), key, `${lang} ${type}`);
-      assert.equal(run("inspectorHelpTopic().url"), `https://andre68723.github.io/BETTA-HA-PANEL/widgets/${helpType}.html#configure-in-the-editor`);
+      // The popup repeats the guide's summary and links to the guide, which must exist.
+      const guide = helpType === "wallbox_evcc" ? "wallbox" : helpType;
+      assert.ok(existsSync(new URL(`../../docs/widgets/${guide}.md`, import.meta.url)), guide);
+      assert.equal(run("inspectorHelpTopic().url"), `https://andre68723.github.io/BETTA-HA-PANEL/widgets/${guide}.html`);
     }
   }
 });

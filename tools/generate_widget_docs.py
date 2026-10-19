@@ -104,9 +104,10 @@ def popup_image(key, label):
 
 
 def history_popup(kind):
-    gesture = "long-press the tile" if kind == "lock_tile" else "tap the tile"
+    option, gesture = (("History on long press", "long-press the tile") if kind in ("alarm_tile", "lock_tile", "vacuum_tile")
+                       else ("History on tap", "tap the tile"))
     lines = ["### History", "",
-             f"Enable **History on tap (Lock, Vacuum: long press)**, save, then {gesture}. History is loaded from Home Assistant "
+             f"Enable **{option}**, save, then {gesture}. History is loaded from Home Assistant "
              "Recorder when opened; it is read-only. See [History details](../history.md) for the 24-hour numeric chart, state "
              "timeline, requirements and troubleshooting.", ""]
     history = {"sensor": ("sensor_en", "Room temperature history"),
@@ -170,7 +171,7 @@ def panel_details(kind):
                   popup_image("gallery_select_detail", "Charge mode option picker"), ""]
     if kind == "vacuum_tile":
         lines += ["### Activity", "",
-                  "With **History on tap (Lock, Vacuum: long press)** a long press on the card (not a button) shows the last 24 hours of "
+                  "With **History on long press** a long press on the card (not a button) shows the last 24 hours of "
                   "the vacuum's state from Home Assistant Recorder as a timeline and a list of changes (cleaning, returning, docked); it is "
                   "read-only.", "",
                   popup_image("gallery_vacuum_history", "Vacuum activity"), "",
@@ -341,7 +342,7 @@ def main():
              "the entities, requirements, options, behaviour on the panel and size limits. The previews are rendered by the LVGL "
              "simulator in the Glow style with synthetic data (click to enlarge); the other styles keep the same functions.", "",
              "To add one, open a page in the [web editor](../editor.md#layout-workspace), choose the widget in **Add**, pick its entity "
-             "with **Search** beside the entity field, size it and **Save** the layout. Start with "
+             "by clicking its entity row, size it and **Save** the layout. Start with "
              "[your first light](../getting-started.md#5-control-your-first-light). Whole pages (room overview, energy dashboard) are in "
              "[Pages and layouts](../pages.md); for a different look, use [Appearance](../appearance.md).", "",
              '<div class="widget-index" markdown>', ""]
