@@ -35,6 +35,7 @@ Each widget guide lists its own requirements at the top; this is the overview.
 | Solar forecast | one `sensor.*` per day to show; Solcast PV Forecast is one source, replace the suggested IDs | [Solar forecast](widgets/solar_forecast.md) |
 | Price forecast | one `sensor.*` with a `data` list of prices: EPEX Spot (Germany and many markets); Nord Pool and Tibber through a helper that stores their prices as `data` | [Price forecast](widgets/price_forecast.md) |
 | Parqet portfolio | the total value `sensor.*` of the **Parqet Companion** integration (HACS), optionally its gain, XIRR and dividends sensors | [Parqet portfolio](widgets/parqet_portfolio.md) |
+| Stocks & ETFs | quote `sensor.*` of **Yahoo Finance** (`iprak/yahoofinance`) or **Easy Stock**, both from HACS; up to eight | [Stocks & ETFs](widgets/stock_quotes.md) |
 | Energy page, mode Home Assistant Energy | sources set up in HA's Energy dashboard | [below](#energy-and-rooms) |
 | Energy timeline | cumulative kWh counters with `state_class` `total` or `total_increasing` | [Energy timeline](widgets/energy_timeline.md) |
 | Energy page: seven-day details | Gas, Water or Solar as cumulative counters with long-term statistics (volume or energy unit) | [Seven-day details](pages.md#seven-day-details) |

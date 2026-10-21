@@ -24,6 +24,8 @@
 #include "drivers/display_init.h"
 #include "ha/ha_client.h"
 #include "ha/ha_model.h"
+#include "ha/ha_display_precision.h"
+#include "ha/ha_quote.h"
 #include "layout/layout_store.h"
 #include "net/wifi_mgr.h"
 #include "util/coredump_archive.h"
@@ -424,6 +426,25 @@ static void ui_runtime_refresh_topbar_stocks(void)
         float price = 0.0f;
         bool has_price = false;
         ui_runtime_stock_symbol_from_entity(entity_id, items[count].symbol, sizeof(items[count].symbol));
+
+        /* A Yahoo Finance or Easy Stock sensor (by its registry entry) is read like the Stocks & ETFs widget reads it: the
+         * state is the price. Any other sensor keeps the reading below. */
+        ha_quote_t quote;
+        if (ha_quote_parse(ha_quote_provider_from_platform(ha_display_precision_platform(entity_id)), state.state,
+                           state.attributes_json, &quote)) {
+            if (!quote.available) {
+                continue;
+            }
+            if (quote.symbol[0] != '\0') {
+                ui_runtime_stock_symbol_from_entity(quote.symbol, items[count].symbol, sizeof(items[count].symbol));
+            }
+            const bool euro = strcmp(quote.currency, "EUR") == 0;
+            snprintf(items[count].value, sizeof(items[count].value), "%.2f%s", quote.price,
+                     euro ? "" : ha_quote_currency_sign(quote.currency));
+            items[count].value_is_euro = euro;
+            count++;
+            continue;
+        }
 
         cJSON *attrs = cJSON_Parse(state.attributes_json);
         if (attrs != NULL) {
@@ -955,6 +976,19 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
             sizeof(out->extra_entity_id[UI_PARQET_EXTRA_DIVIDENDS]));
         ui_runtime_copy_json_string(widget_json, "return_entity_id", out->extra_entity_id[UI_PARQET_EXTRA_RETURN],
             sizeof(out->extra_entity_id[UI_PARQET_EXTRA_RETURN]));
+    }
+    if (strcmp(out->type, "stock_quotes") == 0) {
+        cJSON *more = cJSON_GetObjectItemCaseSensitive(widget_json, "stock_entities");
+        for (int i = 0; i < UI_STOCK_MAX_QUOTES - 1; i++) {
+            const cJSON *item = cJSON_GetArrayItem(more, i);
+            if (cJSON_IsString(item) && item->valuestring != NULL) {
+                snprintf(out->extra_entity_id[i], APP_MAX_ENTITY_ID_LEN, "%s", item->valuestring);
+            }
+        }
+        ui_runtime_copy_json_string(widget_json, "stock_view", out->display_mode, sizeof(out->display_mode));
+        ui_runtime_copy_json_string(widget_json, "stock_period", out->stock_period, sizeof(out->stock_period));
+        ui_runtime_copy_json_string(widget_json, "stock_delta", out->stock_delta, sizeof(out->stock_delta));
+        out->stock_ticker = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "stock_ticker"));
     }
     if (strcmp(out->type, "energy_timeline") == 0) {
         ui_runtime_copy_json_string(widget_json, "battery_charge_entity_id",

@@ -18,6 +18,16 @@ void ui_history_popup_open_range(const char *entity_id, const char *title, const
 /* Selects the 30-day or the 12-month view of the open range popup, as a tap on its button does (device tests without touch). */
 void ui_history_popup_range_select(bool year);
 
+#include "ha/ha_quote.h"
+#include "ha/ha_quote_series.h"
+
+/* A quote of the Stocks & ETFs widget: price, the last session's change, market state and times, and its history over
+ * 1D, 1W, 30D, YTD or 1Y (period is the first), from ui/quote_history_feed.c with the source named. */
+void ui_history_popup_open_quote(const char *entity_id, ha_quote_provider_t provider, const ha_quote_t *quote,
+                                 ha_quote_period_t period);
+/* Selects a period of the open quote popup, as a tap on its button does (device tests without touch). */
+void ui_history_popup_quote_select(ha_quote_period_t period);
+
 #ifdef BETTA_SIMULATOR
 #include "ha/ha_history_stats.h"
 /* Inject a parsed Recorder response into the open range popup for simulator regressions. */

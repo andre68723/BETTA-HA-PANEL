@@ -63,7 +63,9 @@ function renderEntityOptions() {
         ? "layout.inspector.entity_energy_timeline"
         : inspectorType === "parqet_portfolio"
           ? "layout.inspector.parqet_total_value"
-          : "layout.inspector.entity";
+          : inspectorType === "stock_quotes"
+            ? "layout.inspector.stock_quote_first"
+            : "layout.inspector.entity";
     setTextById("fEntityLabel", primaryLabelKey);
     el.fSecondaryEntityLabel.textContent = t(secondaryConfig.labelKey, {}, secondaryConfig.labelFallback);
   }
@@ -309,6 +311,7 @@ const WIDGET_TYPE_LABEL_KEYS = {
   energy_timeline: "layout.widgets.add_energy_timeline",
   price_forecast: "layout.widgets.add_price_forecast",
   parqet_portfolio: "layout.widgets.add_parqet_portfolio",
+  stock_quotes: "layout.widgets.add_stock_quotes",
   datetime_tile: "layout.widgets.add_datetime",
   lock_tile: "layout.widgets.add_lock",
   alarm_tile: "layout.widgets.add_alarm",
@@ -1214,7 +1217,7 @@ function renderInspector() {
   if (el.fSolarForecastDay3) el.fSolarForecastDay3.value = widget.forecast_day_3_entity_id || "";
   if (el.fSolarForecastDay4) el.fSolarForecastDay4.value = widget.forecast_day_4_entity_id || "";
   if (el.fSolarForecastDay5) el.fSolarForecastDay5.value = widget.forecast_day_5_entity_id || "";
-  bambuLoadInspector(widget); evccLoadInspector(widget);
+  bambuLoadInspector(widget); evccLoadInspector(widget); stockLoadInspector(widget);
   if (el.fCarPrecond) el.fCarPrecond.value = widget.precond_entity_id || "";
   if (el.fCarLock) el.fCarLock.value = widget.lock_entity_id || "";
   if (el.fCarTemp) el.fCarTemp.value = widget.interior_temp_entity_id || "";
@@ -1486,6 +1489,33 @@ function renderInspector() {
   refreshInspectorLayout();
 }
 
+// "Panel follows": the page chosen in the editor is shown on the panel too (POST /api/navigate), off by default and
+// remembered by this browser. Only a page the panel has (the saved layout) is sent, and only when the choice changes.
+const FOLLOW_PAGE_KEY = "betta.editor.followPage";
+let followPageSent = null;
+
+function followPageEnabled() {
+  return storageGet(FOLLOW_PAGE_KEY) === "1";
+}
+
+function syncPanelPage() {
+  const id = editor.selectedPageId;
+  if (!followPageEnabled() || !id || id === followPageSent) return;
+  let saved = null;
+  try { saved = savedLayoutSnapshot ? JSON.parse(savedLayoutSnapshot) : null; } catch (_) { saved = null; }
+  if (!saved?.pages?.some(page => page?.id === id)) return;
+  followPageSent = id;
+  fetch("/api/navigate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ page: id }) })
+    .catch(() => { if (followPageSent === id) followPageSent = null; });
+}
+
+function setFollowPage(on) {
+  if (on) storageSet(FOLLOW_PAGE_KEY, "1");
+  else storageRemove(FOLLOW_PAGE_KEY);
+  followPageSent = null;
+  syncPanelPage();
+}
+
 function renderAll() {
   normalizeLayoutWidgets(editor.layout);
   renderPages();
@@ -1498,6 +1528,7 @@ function renderAll() {
   // Every real edit goes through renderAll(); markDirty() compares the layout with the loaded/saved snapshot,
   // so a render that changed nothing (selecting a page or a widget) leaves the layout marked as saved.
   markDirty();
+  syncPanelPage();
 }
 
 function addPage() {
@@ -1992,6 +2023,7 @@ function addWidget(type, options = {}) {
       : type === "energy_timeline" ? 420
       : type === "price_forecast" ? 460
       : type === "parqet_portfolio" ? 360
+      : type === "stock_quotes" ? 340
       : type === "todo_list" ? 360
       : type === "media_player" ? 360
       : type === "sonos_favorites" ? 360
@@ -2014,6 +2046,7 @@ function addWidget(type, options = {}) {
       : type === "energy_timeline" ? 260
       : type === "price_forecast" ? 250
       : type === "parqet_portfolio" ? 330
+      : type === "stock_quotes" ? 300
       : type === "todo_list" ? 360
       : type === "media_player" ? 280
       : type === "sonos_favorites" ? 300
@@ -2219,6 +2252,7 @@ function applyInspector(options = {}) {
     else delete widget[key];
   }
   bambuSaveInspector(widget, widgetType);
+  stockSaveInspector(widget, widgetType);
   if (!evccSaveInspector(widget, widgetType)) return false;
   // Energy timeline: the two battery counters go together (the firmware ignores half a battery).
   for (const [key, input] of [
@@ -2632,7 +2666,8 @@ function updateSensorEntityInfo(widget = selectedWidget()) {
   const type = el.fType?.value || widget?.type;
   const sensor = type === "sensor";
   const entityId = el.fEntity?.value.trim() || "";
-  const chips = type === "empty_tile" || type === "wallbox_evcc" ? [] : entityClassChips(entityId);
+  // A quote list names its quotes, not one sensor's device class.
+  const chips = type === "empty_tile" || type === "wallbox_evcc" || type === "stock_quotes" ? [] : entityClassChips(entityId);
   if (el.fEntityClass) {
     el.fEntityClass.innerHTML = chips.map((chip) => `<span class="entity-class-chip${chip.none ? " is-none" : ""}" `
       + `title="${escapeHtml(chip.title)}">${escapeHtml(chip.text)}</span>`).join("");

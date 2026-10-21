@@ -140,7 +140,7 @@ function initInspectorLayout() {
   move("entities", label(el.fEntity), label(el.fSecondaryEntity), label(el.fTertiaryEntity), byId("parqetEntities"));
   follow(byId("vacuumOptions"), [label(el.fVacuumBattery)], "entities");
   follow(byId("roomEntitiesFields"), [label(el.fRoomEntities), byId("fRoomEntitiesHint")], "entities");
-  move("entities", byId("carExtraFields"), byId("evccFields"), byId("bambuFields"), byId("energyTimelineFields"));
+  move("entities", byId("carExtraFields"), byId("evccFields"), byId("bambuFields"), byId("energyTimelineFields"), byId("stockEntities"));
   follow(byId("solarForecastFields"), [byId("fSolarForecastTodayLabel"), byId("fSolarForecastTomorrowLabel"),
     byId("fSolarForecastDay3Label"), byId("fSolarForecastDay4Label"), byId("fSolarForecastDay5Label")].map(label), "entities");
   follow(byId("sliderOptions"), [label(el.fSliderEntityDomain)], "entities");
@@ -154,7 +154,7 @@ function initInspectorLayout() {
   move("display", byId("sliderOptions"), byId("graphOptions"), byId("solarForecastStyleOptions"), byId("gaugeOptions"),
     byId("sensorOptions"), byId("cameraOptions"));
   follow(byId("priceOptions"), [label(el.fPriceCheapTimes), label(el.fPriceLine)], "display");
-  move("display", byId("parqetOptions"), byId("forecastReadabilityOptions"), byId("weatherForecastOptions"),
+  move("display", byId("stockOptions"), byId("parqetOptions"), byId("forecastReadabilityOptions"), byId("weatherForecastOptions"),
     byId("heatingOptions"), etlStyle, byId("energyTimelineColorOptions"));
   // Controls: what tap and long press do.
   move("controls", byId("historyOptions"), byId("lockOptions"), byId("alarmOptions"), byId("buttonOptions"));
@@ -169,15 +169,12 @@ function initInspectorLayout() {
   form.append(placement);
   inspectorLayout = { root, head, sections, pageSections: PAGE_SECTIONS, pageRoot, follows, position: placement, placementChoice: null, battery, forecast, counterHelp, etlStyle, entityRows,
     pageBattery, batteryManual, meters, pageHelp, page: null, widget: null, frame: null };
-  // Placement opens while the inspector fits without scrolling; a click on its heading decides until the next widget.
+  // Placement starts folded (the canvas moves and sizes a widget by mouse); a click on its heading opens it until the next widget.
   placement.querySelector(":scope > summary").addEventListener("click", event => {
     if (event.target.closest("button")) return;
     event.preventDefault(); inspectorLayout.placementChoice = !placement.open; placement.open = inspectorLayout.placementChoice;
   });
-  root.closest("aside").addEventListener("toggle", event => {
-    // Measuring Placement opens and closes it briefly; that toggle needs no further measurement.
-    if (event.target !== placement) scheduleInspectorReflow();
-  }, true);
+  root.closest("aside").addEventListener("toggle", scheduleInspectorReflow, true);
   window.addEventListener("resize", scheduleInspectorReflow);
   refreshInspectorLayout();
 }
@@ -197,10 +194,7 @@ function scheduleInspectorReflow() {
     const aside = ui.root.closest("aside");
     const available = Math.max(180, window.innerHeight - Math.max(18, aside.getBoundingClientRect().top) - 18);
     aside.style.setProperty("--inspector-available", available + "px");
-    if (ui.position.hidden) return;
-    if (ui.placementChoice !== null) { ui.position.open = ui.placementChoice; return; }
-    ui.position.open = true;
-    ui.position.open = aside.scrollHeight <= Math.min(available, parseFloat(getComputedStyle(aside).maxHeight) || available) + 1;
+    if (!ui.position.hidden) ui.position.open = ui.placementChoice === true;
   });
 }
 

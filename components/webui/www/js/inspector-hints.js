@@ -130,16 +130,34 @@ function inspectorHelpTopic() {
     + { house_dashboard: "room-overview", energy_dashboard: "energy-dashboard", blank_page: "free-pages" }[type] };
 }
 
+// A paragraph that starts with a short label ("Visible days: ...") reads as a heading: the label becomes bold.
+function inspectorHelpLabelled(text) {
+  if (text.startsWith("**")) return text;
+  const match = /^([^.:!?\n*(),]{2,48}):\s/.exec(text);
+  return match ? `**${match[1]}:**${text.slice(match[1].length + 1)}` : text;
+}
+
+// **bold** for labels and option names; known technical identifiers as code. Everything else is plain text.
+function inspectorHelpInline(parent, text) {
+  text.split(/\*\*([^*]+)\*\*/g).forEach((chunk, index) => {
+    if (index % 2) {
+      const strong = document.createElement("strong"); strong.textContent = chunk; parent.append(strong);
+      return;
+    }
+    const parts = chunk.split(/(state_class|total_increasing|\btotal\b|detailedForecast|\b[a-z_]+\.\*|sensor\.[\w.<>]+)/g);
+    for (let i = 0; i < parts.length; i++) {
+      if (!parts[i]) continue;
+      const part = document.createElement(i % 2 ? "code" : "span"); part.textContent = parts[i]; parent.append(part);
+    }
+  });
+}
+
 function inspectorHelpSection(dialog, title, texts) {
   const section = document.createElement("section"); section.className = "inspector-help-section";
   if (title) { const heading = document.createElement("h3"); heading.textContent = title; section.append(heading); }
   for (const text of texts.flatMap(inspectorHelpParagraphs)) {
     const paragraph = document.createElement("p");
-    // Only known technical identifiers are emphasized; explanations remain plain text.
-    const parts = text.split(/(state_class|total_increasing|\btotal\b|detailedForecast|\b[a-z_]+\.\*|sensor\.[\w.]+)/g);
-    for (let i = 0; i < parts.length; i++) {
-      const part = document.createElement(i % 2 ? "code" : "span"); part.textContent = parts[i]; paragraph.append(part);
-    }
+    inspectorHelpInline(paragraph, inspectorHelpLabelled(text));
     section.append(paragraph);
   }
   dialog.append(section); return section;
@@ -229,8 +247,12 @@ function presentInspectorHint(hint) {
   const full = inspectorFullHint(hint);
   let row = hint.parentElement;
   if (row?.dataset.genericHint !== "true") {
+    /* In a widget's sections every explanation goes behind the section's info icon, whatever its length (a
+     * .field-hint, or a .meta named ...Hint); status lines and warnings stay where they are. */
+    const explanation = hint.closest("#inspectorSection .inspector-sec") !== null &&
+      (hint.classList.contains("field-hint") || (hint.classList.contains("meta") && /Hint$/.test(hint.id)));
     if (hint.closest(".inspector-help-content, .info-details") || hint.classList.contains("no-shorten")
-        || hint.classList.contains("warn") || full.length <= HINT_MAX) return;
+        || hint.classList.contains("warn") || (!explanation && full.length <= HINT_MAX)) return;
     row = createInspectorHelpRow(hint, t("inspector.help")); row.dataset.genericHint = "true";
   }
   setInspectorHelpCaption(row, t("inspector.help"));

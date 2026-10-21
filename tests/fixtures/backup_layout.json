@@ -477,6 +477,26 @@
           "parqet_selector": true,
           "parqet_view": "holdings",
           "parqet_interval": "1m"
+        },
+        {
+          "id": "w_stock_quotes",
+          "type": "stock_quotes",
+          "title": "stock_quotes",
+          "rect": {
+            "x": 20,
+            "y": 360,
+            "w": 300,
+            "h": 200
+          },
+          "entity_id": "sensor.quote_one",
+          "stock_entities": [
+            "sensor.quote_two",
+            "sensor.quote_three"
+          ],
+          "stock_view": "chart",
+          "stock_period": "ytd",
+          "stock_delta": "both",
+          "stock_ticker": true
         }
       ]
     }

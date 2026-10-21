@@ -14,6 +14,7 @@ Release candidate, not published. Changes since [v0.9.0](#v090-fork).
 | --- | --- | --- |
 | [Price forecast](widgets/price_forecast.md) | <span class="release-status release-status--new">New</span> | A day of electricity prices as bars (hourly or 15-minute) from the list attribute of a price sensor (EPEX Spot directly; Nord Pool and Tibber through a helper that stores the list as `data`): the price now, Today/Tomorrow, the day's minimum and maximum and the next cheap window. Raw EUR/cent units are converted before display; missing intervals stay gaps and all upcoming cheap windows remain available. Design inspired by the community's price timeline cards. |
 | [Parqet portfolio](widgets/parqet_portfolio.md) | <span class="release-status release-status--new">New</span> | A Parqet portfolio from the Parqet Companion sensors: total value, gain, the unrealised return in percent (from the integration's own sensor), XIRR, dividends and the largest holdings as weight bars; the tile names the interval the integration is set to. An option hides amounts and shows percentages only. Tabs (Performance, Holdings), interval buttons (1D, 1W, 1M, YTD, MAX) and, in Holdings, the choice Largest, Top 5 or Flop 5 can be shown on the tile; the intervals other than MAX are asked from the integration. |
+| [Stocks & ETFs](widgets/stock_quotes.md) | <span class="release-status release-status--new">New</span> | Up to eight quotes of Yahoo Finance or Easy Stock sensors, mixed, as a list (name, price, the last session's change in percent, amount or both, optionally the symbol) or as a chart per quote with one period selector (1D, 1W, 30D, YTD, 1Y). The integration of each sensor comes from Home Assistant's entity registry. A tap opens the details with market state, quote and update time and a chart whose source is named: Easy Stock's closes against the close before the period, or Home Assistant's records and means. The top bar's stock chip reads Yahoo Finance and Easy Stock sensors the same way. |
 | [Sensor](widgets/sensor.md) | <span class="release-status release-status--changed">Changed</span> | The value follows the device class: timestamps and dates in local time or relative, durations as text or clock, units hidden, as ° or scaled to kW/kWh, currency symbols with two decimals, readable enum values, binary sensor state words and the decimal comma of the panel language. |
 
 ### Panel
@@ -38,12 +39,13 @@ Release candidate, not published. Changes since [v0.9.0](#v090-fork).
   for every tile bound to a sensor or binary sensor, and the inspector offers the sensor's unit and format choices of
   that class.
 - **Inspector:** one order for every widget: a header with type, name (edited in place) and device class, then
-  Entities, Display, Controls and Placement as foldable cards (empty ones left out; Placement open while it fits).
+  Entities, Display, Controls and Placement as foldable cards (empty ones left out; Placement folded).
   Short fields put the label beside the control. The Properties and Position & size tabs are gone.
   Entities are rows with the role and the Home Assistant name; a click opens the search, which can also remove an
   optional entity or use a typed ID, and an ID Home Assistant does not list is marked.
   A section's explanations open from an info icon behind its heading; the page inspector has the same form.
   The info icon of a widget shows the summary of its guide.
+  **Panel follows** beside Text size shows the page chosen in the editor on the panel too.
   The entity search keeps the current entity on top and starts with the entities of the same device; the Energy
   page's sensors and the weather and stock entities in the settings use the same entity rows.
 

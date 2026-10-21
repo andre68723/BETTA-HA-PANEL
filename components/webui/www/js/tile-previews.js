@@ -539,6 +539,7 @@ function tilePreviewMarkup(widget) {
         <div class="tp-price-slot">${interval}</div>
         <div class="tp-price-bars${widget.price_line === true ? " line" : ""}">${band}${bars}</div><div class="tp-price-foot">${ticks}</div>${foot}</div>${handle}`;
     }
+    case "stock_quotes": return stockPreviewMarkup(widget, name, h) + handle;
     case "parqet_portfolio": {
       const number = (id) => {
         const raw = Number(String(editor.states.get(id) ?? "").replace(",", "."));

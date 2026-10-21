@@ -88,6 +88,8 @@ void w_lock_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_alarm_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_alarm_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_parqet_portfolio_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
+esp_err_t w_stock_quotes_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
+void w_stock_quotes_apply_state(ui_widget_instance_t *, const ha_state_t *);
 void w_parqet_portfolio_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_price_forecast_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_price_forecast_apply_state(ui_widget_instance_t *, const ha_state_t *);
@@ -145,6 +147,7 @@ static const sim_widget_type_t k_types[] = {
     {"alarm_tile", w_alarm_create, w_alarm_apply_state},
     {"price_forecast", w_price_forecast_create, w_price_forecast_apply_state},
     {"parqet_portfolio", w_parqet_portfolio_create, w_parqet_portfolio_apply_state},
+    {"stock_quotes", w_stock_quotes_create, w_stock_quotes_apply_state},
     {"energy_timeline", w_energy_timeline_create, w_energy_timeline_apply_state},
     {"binary_tile", w_binary_create, w_binary_apply_state},
     {"room_tile", w_room_create, w_room_apply_state},
@@ -311,6 +314,18 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     if (strcmp(def->type, "parqet_portfolio") == 0) {
         copy_field(def->extra_entity_id[UI_PARQET_EXTRA_DIVIDENDS], APP_MAX_ENTITY_ID_LEN, json, "dividends_entity_id");
         copy_field(def->extra_entity_id[UI_PARQET_EXTRA_RETURN], APP_MAX_ENTITY_ID_LEN, json, "return_entity_id");
+    }
+    if (strcmp(def->type, "stock_quotes") == 0) {
+        const cJSON *more = cJSON_GetObjectItemCaseSensitive(json, "stock_entities");
+        for (int i = 0; i < UI_WIDGET_EXTRA_ENTITIES; i++) def->extra_entity_id[i][0] = '\0';
+        for (int i = 0; i < UI_STOCK_MAX_QUOTES - 1; i++) {
+            const cJSON *id = cJSON_GetArrayItem(more, i);
+            if (cJSON_IsString(id)) snprintf(def->extra_entity_id[i], sizeof(def->extra_entity_id[i]), "%s", id->valuestring);
+        }
+        copy_field(def->display_mode, sizeof(def->display_mode), json, "stock_view");
+        copy_field(def->stock_period, sizeof(def->stock_period), json, "stock_period");
+        copy_field(def->stock_delta, sizeof(def->stock_delta), json, "stock_delta");
+        def->stock_ticker = json_bool(json, "stock_ticker", false);
     }
     if (strcmp(def->type, "room_tile") == 0) {
         copy_field(def->display_mode, sizeof(def->display_mode), json, "room_extra_mode");
@@ -633,8 +648,10 @@ static bool load_display_precisions(const cJSON *states)
     size_t wanted = 0;
     const cJSON *state = NULL;
     cJSON_ArrayForEach(state, states) {
+        /* a registry entry: the precision and/or the integration ("platform": "yahoofinance", "easy_stock", ...) */
         const cJSON *digits = cJSON_GetObjectItemCaseSensitive(state, "display_precision");
-        if (cJSON_IsNumber(digits) && digits->valueint >= 0 && digits->valueint <= 6) {
+        const cJSON *platform = cJSON_GetObjectItemCaseSensitive(state, "platform");
+        if ((cJSON_IsNumber(digits) && digits->valueint >= 0 && digits->valueint <= 6) || cJSON_IsString(platform)) {
             snprintf(ids + wanted * APP_MAX_ENTITY_ID_LEN, APP_MAX_ENTITY_ID_LEN,
                      "%s", json_string(state, "entity_id"));
             wanted++;
@@ -657,10 +674,12 @@ static bool load_display_precisions(const cJSON *states)
             cJSON_ArrayForEach(state, states) {
                 if (strcmp(id->valuestring, json_string(state, "entity_id")) != 0) continue;
                 cJSON *entry = cJSON_AddObjectToObject(result, id->valuestring);
-                cJSON *options = cJSON_AddObjectToObject(entry, "options");
-                cJSON *sensor = cJSON_AddObjectToObject(options, "sensor");
-                cJSON_AddNumberToObject(sensor, "display_precision",
-                    json_int(state, "display_precision", 0));
+                if (cJSON_IsNumber(cJSON_GetObjectItemCaseSensitive(state, "display_precision"))) {
+                    cJSON *options = cJSON_AddObjectToObject(entry, "options");
+                    cJSON *sensor = cJSON_AddObjectToObject(options, "sensor");
+                    cJSON_AddNumberToObject(sensor, "display_precision", json_int(state, "display_precision", 0));
+                }
+                if (json_string(state, "platform")[0] != '\0') cJSON_AddStringToObject(entry, "platform", json_string(state, "platform"));
                 break;
             }
         }

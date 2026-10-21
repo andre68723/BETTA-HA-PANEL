@@ -28,7 +28,7 @@ None beyond the entities.
 | Extra field | humidity, cover (status and open/close) or media player (status and play/pause) |
 | Controls on the card | lights, switches and covers as buttons, on a card of about 400 × 240 px |
 
-<a href="../img/examples/inspector-room_tile.png"><img src="../img/examples/inspector-room_tile.png" alt="Inspector of the Room card widget" loading="lazy" width="340" height="861"></a>
+<a href="../img/examples/inspector-room_tile.png"><img src="../img/examples/inspector-room_tile.png" alt="Inspector of the Room card widget" loading="lazy" width="340" height="682"></a>
 
 *Inspector in the web editor, with the widget of the preview above.*
 

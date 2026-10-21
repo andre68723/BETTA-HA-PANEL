@@ -5,8 +5,9 @@
  * registry's options.sensor.display_precision (set by the user) or else suggested_display_precision
  * (set by the integration). The state itself carries neither. Reads the registry entries of the
  * layout's sensor/number entities in small batches (config/entity_registry/get_entries); ha_client.c
- * sends the requests. Requests and answers run on the HA task; the lookups and formatting may be
- * called from any task.
+ * sends the requests. The same entries name the integration (platform) of each entity, which the
+ * Stocks & ETFs widget needs to know how to read a quote (ha_quote.h). Requests and answers run on
+ * the HA task; the lookups and formatting may be called from any task.
  */
 #pragma once
 
@@ -37,6 +38,11 @@ void ha_display_precision_cancel(void);
  * msg_id is not ours. */
 bool ha_display_precision_handle_result(
     uint32_t msg_id, bool success, const cJSON *result, ha_display_precision_changed_fn changed);
+
+/* Any task: the integration of entity_id from its registry entry: NULL while not answered yet, "" when the
+ * lookup failed or timed out, "yahoofinance" or "easy_stock", or "other" for any other integration (and for
+ * an entity without a registry entry). */
+const char *ha_display_precision_platform(const char *entity_id);
 
 /* Any task: the precision of entity_id, or HA_DISPLAY_PRECISION_UNKNOWN. */
 int ha_display_precision_get(const char *entity_id);

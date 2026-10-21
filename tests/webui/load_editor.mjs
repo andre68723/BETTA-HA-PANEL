@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 const JS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../components/webui/www/js");
 
 // Scripts in index.html order, as far as the tested code needs them.
-const SCRIPTS = ["config.js", "i18n.js", "i18n-de.js", "state.js", "util.js", "ui-basics.js", "translations.js", "settings.js", "brightness-test.js", "update-check.js", "layout-model.js", "pickers.js", "readability.js", "bambu-printer.js", "evcc-wallbox.js", "energy-timeline-colors.js", "tile-previews.js", "layout-history.js", "widget-actions.js", "canvas.js", "inspector-layout.js", "room-import.js", "theme.js", "inspector-hints.js", "bind.js"];
+const SCRIPTS = ["config.js", "i18n.js", "i18n-de.js", "state.js", "util.js", "ui-basics.js", "translations.js", "settings.js", "brightness-test.js", "update-check.js", "layout-model.js", "pickers.js", "readability.js", "bambu-printer.js", "evcc-wallbox.js", "stock-quotes.js", "energy-timeline-colors.js", "tile-previews.js", "layout-history.js", "widget-actions.js", "canvas.js", "inspector-layout.js", "room-import.js", "theme.js", "inspector-hints.js", "bind.js"];
 
 export function loadEditor({ width = 1280, height = 680 } = {}) {
   const document = {

@@ -27,7 +27,7 @@ None beyond the entities.
 | Unit, Format, Time format, Currency | by device class, see below. The inspector header shows the class and unit as chips ("No device class" when Home Assistant gives none) and offers only that class's choices |
 | History on tap | a tap opens the Recorder history; only when the Recorder retains the entity |
 
-<a href="../img/examples/inspector-sensor.png"><img src="../img/examples/inspector-sensor.png" alt="Inspector of the Sensor widget" loading="lazy" width="340" height="601"></a>
+<a href="../img/examples/inspector-sensor.png"><img src="../img/examples/inspector-sensor.png" alt="Inspector of the Sensor widget" loading="lazy" width="340" height="482"></a>
 
 *Inspector in the web editor, with the widget of the preview above.*
 

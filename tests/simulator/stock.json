@@ -1,0 +1,190 @@
+{
+ "version": 1,
+ "pages": [
+  {
+   "id": "stocks",
+   "title": "Stocks",
+   "widgets": [
+    {
+     "id": "list",
+     "type": "stock_quotes",
+     "title": "Watchlist",
+     "entity_id": "sensor.demo_world_etf",
+     "stock_entities": [
+      "sensor.yahoofinance_demo_ins",
+      "sensor.yahoofinance_demo_tech",
+      "sensor.yahoofinance_demo_lon",
+      "sensor.demo_em_etf",
+      "sensor.demo_not_a_quote",
+      "sensor.yahoofinance_demo_gone"
+     ],
+     "x": 16,
+     "y": 12,
+     "w": 340,
+     "h": 300
+    },
+    {
+     "id": "list_both",
+     "type": "stock_quotes",
+     "title": "Ticker, both changes",
+     "entity_id": "sensor.demo_world_etf",
+     "stock_entities": [
+      "sensor.yahoofinance_demo_ins",
+      "sensor.yahoofinance_demo_tech",
+      "sensor.yahoofinance_demo_lon"
+     ],
+     "x": 368,
+     "y": 12,
+     "w": 340,
+     "h": 230,
+     "stock_ticker": true,
+     "stock_delta": "both"
+    },
+    {
+     "id": "chart",
+     "type": "stock_quotes",
+     "title": "Charts 30D",
+     "entity_id": "sensor.demo_world_etf",
+     "stock_entities": [
+      "sensor.yahoofinance_demo_ins",
+      "sensor.yahoofinance_demo_tech"
+     ],
+     "x": 16,
+     "y": 324,
+     "w": 340,
+     "h": 380,
+     "stock_view": "chart"
+    },
+    {
+     "id": "chart_1y",
+     "type": "stock_quotes",
+     "title": "Charts 1Y, amounts",
+     "entity_id": "sensor.demo_world_etf",
+     "stock_entities": [
+      "sensor.yahoofinance_demo_ins"
+     ],
+     "x": 368,
+     "y": 254,
+     "w": 340,
+     "h": 260,
+     "stock_view": "chart",
+     "stock_period": "1y",
+     "stock_delta": "absolute"
+    }
+   ]
+  }
+ ],
+ "states": [
+  {
+   "entity_id": "sensor.demo_world_etf",
+   "state": "113.38",
+   "platform": "easy_stock",
+   "attributes": {
+    "state_class": "measurement",
+    "symbol": "DWLD.DE",
+    "long_name": "Demo MSCI World UCITS ETF USD Acc",
+    "currency": "EUR",
+    "market_state": "CLOSED",
+    "change": 0.45,
+    "change_pct": 0.4,
+    "previous_close": 112.93,
+    "price_is_live": false,
+    "traded_today": true,
+    "unit_of_measurement": "EUR",
+    "friendly_name": "MSCI World"
+   }
+  },
+  {
+   "entity_id": "sensor.yahoofinance_demo_ins",
+   "state": "379.5",
+   "platform": "yahoofinance",
+   "attributes": {
+    "state_class": "measurement",
+    "currencySymbol": "€",
+    "symbol": "DINS.DE",
+    "marketState": "REGULAR",
+    "regularMarketChange": -0.3,
+    "regularMarketChangePercent": -0.08,
+    "regularMarketPreviousClose": 379.8,
+    "regularMarketPrice": 379.5,
+    "regularMarketTime": 1792598400,
+    "unit_of_measurement": "EUR",
+    "friendly_name": "Allianz"
+   }
+  },
+  {
+   "entity_id": "sensor.yahoofinance_demo_tech",
+   "state": "245.2",
+   "platform": "yahoofinance",
+   "attributes": {
+    "state_class": "measurement",
+    "currencySymbol": "$",
+    "symbol": "DTEC",
+    "marketState": "POSTPOST",
+    "regularMarketChange": 2.72,
+    "regularMarketChangePercent": 1.12,
+    "regularMarketPreviousClose": 242.48,
+    "regularMarketPrice": 245.2,
+    "regularMarketTime": 1792598400,
+    "unit_of_measurement": "USD",
+    "friendly_name": "Apple"
+   }
+  },
+  {
+   "entity_id": "sensor.yahoofinance_demo_lon",
+   "state": "1234.5",
+   "platform": "yahoofinance",
+   "attributes": {
+    "state_class": "measurement",
+    "currencySymbol": "p",
+    "symbol": "DLON.L",
+    "marketState": "CLOSED",
+    "regularMarketChange": -4.5,
+    "regularMarketChangePercent": -0.36,
+    "regularMarketPreviousClose": 1239.0,
+    "regularMarketPrice": 1234.5,
+    "regularMarketTime": 1792598400,
+    "unit_of_measurement": "GBp",
+    "friendly_name": "London Demo plc"
+   }
+  },
+  {
+   "entity_id": "sensor.demo_em_etf",
+   "state": "25.24",
+   "platform": "easy_stock",
+   "attributes": {
+    "state_class": "measurement",
+    "symbol": "DEMK.DE",
+    "long_name": "Demo Emerging Markets Kleinunternehmen Übersee UCITS ETF",
+    "currency": "EUR",
+    "market_state": "CLOSED",
+    "change": 0.0,
+    "change_pct": 0.0,
+    "previous_close": 25.24,
+    "price_is_live": false,
+    "traded_today": true,
+    "unit_of_measurement": "EUR",
+    "friendly_name": "Emerging Markets"
+   }
+  },
+  {
+   "entity_id": "sensor.demo_not_a_quote",
+   "state": "21.4",
+   "platform": "template",
+   "attributes": {
+    "unit_of_measurement": "°C",
+    "friendly_name": "Room temperature"
+   }
+  },
+  {
+   "entity_id": "sensor.yahoofinance_demo_gone",
+   "state": "unavailable",
+   "platform": "yahoofinance",
+   "attributes": {
+    "symbol": "DGON.DE",
+    "unit_of_measurement": "EUR",
+    "friendly_name": "Delisted Demo"
+   }
+  }
+ ]
+}

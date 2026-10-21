@@ -193,6 +193,23 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("addEnergyTimelineBtn", "layout.widgets.add_energy_timeline");
   setTextById("addPriceForecastBtn", "layout.widgets.add_price_forecast");
   setTextById("addParqetPortfolioBtn", "layout.widgets.add_parqet_portfolio");
+  setTextById("addStockQuotesBtn", "layout.widgets.add_stock_quotes");
+  setTextById("followPageText", "layout.follow_page");
+  document.getElementById("followPageLabel")?.setAttribute("title", t("layout.follow_page_title"));
+  for (let n = 1; n <= 7; n++) setTextById(`fStock${n}Label`, "layout.inspector.stock_quote", { n: n + 1 });
+  setTextById("fStockHint", "layout.inspector.stock_hint");
+  setTextById("fStockViewLabel", "layout.inspector.stock_view");
+  setTextById("fStockViewList", "layout.option.stock_view.list");
+  setTextById("fStockViewChart", "layout.option.stock_view.chart");
+  setTextById("fStockPeriodLabel", "layout.inspector.stock_period");
+  for (const code of ["1d", "1w", "30d", "ytd", "1y"]) {
+    setTextById(`fStockPeriod${code === "ytd" ? "Ytd" : code}`, `layout.option.stock_period.${code}`);
+  }
+  setTextById("fStockDeltaLabel", "layout.inspector.stock_delta");
+  setTextById("fStockDeltaPercent", "layout.option.stock_delta.percent");
+  setTextById("fStockDeltaAbsolute", "layout.option.stock_delta.absolute");
+  setTextById("fStockDeltaBoth", "layout.option.stock_delta.both");
+  setTextById("fStockTickerLabel", "layout.inspector.stock_ticker");
   setTextById("fCameraLiveLabel", "layout.inspector.camera_live");
   setTextById("cameraLiveHint", "layout.inspector.camera_live_hint");
   setTextById("fBambuCameraLabel", "layout.inspector.bambu_camera");

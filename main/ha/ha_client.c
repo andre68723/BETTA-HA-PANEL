@@ -502,6 +502,8 @@ static void safe_copy_cstr(char *dst, size_t dst_size, const char *src);
 static bool ha_client_is_tls_bad_input_data(int tls_stack_err);
 static void ha_client_priority_sync_queue_push_locked(const char *entity_id);
 static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_count, bool *out_need_weather_forecast);
+/* A saved layout changed the entities: the HA task asks the registry again for their precision and integration. */
+static volatile bool s_registry_lookup_due;
 static bool ha_client_layout_needs_ha_energy(void);
 static bool ha_client_entity_is_weather(const char *entity_id);
 static void ha_client_queue_weather_priority_sync_from_layout(int64_t now_ms);
@@ -6114,6 +6116,17 @@ static void ha_client_task(void *arg)
             ha_evcc_lookup_cancel();
             ha_evcc_sessions_cancel();
         }
+        if (connected && authenticated && s_registry_lookup_due) {
+            /* new entities of a saved layout: their display precision and integration (a Stocks & ETFs quote) */
+            s_registry_lookup_due = false;
+            char *ids = calloc((size_t)HA_LAYOUT_ENTITY_MAX, APP_MAX_ENTITY_ID_LEN);
+            if (ids != NULL) {
+                bool need_weather_forecast = false;
+                const size_t count = ha_client_collect_layout_entity_ids(ids, (size_t)HA_LAYOUT_ENTITY_MAX, &need_weather_forecast);
+                ha_display_precision_set_wanted(ids, count);
+                free(ids);
+            }
+        }
         if (connected && authenticated && ha_display_precision_is_due(now_ms)) {
             cJSON *dp_req = ha_display_precision_next_request(ha_client_next_message_id(), now_ms);
             if (dp_req != NULL && ha_client_send_json(dp_req) != ESP_OK) {
@@ -7068,6 +7081,7 @@ esp_err_t ha_client_notify_layout_updated(void)
     }
 
     if (started && entity_set_changed) {
+        s_registry_lookup_due = true;
         s_client.initial_layout_sync_index = 0;
         s_client.initial_layout_sync_imported = 0;
         s_client.get_states_req_id = 0;

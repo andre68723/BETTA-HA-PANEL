@@ -209,11 +209,14 @@ void ha_layout_entities_collect(cJSON *root, ha_layout_entity_set_t *set)
                 if (cJSON_IsString(type) && !strcmp(type->valuestring, "wallbox_evcc")) {
                     for (size_t b = 0; b < EVCC_ROLE_COUNT; b++) ha_layout_collect_field(widget, k_evcc_bindings[b].key, set);
                 }
-                cJSON *room_entities = cJSON_GetObjectItemCaseSensitive(widget, "room_entities");
-                cJSON *room_item = NULL;
-                cJSON_ArrayForEach(room_item, room_entities) {
-                    if (cJSON_IsString(room_item) && room_item->valuestring != NULL && set->count < set->capacity) {
-                        ha_layout_entities_add(set, room_item->valuestring);
+                /* the room card's list and the Stocks & ETFs quotes after the first */
+                static const char *const lists[] = {"room_entities", "stock_entities"};
+                for (size_t l = 0; l < sizeof(lists) / sizeof(lists[0]); l++) {
+                    cJSON *list_item = NULL;
+                    cJSON_ArrayForEach(list_item, cJSON_GetObjectItemCaseSensitive(widget, lists[l])) {
+                        if (cJSON_IsString(list_item) && list_item->valuestring != NULL && set->count < set->capacity) {
+                            ha_layout_entities_add(set, list_item->valuestring);
+                        }
                     }
                 }
             }

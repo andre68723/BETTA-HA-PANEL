@@ -277,6 +277,42 @@ test("portfolio view and interval: choose, save, reload and return to the defaul
   assert.equal(run("savedLayout.pages[0].widgets[0].parqet_interval"), undefined);
 });
 
+test("stock quotes: add, reorder, remove a quote and the options through Inspector events, saved and reloaded", async () => {
+  const run = setupInspector("stock_quotes", "sensor.quote_a");
+  run("renderEntityOptions = () => {}; loadVacuumModeOptions = async () => {}");
+  run('el.fStock1.value = "sensor.quote_b"; el.fStock1.dispatch("change")');
+  run('el.fStock2.value = "sensor.quote_c"; el.fStock2.dispatch("change")');
+  assert.equal(run("JSON.stringify(selectedWidget().stock_entities)"), JSON.stringify(["sensor.quote_b", "sensor.quote_c"]));
+  run("stockMoveUp(2)"); // the third quote moves above the second
+  assert.equal(run("selectedWidget().entity_id"), "sensor.quote_a");
+  assert.equal(run("JSON.stringify(selectedWidget().stock_entities)"), JSON.stringify(["sensor.quote_c", "sensor.quote_b"]));
+  run("stockMoveUp(1)"); // and above the first: it becomes the primary entity
+  assert.equal(run("selectedWidget().entity_id"), "sensor.quote_c");
+  run('el.fStockView.value = "chart"; el.fStockView.dispatch("change")');
+  run('el.fStockPeriod.value = "ytd"; el.fStockPeriod.dispatch("change")');
+  run('el.fStockDelta.value = "both"; el.fStockDelta.dispatch("change")');
+  run('el.fStockTicker.checked = true; el.fStockTicker.dispatch("change")');
+  await run("el.saveBtn.onclick()");
+  const saved = JSON.parse(run("JSON.stringify(savedLayout.pages[0].widgets[0])"));
+  assert.equal(saved.entity_id, "sensor.quote_c");
+  assert.deepEqual(saved.stock_entities, ["sensor.quote_a", "sensor.quote_b"]);
+  assert.equal(saved.stock_view, "chart");
+  assert.equal(saved.stock_period, "ytd");
+  assert.equal(saved.stock_delta, "both");
+  assert.equal(saved.stock_ticker, true);
+  run("editor.layout = savedLayout; renderInspector()");
+  assert.equal(run("el.fStock1.value"), "sensor.quote_a");
+  assert.equal(run("el.fStockPeriod.value"), "ytd");
+  // an emptied row closes the gap; the defaults are not written
+  run('el.fStock1.value = ""; el.fStock1.dispatch("change")');
+  run('el.fStockView.value = "list"; el.fStockView.dispatch("change"); el.fStockPeriod.value = "30d"; el.fStockPeriod.dispatch("change")');
+  run('el.fStockDelta.value = "percent"; el.fStockDelta.dispatch("change"); el.fStockTicker.checked = false; el.fStockTicker.dispatch("change")');
+  await run("el.saveBtn.onclick()");
+  const plain = JSON.parse(run("JSON.stringify(savedLayout.pages[0].widgets[0])"));
+  assert.deepEqual(plain.stock_entities, ["sensor.quote_b"]);
+  for (const key of ["stock_view", "stock_period", "stock_delta", "stock_ticker"]) assert.equal(plain[key], undefined, key);
+});
+
 test("sensor format and unit: offered by device class, saved, kept while hidden and reset to the default", async () => {
   const run = setupInspector("sensor", "sensor.sun_next_rising");
   run("renderEntityOptions = () => {}");
@@ -700,7 +736,7 @@ test("Every Inspector entity input has a Search button", () => {
   const html = fs.readFileSync("components/webui/www/index.html", "utf8");
   const entityInputs = [...html.matchAll(/<input\b[^>]*id="(f[^" ]+)"[^>]*list="[^"]*Options"[^>]*>/g)].map(match=>match[1]);
   entityInputs.push("fRoomEntities", "fRoomExtraEntity");
-  assert.equal(entityInputs.length, 40);
+  assert.equal(entityInputs.length, 47);
   for (const id of entityInputs) {
     const row = new RegExp(`<div class="entity-input-row">\\s*<(?:input|textarea|select)\\b[^>]*id="${id}"[^>]*>[\\s\\S]*?data-inspector-entity-target="[^"]+"[\\s\\S]*?</div>`);
     assert.match(html, row, `${id} lacks a Search button`);

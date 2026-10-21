@@ -28,9 +28,13 @@ static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
 /* Precision beyond this is noise on a panel (and keeps the output short). */
 #define DP_MAX_DIGITS 6
 
-/* Read by every task, under the lock: hashes of the entity ids and their precision. */
+/* The integration of an entity, as far as a reader needs it (ha_display_precision_platform()). */
+typedef enum { DP_PLATFORM_PENDING = 0, DP_PLATFORM_FAILED, DP_PLATFORM_OTHER, DP_PLATFORM_YAHOO, DP_PLATFORM_EASY_STOCK } dp_platform_t;
+
+/* Read by every task, under the lock: hashes of the entity ids, their precision and integration. */
 static uint32_t *s_hash;
 static int8_t *s_digits;
+static uint8_t *s_platform;
 static size_t s_known;
 
 /* HA task only: the entities still to ask for and the request in flight. */
@@ -64,21 +68,24 @@ static bool dp_ensure_buffers(void)
     if (s_hash == NULL) {
         uint32_t *hash = DP_CALLOC(DP_CAPACITY, sizeof(*hash));
         int8_t *digits = DP_CALLOC(DP_CAPACITY, sizeof(*digits));
-        if (hash == NULL || digits == NULL) {
+        uint8_t *platform = DP_CALLOC(DP_CAPACITY, sizeof(*platform));
+        if (hash == NULL || digits == NULL || platform == NULL) {
             free(hash);
             free(digits);
+            free(platform);
             return false;
         }
         DP_LOCK();
         s_hash = hash;
         s_digits = digits;
+        s_platform = platform;
         DP_UNLOCK();
     }
     return s_wanted != NULL;
 }
 
-/* Returns whether the stored precision changed. */
-static bool dp_store(const char *entity_id, int digits)
+/* Returns whether the stored precision or integration changed. A failed lookup keeps the precision known before. */
+static bool dp_store(const char *entity_id, int digits, dp_platform_t platform)
 {
     uint32_t h = dp_hash(entity_id);
     bool changed = false;
@@ -90,10 +97,15 @@ static bool dp_store(const char *entity_id, int digits)
     if (i == s_known && s_known < DP_CAPACITY) {
         s_hash[i] = h;
         s_digits[i] = HA_DISPLAY_PRECISION_UNKNOWN;
+        s_platform[i] = DP_PLATFORM_PENDING;
         s_known++;
     }
-    if (i < s_known && s_digits[i] != digits) {
+    if (i < s_known && platform != DP_PLATFORM_FAILED && s_digits[i] != digits) {
         s_digits[i] = (int8_t)digits;
+        changed = true;
+    }
+    if (i < s_known && s_platform[i] != platform) {
+        s_platform[i] = (uint8_t)platform;
         changed = true;
     }
     DP_UNLOCK();
@@ -112,6 +124,27 @@ static int dp_entry_digits(const cJSON *entry)
         return HA_DISPLAY_PRECISION_UNKNOWN;
     }
     return digits->valuedouble > DP_MAX_DIGITS ? DP_MAX_DIGITS : (int)digits->valuedouble;
+}
+
+static dp_platform_t dp_entry_platform(const cJSON *entry)
+{
+    const cJSON *platform = cJSON_GetObjectItemCaseSensitive(entry, "platform");
+    if (!cJSON_IsString(platform) || platform->valuestring == NULL) return DP_PLATFORM_OTHER;
+    if (strcmp(platform->valuestring, "yahoofinance") == 0) return DP_PLATFORM_YAHOO;
+    if (strcmp(platform->valuestring, "easy_stock") == 0) return DP_PLATFORM_EASY_STOCK;
+    return DP_PLATFORM_OTHER;
+}
+
+/* The entities first .. end-1 of the wanted list got no answer: their integration is unknown for good (until the next
+ * lookup), so a reader can say so instead of waiting. */
+static void dp_mark_failed(size_t first, size_t end, ha_display_precision_changed_fn changed)
+{
+    for (size_t i = first; i < end && i < s_wanted_count; i++) {
+        const char *id = s_wanted + i * APP_MAX_ENTITY_ID_LEN;
+        if (dp_store(id, HA_DISPLAY_PRECISION_UNKNOWN, DP_PLATFORM_FAILED) && changed != NULL) {
+            changed(id);
+        }
+    }
 }
 
 void ha_display_precision_set_wanted(const char *entity_ids, size_t count)
@@ -138,6 +171,7 @@ bool ha_display_precision_is_due(int64_t now_ms)
             return false;
         }
         s_inflight_id = 0; /* never answered: skip that batch rather than ask forever */
+        dp_mark_failed(s_inflight_first, s_next, NULL); /* readers notice on their next state update */
     }
     return s_next < s_wanted_count;
 }
@@ -185,14 +219,17 @@ bool ha_display_precision_handle_result(
     }
     s_inflight_id = 0;
     if (!success || !cJSON_IsObject(result)) {
+        dp_mark_failed(s_inflight_first, s_wanted_count, changed);
         s_next = s_wanted_count; /* a Home Assistant without get_entries: stop asking */
         return true;
     }
     for (size_t i = s_inflight_first; i < s_next; i++) {
         const char *id = s_wanted + i * APP_MAX_ENTITY_ID_LEN;
         const cJSON *entry = cJSON_GetObjectItemCaseSensitive(result, id);
+        /* an entity without a registry entry (no unique ID) is no integration's quote */
         int digits = cJSON_IsObject(entry) ? dp_entry_digits(entry) : HA_DISPLAY_PRECISION_UNKNOWN;
-        if (dp_store(id, digits) && changed != NULL) {
+        dp_platform_t platform = cJSON_IsObject(entry) ? dp_entry_platform(entry) : DP_PLATFORM_OTHER;
+        if (dp_store(id, digits, platform) && changed != NULL) {
             changed(id);
         }
     }
@@ -215,6 +252,30 @@ int ha_display_precision_get(const char *entity_id)
     }
     DP_UNLOCK();
     return digits;
+}
+
+const char *ha_display_precision_platform(const char *entity_id)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return NULL;
+    }
+    uint32_t h = dp_hash(entity_id);
+    dp_platform_t platform = DP_PLATFORM_PENDING;
+    DP_LOCK();
+    for (size_t i = 0; i < s_known; i++) {
+        if (s_hash[i] == h) {
+            platform = (dp_platform_t)s_platform[i];
+            break;
+        }
+    }
+    DP_UNLOCK();
+    switch (platform) {
+    case DP_PLATFORM_FAILED: return "";
+    case DP_PLATFORM_OTHER: return "other";
+    case DP_PLATFORM_YAHOO: return "yahoofinance";
+    case DP_PLATFORM_EASY_STOCK: return "easy_stock";
+    default: return NULL;
+    }
 }
 
 bool ha_display_precision_format(const char *entity_id, const char *state, char *out, size_t out_len)

@@ -26,7 +26,8 @@ Click an empty spot (or press Esc) to leave a widget and edit the page itself.
 
 The header groups the page title, status and **Text size** on the left. Undo, Redo, Reload and Save are icon buttons on the
 right, beside the JSON menu and the dark/light toggle. Hover an icon to read its action; JSON offers Export and
-Import JSON, from a file or pasted text. The info button beside Text size shows the panel's current font sizes.
+Import JSON, from a file or pasted text. The info button beside Text size shows the panel's current font sizes. With **Panel follows** (off by default, remembered by
+the browser) the panel shows the page you choose in the editor, as far as it is saved.
 Standard, Larger and Largest apply immediately to the whole
 panel and are saved on their own, independent of the layout's Save button.
 
@@ -49,7 +50,7 @@ The widget inspector has the same order for every widget. Its header shows the w
 in place) and the main entity's device class and unit. Below follow **Entities** (what the
 tile reads or controls, including its data source), **Display** (what it shows) and **Controls** (what tap and
 long press do); a section without options is left out. **Placement** comes last and shows position and size in
-its heading; it is open while the inspector fits without scrolling. A click on a section heading folds it. Optional groups such as the Energy timeline's battery and forecast sensors fold and
+its heading; it starts folded, since the canvas moves and sizes a widget by mouse. A click on a section heading folds it. Optional groups such as the Energy timeline's battery and forecast sensors fold and
 start open when something is set in them. A section with explanations has an info icon behind its heading;
 click it to read them in a popup. Close it with Escape, the Close button or a click outside.
 The page inspector has the same form: the kind of page and its title (edit it in place), then **Navigation**

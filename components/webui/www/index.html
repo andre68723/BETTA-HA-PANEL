@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="/css/layout-toolbar.css" />
   <link rel="stylesheet" href="/css/layout-actions.css" />
   <link rel="stylesheet" href="/css/evcc-wallbox.css" />
+  <link rel="stylesheet" href="/css/stock-quotes.css" />
   <link rel="stylesheet" href="/css/inspector.css" />
 </head>
 <body>
@@ -162,6 +163,7 @@
               <button id="addSolarForecastBtn" type="button">+ Solar Forecast</button>
               <button id="addPriceForecastBtn" type="button">+ Price Forecast</button>
               <button id="addParqetPortfolioBtn" type="button">+ Parqet Portfolio</button>
+              <button id="addStockQuotesBtn" type="button">+ Stocks &amp; ETFs</button>
               <button id="addTodoListBtn" type="button">+ Todo List</button>
               <button id="addMediaPlayerBtn" type="button">+ Media Player</button>
               <button id="addSonosFavoritesBtn" type="button">+ Sonos Favorites</button>
@@ -832,6 +834,10 @@
             <summary id="layoutTextSizeInfoBtn" title="Text sizes on this panel" aria-label="Text sizes on this panel">&#9432;</summary>
             <div id="settingsUiTextStepInfo" class="meta no-shorten" aria-live="polite"></div>
           </details>
+          <label class="layout-follow-page" id="followPageLabel" title="Show the page chosen here on the panel too">
+            <input id="followPageToggle" type="checkbox" />
+            <span id="followPageText">Panel follows</span>
+          </label>
         </div>
         <div class="workspace-top-right">
           <span id="unsavedBadge" class="unsaved-badge hidden" role="status">Unsaved changes</span>
@@ -1106,6 +1112,51 @@
                     </div>
                   </label>
                   </div>
+                  <div id="stockEntities" class="hidden">
+                  <label><span id="fStock1Label">Quote 2</span>
+                    <div class="entity-input-row">
+                      <input id="fStock1" type="text" list="sensorEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="stock_2">Search</button>
+                    </div>
+                  </label>
+                  <label><span id="fStock2Label">Quote 3</span>
+                    <div class="entity-input-row">
+                      <input id="fStock2" type="text" list="sensorEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="stock_3">Search</button>
+                    </div>
+                  </label>
+                  <label><span id="fStock3Label">Quote 4</span>
+                    <div class="entity-input-row">
+                      <input id="fStock3" type="text" list="sensorEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="stock_4">Search</button>
+                    </div>
+                  </label>
+                  <label><span id="fStock4Label">Quote 5</span>
+                    <div class="entity-input-row">
+                      <input id="fStock4" type="text" list="sensorEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="stock_5">Search</button>
+                    </div>
+                  </label>
+                  <label><span id="fStock5Label">Quote 6</span>
+                    <div class="entity-input-row">
+                      <input id="fStock5" type="text" list="sensorEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="stock_6">Search</button>
+                    </div>
+                  </label>
+                  <label><span id="fStock6Label">Quote 7</span>
+                    <div class="entity-input-row">
+                      <input id="fStock6" type="text" list="sensorEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="stock_7">Search</button>
+                    </div>
+                  </label>
+                  <label><span id="fStock7Label">Quote 8</span>
+                    <div class="entity-input-row">
+                      <input id="fStock7" type="text" list="sensorEntityOptions" />
+                      <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="stock_8">Search</button>
+                    </div>
+                  </label>
+                  <div class="field-hint" id="fStockHint">Sensors of Yahoo Finance or Easy Stock, in this order.</div>
+                  </div>
                   <div id="vacuumOptions" class="hidden">
                     <label><span id="fVacuumDefaultModeLabel">Default cleaning program</span>
                       <select id="fVacuumDefaultMode"></select>
@@ -1150,7 +1201,7 @@
                         <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="room_extra">Search</button>
                       </div>
                     </label>
-                    <div class="meta" id="fRoomExtraHint"></div>
+                    <div class="meta no-shorten" id="fRoomExtraHint"></div>
                     <label class="row">
                       <input id="fRoomControls" type="checkbox" />
                       <span id="fRoomControlsLabel">Controls on the card</span>
@@ -1573,6 +1624,34 @@
                       <input id="fPriceAverage" type="number" min="0" max="5" step="0.001" placeholder="calculated" />
                     </label>
                   </div>
+                  <div id="stockOptions" class="slider-options hidden">
+                    <label><span id="fStockViewLabel">View</span>
+                      <select id="fStockView">
+                        <option value="list" id="fStockViewList">List</option>
+                        <option value="chart" id="fStockViewChart">Charts</option>
+                      </select>
+                    </label>
+                    <label><span id="fStockPeriodLabel">Period</span>
+                      <select id="fStockPeriod">
+                        <option value="1d" id="fStockPeriod1d">1 day</option>
+                        <option value="1w" id="fStockPeriod1w">1 week</option>
+                        <option value="30d" id="fStockPeriod30d">30 days</option>
+                        <option value="ytd" id="fStockPeriodYtd">Year to date</option>
+                        <option value="1y" id="fStockPeriod1y">1 year</option>
+                      </select>
+                    </label>
+                    <label><span id="fStockDeltaLabel">Change</span>
+                      <select id="fStockDelta">
+                        <option value="percent" id="fStockDeltaPercent">Percent</option>
+                        <option value="absolute" id="fStockDeltaAbsolute">Amount</option>
+                        <option value="both" id="fStockDeltaBoth">Amount and percent</option>
+                      </select>
+                    </label>
+                    <label class="row">
+                      <input id="fStockTicker" type="checkbox" />
+                      <span id="fStockTickerLabel">Show the symbol</span>
+                    </label>
+                  </div>
                   <div id="parqetOptions" class="slider-options hidden">
                     <div class="field-hint" id="fParqetHint">The tile reads the sensors above for MAX. The other intervals (1D, 1W, 1M, YTD) are requested from the Parqet integration; the start view and interval apply when the tile is built, the tabs and buttons change them on the panel. Hide amounts shows percentages only.</div>
                     <label class="row">
@@ -1866,6 +1945,7 @@
   <script src="/js/readability.js"></script>
   <script src="/js/bambu-printer.js"></script>
   <script src="/js/evcc-wallbox.js"></script>
+  <script src="/js/stock-quotes.js"></script>
   <script src="/js/energy-timeline-colors.js"></script>
   <script src="/js/tile-previews.js"></script>
   <script src="/js/layout-history.js"></script>

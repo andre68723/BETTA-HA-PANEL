@@ -39,6 +39,7 @@
 #include "layout/layout_validate.h"
 bool test_energy_timeline_colors(void);
 bool test_sensor_value(void);
+bool test_quote(void);
 bool test_timestamp_format(void);
 #include "layout/widget_types.h"
 #include "settings/brightness_model.h"
@@ -290,6 +291,24 @@ static void test_layout(void)
         "battery_soc_entity_id");
     expect_invalid("energy timeline too small",
         "\"type\":\"energy_timeline\",\"entity_id\":\"sensor.imp\",\"rect\":{\"x\":0,\"y\":0,\"w\":200,\"h\":150}", NULL);
+
+    /* Stocks & ETFs: up to eight sensors, its options. */
+    const char *stock_rect = "\"rect\":{\"x\":0,\"y\":0,\"w\":300,\"h\":200}";
+    expect_valid("stock quotes list", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_entities\":"
+        "[\"sensor.b\",\"sensor.c\"],\"stock_view\":\"chart\",\"stock_period\":\"ytd\",\"stock_delta\":\"both\","
+        "\"stock_ticker\":true,%s", stock_rect));
+    expect_invalid("stock quotes nine", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_entities\":"
+        "[\"sensor.b\",\"sensor.c\",\"sensor.d\",\"sensor.e\",\"sensor.f\",\"sensor.g\",\"sensor.h\",\"sensor.i\"],%s", stock_rect),
+        "at most 7");
+    expect_invalid("stock quotes not a sensor", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_entities\":"
+        "[\"light.b\"],%s", stock_rect), "stock_entities");
+    expect_invalid("stock quotes period", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_period\":\"max\",%s",
+        stock_rect), "stock_period");
+    expect_invalid("stock quotes view", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_view\":\"grid\",%s",
+        stock_rect), "stock_view");
+    expect_invalid("stock quotes ticker", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_ticker\":1,%s",
+        stock_rect), "stock_ticker");
+    expect_invalid("stock quotes without a quote", W("\"type\":\"stock_quotes\",%s", stock_rect), NULL);
 
     /* Room card extra field: old layouts, valid choices, and every way to get it wrong. */
     const char *room_rect = "\"rect\":{\"x\":0,\"y\":0,\"w\":240,\"h\":140}";
@@ -910,6 +929,14 @@ static void test_ha_layout_entities(void)
     CHECK(ha_layout_entities_contains(set.ids, set.count, "sensor.manual"));
     cJSON_Delete(layout);
 
+    /* Stocks & ETFs: the first quote and the list after it. */
+    layout = cJSON_Parse("{\"pages\":[{\"widgets\":[{\"type\":\"stock_quotes\",\"entity_id\":\"sensor.quote_a\","
+                         "\"stock_entities\":[\"sensor.quote_b\",\"sensor.quote_c\"]}]}]}");
+    ha_layout_entities_collect(layout, &set);
+    CHECK_INT((int)set.count, 3);
+    CHECK(ha_layout_entities_contains(set.ids, set.count, "sensor.quote_c"));
+    cJSON_Delete(layout);
+
     /* Every widget ID slot must reach the HA subscription set. */
     const char *widget_keys[] = {
         "entity_id", "secondary_entity_id", "tertiary_entity_id",
@@ -1211,7 +1238,8 @@ static void test_ha_display_precision(void)
         "\"number.limit\":{\"options\":{}},\"sensor.plain\":null}");
     CHECK(ha_display_precision_handle_result(8, true, result, test_precision_changed));
     cJSON_Delete(result);
-    CHECK_INT(s_precision_changes, 2);
+    /* every entity of the batch learned its integration ("other" without an entry), two also a precision */
+    CHECK_INT(s_precision_changes, HA_DISPLAY_PRECISION_BATCH);
     CHECK_INT(ha_display_precision_get("sensor.power"), 2);
     CHECK_INT(ha_display_precision_get("sensor.solar"), 0);
     CHECK_INT(ha_display_precision_get("number.limit"), HA_DISPLAY_PRECISION_UNKNOWN);
@@ -1244,7 +1272,7 @@ static void test_ha_display_precision(void)
     result = cJSON_Parse("{\"sensor.power\":{\"options\":{\"sensor\":{\"suggested_display_precision\":2}}}}");
     CHECK(ha_display_precision_handle_result(10, true, result, test_precision_changed));
     cJSON_Delete(result);
-    CHECK_INT(s_precision_changes, 2);
+    CHECK_INT(s_precision_changes, HA_DISPLAY_PRECISION_BATCH);
     ha_display_precision_set_wanted(&ids[0][0], 20);
     req = ha_display_precision_next_request(11, 4000);
     cJSON_Delete(req);
@@ -2889,6 +2917,7 @@ int main(void)
     test_datetime_value();
     CHECK(test_timestamp_format());
     CHECK(test_sensor_value());
+    CHECK(test_quote());
     test_lock_state();
     test_select_options();
     test_settings_restart();

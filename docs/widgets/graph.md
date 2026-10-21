@@ -29,7 +29,7 @@ For **History from Home Assistant**: the [Recorder](https://www.home-assistant.i
 | Render points (empty = auto) | the number of points drawn |
 | Graph line color | the line colour |
 
-<a href="../img/examples/inspector-graph.png"><img src="../img/examples/inspector-graph.png" alt="Inspector of the Graph widget" loading="lazy" width="340" height="630"></a>
+<a href="../img/examples/inspector-graph.png"><img src="../img/examples/inspector-graph.png" alt="Inspector of the Graph widget" loading="lazy" width="340" height="511"></a>
 
 *Inspector in the web editor, with the widget of the preview above.*
 

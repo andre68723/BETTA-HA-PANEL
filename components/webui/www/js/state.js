@@ -66,6 +66,8 @@ function widgetSizeLimitsForCanvas(type) {
     case "parqet_portfolio":
     case "price_forecast":
       return { minW: 240, minH: 150, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
+    case "stock_quotes":
+      return { minW: 240, minH: 120, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "select_tile":
       return { minW: 160, minH: 80, maxW: CANVAS_WIDTH, maxH: 200 };
     case "datetime_tile":
@@ -340,9 +342,18 @@ const el = {
   fPriceAverage: document.getElementById("fPriceAverage"),
   fPriceAverageLabel: document.getElementById("fPriceAverageLabel"),
   addParqetPortfolioBtn: document.getElementById("addParqetPortfolioBtn"),
+  addStockQuotesBtn: document.getElementById("addStockQuotesBtn"),
+  followPageToggle: document.getElementById("followPageToggle"),
   parqetOptions: document.getElementById("parqetOptions"),
   parqetEntities: document.getElementById("parqetEntities"),
   fParqetDividends: document.getElementById("fParqetDividends"),
+  stockEntities: document.getElementById("stockEntities"),
+  stockOptions: document.getElementById("stockOptions"),
+  ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map(n => [`fStock${n}`, document.getElementById(`fStock${n}`)])),
+  fStockView: document.getElementById("fStockView"),
+  fStockPeriod: document.getElementById("fStockPeriod"),
+  fStockDelta: document.getElementById("fStockDelta"),
+  fStockTicker: document.getElementById("fStockTicker"),
   fParqetDividendsLabel: document.getElementById("fParqetDividendsLabel"),
   fParqetReturn: document.getElementById("fParqetReturn"),
   fParqetReturnLabel: document.getElementById("fParqetReturnLabel"),

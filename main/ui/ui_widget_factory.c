@@ -50,6 +50,9 @@ esp_err_t w_solar_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, 
 void w_solar_forecast_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_solar_forecast_mark_unavailable(ui_widget_instance_t *instance);
 esp_err_t w_parqet_portfolio_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
+esp_err_t w_stock_quotes_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
+void w_stock_quotes_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
+void w_stock_quotes_mark_unavailable(ui_widget_instance_t *instance);
 void w_parqet_portfolio_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_parqet_portfolio_mark_unavailable(ui_widget_instance_t *instance);
 esp_err_t w_price_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
@@ -211,6 +214,9 @@ static esp_err_t ui_widget_factory_create_inner(const ui_widget_def_t *def, lv_o
     if (strcmp(def->type, "solar_forecast") == 0) {
         return w_solar_forecast_create(def, parent, out_instance);
     }
+    if (strcmp(def->type, "stock_quotes") == 0) {
+        return w_stock_quotes_create(def, parent, out_instance);
+    }
     if (strcmp(def->type, "parqet_portfolio") == 0) {
         return w_parqet_portfolio_create(def, parent, out_instance);
     }
@@ -303,6 +309,8 @@ static void ui_widget_factory_apply_state_inner(ui_widget_instance_t *instance, 
         w_weather_tile_apply_state(instance, state);
     } else if (strcmp(instance->type, "solar_forecast") == 0) {
         w_solar_forecast_apply_state(instance, state);
+    } else if (strcmp(instance->type, "stock_quotes") == 0) {
+        w_stock_quotes_apply_state(instance, state);
     } else if (strcmp(instance->type, "parqet_portfolio") == 0) {
         w_parqet_portfolio_apply_state(instance, state);
     } else if (strcmp(instance->type, "price_forecast") == 0) {
@@ -399,6 +407,8 @@ static void ui_widget_factory_mark_unavailable_inner(ui_widget_instance_t *insta
         w_weather_tile_mark_unavailable(instance);
     } else if (strcmp(instance->type, "solar_forecast") == 0) {
         w_solar_forecast_mark_unavailable(instance);
+    } else if (strcmp(instance->type, "stock_quotes") == 0) {
+        w_stock_quotes_mark_unavailable(instance);
     } else if (strcmp(instance->type, "parqet_portfolio") == 0) {
         w_parqet_portfolio_mark_unavailable(instance);
     } else if (strcmp(instance->type, "price_forecast") == 0) {
@@ -461,7 +471,7 @@ bool ui_widget_factory_needs_refresh_on_show(const char *type)
      * pages. Replaying them rebuilds their visuals before the first frame. */
     static const char *const kStateOnly[] = {
         "button", "car_widget", "climate_tile", "contact_tile", "cover_tile", "fan_tile", "heating_tile",
-        "light_tile", "room_tile", "lock_tile", "alarm_tile", "scene_tile", "select_tile", "datetime_tile", "sensor", "slider", "gauge", "solar_forecast", "price_forecast", "parqet_portfolio", "energy_timeline",
+        "light_tile", "room_tile", "lock_tile", "alarm_tile", "scene_tile", "select_tile", "datetime_tile", "sensor", "slider", "gauge", "solar_forecast", "price_forecast", "parqet_portfolio", "stock_quotes", "energy_timeline",
         "bambu_printer", "wallbox_evcc", "sonos_favorites",
     };
     if (type == NULL) {

@@ -32,6 +32,9 @@
  * the XIRR tertiary_entity_id. */
 #define UI_PARQET_EXTRA_DIVIDENDS 0
 #define UI_PARQET_EXTRA_RETURN 1 /* JSON key return_entity_id: the unrealised return in percent */
+/* Stocks & ETFs: entity_id is the first quote, extra_entity_id[0 .. 6] the others (JSON array stock_entities); the view is
+ * display_mode ("list" or "chart", JSON key stock_view). */
+#define UI_STOCK_MAX_QUOTES 8
 
 typedef struct {
     char id[APP_MAX_WIDGET_ID_LEN];
@@ -93,6 +96,9 @@ typedef struct {
     char parqet_view[16];     /* parqet_portfolio: "performance" (default) or "holdings" */
     char parqet_interval[8];  /* parqet_portfolio: "1d", "1w", "1m", "ytd" or "max" (default: the sensors' own figures) */
     float price_average;    /* price_forecast: fixed average in EUR/kWh, 0 = none (the day's own average, or the sensor in secondary_entity_id) */
+    char stock_period[8];   /* stock_quotes: "1d", "1w", "30d" (default), "ytd" or "1y": the charts' and the detail's start period */
+    char stock_delta[12];   /* stock_quotes: "percent" (default), "absolute" or "both" */
+    bool stock_ticker;      /* stock_quotes: the symbol after the name, default false */
     int x;
     int y;
     int w;

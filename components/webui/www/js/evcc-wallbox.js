@@ -2,7 +2,7 @@
 // Copyright (c) 2026 andre68723
 // Explicit loadpoint bindings; discovery never rewrites existing bindings in the background.
 const EVCC_BINDINGS = [["entity_id", "Mode", "select"], ["evcc_vehicle_entity_id", "Vehicle", "select"], ["evcc_target_soc_entity_id", "Target", "number,select"], ["evcc_power_entity_id", "Power", "sensor"], ["evcc_soc_entity_id", "Soc", "sensor"], ["evcc_connected_entity_id", "Connected", "binary_sensor"], ["evcc_charging_entity_id", "Charging", "binary_sensor"], ["evcc_disabled_entity_id", "Disabled", "binary_sensor"], ["evcc_effective_soc_entity_id", "Effective", "sensor"], ["evcc_energy_entity_id", "Energy", "sensor"], ["evcc_remaining_entity_id", "Remaining", "sensor"]];
-let evccLoadpoints = [], evccLookupGeneration = 0;
+let evccLoadpoints = [], evccLookupGeneration = 0, evccSearched = false;
 function evccInspectorInputs() { return EVCC_BINDINGS.map(([, field]) => el[`fEvcc${field}`]).filter(Boolean); }
 function evccResetInspector() {
   evccLookupGeneration++;
@@ -14,7 +14,20 @@ function evccLoadInspector(widget) {
   el.evccFields?.classList.toggle("hidden", !active);
   for (const [key, field] of EVCC_BINDINGS) if (el[`fEvcc${field}`]) el[`fEvcc${field}`].value = active ? String(widget[key] || "") : "";
   if (el.fEntityWrap && active) el.fEntityWrap.classList.add("hidden");
-  if (el.fEvccLoadpoint) el.fEvccLoadpoint.value = active ? (widget.evcc_loadpoint_id || "") : "";
+  const select = el.fEvccLoadpoint;
+  if (active && typeof select?.replaceChildren === "function" && !evccLoadpoints.length) {
+    /* Before the first search the list holds only the saved loadpoint, or says the search is running. */
+    const option = document.createElement("option");
+    option.value = widget.evcc_loadpoint_id || "";
+    option.textContent = widget.evcc_loadpoint_id ? t("evcc.saved_loadpoint") : t("evcc.finding");
+    select.replaceChildren(option);
+  }
+  if (select) select.value = active ? (widget.evcc_loadpoint_id || "") : "";
+  /* the loadpoints are looked up once per editor session; Find loadpoints asks again */
+  if (active && !evccSearched) {
+    evccSearched = true;
+    void evccDetectLoadpoints();
+  }
 }
 function evccSaveInspector(widget, type) {
   if (type === "wallbox_evcc") {
@@ -56,7 +69,7 @@ async function evccDetectLoadpoints() {
           }
           select.value = widget.evcc_loadpoint_id || "";
         }
-        evccStatus(evccLoadpoints.length ? t("evcc.choose") : t("evcc.none_found"));
+        evccStatus(!evccLoadpoints.length ? t("evcc.none_found") : widget.evcc_loadpoint_id ? "" : t("evcc.choose"));
         return;
       }
       await new Promise(resolve => setTimeout(resolve, 400));

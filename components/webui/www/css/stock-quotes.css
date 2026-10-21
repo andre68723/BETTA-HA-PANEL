@@ -1,0 +1,21 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 */
+/* Stocks & ETFs preview (js/stock-quotes.js): rows of name, price and change, or stacked charts, as w_stock_quotes.c lays them out. */
+.tp-stock { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; overflow: hidden; }
+.tp-stock .tp-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+.tp-stock-list { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow: hidden; }
+.tp-stock-row { display: flex; align-items: baseline; gap: 8px; font-size: 14px; }
+.tp-stock-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-stock-row span small { display: block; font-size: 11px; opacity: 0.6; }
+.tp-stock-row b { font-weight: 500; white-space: nowrap; }
+.tp-stock-row em { font-style: normal; min-width: 4.4em; text-align: right; white-space: nowrap; }
+.tp-stock-row em small { display: block; font-size: 11px; }
+.tp-stock .up { color: #4fcb7e; }
+.tp-stock .down { color: #f26d6d; }
+.tp-stock-chips { display: flex; gap: 4px; font-size: 11px; }
+.tp-stock-chips em { flex: 1; font-style: normal; text-align: center; padding: 2px 0; border-radius: 8px; opacity: 0.7; }
+.tp-stock-chips em.on { background: rgba(255, 255, 255, 0.2); opacity: 1; }
+.tp-stock-section { display: flex; flex-direction: column; gap: 1px; }
+.tp-stock-section > small { font-size: 11px; }
+.tp-stock-spark { width: 100%; height: 36px; }
+.tp-stock-spark polyline { fill: none; stroke: currentColor; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.tp-stock-short .tp-stock-row { font-size: 12px; }

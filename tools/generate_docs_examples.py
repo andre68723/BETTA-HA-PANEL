@@ -26,7 +26,7 @@ OUT = REPO / "docs/img/examples"
 WWW = REPO / "components/webui/www"
 # Widgets whose guide shows the inspector: many options, or options that depend on the entity.
 # Wallbox and Bambu printer are left out: their inspector fills from device detection, which the demo API does not offer.
-INSPECTOR_KINDS = ["sensor", "graph", "gauge", "price_forecast", "parqet_portfolio", "room_tile", "energy_timeline"]
+INSPECTOR_KINDS = ["sensor", "graph", "gauge", "price_forecast", "parqet_portfolio", "stock_quotes", "room_tile", "energy_timeline"]
 
 
 def fixtures():

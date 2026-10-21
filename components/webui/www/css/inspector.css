@@ -40,6 +40,7 @@ dialog.inspector-help-dialog { margin:auto; width:min(560px,calc(100vw - 36px));
 .inspector-help-section + .inspector-help-section { margin-top:12px; border-top:1px solid var(--line); }
 .inspector-help-section h3 { margin:0 0 6px; font-size:12px; font-weight:700; color:var(--muted); }
 .inspector-help-section p { margin:6px 0; }
+.inspector-help-section strong { font-weight:650; color:var(--text); }
 .inspector-help-section code { font-size:.92em; padding:1px 4px; border-radius:4px; background:var(--surf-2); }
 .inspector-help-footer { margin-top:16px; padding-top:12px; border-top:1px solid var(--line); font-size:13px; }
 .inspector-help-footer a { color:var(--accent); text-decoration:none; }
@@ -117,7 +118,12 @@ dialog.inspector-help-dialog { margin:auto; width:min(560px,calc(100vw - 36px));
 /* Entity rows (js/inspector-layout.js): role on the left, the entity's name on the right; a click opens the picker. */
 .compact-inspector label.inspector-entity-label, .compact-inspector .inspector-sec .grid-2 > label.inspector-entity-label { display:grid; grid-template-columns:minmax(0,40%) minmax(0,1fr);
   align-items:center; gap:2px 6px; cursor:pointer; }
-.compact-inspector label.inspector-entity-label > :not(span:first-child):not(.inspector-entity-row) { grid-column:1 / -1; }
+.compact-inspector label.inspector-entity-label > :not(span:first-child):not(.inspector-entity-row):not(.inspector-entity-move) { grid-column:1 / -1; }
+/* Stocks & ETFs: a row that can move up has the button in a third column. */
+.compact-inspector label.inspector-entity-label:has(> .inspector-entity-move) { grid-template-columns:minmax(0,40%) minmax(0,1fr) auto; }
+.inspector-entity-move { width:24px; height:24px; padding:0; border:1px solid transparent; border-radius:6px; background:none;
+  color:var(--muted); font-size:13px; cursor:pointer; }
+.inspector-entity-move:hover { border-color:var(--line-strong); color:var(--text); }
 .inspector-entity-row { display:flex; align-items:center; gap:6px; min-width:0; padding:5px 7px; border:1px solid transparent;
   border-radius:7px; background:none; color:var(--text); font-size:12px; text-align:left; cursor:pointer; }
 .inspector-entity-row:hover:not(:disabled) { border-color:var(--line-strong); background:var(--overlay-1); }

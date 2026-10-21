@@ -133,7 +133,7 @@ function allowedEntityDomainsForWidgetType(
 ) {
   if (type === "wallbox_evcc") return ["select"];
   if (type === "empty_tile") return [];
-  if (type === "sensor" || type === "graph" || type === "gauge" || type === "solar_forecast" || type === "price_forecast" || type === "parqet_portfolio" || type === "car_widget" || type === "bambu_printer" || type === "energy_timeline") return ["sensor"];
+  if (type === "sensor" || type === "graph" || type === "gauge" || type === "solar_forecast" || type === "price_forecast" || type === "parqet_portfolio" || type === "stock_quotes" || type === "car_widget" || type === "bambu_printer" || type === "energy_timeline") return ["sensor"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     return buttonModeRequiresMediaPlayer(normalizedMode) ? ["media_player"] : ["switch", "media_player"];
@@ -660,6 +660,7 @@ const INSPECTOR_EXTRA_ENTITY_FIELDS = [
   ["vacuum_tile", "vacuum_battery", "fVacuumBattery", "sensor", "vacuum_battery"],
   ["parqet_portfolio", "parqet_dividends", "fParqetDividends", "sensor", "parqet_dividends"],
   ["parqet_portfolio", "parqet_return", "fParqetReturn", "sensor", "parqet_return"],
+  ...[2, 3, 4, 5, 6, 7, 8].map(n => ["stock_quotes", `stock_${n}`, `fStock${n - 1}`, "sensor", "stock_quote_any"]),
   ["bambu_printer", "bambu_camera", "fBambuCamera", "camera", "bambu_camera"],
   ...["Nozzle", "Bed", "Progress", "Remaining", "Stage", "Job", "Pause", "Resume", "Stop"].map(field =>
     ["bambu_printer", `bambu_${field.toLowerCase()}`, `fBambu${field}`,

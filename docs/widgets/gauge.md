@@ -28,7 +28,7 @@ None beyond the entities.
 | LED blocks (4-30, empty = 10) | the number of segments; fewer on a short column |
 | Range minimum, Range maximum | the values the bar or arc fills between; the number shown is always the real state |
 
-<a href="../img/examples/inspector-gauge.png"><img src="../img/examples/inspector-gauge.png" alt="Inspector of the Gauge widget" loading="lazy" width="340" height="608"></a>
+<a href="../img/examples/inspector-gauge.png"><img src="../img/examples/inspector-gauge.png" alt="Inspector of the Gauge widget" loading="lazy" width="340" height="489"></a>
 
 *Inspector in the web editor, with the widget of the preview above.*
 

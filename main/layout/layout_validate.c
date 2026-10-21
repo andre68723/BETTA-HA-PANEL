@@ -472,6 +472,49 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         }
     }
 
+    if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "stock_quotes") == 0) {
+        /* Stocks & ETFs: entity_id is the first quote, stock_entities up to seven more (sensors of Yahoo Finance or Easy
+         * Stock; which one is known from the registry at run time). */
+        const char *wid = cJSON_IsString(id) ? id->valuestring : "?";
+        cJSON *more = cJSON_GetObjectItemCaseSensitive(widget, "stock_entities");
+        if (more != NULL && (!cJSON_IsArray(more) || cJSON_GetArraySize(more) > 7)) {
+            snprintf(msg, sizeof(msg), "widget %s: stock_entities must be an array of at most 7 sensor.* ids", wid);
+            layout_validation_add(result, msg);
+        } else if (more != NULL) {
+            cJSON *item = NULL;
+            cJSON_ArrayForEach(item, more) {
+                if (!cJSON_IsString(item) || !is_valid_entity_id(item->valuestring) || !entity_in_domain(item->valuestring, "sensor")) {
+                    snprintf(msg, sizeof(msg), "widget %s: stock_entities must be sensor.* ids", wid);
+                    layout_validation_add(result, msg);
+                    break;
+                }
+            }
+        }
+        static const char *const choices[][6] = {
+            {"stock_view", "list", "chart", NULL},
+            {"stock_period", "1d", "1w", "30d", "ytd", "1y"},
+            {"stock_delta", "percent", "absolute", "both", NULL},
+        };
+        for (size_t k = 0; k < sizeof(choices) / sizeof(choices[0]); k++) {
+            cJSON *item = cJSON_GetObjectItemCaseSensitive(widget, choices[k][0]);
+            if (item == NULL) continue;
+            bool ok = cJSON_IsString(item) && item->valuestring != NULL;
+            if (ok) {
+                ok = false;
+                for (size_t c = 1; c < 6 && choices[k][c] != NULL; c++) ok = ok || strcmp(item->valuestring, choices[k][c]) == 0;
+            }
+            if (!ok) {
+                snprintf(msg, sizeof(msg), "widget %s: invalid %s", wid, choices[k][0]);
+                layout_validation_add(result, msg);
+            }
+        }
+        cJSON *ticker = cJSON_GetObjectItemCaseSensitive(widget, "stock_ticker");
+        if (ticker != NULL && !cJSON_IsBool(ticker)) {
+            snprintf(msg, sizeof(msg), "widget %s: stock_ticker must be true or false", wid);
+            layout_validation_add(result, msg);
+        }
+    }
+
     if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "heating_tile") == 0) {
         if (cJSON_IsString(secondary_entity_id) && secondary_entity_id->valuestring != NULL &&
             secondary_entity_id->valuestring[0] != '\0') {

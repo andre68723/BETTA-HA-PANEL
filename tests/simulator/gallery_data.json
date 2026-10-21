@@ -1,6 +1,18 @@
 {
   "entities": {
-    "wallbox_evcc": {"evcc_energy_entity_id": "sensor.demo_evcc_energy", "evcc_remaining_entity_id": "sensor.demo_evcc_remaining", "entity_id": "select.demo_evcc_mode", "evcc_vehicle_entity_id": "select.demo_evcc_vehicle", "evcc_target_soc_entity_id": "number.demo_evcc_limit", "evcc_power_entity_id": "sensor.demo_evcc_power", "evcc_soc_entity_id": "sensor.demo_evcc_soc", "evcc_connected_entity_id": "binary_sensor.demo_evcc_connected", "evcc_charging_entity_id": "binary_sensor.demo_evcc_charging", "evcc_disabled_entity_id": "binary_sensor.demo_evcc_disabled", "evcc_effective_soc_entity_id": "sensor.demo_evcc_effective"},
+    "wallbox_evcc": {
+      "evcc_energy_entity_id": "sensor.demo_evcc_energy",
+      "evcc_remaining_entity_id": "sensor.demo_evcc_remaining",
+      "entity_id": "select.demo_evcc_mode",
+      "evcc_vehicle_entity_id": "select.demo_evcc_vehicle",
+      "evcc_target_soc_entity_id": "number.demo_evcc_limit",
+      "evcc_power_entity_id": "sensor.demo_evcc_power",
+      "evcc_soc_entity_id": "sensor.demo_evcc_soc",
+      "evcc_connected_entity_id": "binary_sensor.demo_evcc_connected",
+      "evcc_charging_entity_id": "binary_sensor.demo_evcc_charging",
+      "evcc_disabled_entity_id": "binary_sensor.demo_evcc_disabled",
+      "evcc_effective_soc_entity_id": "sensor.demo_evcc_effective"
+    },
     "sensor": "sensor.demo_room_temperature",
     "button": "switch.demo_lamp",
     "slider": "cover.demo_blind",
@@ -37,144 +49,1813 @@
     "binary_tile": "binary_sensor.demo_motion",
     "room_tile": {
       "entity_id": "sensor.demo_room_temperature",
-      "room_entities": ["light.demo_living_room", "binary_sensor.demo_motion", "binary_sensor.demo_front_door"]
+      "room_entities": [
+        "light.demo_living_room",
+        "binary_sensor.demo_motion",
+        "binary_sensor.demo_front_door"
+      ]
     },
     "vacuum_tile": "vacuum.demo_robot",
     "vacuum_map": "image.demo_robot_map",
     "todo_list": "todo.demo_shopping",
     "camera_tile": "camera.driveway",
-    "weather_report": "sensor.demo_weather_report",
     "bambu_printer": {
       "printing": {
-        "entity_id": "sensor.demo_printer_status", "nozzle_temp_entity_id": "sensor.demo_printer_nozzle",
-        "bed_temp_entity_id": "sensor.demo_printer_bed", "progress_entity_id": "sensor.demo_printer_progress",
-        "remaining_time_entity_id": "sensor.demo_printer_remaining", "stage_entity_id": "sensor.demo_printer_stage",
-        "job_name_entity_id": "sensor.demo_printer_job", "pause_entity_id": "button.demo_printer_pause",
-        "resume_entity_id": "button.demo_printer_resume", "stop_entity_id": "button.demo_printer_stop"
+        "entity_id": "sensor.demo_printer_status",
+        "nozzle_temp_entity_id": "sensor.demo_printer_nozzle",
+        "bed_temp_entity_id": "sensor.demo_printer_bed",
+        "progress_entity_id": "sensor.demo_printer_progress",
+        "remaining_time_entity_id": "sensor.demo_printer_remaining",
+        "stage_entity_id": "sensor.demo_printer_stage",
+        "job_name_entity_id": "sensor.demo_printer_job",
+        "pause_entity_id": "button.demo_printer_pause",
+        "resume_entity_id": "button.demo_printer_resume",
+        "stop_entity_id": "button.demo_printer_stop"
       }
     },
     "price_forecast": "sensor.demo_price",
     "parqet": {
-      "entity_id": "sensor.demo_portfolio_value", "secondary_entity_id": "sensor.demo_portfolio_gain",
-      "tertiary_entity_id": "sensor.demo_portfolio_xirr", "dividends_entity_id": "sensor.demo_portfolio_dividends",
+      "entity_id": "sensor.demo_portfolio_value",
+      "secondary_entity_id": "sensor.demo_portfolio_gain",
+      "tertiary_entity_id": "sensor.demo_portfolio_xirr",
+      "dividends_entity_id": "sensor.demo_portfolio_dividends",
       "return_entity_id": "sensor.demo_portfolio_return"
+    },
+    "stock": {
+      "entity_id": "sensor.demo_world_etf",
+      "stock_entities": [
+        "sensor.yahoofinance_demo_ins",
+        "sensor.yahoofinance_demo_tech",
+        "sensor.yahoofinance_demo_lon",
+        "sensor.demo_em_etf"
+      ]
     }
   },
   "parqet_perf": [
-    {"portfolio_id": "demo_p", "interval": "1d", "value_start": 52610.3, "value_end": 52840.55, "unrealized_gain": 230.2, "unrealized_return": 0.44, "realized_gain": 0.0, "dividends": 0.0, "xirr": 0.0, "ttwror": 0.44, "holdings": [{"name": "Alpha Utilities", "value": 3170.43, "weight": 6.0, "gain": 13.812, "ret": 0.792}, {"name": "Beta Global Dividend ETF", "value": 2900.1, "weight": 5.5, "gain": -9.208, "ret": -0.17600000000000002}, {"name": "Gamma Telecom", "value": 2536.35, "weight": 4.8, "gain": 6.906, "ret": 0.396}, {"name": "Delta Consumer Holdings", "value": 2325.0, "weight": 4.4, "gain": 4.604, "ret": 0.22}, {"name": "Epsilon Real Estate Trust", "value": 2113.62, "weight": 4.0, "gain": 2.302, "ret": 0.08800000000000001}], "points": [52610.0, 52644.8, 52623.6, 52616.9, 52662.4, 52680.0, 52652.5, 52664.5, 52711.5, 52709.9, 52686.0, 52716.3, 52755.0, 52737.3, 52725.7, 52769.0, 52792.0, 52765.4, 52771.8, 52819.3, 52823.2, 52797.3, 52822.6, 52864.6]},
-    {"portfolio_id": "demo_p", "interval": "1w", "value_start": 51950.0, "value_end": 52840.55, "unrealized_gain": 890.5, "unrealized_return": 1.72, "realized_gain": 0.0, "dividends": 35.2, "xirr": 0.0, "ttwror": 1.72, "holdings": [{"name": "Alpha Utilities", "value": 3170.43, "weight": 6.0, "gain": 53.43, "ret": 3.096}, {"name": "Beta Global Dividend ETF", "value": 2900.1, "weight": 5.5, "gain": -35.62, "ret": -0.6880000000000001}, {"name": "Gamma Telecom", "value": 2536.35, "weight": 4.8, "gain": 26.715, "ret": 1.548}, {"name": "Delta Consumer Holdings", "value": 2325.0, "weight": 4.4, "gain": 17.81, "ret": 0.86}, {"name": "Epsilon Real Estate Trust", "value": 2113.62, "weight": 4.0, "gain": 8.905, "ret": 0.34400000000000003}], "points": [51950.0, 52040.2, 51996.0, 51986.5, 52102.4, 52151.4, 52092.1, 52127.7, 52247.1, 52250.0, 52199.2, 52278.6, 52378.3, 52342.4, 52321.3, 52431.9, 52493.8, 52436.6, 52458.7, 52579.5, 52595.5, 52539.9, 52607.5, 52715.0, 52689.0, 52657.5, 52760.9, 52835.0, 52781.8, 52790.7]},
-    {"portfolio_id": "demo_p", "interval": "1m", "value_start": 50420.8, "value_end": 52840.55, "unrealized_gain": 2419.8, "unrealized_return": 4.8, "realized_gain": -12.4, "dividends": 211.2, "xirr": 0.0, "ttwror": 4.8, "holdings": [{"name": "Alpha Utilities", "value": 3170.43, "weight": 6.0, "gain": 145.18800000000002, "ret": 8.64}, {"name": "Beta Global Dividend ETF", "value": 2900.1, "weight": 5.5, "gain": -96.79200000000002, "ret": -1.92}, {"name": "Gamma Telecom", "value": 2536.35, "weight": 4.8, "gain": 72.59400000000001, "ret": 4.32}, {"name": "Delta Consumer Holdings", "value": 2325.0, "weight": 4.4, "gain": 48.39600000000001, "ret": 2.4}, {"name": "Epsilon Real Estate Trust", "value": 2113.62, "weight": 4.0, "gain": 24.198000000000004, "ret": 0.96}], "points": [50420.0, 50617.1, 50545.5, 50543.1, 50791.6, 50906.1, 50804.4, 50892.3, 51147.6, 51170.2, 51085.3, 51260.8, 51476.7, 51421.8, 51396.3, 51634.1, 51774.5, 51676.8, 51737.8, 51996.0, 52044.8, 51950.2, 52102.1, 52333.8, 52298.4, 52252.1, 52475.6, 52640.6, 52550.8, 52585.2, 52842.4, 52918.0]},
-    {"portfolio_id": "demo_p", "interval": "ytd", "value_start": 44100.0, "value_end": 52840.55, "unrealized_gain": 8740.5, "unrealized_return": 19.8, "realized_gain": -136.3, "dividends": 1820.4, "xirr": 9.8, "ttwror": 17.9, "holdings": [{"name": "Alpha Utilities", "value": 3170.43, "weight": 6.0, "gain": 524.43, "ret": 35.64}, {"name": "Beta Global Dividend ETF", "value": 2900.1, "weight": 5.5, "gain": -349.62, "ret": -7.920000000000001}, {"name": "Gamma Telecom", "value": 2536.35, "weight": 4.8, "gain": 262.215, "ret": 17.82}, {"name": "Delta Consumer Holdings", "value": 2325.0, "weight": 4.4, "gain": 174.81, "ret": 9.9}, {"name": "Epsilon Real Estate Trust", "value": 2113.62, "weight": 4.0, "gain": 87.405, "ret": 3.9600000000000004}], "points": [44100.0, 44583.5, 44395.3, 44380.1, 44992.1, 45269.3, 45005.8, 45216.3, 45845.4, 45892.6, 45671.2, 46100.8, 46631.4, 46484.9, 46411.9, 46997.1, 47339.1, 47085.6, 47228.7, 47865.2, 47977.9, 47732.2, 48102.7, 48672.7, 48575.2, 48450.1, 48999.7, 49403.0, 49169.3, 49246.1, 49879.8, 50059.6, 49799.4, 50106.5, 50707.4, 50665.2, 50495.0, 51000.9, 51460.6, 51256.1, 51268.9, 51889.9, 52136.9, 51872.1, 52113.2, 52735.7, 52754.0, 52546.6]}
+    {
+      "portfolio_id": "demo_p",
+      "interval": "1d",
+      "value_start": 52610.3,
+      "value_end": 52840.55,
+      "unrealized_gain": 230.2,
+      "unrealized_return": 0.44,
+      "realized_gain": 0.0,
+      "dividends": 0.0,
+      "xirr": 0.0,
+      "ttwror": 0.44,
+      "holdings": [
+        {
+          "name": "Alpha Utilities",
+          "value": 3170.43,
+          "weight": 6.0,
+          "gain": 13.812,
+          "ret": 0.792
+        },
+        {
+          "name": "Beta Global Dividend ETF",
+          "value": 2900.1,
+          "weight": 5.5,
+          "gain": -9.208,
+          "ret": -0.17600000000000002
+        },
+        {
+          "name": "Gamma Telecom",
+          "value": 2536.35,
+          "weight": 4.8,
+          "gain": 6.906,
+          "ret": 0.396
+        },
+        {
+          "name": "Delta Consumer Holdings",
+          "value": 2325.0,
+          "weight": 4.4,
+          "gain": 4.604,
+          "ret": 0.22
+        },
+        {
+          "name": "Epsilon Real Estate Trust",
+          "value": 2113.62,
+          "weight": 4.0,
+          "gain": 2.302,
+          "ret": 0.08800000000000001
+        }
+      ],
+      "points": [
+        52610.0,
+        52644.8,
+        52623.6,
+        52616.9,
+        52662.4,
+        52680.0,
+        52652.5,
+        52664.5,
+        52711.5,
+        52709.9,
+        52686.0,
+        52716.3,
+        52755.0,
+        52737.3,
+        52725.7,
+        52769.0,
+        52792.0,
+        52765.4,
+        52771.8,
+        52819.3,
+        52823.2,
+        52797.3,
+        52822.6,
+        52864.6
+      ]
+    },
+    {
+      "portfolio_id": "demo_p",
+      "interval": "1w",
+      "value_start": 51950.0,
+      "value_end": 52840.55,
+      "unrealized_gain": 890.5,
+      "unrealized_return": 1.72,
+      "realized_gain": 0.0,
+      "dividends": 35.2,
+      "xirr": 0.0,
+      "ttwror": 1.72,
+      "holdings": [
+        {
+          "name": "Alpha Utilities",
+          "value": 3170.43,
+          "weight": 6.0,
+          "gain": 53.43,
+          "ret": 3.096
+        },
+        {
+          "name": "Beta Global Dividend ETF",
+          "value": 2900.1,
+          "weight": 5.5,
+          "gain": -35.62,
+          "ret": -0.6880000000000001
+        },
+        {
+          "name": "Gamma Telecom",
+          "value": 2536.35,
+          "weight": 4.8,
+          "gain": 26.715,
+          "ret": 1.548
+        },
+        {
+          "name": "Delta Consumer Holdings",
+          "value": 2325.0,
+          "weight": 4.4,
+          "gain": 17.81,
+          "ret": 0.86
+        },
+        {
+          "name": "Epsilon Real Estate Trust",
+          "value": 2113.62,
+          "weight": 4.0,
+          "gain": 8.905,
+          "ret": 0.34400000000000003
+        }
+      ],
+      "points": [
+        51950.0,
+        52040.2,
+        51996.0,
+        51986.5,
+        52102.4,
+        52151.4,
+        52092.1,
+        52127.7,
+        52247.1,
+        52250.0,
+        52199.2,
+        52278.6,
+        52378.3,
+        52342.4,
+        52321.3,
+        52431.9,
+        52493.8,
+        52436.6,
+        52458.7,
+        52579.5,
+        52595.5,
+        52539.9,
+        52607.5,
+        52715.0,
+        52689.0,
+        52657.5,
+        52760.9,
+        52835.0,
+        52781.8,
+        52790.7
+      ]
+    },
+    {
+      "portfolio_id": "demo_p",
+      "interval": "1m",
+      "value_start": 50420.8,
+      "value_end": 52840.55,
+      "unrealized_gain": 2419.8,
+      "unrealized_return": 4.8,
+      "realized_gain": -12.4,
+      "dividends": 211.2,
+      "xirr": 0.0,
+      "ttwror": 4.8,
+      "holdings": [
+        {
+          "name": "Alpha Utilities",
+          "value": 3170.43,
+          "weight": 6.0,
+          "gain": 145.18800000000002,
+          "ret": 8.64
+        },
+        {
+          "name": "Beta Global Dividend ETF",
+          "value": 2900.1,
+          "weight": 5.5,
+          "gain": -96.79200000000002,
+          "ret": -1.92
+        },
+        {
+          "name": "Gamma Telecom",
+          "value": 2536.35,
+          "weight": 4.8,
+          "gain": 72.59400000000001,
+          "ret": 4.32
+        },
+        {
+          "name": "Delta Consumer Holdings",
+          "value": 2325.0,
+          "weight": 4.4,
+          "gain": 48.39600000000001,
+          "ret": 2.4
+        },
+        {
+          "name": "Epsilon Real Estate Trust",
+          "value": 2113.62,
+          "weight": 4.0,
+          "gain": 24.198000000000004,
+          "ret": 0.96
+        }
+      ],
+      "points": [
+        50420.0,
+        50617.1,
+        50545.5,
+        50543.1,
+        50791.6,
+        50906.1,
+        50804.4,
+        50892.3,
+        51147.6,
+        51170.2,
+        51085.3,
+        51260.8,
+        51476.7,
+        51421.8,
+        51396.3,
+        51634.1,
+        51774.5,
+        51676.8,
+        51737.8,
+        51996.0,
+        52044.8,
+        51950.2,
+        52102.1,
+        52333.8,
+        52298.4,
+        52252.1,
+        52475.6,
+        52640.6,
+        52550.8,
+        52585.2,
+        52842.4,
+        52918.0
+      ]
+    },
+    {
+      "portfolio_id": "demo_p",
+      "interval": "ytd",
+      "value_start": 44100.0,
+      "value_end": 52840.55,
+      "unrealized_gain": 8740.5,
+      "unrealized_return": 19.8,
+      "realized_gain": -136.3,
+      "dividends": 1820.4,
+      "xirr": 9.8,
+      "ttwror": 17.9,
+      "holdings": [
+        {
+          "name": "Alpha Utilities",
+          "value": 3170.43,
+          "weight": 6.0,
+          "gain": 524.43,
+          "ret": 35.64
+        },
+        {
+          "name": "Beta Global Dividend ETF",
+          "value": 2900.1,
+          "weight": 5.5,
+          "gain": -349.62,
+          "ret": -7.920000000000001
+        },
+        {
+          "name": "Gamma Telecom",
+          "value": 2536.35,
+          "weight": 4.8,
+          "gain": 262.215,
+          "ret": 17.82
+        },
+        {
+          "name": "Delta Consumer Holdings",
+          "value": 2325.0,
+          "weight": 4.4,
+          "gain": 174.81,
+          "ret": 9.9
+        },
+        {
+          "name": "Epsilon Real Estate Trust",
+          "value": 2113.62,
+          "weight": 4.0,
+          "gain": 87.405,
+          "ret": 3.9600000000000004
+        }
+      ],
+      "points": [
+        44100.0,
+        44583.5,
+        44395.3,
+        44380.1,
+        44992.1,
+        45269.3,
+        45005.8,
+        45216.3,
+        45845.4,
+        45892.6,
+        45671.2,
+        46100.8,
+        46631.4,
+        46484.9,
+        46411.9,
+        46997.1,
+        47339.1,
+        47085.6,
+        47228.7,
+        47865.2,
+        47977.9,
+        47732.2,
+        48102.7,
+        48672.7,
+        48575.2,
+        48450.1,
+        48999.7,
+        49403.0,
+        49169.3,
+        49246.1,
+        49879.8,
+        50059.6,
+        49799.4,
+        50106.5,
+        50707.4,
+        50665.2,
+        50495.0,
+        51000.9,
+        51460.6,
+        51256.1,
+        51268.9,
+        51889.9,
+        52136.9,
+        51872.1,
+        52113.2,
+        52735.7,
+        52754.0,
+        52546.6
+      ]
+    }
   ],
   "states": [
-    {"entity_id": "sensor.demo_portfolio_value", "state": "52840.55", "attributes": {"unit_of_measurement": "EUR", "friendly_name": "Demo portfolio value", "interval": "max", "entry_id": "demo", "portfolio_id": "demo_p", "holdings_count": 24, "top_holdings": [{"name": "Alpha Utilities", "value": 3170.43, "weight": 6.0}, {"name": "Beta Global Dividend ETF", "value": 2900.1, "weight": 5.5}, {"name": "Gamma Telecom", "value": 2536.35, "weight": 4.8}, {"name": "Delta Consumer Holdings", "value": 2325.0, "weight": 4.4}, {"name": "Epsilon Real Estate Trust", "value": 2113.62, "weight": 4.0}]}},
-    {"entity_id": "sensor.demo_portfolio_gain", "state": "8425.1", "attributes": {"unit_of_measurement": "EUR"}},
-    {"entity_id": "sensor.demo_portfolio_xirr", "state": "9.8", "attributes": {"unit_of_measurement": "%"}},
-    {"entity_id": "sensor.demo_portfolio_dividends", "state": "1820.4", "attributes": {"unit_of_measurement": "EUR"}},
-    {"entity_id": "sensor.demo_portfolio_return", "state": "18.97", "attributes": {"unit_of_measurement": "%"}},
-    {"entity_id": "sensor.demo_evcc_energy", "state": "12.8", "attributes": {"unit_of_measurement": "kWh"}},
-    {"entity_id": "sensor.demo_evcc_remaining", "state": "13980", "attributes": {"unit_of_measurement": "s"}},
-
-    {"entity_id": "select.demo_evcc_mode", "state": "smart", "attributes": {"options": ["off", "smart", "now"]}},
-    {"entity_id": "select.demo_evcc_vehicle", "state": "ev4", "attributes": {"options": ["null", "ev1", "ev4"], "vehicle": {"name": "Demo car"}}},
-    {"entity_id": "number.demo_evcc_limit", "state": "85", "attributes": {"min": 20, "max": 100, "step": 5, "unit_of_measurement": "%"}},
-    {"entity_id": "sensor.demo_evcc_power", "state": "7.4", "attributes": {"unit_of_measurement": "kW"}},
-    {"entity_id": "sensor.demo_evcc_soc", "state": "62.187", "attributes": {"unit_of_measurement": "%"}},
-    {"entity_id": "binary_sensor.demo_evcc_connected", "state": "on", "attributes": {}},
-    {"entity_id": "binary_sensor.demo_evcc_charging", "state": "on", "attributes": {}},
-    {"entity_id": "binary_sensor.demo_evcc_disabled", "state": "off", "attributes": {}},
-    {"entity_id": "sensor.demo_evcc_effective", "state": "85", "attributes": {"unit_of_measurement": "%"}},
-
-    {"entity_id": "sensor.demo_printer_status", "state": "running"},
-    {"entity_id": "sensor.demo_printer_nozzle", "state": "220", "attributes": {"unit_of_measurement": "°C"}},
-    {"entity_id": "sensor.demo_printer_bed", "state": "65", "attributes": {"unit_of_measurement": "°C"}},
-    {"entity_id": "sensor.demo_printer_progress", "state": "46", "attributes": {"unit_of_measurement": "%"}},
-    {"entity_id": "sensor.demo_printer_remaining", "state": "22", "attributes": {"unit_of_measurement": "min"}},
-    {"entity_id": "sensor.demo_printer_stage", "state": "heating_hotend"},
-    {"entity_id": "sensor.demo_printer_job", "state": "Benchy_0.2mm_PLA"},
-    {"entity_id": "button.demo_printer_pause", "state": "unknown"},
-    {"entity_id": "button.demo_printer_resume", "state": "unknown"},
-    {"entity_id": "button.demo_printer_stop", "state": "unknown"},
-    {"entity_id": "sensor.demo_room_temperature", "state": "21.8", "attributes": {"unit_of_measurement": "°C", "friendly_name": "Living room temperature"}, "display_precision": 1},
-    {"entity_id": "switch.demo_lamp", "state": "on", "attributes": {"friendly_name": "Lamp"}},
-    {"entity_id": "cover.demo_blind", "state": "open", "attributes": {"current_position": 42, "supported_features": 15, "friendly_name": "Blind"}},
-    {"entity_id": "sensor.demo_humidity", "state": "68", "attributes": {"unit_of_measurement": "%", "friendly_name": "Humidity"}},
-    {"entity_id": "sensor.demo_power", "state": "2450", "attributes": {"unit_of_measurement": "W", "friendly_name": "Power"}},
-    {"entity_id": "light.demo_living_room", "state": "on", "attributes": {"brightness": 178, "color_mode": "brightness", "supported_color_modes": ["brightness", "color_temp", "rgb"], "min_color_temp_kelvin": 2200, "max_color_temp_kelvin": 6500, "friendly_name": "Living room light"}},
-    {"entity_id": "climate.demo_thermostat", "state": "heat", "attributes": {"temperature": 22.5, "current_temperature": 20.8, "hvac_action": "heating", "hvac_modes": ["off", "heat", "auto"], "fan_mode": "auto", "fan_modes": ["auto", "low", "high"], "swing_mode": "off", "swing_modes": ["off", "vertical"], "min_temp": 16, "max_temp": 30, "friendly_name": "Thermostat"}},
-    {"entity_id": "weather.demo_outdoor", "state": "sunny", "attributes": {"temperature": 23.3, "temperature_unit": "°C", "humidity": 38, "precipitation_unit": "mm", "forecast": [
-      {"date_offset_days": 0, "condition": "sunny", "temperature": 25, "templow": 13, "precipitation_probability": 5, "precipitation": 0},
-      {"date_offset_days": 1, "condition": "partlycloudy", "temperature": 22, "templow": 11, "precipitation_probability": 20, "precipitation": 0.2},
-      {"date_offset_days": 2, "condition": "rainy", "temperature": 17, "templow": 10, "precipitation_probability": 80, "precipitation": 6.5},
-      {"date_offset_days": 3, "condition": "cloudy", "temperature": 19, "templow": 9, "precipitation_probability": 40, "precipitation": 1.4},
-      {"date_offset_days": 4, "condition": "sunny", "temperature": 23, "templow": 8, "precipitation_probability": 10, "precipitation": 0}
-    ]}},
-    {"entity_id": "weather.demo_rain", "state": "rainy", "attributes": {"temperature": 23.3, "temperature_unit": "°C", "humidity": 38, "precipitation_unit": "mm", "forecast": [{"date_offset_days": 0, "condition": "rainy", "temperature": 25, "templow": 13, "precipitation_probability": 80, "precipitation": 6.5}, {"date_offset_days": 1, "condition": "partlycloudy", "temperature": 22, "templow": 11, "precipitation_probability": 20, "precipitation": 0.2}, {"date_offset_days": 2, "condition": "rainy", "temperature": 17, "templow": 10, "precipitation_probability": 80, "precipitation": 6.5}, {"date_offset_days": 3, "condition": "cloudy", "temperature": 19, "templow": 9, "precipitation_probability": 40, "precipitation": 1.4}, {"date_offset_days": 4, "condition": "sunny", "temperature": 23, "templow": 8, "precipitation_probability": 10, "precipitation": 0}]}},
-    {"entity_id": "weather.demo_rain_probability", "state": "rainy", "attributes": {"temperature": 23.3, "temperature_unit": "°C", "humidity": 38, "precipitation_unit": "mm", "forecast": [{"date_offset_days": 0, "condition": "rainy", "temperature": 25, "templow": 13, "precipitation_probability": 80}, {"date_offset_days": 1, "condition": "partlycloudy", "temperature": 22, "templow": 11, "precipitation_probability": 20, "precipitation": 0.2}, {"date_offset_days": 2, "condition": "rainy", "temperature": 17, "templow": 10, "precipitation_probability": 80, "precipitation": 6.5}, {"date_offset_days": 3, "condition": "cloudy", "temperature": 19, "templow": 9, "precipitation_probability": 40, "precipitation": 1.4}, {"date_offset_days": 4, "condition": "sunny", "temperature": 23, "templow": 8, "precipitation_probability": 10, "precipitation": 0}]}},
-    {"entity_id": "weather.demo_unknown", "state": "unavailable", "attributes": {}},
-    {"entity_id": "sensor.demo_weather_report", "state": "Sunny and mild", "attributes": {"s": "Sunny today, rain moving in overnight. Cooler and unsettled mid-week, dry again by the weekend.", "d": {"0": "Mostly sunny, light wind.", "1": "Sunny, a few clouds later.", "2": "Clouds thicken, rain from the evening.", "3": "Rain, heavy at times, 15 to 18 degrees.", "4": "Cloudy with showers, cooler.", "5": "Sunny spells, dry.", "6": "Sunny and mild."}}},
-    {"entity_id": "sensor.demo_solar_remaining", "state": "25.49", "attributes": {"unit_of_measurement": "kWh"}, "display_precision": 2},
-    {"entity_id": "sensor.demo_solar_today", "state": "54.8", "attributes": {"unit_of_measurement": "kWh"}},
-    {"entity_id": "sensor.demo_solar_tomorrow", "state": "53.2", "attributes": {"unit_of_measurement": "kWh"}},
-    {"entity_id": "sensor.demo_solar_day_3", "state": "41.1", "attributes": {"unit_of_measurement": "kWh"}},
-    {"entity_id": "sensor.demo_solar_day_4", "state": "47.4", "attributes": {"unit_of_measurement": "kWh"}},
-    {"entity_id": "sensor.demo_solar_day_5", "state": "41.9", "attributes": {"unit_of_measurement": "kWh"}},
-    {"entity_id": "sensor.demo_car_battery", "state": "67", "attributes": {"unit_of_measurement": "%"}},
-    {"entity_id": "climate.demo_car_preconditioning", "state": "off", "attributes": {}},
-    {"entity_id": "sensor.demo_car_interior_temperature", "state": "21", "attributes": {"unit_of_measurement": "°C"}},
-    {"entity_id": "media_player.demo_music", "state": "playing", "attributes": {"supported_features": 294912, "entity_picture": "file:cover_art.png", "shuffle": true, "repeat": "all", "media_title": "Evening Drive", "media_artist": "Demo Artist", "media_duration": 210, "media_position": 84, "volume_level": 0.42, "is_volume_muted": false}},
-    {"entity_id": "media_player.demo_sonos", "state": "playing", "attributes": {"friendly_name": "Living room Sonos"}},
-    {"entity_id": "sensor.sonos_favorites", "state": "3", "attributes": {"items": {"favorite_1": "Jazz", "favorite_2": "Classical", "favorite_3": "Radio"}}},
-    {"entity_id": "fan.demo_fan", "state": "on", "attributes": {"percentage": 60, "percentage_step": 20, "supported_features": 57, "oscillating": true, "preset_mode": "auto", "preset_modes": ["auto", "sleep", "breeze"]}},
-    {"entity_id": "binary_sensor.demo_front_door", "state": "off", "attributes": {"device_class": "door", "friendly_name": "Front door"}},
-    {"entity_id": "scene.demo_movie_mode", "state": "scening", "attributes": {"friendly_name": "Movie mode"}},
-    {"entity_id": "lock.demo_front_door", "state": "locked", "attributes": {"supported_features": 1, "friendly_name": "Front door"}},
-    {"entity_id": "alarm_control_panel.demo_alarm", "state": "armed_home", "attributes": {"supported_features": 7, "friendly_name": "Alarm"}},
-    {"entity_id": "select.demo_cleaning_mode", "state": "Auto", "attributes": {"options": ["Auto", "Vacuum", "Mop"]}},
-    {"entity_id": "select.demo_charge_mode", "state": "minpv", "attributes": {"options": ["off", "now", "minpv", "pv"], "friendly_name": "Charge mode"}},
-    {"entity_id": "input_datetime.demo_morning", "state": "06:30:00", "attributes": {"has_date": false, "has_time": true, "friendly_name": "Morning routine"}},
-    {"entity_id": "date.demo_reminder", "state": "2026-09-27", "attributes": {"friendly_name": "Reminder"}},
-    {"entity_id": "datetime.demo_meeting", "state": "2026-09-27T05:00:00+00:00", "attributes": {"friendly_name": "Meeting"}},
-    {"entity_id": "time.demo_vacuum_quiet", "state": "unavailable", "attributes": {"friendly_name": "Quiet hours"}},
-    {"entity_id": "binary_sensor.demo_motion", "state": "on", "attributes": {"device_class": "motion", "friendly_name": "Motion"}},
-    {"entity_id": "todo.demo_shopping", "state": "4", "attributes": {"friendly_name": "Shopping"}},
-    {"entity_id": "sensor.demo_robot_battery", "state": "82", "attributes": {"unit_of_measurement": "%", "friendly_name": "Robot battery"}},
-    {"entity_id": "image.demo_robot_map", "state": "2026-10-15T08:00:00+00:00", "attributes": {"entity_picture": "file:vacuum_map.png", "friendly_name": "Robot map"}},
-    {"entity_id": "vacuum.demo_robot", "state": "cleaning", "attributes": {"fan_speed": "balanced", "fan_speed_list": ["quiet", "balanced", "turbo", "max"], "supported_features": 12540, "friendly_name": "Robot vacuum"}},
-    {"entity_id": "camera.driveway", "state": "idle", "attributes": {"entity_picture": "file:camera_preview.png", "friendly_name": "Driveway"}},
-    {"entity_id": "camera.front_door", "state": "idle", "attributes": {"entity_picture": "file:doorbell_camera.png", "friendly_name": "Front door"}},
-    {"entity_id": "sensor.demo_kitchen_temperature", "state": "22.4", "attributes": {"unit_of_measurement": "°C", "device_class": "temperature", "friendly_name": "Kitchen temperature"}, "display_precision": 1},
-    {"entity_id": "light.demo_kitchen", "state": "on", "attributes": {"friendly_name": "Kitchen light", "brightness": 200, "color_mode": "brightness", "supported_color_modes": ["brightness"]}},
-    {"entity_id": "binary_sensor.demo_kitchen_window", "state": "on", "attributes": {"device_class": "window", "friendly_name": "Kitchen window"}},
-    {"entity_id": "sensor.demo_hallway_temperature", "state": "20.1", "attributes": {"unit_of_measurement": "°C", "device_class": "temperature", "friendly_name": "Hallway temperature"}, "display_precision": 1},
-    {"entity_id": "sensor.demo_bedroom_temperature", "state": "18.6", "attributes": {"unit_of_measurement": "°C", "device_class": "temperature", "friendly_name": "Bedroom temperature"}, "display_precision": 1},
-    {"entity_id": "light.demo_bedroom", "state": "off", "attributes": {"friendly_name": "Bedroom light", "color_mode": "brightness", "supported_color_modes": ["brightness"]}},
-    {"entity_id": "binary_sensor.demo_bedroom_window", "state": "off", "attributes": {"device_class": "window", "friendly_name": "Bedroom window"}},
-    {"entity_id": "sensor.demo_office_temperature", "state": "21.2", "attributes": {"unit_of_measurement": "°C", "device_class": "temperature", "friendly_name": "Office temperature"}, "display_precision": 1},
-    {"entity_id": "light.demo_office", "state": "on", "attributes": {"friendly_name": "Office light", "brightness": 200, "color_mode": "brightness", "supported_color_modes": ["brightness"]}},
-    {"entity_id": "binary_sensor.demo_office_presence", "state": "on", "attributes": {"device_class": "occupancy", "friendly_name": "Office presence"}},
-    {"entity_id": "sensor.demo_bathroom_temperature", "state": "23.0", "attributes": {"unit_of_measurement": "°C", "device_class": "temperature", "friendly_name": "Bathroom temperature"}, "display_precision": 1},
-    {"entity_id": "binary_sensor.demo_bathroom_window", "state": "off", "attributes": {"device_class": "window", "friendly_name": "Bathroom window"}},
-    {"entity_id": "sensor.demo_laundry_temperature", "state": "16.8", "attributes": {"unit_of_measurement": "°C", "device_class": "temperature", "friendly_name": "Laundry temperature"}, "display_precision": 1},
-    {"entity_id": "binary_sensor.demo_laundry_leak", "state": "off", "attributes": {"device_class": "moisture", "friendly_name": "Laundry leak"}},
-    {"entity_id": "sensor.demo_solar_power", "state": "4230", "attributes": {"unit_of_measurement": "W", "device_class": "power", "friendly_name": "Solar power"}},
-    {"entity_id": "sensor.demo_home_power", "state": "1850", "attributes": {"unit_of_measurement": "W", "device_class": "power", "friendly_name": "Home power"}},
-    {"entity_id": "sensor.demo_grid_import_power", "state": "0", "attributes": {"unit_of_measurement": "W", "device_class": "power", "friendly_name": "Grid import"}},
-    {"entity_id": "sensor.demo_grid_export_power", "state": "880", "attributes": {"unit_of_measurement": "W", "device_class": "power", "friendly_name": "Grid export"}},
-    {"entity_id": "sensor.demo_battery_charge_power", "state": "1500", "attributes": {"unit_of_measurement": "W", "device_class": "power", "friendly_name": "Battery charging"}},
-    {"entity_id": "sensor.demo_battery_discharge_power", "state": "0", "attributes": {"unit_of_measurement": "W", "device_class": "power", "friendly_name": "Battery discharging"}},
-    {"entity_id": "sensor.demo_battery_soc", "state": "68", "attributes": {"unit_of_measurement": "%", "device_class": "battery", "friendly_name": "Battery"}},
-    {"entity_id": "sensor.demo_gas", "state": "1.8", "attributes": {"unit_of_measurement": "m³", "device_class": "gas", "friendly_name": "Gas today"}},
-    {"entity_id": "sensor.demo_water", "state": "142", "attributes": {"unit_of_measurement": "L", "device_class": "water", "friendly_name": "Water today"}},
-    {"entity_id": "switch.demo_unavailable", "state": "unavailable", "attributes": {"friendly_name": "Plug"}},
-    {"entity_id": "climate.demo_unavailable", "state": "unavailable", "attributes": {"friendly_name": "Guest room"}},
-    {"entity_id": "sensor.demo_battery_soc", "state": "64", "attributes": {"unit_of_measurement": "%", "device_class": "battery"}},
-    {"entity_id": "sensor.demo_solar_forecast_today", "state": "46.8", "attributes": {"fc_t0": 1779972300, "fc_step": 1800, "fc_kw": [5.03, 4.45, 3.79, 3.1, 2.41, 1.75, 1.17, 0.68, 0.31, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.31, 0.68, 1.17, 1.75, 2.41, 3.1, 3.79, 4.45, 5.03, 5.52, 5.89, 6.12, 6.2, 6.12, 5.89, 5.52]}},
-    {"entity_id": "sensor.demo_price", "state": "0.20066", "attributes": {"unit_of_measurement": "\u20ac/kWh", "friendly_name": "Electricity price", "price_series": {"shape": "epex", "interval_min": 15, "today": [0.20927, 0.20653, 0.19967, 0.18605, 0.19782, 0.18603, 0.17925, 0.17064, 0.17431, 0.17009, 0.16396, 0.15637, 0.15464, 0.15257, 0.15183, 0.15054, 0.14965, 0.14957, 0.14978, 0.15097, 0.15569, 0.15583, 0.15167, 0.14887, 0.14703, 0.14911, 0.1503, 0.15446, 0.15742, 0.16237, 0.16796, 0.17309, 0.18886, 0.19006, 0.18873, 0.1793, 0.17947, 0.17022, 0.16906, 0.16353, 0.17336, 0.16039, 0.16016, 0.15067, 0.15123, 0.1456, 0.14233, 0.13824, 0.13269, 0.12504, 0.12565, 0.12067, 0.1248, 0.1184, 0.11921, 0.11834, 0.12323, 0.12239, 0.12948, 0.12753, 0.13699, 0.13909, 0.15015, 0.15163, 0.15285, 0.15523, 0.16268, 0.19698, 0.16875, 0.20019, 0.20701, 0.21986, 0.20999, 0.21089, 0.21684, 0.236, 0.24543, 0.24265, 0.23599, 0.21566, 0.21278, 0.19773, 0.19592, 0.19619, 0.20799, 0.20021, 0.17773, 0.16529, 0.1794, 0.1664, 0.17535, 0.16177, 0.1614, 0.16061, 0.16287, 0.15524], "tomorrow": [0.15328, 0.15049, 0.14565, 0.14659, 0.15099, 0.14926, 0.14252, 0.14376, 0.14963, 0.1482, 0.14733, 0.14601, 0.14254, 0.13997, 0.14418, 0.14384, 0.14, 0.1503, 0.1531, 0.14601, 0.14871, 0.1525, 0.15465, 0.15209, 0.13943, 0.14041, 0.14389, 0.14084, 0.14655, 0.15055, 0.16085, 0.16772, 0.17864, 0.1813, 0.18347, 0.18764, 0.20182, 0.20516, 0.2017, 0.19468, 0.21124, 0.20671, 0.18101, 0.17899, 0.19903, 0.19197, 0.1853, 0.1841, 0.19147, 0.18623, 0.18786, 0.16791, 0.18006, 0.16236, 0.15785, 0.15223, 0.16772, 0.15829, 0.16201, 0.15964, 0.16459, 0.16839, 0.17488, 0.17121, 0.16179, 0.18182, 0.19549, 0.22434, 0.19689, 0.21462, 0.21699, 0.222, 0.22203, 0.22551, 0.22894, 0.22861, 0.22663, 0.22207, 0.21704, 0.21665, 0.21265, 0.19482, 0.1997, 0.18593, 0.18667, 0.1819, 0.17842, 0.1712, 0.18635, 0.17924, 0.1741, 0.16674, 0.17573, 0.17147, 0.16858, 0.16827]}}}
+    {
+      "entity_id": "sensor.demo_portfolio_value",
+      "state": "52840.55",
+      "attributes": {
+        "unit_of_measurement": "EUR",
+        "friendly_name": "Demo portfolio value",
+        "interval": "max",
+        "entry_id": "demo",
+        "portfolio_id": "demo_p",
+        "holdings_count": 24,
+        "top_holdings": [
+          {
+            "name": "Alpha Utilities",
+            "value": 3170.43,
+            "weight": 6.0
+          },
+          {
+            "name": "Beta Global Dividend ETF",
+            "value": 2900.1,
+            "weight": 5.5
+          },
+          {
+            "name": "Gamma Telecom",
+            "value": 2536.35,
+            "weight": 4.8
+          },
+          {
+            "name": "Delta Consumer Holdings",
+            "value": 2325.0,
+            "weight": 4.4
+          },
+          {
+            "name": "Epsilon Real Estate Trust",
+            "value": 2113.62,
+            "weight": 4.0
+          }
+        ]
+      }
+    },
+    {
+      "entity_id": "sensor.demo_portfolio_gain",
+      "state": "8425.1",
+      "attributes": {
+        "unit_of_measurement": "EUR"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_portfolio_xirr",
+      "state": "9.8",
+      "attributes": {
+        "unit_of_measurement": "%"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_portfolio_dividends",
+      "state": "1820.4",
+      "attributes": {
+        "unit_of_measurement": "EUR"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_portfolio_return",
+      "state": "18.97",
+      "attributes": {
+        "unit_of_measurement": "%"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_energy",
+      "state": "12.8",
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_remaining",
+      "state": "13980",
+      "attributes": {
+        "unit_of_measurement": "s"
+      }
+    },
+    {
+      "entity_id": "select.demo_evcc_mode",
+      "state": "smart",
+      "attributes": {
+        "options": [
+          "off",
+          "smart",
+          "now"
+        ]
+      }
+    },
+    {
+      "entity_id": "select.demo_evcc_vehicle",
+      "state": "ev4",
+      "attributes": {
+        "options": [
+          "null",
+          "ev1",
+          "ev4"
+        ],
+        "vehicle": {
+          "name": "Demo car"
+        }
+      }
+    },
+    {
+      "entity_id": "number.demo_evcc_limit",
+      "state": "85",
+      "attributes": {
+        "min": 20,
+        "max": 100,
+        "step": 5,
+        "unit_of_measurement": "%"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_power",
+      "state": "7.4",
+      "attributes": {
+        "unit_of_measurement": "kW"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_soc",
+      "state": "62.187",
+      "attributes": {
+        "unit_of_measurement": "%"
+      }
+    },
+    {
+      "entity_id": "binary_sensor.demo_evcc_connected",
+      "state": "on",
+      "attributes": {}
+    },
+    {
+      "entity_id": "binary_sensor.demo_evcc_charging",
+      "state": "on",
+      "attributes": {}
+    },
+    {
+      "entity_id": "binary_sensor.demo_evcc_disabled",
+      "state": "off",
+      "attributes": {}
+    },
+    {
+      "entity_id": "sensor.demo_evcc_effective",
+      "state": "85",
+      "attributes": {
+        "unit_of_measurement": "%"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_printer_status",
+      "state": "running"
+    },
+    {
+      "entity_id": "sensor.demo_printer_nozzle",
+      "state": "220",
+      "attributes": {
+        "unit_of_measurement": "°C"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_printer_bed",
+      "state": "65",
+      "attributes": {
+        "unit_of_measurement": "°C"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_printer_progress",
+      "state": "46",
+      "attributes": {
+        "unit_of_measurement": "%"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_printer_remaining",
+      "state": "22",
+      "attributes": {
+        "unit_of_measurement": "min"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_printer_stage",
+      "state": "heating_hotend"
+    },
+    {
+      "entity_id": "sensor.demo_printer_job",
+      "state": "Benchy_0.2mm_PLA"
+    },
+    {
+      "entity_id": "button.demo_printer_pause",
+      "state": "unknown"
+    },
+    {
+      "entity_id": "button.demo_printer_resume",
+      "state": "unknown"
+    },
+    {
+      "entity_id": "button.demo_printer_stop",
+      "state": "unknown"
+    },
+    {
+      "entity_id": "sensor.demo_room_temperature",
+      "state": "21.8",
+      "attributes": {
+        "unit_of_measurement": "°C",
+        "friendly_name": "Living room temperature"
+      },
+      "display_precision": 1
+    },
+    {
+      "entity_id": "switch.demo_lamp",
+      "state": "on",
+      "attributes": {
+        "friendly_name": "Lamp"
+      }
+    },
+    {
+      "entity_id": "cover.demo_blind",
+      "state": "open",
+      "attributes": {
+        "current_position": 42,
+        "supported_features": 15,
+        "friendly_name": "Blind"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_humidity",
+      "state": "68",
+      "attributes": {
+        "unit_of_measurement": "%",
+        "friendly_name": "Humidity"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_power",
+      "state": "2450",
+      "attributes": {
+        "unit_of_measurement": "W",
+        "friendly_name": "Power"
+      }
+    },
+    {
+      "entity_id": "light.demo_living_room",
+      "state": "on",
+      "attributes": {
+        "brightness": 178,
+        "color_mode": "brightness",
+        "supported_color_modes": [
+          "brightness",
+          "color_temp",
+          "rgb"
+        ],
+        "min_color_temp_kelvin": 2200,
+        "max_color_temp_kelvin": 6500,
+        "friendly_name": "Living room light"
+      }
+    },
+    {
+      "entity_id": "climate.demo_thermostat",
+      "state": "heat",
+      "attributes": {
+        "temperature": 22.5,
+        "current_temperature": 20.8,
+        "hvac_action": "heating",
+        "hvac_modes": [
+          "off",
+          "heat",
+          "auto"
+        ],
+        "fan_mode": "auto",
+        "fan_modes": [
+          "auto",
+          "low",
+          "high"
+        ],
+        "swing_mode": "off",
+        "swing_modes": [
+          "off",
+          "vertical"
+        ],
+        "min_temp": 16,
+        "max_temp": 30,
+        "friendly_name": "Thermostat"
+      }
+    },
+    {
+      "entity_id": "weather.demo_outdoor",
+      "state": "sunny",
+      "attributes": {
+        "temperature": 23.3,
+        "temperature_unit": "°C",
+        "humidity": 38,
+        "precipitation_unit": "mm",
+        "forecast": [
+          {
+            "date_offset_days": 0,
+            "condition": "sunny",
+            "temperature": 25,
+            "templow": 13,
+            "precipitation_probability": 5,
+            "precipitation": 0
+          },
+          {
+            "date_offset_days": 1,
+            "condition": "partlycloudy",
+            "temperature": 22,
+            "templow": 11,
+            "precipitation_probability": 20,
+            "precipitation": 0.2
+          },
+          {
+            "date_offset_days": 2,
+            "condition": "rainy",
+            "temperature": 17,
+            "templow": 10,
+            "precipitation_probability": 80,
+            "precipitation": 6.5
+          },
+          {
+            "date_offset_days": 3,
+            "condition": "cloudy",
+            "temperature": 19,
+            "templow": 9,
+            "precipitation_probability": 40,
+            "precipitation": 1.4
+          },
+          {
+            "date_offset_days": 4,
+            "condition": "sunny",
+            "temperature": 23,
+            "templow": 8,
+            "precipitation_probability": 10,
+            "precipitation": 0
+          }
+        ]
+      }
+    },
+    {
+      "entity_id": "weather.demo_rain",
+      "state": "rainy",
+      "attributes": {
+        "temperature": 23.3,
+        "temperature_unit": "°C",
+        "humidity": 38,
+        "precipitation_unit": "mm",
+        "forecast": [
+          {
+            "date_offset_days": 0,
+            "condition": "rainy",
+            "temperature": 25,
+            "templow": 13,
+            "precipitation_probability": 80,
+            "precipitation": 6.5
+          },
+          {
+            "date_offset_days": 1,
+            "condition": "partlycloudy",
+            "temperature": 22,
+            "templow": 11,
+            "precipitation_probability": 20,
+            "precipitation": 0.2
+          },
+          {
+            "date_offset_days": 2,
+            "condition": "rainy",
+            "temperature": 17,
+            "templow": 10,
+            "precipitation_probability": 80,
+            "precipitation": 6.5
+          },
+          {
+            "date_offset_days": 3,
+            "condition": "cloudy",
+            "temperature": 19,
+            "templow": 9,
+            "precipitation_probability": 40,
+            "precipitation": 1.4
+          },
+          {
+            "date_offset_days": 4,
+            "condition": "sunny",
+            "temperature": 23,
+            "templow": 8,
+            "precipitation_probability": 10,
+            "precipitation": 0
+          }
+        ]
+      }
+    },
+    {
+      "entity_id": "weather.demo_rain_probability",
+      "state": "rainy",
+      "attributes": {
+        "temperature": 23.3,
+        "temperature_unit": "°C",
+        "humidity": 38,
+        "precipitation_unit": "mm",
+        "forecast": [
+          {
+            "date_offset_days": 0,
+            "condition": "rainy",
+            "temperature": 25,
+            "templow": 13,
+            "precipitation_probability": 80
+          },
+          {
+            "date_offset_days": 1,
+            "condition": "partlycloudy",
+            "temperature": 22,
+            "templow": 11,
+            "precipitation_probability": 20,
+            "precipitation": 0.2
+          },
+          {
+            "date_offset_days": 2,
+            "condition": "rainy",
+            "temperature": 17,
+            "templow": 10,
+            "precipitation_probability": 80,
+            "precipitation": 6.5
+          },
+          {
+            "date_offset_days": 3,
+            "condition": "cloudy",
+            "temperature": 19,
+            "templow": 9,
+            "precipitation_probability": 40,
+            "precipitation": 1.4
+          },
+          {
+            "date_offset_days": 4,
+            "condition": "sunny",
+            "temperature": 23,
+            "templow": 8,
+            "precipitation_probability": 10,
+            "precipitation": 0
+          }
+        ]
+      }
+    },
+    {
+      "entity_id": "weather.demo_unknown",
+      "state": "unavailable",
+      "attributes": {}
+    },
+    {
+      "entity_id": "sensor.demo_weather_report",
+      "state": "Sunny and mild",
+      "attributes": {
+        "s": "Sunny today, rain moving in overnight. Cooler and unsettled mid-week, dry again by the weekend.",
+        "d": {
+          "0": "Mostly sunny, light wind.",
+          "1": "Sunny, a few clouds later.",
+          "2": "Clouds thicken, rain from the evening.",
+          "3": "Rain, heavy at times, 15 to 18 degrees.",
+          "4": "Cloudy with showers, cooler.",
+          "5": "Sunny spells, dry.",
+          "6": "Sunny and mild."
+        }
+      }
+    },
+    {
+      "entity_id": "sensor.demo_solar_remaining",
+      "state": "25.49",
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      },
+      "display_precision": 2
+    },
+    {
+      "entity_id": "sensor.demo_solar_today",
+      "state": "54.8",
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_solar_tomorrow",
+      "state": "53.2",
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_solar_day_3",
+      "state": "41.1",
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_solar_day_4",
+      "state": "47.4",
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_solar_day_5",
+      "state": "41.9",
+      "attributes": {
+        "unit_of_measurement": "kWh"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_car_battery",
+      "state": "67",
+      "attributes": {
+        "unit_of_measurement": "%"
+      }
+    },
+    {
+      "entity_id": "climate.demo_car_preconditioning",
+      "state": "off",
+      "attributes": {}
+    },
+    {
+      "entity_id": "sensor.demo_car_interior_temperature",
+      "state": "21",
+      "attributes": {
+        "unit_of_measurement": "°C"
+      }
+    },
+    {
+      "entity_id": "media_player.demo_music",
+      "state": "playing",
+      "attributes": {
+        "supported_features": 294912,
+        "entity_picture": "file:cover_art.png",
+        "shuffle": true,
+        "repeat": "all",
+        "media_title": "Evening Drive",
+        "media_artist": "Demo Artist",
+        "media_duration": 210,
+        "media_position": 84,
+        "volume_level": 0.42,
+        "is_volume_muted": false
+      }
+    },
+    {
+      "entity_id": "media_player.demo_sonos",
+      "state": "playing",
+      "attributes": {
+        "friendly_name": "Living room Sonos"
+      }
+    },
+    {
+      "entity_id": "sensor.sonos_favorites",
+      "state": "3",
+      "attributes": {
+        "items": {
+          "favorite_1": "Jazz",
+          "favorite_2": "Classical",
+          "favorite_3": "Radio"
+        }
+      }
+    },
+    {
+      "entity_id": "fan.demo_fan",
+      "state": "on",
+      "attributes": {
+        "percentage": 60,
+        "percentage_step": 20,
+        "supported_features": 57,
+        "oscillating": true,
+        "preset_mode": "auto",
+        "preset_modes": [
+          "auto",
+          "sleep",
+          "breeze"
+        ]
+      }
+    },
+    {
+      "entity_id": "binary_sensor.demo_front_door",
+      "state": "off",
+      "attributes": {
+        "device_class": "door",
+        "friendly_name": "Front door"
+      }
+    },
+    {
+      "entity_id": "scene.demo_movie_mode",
+      "state": "scening",
+      "attributes": {
+        "friendly_name": "Movie mode"
+      }
+    },
+    {
+      "entity_id": "lock.demo_front_door",
+      "state": "locked",
+      "attributes": {
+        "supported_features": 1,
+        "friendly_name": "Front door"
+      }
+    },
+    {
+      "entity_id": "alarm_control_panel.demo_alarm",
+      "state": "armed_home",
+      "attributes": {
+        "supported_features": 7,
+        "friendly_name": "Alarm"
+      }
+    },
+    {
+      "entity_id": "select.demo_cleaning_mode",
+      "state": "Auto",
+      "attributes": {
+        "options": [
+          "Auto",
+          "Vacuum",
+          "Mop"
+        ]
+      }
+    },
+    {
+      "entity_id": "select.demo_charge_mode",
+      "state": "minpv",
+      "attributes": {
+        "options": [
+          "off",
+          "now",
+          "minpv",
+          "pv"
+        ],
+        "friendly_name": "Charge mode"
+      }
+    },
+    {
+      "entity_id": "input_datetime.demo_morning",
+      "state": "06:30:00",
+      "attributes": {
+        "has_date": false,
+        "has_time": true,
+        "friendly_name": "Morning routine"
+      }
+    },
+    {
+      "entity_id": "date.demo_reminder",
+      "state": "2026-09-27",
+      "attributes": {
+        "friendly_name": "Reminder"
+      }
+    },
+    {
+      "entity_id": "datetime.demo_meeting",
+      "state": "2026-09-27T05:00:00+00:00",
+      "attributes": {
+        "friendly_name": "Meeting"
+      }
+    },
+    {
+      "entity_id": "time.demo_vacuum_quiet",
+      "state": "unavailable",
+      "attributes": {
+        "friendly_name": "Quiet hours"
+      }
+    },
+    {
+      "entity_id": "binary_sensor.demo_motion",
+      "state": "on",
+      "attributes": {
+        "device_class": "motion",
+        "friendly_name": "Motion"
+      }
+    },
+    {
+      "entity_id": "todo.demo_shopping",
+      "state": "4",
+      "attributes": {
+        "friendly_name": "Shopping"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_robot_battery",
+      "state": "82",
+      "attributes": {
+        "unit_of_measurement": "%",
+        "friendly_name": "Robot battery"
+      }
+    },
+    {
+      "entity_id": "image.demo_robot_map",
+      "state": "2026-10-15T08:00:00+00:00",
+      "attributes": {
+        "entity_picture": "file:vacuum_map.png",
+        "friendly_name": "Robot map"
+      }
+    },
+    {
+      "entity_id": "vacuum.demo_robot",
+      "state": "cleaning",
+      "attributes": {
+        "fan_speed": "balanced",
+        "fan_speed_list": [
+          "quiet",
+          "balanced",
+          "turbo",
+          "max"
+        ],
+        "supported_features": 12540,
+        "friendly_name": "Robot vacuum"
+      }
+    },
+    {
+      "entity_id": "camera.driveway",
+      "state": "idle",
+      "attributes": {
+        "entity_picture": "file:camera_preview.png",
+        "friendly_name": "Driveway"
+      }
+    },
+    {
+      "entity_id": "camera.front_door",
+      "state": "idle",
+      "attributes": {
+        "entity_picture": "file:doorbell_camera.png",
+        "friendly_name": "Front door"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_kitchen_temperature",
+      "state": "22.4",
+      "attributes": {
+        "unit_of_measurement": "°C",
+        "device_class": "temperature",
+        "friendly_name": "Kitchen temperature"
+      },
+      "display_precision": 1
+    },
+    {
+      "entity_id": "light.demo_kitchen",
+      "state": "on",
+      "attributes": {
+        "friendly_name": "Kitchen light",
+        "brightness": 200,
+        "color_mode": "brightness",
+        "supported_color_modes": [
+          "brightness"
+        ]
+      }
+    },
+    {
+      "entity_id": "binary_sensor.demo_kitchen_window",
+      "state": "on",
+      "attributes": {
+        "device_class": "window",
+        "friendly_name": "Kitchen window"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_hallway_temperature",
+      "state": "20.1",
+      "attributes": {
+        "unit_of_measurement": "°C",
+        "device_class": "temperature",
+        "friendly_name": "Hallway temperature"
+      },
+      "display_precision": 1
+    },
+    {
+      "entity_id": "sensor.demo_bedroom_temperature",
+      "state": "18.6",
+      "attributes": {
+        "unit_of_measurement": "°C",
+        "device_class": "temperature",
+        "friendly_name": "Bedroom temperature"
+      },
+      "display_precision": 1
+    },
+    {
+      "entity_id": "light.demo_bedroom",
+      "state": "off",
+      "attributes": {
+        "friendly_name": "Bedroom light",
+        "color_mode": "brightness",
+        "supported_color_modes": [
+          "brightness"
+        ]
+      }
+    },
+    {
+      "entity_id": "binary_sensor.demo_bedroom_window",
+      "state": "off",
+      "attributes": {
+        "device_class": "window",
+        "friendly_name": "Bedroom window"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_office_temperature",
+      "state": "21.2",
+      "attributes": {
+        "unit_of_measurement": "°C",
+        "device_class": "temperature",
+        "friendly_name": "Office temperature"
+      },
+      "display_precision": 1
+    },
+    {
+      "entity_id": "light.demo_office",
+      "state": "on",
+      "attributes": {
+        "friendly_name": "Office light",
+        "brightness": 200,
+        "color_mode": "brightness",
+        "supported_color_modes": [
+          "brightness"
+        ]
+      }
+    },
+    {
+      "entity_id": "binary_sensor.demo_office_presence",
+      "state": "on",
+      "attributes": {
+        "device_class": "occupancy",
+        "friendly_name": "Office presence"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_bathroom_temperature",
+      "state": "23.0",
+      "attributes": {
+        "unit_of_measurement": "°C",
+        "device_class": "temperature",
+        "friendly_name": "Bathroom temperature"
+      },
+      "display_precision": 1
+    },
+    {
+      "entity_id": "binary_sensor.demo_bathroom_window",
+      "state": "off",
+      "attributes": {
+        "device_class": "window",
+        "friendly_name": "Bathroom window"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_laundry_temperature",
+      "state": "16.8",
+      "attributes": {
+        "unit_of_measurement": "°C",
+        "device_class": "temperature",
+        "friendly_name": "Laundry temperature"
+      },
+      "display_precision": 1
+    },
+    {
+      "entity_id": "binary_sensor.demo_laundry_leak",
+      "state": "off",
+      "attributes": {
+        "device_class": "moisture",
+        "friendly_name": "Laundry leak"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_solar_power",
+      "state": "4230",
+      "attributes": {
+        "unit_of_measurement": "W",
+        "device_class": "power",
+        "friendly_name": "Solar power"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_home_power",
+      "state": "1850",
+      "attributes": {
+        "unit_of_measurement": "W",
+        "device_class": "power",
+        "friendly_name": "Home power"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_grid_import_power",
+      "state": "0",
+      "attributes": {
+        "unit_of_measurement": "W",
+        "device_class": "power",
+        "friendly_name": "Grid import"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_grid_export_power",
+      "state": "880",
+      "attributes": {
+        "unit_of_measurement": "W",
+        "device_class": "power",
+        "friendly_name": "Grid export"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_battery_charge_power",
+      "state": "1500",
+      "attributes": {
+        "unit_of_measurement": "W",
+        "device_class": "power",
+        "friendly_name": "Battery charging"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_battery_discharge_power",
+      "state": "0",
+      "attributes": {
+        "unit_of_measurement": "W",
+        "device_class": "power",
+        "friendly_name": "Battery discharging"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_battery_soc",
+      "state": "68",
+      "attributes": {
+        "unit_of_measurement": "%",
+        "device_class": "battery",
+        "friendly_name": "Battery"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_gas",
+      "state": "1.8",
+      "attributes": {
+        "unit_of_measurement": "m³",
+        "device_class": "gas",
+        "friendly_name": "Gas today"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_water",
+      "state": "142",
+      "attributes": {
+        "unit_of_measurement": "L",
+        "device_class": "water",
+        "friendly_name": "Water today"
+      }
+    },
+    {
+      "entity_id": "switch.demo_unavailable",
+      "state": "unavailable",
+      "attributes": {
+        "friendly_name": "Plug"
+      }
+    },
+    {
+      "entity_id": "climate.demo_unavailable",
+      "state": "unavailable",
+      "attributes": {
+        "friendly_name": "Guest room"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_battery_soc",
+      "state": "64",
+      "attributes": {
+        "unit_of_measurement": "%",
+        "device_class": "battery"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_solar_forecast_today",
+      "state": "46.8",
+      "attributes": {
+        "fc_t0": 1779972300,
+        "fc_step": 1800,
+        "fc_kw": [
+          5.03,
+          4.45,
+          3.79,
+          3.1,
+          2.41,
+          1.75,
+          1.17,
+          0.68,
+          0.31,
+          0.08,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.08,
+          0.31,
+          0.68,
+          1.17,
+          1.75,
+          2.41,
+          3.1,
+          3.79,
+          4.45,
+          5.03,
+          5.52,
+          5.89,
+          6.12,
+          6.2,
+          6.12,
+          5.89,
+          5.52
+        ]
+      }
+    },
+    {
+      "entity_id": "sensor.demo_price",
+      "state": "0.20066",
+      "attributes": {
+        "unit_of_measurement": "€/kWh",
+        "friendly_name": "Electricity price",
+        "price_series": {
+          "shape": "epex",
+          "interval_min": 15,
+          "today": [
+            0.20927,
+            0.20653,
+            0.19967,
+            0.18605,
+            0.19782,
+            0.18603,
+            0.17925,
+            0.17064,
+            0.17431,
+            0.17009,
+            0.16396,
+            0.15637,
+            0.15464,
+            0.15257,
+            0.15183,
+            0.15054,
+            0.14965,
+            0.14957,
+            0.14978,
+            0.15097,
+            0.15569,
+            0.15583,
+            0.15167,
+            0.14887,
+            0.14703,
+            0.14911,
+            0.1503,
+            0.15446,
+            0.15742,
+            0.16237,
+            0.16796,
+            0.17309,
+            0.18886,
+            0.19006,
+            0.18873,
+            0.1793,
+            0.17947,
+            0.17022,
+            0.16906,
+            0.16353,
+            0.17336,
+            0.16039,
+            0.16016,
+            0.15067,
+            0.15123,
+            0.1456,
+            0.14233,
+            0.13824,
+            0.13269,
+            0.12504,
+            0.12565,
+            0.12067,
+            0.1248,
+            0.1184,
+            0.11921,
+            0.11834,
+            0.12323,
+            0.12239,
+            0.12948,
+            0.12753,
+            0.13699,
+            0.13909,
+            0.15015,
+            0.15163,
+            0.15285,
+            0.15523,
+            0.16268,
+            0.19698,
+            0.16875,
+            0.20019,
+            0.20701,
+            0.21986,
+            0.20999,
+            0.21089,
+            0.21684,
+            0.236,
+            0.24543,
+            0.24265,
+            0.23599,
+            0.21566,
+            0.21278,
+            0.19773,
+            0.19592,
+            0.19619,
+            0.20799,
+            0.20021,
+            0.17773,
+            0.16529,
+            0.1794,
+            0.1664,
+            0.17535,
+            0.16177,
+            0.1614,
+            0.16061,
+            0.16287,
+            0.15524
+          ],
+          "tomorrow": [
+            0.15328,
+            0.15049,
+            0.14565,
+            0.14659,
+            0.15099,
+            0.14926,
+            0.14252,
+            0.14376,
+            0.14963,
+            0.1482,
+            0.14733,
+            0.14601,
+            0.14254,
+            0.13997,
+            0.14418,
+            0.14384,
+            0.14,
+            0.1503,
+            0.1531,
+            0.14601,
+            0.14871,
+            0.1525,
+            0.15465,
+            0.15209,
+            0.13943,
+            0.14041,
+            0.14389,
+            0.14084,
+            0.14655,
+            0.15055,
+            0.16085,
+            0.16772,
+            0.17864,
+            0.1813,
+            0.18347,
+            0.18764,
+            0.20182,
+            0.20516,
+            0.2017,
+            0.19468,
+            0.21124,
+            0.20671,
+            0.18101,
+            0.17899,
+            0.19903,
+            0.19197,
+            0.1853,
+            0.1841,
+            0.19147,
+            0.18623,
+            0.18786,
+            0.16791,
+            0.18006,
+            0.16236,
+            0.15785,
+            0.15223,
+            0.16772,
+            0.15829,
+            0.16201,
+            0.15964,
+            0.16459,
+            0.16839,
+            0.17488,
+            0.17121,
+            0.16179,
+            0.18182,
+            0.19549,
+            0.22434,
+            0.19689,
+            0.21462,
+            0.21699,
+            0.222,
+            0.22203,
+            0.22551,
+            0.22894,
+            0.22861,
+            0.22663,
+            0.22207,
+            0.21704,
+            0.21665,
+            0.21265,
+            0.19482,
+            0.1997,
+            0.18593,
+            0.18667,
+            0.1819,
+            0.17842,
+            0.1712,
+            0.18635,
+            0.17924,
+            0.1741,
+            0.16674,
+            0.17573,
+            0.17147,
+            0.16858,
+            0.16827
+          ]
+        }
+      }
+    },
+    {
+      "entity_id": "sensor.demo_world_etf",
+      "state": "113.38",
+      "platform": "easy_stock",
+      "attributes": {
+        "state_class": "measurement",
+        "symbol": "DWLD.DE",
+        "long_name": "Demo MSCI World UCITS ETF USD Acc",
+        "currency": "EUR",
+        "market_state": "CLOSED",
+        "change": 0.45,
+        "change_pct": 0.4,
+        "previous_close": 112.93,
+        "price_is_live": false,
+        "traded_today": true,
+        "unit_of_measurement": "EUR",
+        "friendly_name": "MSCI World"
+      }
+    },
+    {
+      "entity_id": "sensor.yahoofinance_demo_ins",
+      "state": "379.5",
+      "platform": "yahoofinance",
+      "attributes": {
+        "state_class": "measurement",
+        "currencySymbol": "€",
+        "symbol": "DINS.DE",
+        "marketState": "REGULAR",
+        "regularMarketChange": -0.3,
+        "regularMarketChangePercent": -0.08,
+        "regularMarketPreviousClose": 379.8,
+        "regularMarketPrice": 379.5,
+        "regularMarketTime": 1792598400,
+        "unit_of_measurement": "EUR",
+        "friendly_name": "Allianz"
+      }
+    },
+    {
+      "entity_id": "sensor.yahoofinance_demo_tech",
+      "state": "245.2",
+      "platform": "yahoofinance",
+      "attributes": {
+        "state_class": "measurement",
+        "currencySymbol": "$",
+        "symbol": "DTEC",
+        "marketState": "POSTPOST",
+        "regularMarketChange": 2.72,
+        "regularMarketChangePercent": 1.12,
+        "regularMarketPreviousClose": 242.48,
+        "regularMarketPrice": 245.2,
+        "regularMarketTime": 1792598400,
+        "unit_of_measurement": "USD",
+        "friendly_name": "Apple"
+      }
+    },
+    {
+      "entity_id": "sensor.yahoofinance_demo_lon",
+      "state": "1234.5",
+      "platform": "yahoofinance",
+      "attributes": {
+        "state_class": "measurement",
+        "currencySymbol": "p",
+        "symbol": "DLON.L",
+        "marketState": "CLOSED",
+        "regularMarketChange": -4.5,
+        "regularMarketChangePercent": -0.36,
+        "regularMarketPreviousClose": 1239.0,
+        "regularMarketPrice": 1234.5,
+        "regularMarketTime": 1792598400,
+        "unit_of_measurement": "GBp",
+        "friendly_name": "London Demo plc"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_em_etf",
+      "state": "25.24",
+      "platform": "easy_stock",
+      "attributes": {
+        "state_class": "measurement",
+        "symbol": "DEMK.DE",
+        "long_name": "Demo Emerging Markets Kleinunternehmen Übersee UCITS ETF",
+        "currency": "EUR",
+        "market_state": "CLOSED",
+        "change": 0.0,
+        "change_pct": 0.0,
+        "previous_close": 25.24,
+        "price_is_live": false,
+        "traded_today": true,
+        "unit_of_measurement": "EUR",
+        "friendly_name": "Emerging Markets"
+      }
+    }
   ],
-  "house": {"rooms": [{"name": "Living room", "floor": "Ground floor", "entity_id": "sensor.demo_room_temperature", "room_entities": ["light.demo_living_room", "binary_sensor.demo_motion"]}, {"name": "Kitchen", "floor": "Ground floor", "entity_id": "sensor.demo_kitchen_temperature", "room_entities": ["light.demo_kitchen", "binary_sensor.demo_kitchen_window"]}, {"name": "Hallway", "floor": "Ground floor", "entity_id": "sensor.demo_hallway_temperature", "room_entities": ["binary_sensor.demo_front_door"]}, {"name": "Bedroom", "floor": "Upper floor", "entity_id": "sensor.demo_bedroom_temperature", "room_entities": ["light.demo_bedroom", "binary_sensor.demo_bedroom_window"]}, {"name": "Office", "floor": "Upper floor", "entity_id": "sensor.demo_office_temperature", "room_entities": ["light.demo_office", "binary_sensor.demo_office_presence"]}, {"name": "Bathroom", "floor": "Upper floor", "entity_id": "sensor.demo_bathroom_temperature", "room_entities": ["binary_sensor.demo_bathroom_window"]}, {"name": "Laundry", "floor": "Basement", "entity_id": "sensor.demo_laundry_temperature", "room_entities": ["binary_sensor.demo_laundry_leak"]}]},
-  "energy": {"source": "manual_live", "solar_power_entity_id": "sensor.demo_solar_power", "home_power_entity_id": "sensor.demo_home_power", "grid_import_power_entity_id": "sensor.demo_grid_import_power", "grid_export_power_entity_id": "sensor.demo_grid_export_power", "battery_charge_power_entity_id": "sensor.demo_battery_charge_power", "battery_discharge_power_entity_id": "sensor.demo_battery_discharge_power", "battery_soc_entity_id": "sensor.demo_battery_soc", "gas_entity_id": "sensor.demo_gas", "water_entity_id": "sensor.demo_water"},
+  "house": {
+    "rooms": [
+      {
+        "name": "Living room",
+        "floor": "Ground floor",
+        "entity_id": "sensor.demo_room_temperature",
+        "room_entities": [
+          "light.demo_living_room",
+          "binary_sensor.demo_motion"
+        ]
+      },
+      {
+        "name": "Kitchen",
+        "floor": "Ground floor",
+        "entity_id": "sensor.demo_kitchen_temperature",
+        "room_entities": [
+          "light.demo_kitchen",
+          "binary_sensor.demo_kitchen_window"
+        ]
+      },
+      {
+        "name": "Hallway",
+        "floor": "Ground floor",
+        "entity_id": "sensor.demo_hallway_temperature",
+        "room_entities": [
+          "binary_sensor.demo_front_door"
+        ]
+      },
+      {
+        "name": "Bedroom",
+        "floor": "Upper floor",
+        "entity_id": "sensor.demo_bedroom_temperature",
+        "room_entities": [
+          "light.demo_bedroom",
+          "binary_sensor.demo_bedroom_window"
+        ]
+      },
+      {
+        "name": "Office",
+        "floor": "Upper floor",
+        "entity_id": "sensor.demo_office_temperature",
+        "room_entities": [
+          "light.demo_office",
+          "binary_sensor.demo_office_presence"
+        ]
+      },
+      {
+        "name": "Bathroom",
+        "floor": "Upper floor",
+        "entity_id": "sensor.demo_bathroom_temperature",
+        "room_entities": [
+          "binary_sensor.demo_bathroom_window"
+        ]
+      },
+      {
+        "name": "Laundry",
+        "floor": "Basement",
+        "entity_id": "sensor.demo_laundry_temperature",
+        "room_entities": [
+          "binary_sensor.demo_laundry_leak"
+        ]
+      }
+    ]
+  },
+  "energy": {
+    "source": "manual_live",
+    "solar_power_entity_id": "sensor.demo_solar_power",
+    "home_power_entity_id": "sensor.demo_home_power",
+    "grid_import_power_entity_id": "sensor.demo_grid_import_power",
+    "grid_export_power_entity_id": "sensor.demo_grid_export_power",
+    "battery_charge_power_entity_id": "sensor.demo_battery_charge_power",
+    "battery_discharge_power_entity_id": "sensor.demo_battery_discharge_power",
+    "battery_soc_entity_id": "sensor.demo_battery_soc",
+    "gas_entity_id": "sensor.demo_gas",
+    "water_entity_id": "sensor.demo_water"
+  },
   "doorbell": {
-    "sound": "chime","title": "Doorbell", "message": "Someone is at the door.", "message_id": "gallery_doorbell_preview", "action_entity_id": "button.gallery_preview_only", "action_label": "Open door", "camera_entity_id": "camera.front_door"},
-  "graph_history": [2300, 2550, 2310, 1980, 2150, 2420, 2740, 2630, 2210, 1890, 2060, 2400, 2810, 2680, 2360, 2120, 2220, 2450]
+    "sound": "chime",
+    "title": "Doorbell",
+    "message": "Someone is at the door.",
+    "message_id": "gallery_doorbell_preview",
+    "action_entity_id": "button.gallery_preview_only",
+    "action_label": "Open door",
+    "camera_entity_id": "camera.front_door"
+  },
+  "graph_history": [
+    2300,
+    2550,
+    2310,
+    1980,
+    2150,
+    2420,
+    2740,
+    2630,
+    2210,
+    1890,
+    2060,
+    2400,
+    2810,
+    2680,
+    2360,
+    2120,
+    2220,
+    2450
+  ]
 }

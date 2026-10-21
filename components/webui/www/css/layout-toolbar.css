@@ -30,6 +30,19 @@
   font-size: 12px;
   white-space: nowrap;
 }
+.layout-follow-page {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.layout-follow-page > input {
+  width: auto;
+  margin: 0;
+}
 .layout-text-size > select {
   width: auto;
   min-width: 100px;

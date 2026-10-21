@@ -36,6 +36,8 @@ static const widget_type_info_t s_types[] = {
     {"price_forecast",  {240, 150, CBW,       CBH},       "sensor"},
     /* A portfolio from the Parqet Companion sensors: value, gain, XIRR, dividends and the largest holdings. */
     {"parqet_portfolio", {240, 150, CBW,       CBH},       "sensor"},
+    /* Stocks & ETFs: up to eight quotes of Yahoo Finance or Easy Stock as a list or stacked charts. */
+    {"stock_quotes",    {240, 120, CBW,       CBH},       "sensor"},
     {"car_widget",      {200, 200, 480,       560},       "sensor"},
     {"wallbox_evcc", {320, 360, CBW, CBH}, "select"},
     {"bambu_printer",   {320, 320, CBW,       CBH},       "sensor"},

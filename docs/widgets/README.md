@@ -2,7 +2,7 @@
 
 # Widget library
 
-33 widgets, grouped by what you want to do. Each guide starts with a summary and a preview, then lists the entities, requirements, options, behaviour on the panel and size limits. The previews are rendered by the LVGL simulator in the Glow style with synthetic data (click to enlarge); the other styles keep the same functions.
+34 widgets, grouped by what you want to do. Each guide starts with a summary and a preview, then lists the entities, requirements, options, behaviour on the panel and size limits. The previews are rendered by the LVGL simulator in the Glow style with synthetic data (click to enlarge); the other styles keep the same functions.
 
 To add one, open a page in the [web editor](../editor.md#layout-workspace), choose the widget in **Add**, pick its entity by clicking its entity row, size it and **Save** the layout. Start with [your first light](../getting-started.md#5-control-your-first-light). Whole pages (room overview, energy dashboard) are in [Pages and layouts](../pages.md); for a different look, use [Appearance](../appearance.md).
 
@@ -49,6 +49,12 @@ Numbers, trends and states you want to read at a glance.
     **[Parqet portfolio](parqet_portfolio.md)**
 
     Shows a Parqet portfolio from its `sensor.*` entities: total value, gain, XIRR, dividends and the largest holdings.
+
+-   [![Stocks & ETFs](../img/gallery/stocks_list_glow.png)](stock_quotes.md)
+
+    **[Stocks & ETFs](stock_quotes.md)**
+
+    Shows up to eight quotes of Yahoo Finance or Easy Stock `sensor.*` entities as a list or as charts, with the last session's change and a detail view over five periods.
 
 </div>
 

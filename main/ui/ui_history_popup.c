@@ -20,6 +20,9 @@
 #include "ha/ha_history_stats.h"
 #include "ha/ha_history_week.h"
 #include "ha/ha_model.h"
+#include "ha/ha_quote.h"
+#include "ha/ha_quote_series.h"
+#include "ui/quote_history_feed.h"
 #include "ui/theme/ui_typography.h"
 #include "ui/theme/theme_default.h"
 #include "ui/theme/ui_style.h"
@@ -74,6 +77,13 @@ typedef struct {
     lv_timer_t *sessions_timer;
     evcc_sessions_t *sessions;
     uint32_t sessions_version;
+    /* quote view (Stocks & ETFs): five periods from ui/quote_history_feed.c */
+    bool quote_mode;
+    ha_quote_provider_t provider;
+    ha_quote_t quote;
+    ha_quote_period_t period;
+    void *quote_feed;
+    lv_obj_t *period_btn[HA_QUOTE_PERIOD_COUNT];
 } history_popup_t;
 
 static history_popup_t *s_popup;
@@ -84,6 +94,7 @@ static void popup_deleted(lv_event_t *event)
     history_popup_t *popup = (history_popup_t *)lv_event_get_user_data(event);
     if (s_popup == popup) s_popup = NULL;
     if (popup->sessions_timer) lv_timer_delete(popup->sessions_timer);
+    quote_history_feed_unregister(popup->quote_feed);
     free(popup->sessions);
     free(popup);
 }
@@ -968,3 +979,306 @@ void ui_history_popup_open_evcc(const char *entity)
     if (!popup->sessions_timer) { lv_obj_delete(popup->overlay); return; }
     lv_obj_update_layout(popup->card); sessions_tick(popup->sessions_timer);
 }
+
+/* ---- Quote view (Stocks & ETFs): price, the session's change, five periods with their source and reference ---- */
+
+#define QUOTE_PLOT_MAX 200
+
+static const char *const QUOTE_PERIOD_KEY[HA_QUOTE_PERIOD_COUNT] = {
+    "stock.period.1d", "stock.period.1w", "stock.period.30d", "stock.period.ytd", "stock.period.1y"};
+static const char *const QUOTE_PERIOD_TEXT[HA_QUOTE_PERIOD_COUNT] = {"1D", "1W", "30D", "YTD", "1Y"};
+
+static bool quote_german(void)
+{
+    const char *lang = ui_i18n_get_language();
+    return lang != NULL && strncmp(lang, "de", 2) == 0;
+}
+
+static void quote_amount(const ha_quote_t *q, double value, bool plus, char *out, size_t cap)
+{
+    char num[40];
+    ha_quote_format_number(num, sizeof(num), value, ha_quote_price_decimals(q), quote_german(), plus);
+    const char *sign = ha_quote_currency_sign(q->currency);
+    snprintf(out, cap, sign[0] != '\0' ? "%s %s" : "%s", num, sign);
+}
+
+static void quote_percent(double value, char *out, size_t cap)
+{
+    char num[32];
+    ha_quote_format_number(num, sizeof(num), value, 2, quote_german(), true);
+    snprintf(out, cap, "%s %%", num);
+}
+
+static void quote_time_text(int64_t epoch, bool with_date, char *out, size_t cap)
+{
+    const time_t at = (time_t)epoch;
+    struct tm local;
+    if (localtime_r(&at, &local) == NULL) {
+        snprintf(out, cap, "?");
+        return;
+    }
+    if (!with_date) snprintf(out, cap, "%02d:%02d", local.tm_hour, local.tm_min);
+    else if (quote_german()) snprintf(out, cap, "%d.%d. %02d:%02d", local.tm_mday, local.tm_mon + 1, local.tm_hour, local.tm_min);
+    else snprintf(out, cap, "%d/%d %02d:%02d", local.tm_mon + 1, local.tm_mday, local.tm_hour, local.tm_min);
+}
+
+static const char *quote_market_text(ha_quote_market_t market)
+{
+    switch (market) {
+    case HA_QUOTE_MARKET_OPEN: return ui_i18n_get("stock.market.open", "Market open");
+    case HA_QUOTE_MARKET_PRE: return ui_i18n_get("stock.market.pre", "Pre-market");
+    case HA_QUOTE_MARKET_POST: return ui_i18n_get("stock.market.post", "After hours");
+    case HA_QUOTE_MARKET_CLOSED: return ui_i18n_get("stock.market.closed", "Market closed");
+    default: return "";
+    }
+}
+
+static const char *quote_kind_text(ha_quote_series_kind_t kind)
+{
+    switch (kind) {
+    case HA_QUOTE_SERIES_CLOSES: return ui_i18n_get("stock.source.closes", "Closes");
+    case HA_QUOTE_SERIES_STATES: return ui_i18n_get("stock.source.recorded", "Recorded");
+    case HA_QUOTE_SERIES_HOURLY_MEANS: return ui_i18n_get("history.hourly_mean", "Hourly means");
+    case HA_QUOTE_SERIES_DAILY_MEANS: return ui_i18n_get("history.daily_mean", "Daily means");
+    default: return ui_i18n_get("history.weekly_mean", "Weekly means");
+    }
+}
+
+typedef struct {
+    ha_quote_point_t point[QUOTE_PLOT_MAX];
+    size_t count;
+} quote_plot_t;
+
+static bool quote_value_at(const void *data, size_t i, float *out)
+{
+    const quote_plot_t *plot = (const quote_plot_t *)data;
+    if (i >= plot->count || !isfinite(plot->point[i].v)) return false;
+    *out = plot->point[i].v;
+    return true;
+}
+
+static int64_t quote_time_at(const void *data, size_t i)
+{
+    return ((const quote_plot_t *)data)->point[i].t;
+}
+
+static void quote_style_buttons(history_popup_t *popup)
+{
+    for (int p = 0; p < HA_QUOTE_PERIOD_COUNT; p++) {
+        if (popup->period_btn[p] == NULL) continue;
+        const bool active = p == (int)popup->period;
+        lv_obj_set_style_bg_color(popup->period_btn[p], lv_color_hex(active ? APP_UI_COLOR_STATE_ON : APP_UI_COLOR_NAV_BTN_BG_IDLE),
+                                  LV_PART_MAIN);
+        lv_obj_set_style_text_color(popup->period_btn[p], lv_color_hex(active ? APP_UI_COLOR_CONTENT_BG : APP_UI_COLOR_TEXT_PRIMARY),
+                                    LV_PART_MAIN);
+    }
+}
+
+static void quote_received(void *user, quote_feed_status_t status, const ha_quote_series_t *series)
+{
+    history_popup_t *popup = (history_popup_t *)user;
+    if (popup == NULL || popup != s_popup || !popup->quote_mode) return;
+    lv_obj_clean(popup->body);
+    if (status == QUOTE_FEED_LOADING) {
+        lv_label_set_text(popup->status, ui_i18n_get("history.loading", "Loading history..."));
+        return;
+    }
+    if (status == QUOTE_FEED_FAILED || series == NULL) {
+        lv_label_set_text(popup->status, ui_i18n_get(status == QUOTE_FEED_FAILED ? "stock.history_failed" : "stock.history_empty",
+                                                     status == QUOTE_FEED_FAILED ? "History not available" : "No history for this period"));
+        return;
+    }
+    if (status == QUOTE_FEED_EMPTY) {
+        lv_label_set_text(popup->status, ui_i18n_get("stock.history_empty", "No history for this period"));
+        return;
+    }
+    /* the source and, for closes, the reference the change starts at; a shorter history says from when */
+    char line[320], change[200] = "";
+    ha_quote_change_t c;
+    if (ha_quote_series_period_change(series, &popup->quote, &c)) {
+        char pct[32], amount[48], base[48], when[24];
+        quote_percent(c.change_pct, pct, sizeof(pct));
+        quote_amount(&popup->quote, c.change, true, amount, sizeof(amount));
+        if (c.from_reference) {
+            quote_amount(&popup->quote, c.base, false, base, sizeof(base));
+            if (c.base_t != 0) quote_time_text(c.base_t, true, when, sizeof(when));
+            else snprintf(when, sizeof(when), "%s", ui_i18n_get("stock.prev_close", "prev. close"));
+            if (c.base_t != 0 && strchr(when, ' ') != NULL) *strchr(when, ' ') = '\0'; /* a close is a day */
+            snprintf(change, sizeof(change), "  \xC2\xB7  %s  %s  %s %s (%s)", amount, pct, ui_i18n_get("stock.since", "since"), base, when);
+        } else {
+            snprintf(change, sizeof(change), "  \xC2\xB7  %s %s", ui_i18n_get("stock.trend", "trend"), pct);
+        }
+    }
+    char from[40] = "";
+    if (series->partial && series->count > 0) {
+        char date[24];
+        quote_time_text(series->point[0].t, true, date, sizeof(date));
+        if (strchr(date, ' ') != NULL) *strchr(date, ' ') = '\0';
+        snprintf(from, sizeof(from), "  \xC2\xB7  %s %s", ui_i18n_get("stock.from", "from"), date);
+    }
+    snprintf(line, sizeof(line), "%s%s%s", quote_kind_text(series->kind), from, change);
+    lv_label_set_text(popup->status, line);
+
+    quote_plot_t *plot = ui_calloc_prefer_psram(1, sizeof(*plot));
+    if (plot == NULL) return;
+    plot->count = ha_quote_series_reduce(series, plot->point, QUOTE_PLOT_MAX);
+    float lowest = INFINITY, highest = -INFINITY;
+    for (size_t i = 0; i < plot->count; i++) {
+        if (!isfinite(plot->point[i].v)) continue;
+        lowest = fminf(lowest, plot->point[i].v);
+        highest = fmaxf(highest, plot->point[i].v);
+    }
+    if (plot->count >= 2 && isfinite(lowest)) {
+        axis_label_t labels[5];
+        size_t count = 0;
+        const int64_t t0 = plot->point[0].t, t1 = plot->point[plot->count - 1].t;
+        for (size_t k = 0; k < 5 && t1 > t0; k++) {
+            const int64_t at = t0 + (t1 - t0) * (int64_t)k / 4;
+            const time_t when = (time_t)at;
+            struct tm local;
+            if (localtime_r(&when, &local) == NULL) continue;
+            if (series->period == HA_QUOTE_PERIOD_1D) snprintf(labels[count].text, sizeof(labels[count].text), "%02d:%02d", local.tm_hour, local.tm_min);
+            else if (series->period >= HA_QUOTE_PERIOD_YTD) snprintf(labels[count].text, sizeof(labels[count].text), "%02d/%02d", local.tm_mon + 1, local.tm_year % 100);
+            else snprintf(labels[count].text, sizeof(labels[count].text), "%02d.%02d.", local.tm_mday, local.tm_mon + 1);
+            labels[count].frac = (float)k / 4.0f;
+            count++;
+        }
+        render_plot(popup, lowest, highest, plot->count, 0, 72, quote_value_at, plot, labels, count, quote_time_at);
+    }
+    free(plot);
+}
+
+static void quote_request(history_popup_t *popup)
+{
+    lv_obj_clean(popup->body);
+    lv_label_set_text(popup->status, ui_i18n_get("history.loading", "Loading history..."));
+    quote_history_feed_set(popup->quote_feed, popup->entity_id, popup->provider, popup->quote.symbol, popup->period,
+                           popup->quote.price);
+}
+
+static void quote_period_clicked(lv_event_t *event)
+{
+    history_popup_t *popup = (history_popup_t *)lv_event_get_user_data(event);
+    lv_obj_t *target = lv_event_get_target(event);
+    if (popup == NULL || popup != s_popup) return;
+    for (int p = 0; p < HA_QUOTE_PERIOD_COUNT; p++) {
+        if (target != popup->period_btn[p] || (int)popup->period == p) continue;
+        popup->period = (ha_quote_period_t)p;
+        quote_style_buttons(popup);
+        quote_request(popup);
+        break;
+    }
+}
+
+void ui_history_popup_quote_select(ha_quote_period_t period)
+{
+    history_popup_t *popup = s_popup;
+    if (popup == NULL || !popup->quote_mode || period >= HA_QUOTE_PERIOD_COUNT || period == popup->period) return;
+    popup->period = period;
+    quote_style_buttons(popup);
+    quote_request(popup);
+}
+
+void ui_history_popup_open_quote(const char *entity_id, ha_quote_provider_t provider, const ha_quote_t *quote,
+                                 ha_quote_period_t period)
+{
+    if (entity_id == NULL || entity_id[0] == '\0' || quote == NULL) return;
+    if (s_popup != NULL) lv_obj_delete(s_popup->overlay);
+    history_popup_t *popup = ui_calloc_prefer_psram(1, sizeof(*popup));
+    if (popup == NULL) return;
+    popup->numeric = true;
+    popup->quote_mode = true;
+    popup->provider = provider;
+    popup->quote = *quote;
+    popup->period = period < HA_QUOTE_PERIOD_COUNT ? period : HA_QUOTE_PERIOD_30D;
+    strlcpy(popup->entity_id, entity_id, sizeof(popup->entity_id));
+    s_popup = popup;
+    const char *name = quote->long_name[0] != '\0' ? quote->long_name : quote->name[0] != '\0' ? quote->name : entity_id;
+    int cw, ch;
+    create_frame(popup, name, entity_id, &cw, &ch);
+    const ha_quote_t *q = &popup->quote;
+    const lv_font_t *label = ui_font_role(UI_TEXT_LABEL), *meta = ui_font_role(UI_TEXT_META), *value = ui_font_role(UI_TEXT_VALUE);
+    const int label_h = (int)lv_font_get_line_height(label), meta_h = (int)lv_font_get_line_height(meta);
+    const int value_h = (int)lv_font_get_line_height(value);
+    int y = label_h + 6;
+
+    /* price and the last session's change */
+    char price[48] = "--", session[96] = "";
+    if (q->available) quote_amount(q, q->price, false, price, sizeof(price));
+    strlcpy(popup->current, price, sizeof(popup->current));
+    lv_obj_t *price_label = new_label(popup->card, price, value, APP_UI_COLOR_TEXT_PRIMARY, 0, y, cw / 2);
+    lv_obj_set_height(price_label, value_h);
+    lv_obj_update_layout(price_label);
+    if (q->available && (q->has_change || q->has_change_pct)) {
+        char amount[48] = "", pct[32] = "";
+        if (q->has_change) quote_amount(q, q->change, true, amount, sizeof(amount));
+        if (q->has_change_pct) quote_percent(q->change_pct, pct, sizeof(pct));
+        snprintf(session, sizeof(session), "%s  %s", amount, pct);
+    } else if (q->available) {
+        snprintf(session, sizeof(session), "--");
+    }
+    lv_point_t size;
+    lv_text_get_size(&size, price, value, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    const double sign = q->has_change ? q->change : q->change_pct;
+    new_label(popup->card, session, label, sign > 0 ? APP_UI_COLOR_OK : sign < 0 ? APP_UI_COLOR_ERROR : APP_UI_COLOR_TEXT_SOFT,
+              size.x + 16, y + value_h - label_h - 2, cw - size.x - 60);
+    y += value_h + 2;
+
+    /* symbol, market and the two times: when the price was set at the exchange and when Home Assistant last updated */
+    char info[200];
+    size_t n = (size_t)snprintf(info, sizeof(info), "%s", q->symbol);
+    const char *market = quote_market_text(q->market);
+    if (market[0] != '\0') n += (size_t)snprintf(info + n, sizeof(info) - n, "%s%s", n ? "  \xC2\xB7  " : "", market);
+    if (q->has_quote_time && n < sizeof(info)) {
+        char when[24];
+        quote_time_text(q->quote_time, true, when, sizeof(when));
+        n += (size_t)snprintf(info + n, sizeof(info) - n, "  \xC2\xB7  %s %s", ui_i18n_get("stock.quote_time", "quote"), when);
+    }
+    ha_state_t *state = ui_calloc_prefer_psram(1, sizeof(*state));
+    if (state != NULL && ha_model_get_state(entity_id, state) && state->ha_changed_s > 0 && n < sizeof(info)) {
+        char when[24];
+        quote_time_text(state->ha_changed_s, true, when, sizeof(when));
+        n += (size_t)snprintf(info + n, sizeof(info) - n, "  \xC2\xB7  %s %s", ui_i18n_get("stock.updated", "updated"), when);
+    }
+    free(state);
+    if (q->has_live && !q->price_is_live && n < sizeof(info)) {
+        snprintf(info + n, sizeof(info) - n, "  \xC2\xB7  %s", ui_i18n_get("stock.last_price", "last price"));
+    }
+    new_label(popup->card, info, meta, APP_UI_COLOR_TEXT_MUTED, 0, y, cw - 28);
+    y += meta_h + 8;
+
+    /* the five periods and, beside them, what the chart shows */
+    const int w = range_button_width() * 3 / 4, h = range_button_height();
+    for (int p = 0; p < HA_QUOTE_PERIOD_COUNT; p++) {
+        lv_obj_t *button = lv_btn_create(popup->card);
+        lv_obj_remove_style_all(button);
+        lv_obj_set_pos(button, p * (w + 6), y);
+        lv_obj_set_size(button, w, h);
+        lv_obj_set_style_bg_opa(button, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_radius(button, ui_style_radius(10), LV_PART_MAIN);
+        lv_obj_add_event_cb(button, quote_period_clicked, LV_EVENT_CLICKED, popup);
+        lv_obj_t *text = lv_label_create(button);
+        lv_label_set_text(text, ui_i18n_get(QUOTE_PERIOD_KEY[p], QUOTE_PERIOD_TEXT[p]));
+        lv_obj_set_style_text_font(text, meta, LV_PART_MAIN);
+        lv_obj_center(text);
+        popup->period_btn[p] = button;
+    }
+    y += h + 4;
+    popup->status = new_label(popup->card, "", meta, APP_UI_COLOR_TEXT_MUTED, 0, y, cw - 28);
+    lv_label_set_long_mode(popup->status, LV_LABEL_LONG_DOT);
+    y += meta_h + 4;
+    popup->body = lv_obj_create(popup->card);
+    lv_obj_remove_style_all(popup->body);
+    lv_obj_set_pos(popup->body, 0, y);
+    lv_obj_set_size(popup->body, cw - 28, ch - y - 28);
+    lv_obj_set_scrollable(popup->body, false);
+    lv_obj_update_layout(popup->card);
+    quote_style_buttons(popup);
+    popup->quote_feed = quote_history_feed_register(popup->card, true, quote_received, popup);
+    if (popup->quote_feed == NULL) {
+        lv_label_set_text(popup->status, ui_i18n_get("stock.history_failed", "History not available"));
+        return;
+    }
+    quote_request(popup);
+}
+

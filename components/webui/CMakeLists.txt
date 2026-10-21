@@ -25,6 +25,7 @@ set(WEBUI_JS_SOURCES
     js/readability.js
     js/bambu-printer.js
     js/evcc-wallbox.js
+    js/stock-quotes.js
     js/energy-timeline-colors.js
     js/tile-previews.js
     js/layout-history.js
@@ -51,6 +52,7 @@ set(WEBUI_CSS_SOURCES
     css/layout-toolbar.css
     css/layout-actions.css
     css/evcc-wallbox.css
+    css/stock-quotes.css
     css/inspector.css)
 
 set(WEBUI_JS_DEPENDS "")

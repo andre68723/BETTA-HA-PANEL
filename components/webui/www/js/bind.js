@@ -128,6 +128,7 @@ if (el.addBambuPrinterBtn) {
   if (el.addEnergyTimelineBtn) el.addEnergyTimelineBtn.onclick = () => openLightEntityPicker("energy_timeline");
   if (el.addPriceForecastBtn) el.addPriceForecastBtn.onclick = () => openLightEntityPicker("price_forecast");
   if (el.addParqetPortfolioBtn) el.addParqetPortfolioBtn.onclick = () => openLightEntityPicker("parqet_portfolio");
+  if (el.addStockQuotesBtn) el.addStockQuotesBtn.onclick = () => openLightEntityPicker("stock_quotes");
   if (el.addDatetimeTileBtn) el.addDatetimeTileBtn.onclick = () => openLightEntityPicker("datetime_tile");
   if (el.addLockTileBtn) el.addLockTileBtn.onclick = () => openLightEntityPicker("lock_tile");
   if (el.addAlarmTileBtn) el.addAlarmTileBtn.onclick = () => openLightEntityPicker("alarm_tile");
@@ -475,6 +476,11 @@ if (el.addBambuPrinterBtn) {
   bindInspectorAutoApply(el.fPriceLine, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fPriceAverage, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fParqetDividends, ["change", "blur"], { softEntityValidation: true });
+  for (const key of STOCK_FIELDS) bindInspectorAutoApply(el[key], ["change", "blur"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fStockView, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fStockPeriod, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fStockDelta, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fStockTicker, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fParqetReturn, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fParqetSelector, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fParqetView, ["change"], { softEntityValidation: true });
@@ -524,6 +530,11 @@ if (el.addBambuPrinterBtn) {
   bindUpdateCheck();
   bindCrashBanner();
   initInspectorLayout();
+  bindStockInspector();
+  if (el.followPageToggle) {
+    el.followPageToggle.checked = followPageEnabled();
+    el.followPageToggle.addEventListener("change", () => setFollowPage(el.followPageToggle.checked));
+  }
   bindInspectorHints();
   if (el.uploadOtaBtn) {
     el.uploadOtaBtn.onclick = () => {

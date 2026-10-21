@@ -401,7 +401,7 @@ def build_spec(entities):
                            "Size": "min 180x90"}),
             ],
         },
-    ] + bambu_pages(entities) + wallbox_pages(entities) + price_pages(entities) + parqet_pages(entities)
+    ] + bambu_pages(entities) + wallbox_pages(entities) + price_pages(entities) + parqet_pages(entities) + stock_pages(entities)
 
 
 # The public example list of the simulator preview (a real panel reads it from the todo entity).
@@ -491,6 +491,29 @@ def parqet_pages(entities):
                  fields=dict(parqet, parqet_selector=True, parqet_interval="1m"), caps=caps),
             dict(slot="parqet_portfolio", type="parqet_portfolio", title="Portfolio (holdings)", rect=(400, 10, 380, 400),
                  fields=dict(parqet, parqet_selector=True, parqet_interval="1w", parqet_view="holdings"), caps=caps),
+        ],
+    }]
+
+
+def stock_pages(entities):
+    stock = entities.get("stock")
+    if not stock:
+        return []
+    caps = {"Domain": "sensors of Yahoo Finance or Easy Stock, up to eight, mixed in any order",
+            "Display": "a list of name, price and the last session's change, or a chart per quote with the change over the period",
+            "Options": "stock_view: list or chart; stock_period: 1d, 1w, 30d, ytd or 1y; stock_delta: percent, absolute or both; stock_ticker: the symbol",
+            "Extras": "a tap opens the detail popup with five periods; histories come from Easy Stock's closes or Home Assistant's records",
+            "Size": "min 240x120, max CBWxCBH"}
+    quotes = [stock["entity_id"]] + stock["stock_entities"]
+    return [{
+        "page": "gallery_stock",
+        "tiles": [
+            dict(slot="stock_quotes", type="stock_quotes", title="Stocks list", rect=(10, 10, 380, 280),
+                 fields={"entity_id": quotes[0], "stock_entities": quotes[1:]}, caps=caps),
+            dict(slot="stock_quotes", type="stock_quotes", title="Stocks list (symbol, both changes)", rect=(410, 10, 380, 280),
+                 fields={"entity_id": quotes[0], "stock_entities": quotes[1:3], "stock_ticker": True, "stock_delta": "both"}, caps=caps),
+            dict(slot="stock_quotes", type="stock_quotes", title="Stocks charts", rect=(10, 310, 380, 330),
+                 fields={"entity_id": quotes[0], "stock_entities": quotes[1:3], "stock_view": "chart"}, caps=caps),
         ],
     }]
 
@@ -615,7 +638,7 @@ def collect_images(img_dir, spec, styles=STYLES):
 # How the library index groups the widgets: what the user wants to do. Every widget type is in exactly one group.
 WIDGET_GROUPS = [
     ("Show values", "Numbers, trends and states you want to read at a glance.",
-     ["sensor", "gauge", "graph", "binary_tile", "contact_tile", "parqet_portfolio"]),
+     ["sensor", "gauge", "graph", "binary_tile", "contact_tile", "parqet_portfolio", "stock_quotes"]),
     ("Control your home", "Switches, lights, heating, blinds and other things you operate by touch.",
      ["button", "slider", "light_tile", "heating_tile", "climate_tile", "cover_tile", "fan_tile", "lock_tile", "alarm_tile", "select_tile", "datetime_tile", "scene_tile"]),
     ("Rooms", "Everything about one room in a single card.", ["room_tile"]),
@@ -630,7 +653,7 @@ WIDGET_GROUPS = [
 # title ("Vertical", "Horizontal"), which said nothing about which widget it even was.
 ROW_DISPLAY_NAME = {
     "sensor": "Sensor", "gauge": "Gauge", "car_widget": "Car", "bambu_printer": "Bambu printer", "wallbox_evcc": "Wallbox", "graph": "Graph",
-    "solar_forecast": "Solar forecast", "price_forecast": "Price forecast", "parqet_portfolio": "Parqet portfolio", "weather_tile": "Weather (now)", "weather_3day": "Weather forecast",
+    "solar_forecast": "Solar forecast", "price_forecast": "Price forecast", "parqet_portfolio": "Parqet portfolio", "stock_quotes": "Stocks & ETFs", "weather_tile": "Weather (now)", "weather_3day": "Weather forecast",
     "button": "Button", "scene_tile": "Scene", "select_tile": "Select", "lock_tile": "Lock", "alarm_tile": "Alarm", "datetime_tile": "Date/Time", "slider": "Slider", "cover_tile": "Cover",
     "light_tile": "Light", "fan_tile": "Fan", "climate_tile": "Climate", "heating_tile": "Heating",
     "media_player": "Media player", "sonos_favorites": "Sonos favorites", "contact_tile": "Contact",
