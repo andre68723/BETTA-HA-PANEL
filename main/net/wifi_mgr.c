@@ -23,6 +23,7 @@
 
 #include "net/setup_passphrase.h"
 #include "net/wifi_diag_store.h"
+#include "net/c6_memory.h"
 
 #if CONFIG_ESP_HOSTED_ENABLED
 #include "esp_app_desc.h"
@@ -42,6 +43,7 @@
 #include "util/ota_validate.h"
 
 static bool s_wifi_connected = false;
+static bool s_c6_update_deferred; /* keep diagnostics paused while an update waits for validation */
 static EventGroupHandle_t s_wifi_event_group = NULL;
 /* esp_hosted's RPC response-table locking only landed in 2.12.13 (we're on
  * 2.12.12; kept as a second layer on 2.12.13): concurrent esp_wifi_* calls from different tasks (e.g. the
@@ -125,6 +127,7 @@ void wifi_mgr_get_diag(wifi_mgr_diag_t *out)
 
 static void wifi_mgr_diag_persist(bool critical)
 {
+    c6_memory_note_incident();
     wifi_mgr_diag_t diag;
     wifi_mgr_get_diag(&diag);
     wifi_diag_store_save(&diag, critical);
@@ -595,6 +598,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         s_diag_reconnect_attempts = 0;
         fail_notified = false;
         s_wifi_connected = true;
+        c6_memory_allow(!s_c6_update_deferred);
         s_last_recover_disc_conn_ms = 0;
         s_last_recover_stop_start_ms = 0;
         wifi_mgr_reset_reconnect_state();
@@ -730,8 +734,6 @@ static esp_err_t hosted_get_embedded_c6_fw(const uint8_t **out_data, size_t *out
     return ESP_OK;
 }
 #endif
-
-static bool s_c6_update_deferred; /* a C6 update is needed but waits for the image to be marked valid */
 
 static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_t *running_fw)
 {
@@ -908,10 +910,19 @@ static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_
 static void c6_deferred_update_task(void *arg)
 {
     (void)arg;
+    c6_memory_allow(false);
+    if (!wifi_mgr_api_lock(WIFI_API_LOCK_HARD_RECOVER_MS)) {
+        ESP_LOGW(TAG_WIFI, "Deferred C6 update: Wi-Fi API busy, retry on next boot");
+        s_c6_update_deferred = true;
+        vTaskDelete(NULL);
+        return;
+    }
     esp_hosted_coprocessor_fwver_t fw = {0};
     if (esp_hosted_get_coprocessor_fwversion(&fw) == ESP_OK) {
         wifi_mgr_maybe_auto_update_c6_fw(&fw);
     }
+    wifi_mgr_api_unlock();
+    c6_memory_allow(s_wifi_connected && !s_c6_update_deferred);
     vTaskDelete(NULL);
 }
 #endif
@@ -929,6 +940,44 @@ void wifi_mgr_run_deferred_c6_update(void)
 #endif
 }
 
+/* The low-priority worker is the only caller. A busy scan/recovery postpones this
+ * optional request, and teardown/OTA cannot race it while this lock is held. */
+static esp_err_t wifi_mgr_configure_c6_memory(c6_memory_values_t *out, bool *busy)
+{
+#if CONFIG_ESP_HOSTED_MEM_MONITOR
+    *busy = true;
+    if (!wifi_mgr_api_lock(0)) return ESP_ERR_TIMEOUT;
+    if (!s_hosted_transport_ready || s_c6_update_deferred || !c6_memory_can_configure()) {
+        wifi_mgr_api_unlock();
+        return ESP_ERR_INVALID_STATE;
+    }
+    *busy = false;
+    esp_hosted_config_mem_monitor_t config = {
+        .config = ESP_HOSTED_MEMMONITOR_ENABLE,
+        .report_always = true,
+        .interval_sec = C6_MEMORY_INTERVAL_SEC,
+    };
+    esp_hosted_curr_mem_info_t info = {0};
+    esp_err_t err = esp_hosted_set_mem_monitor(&config, &info);
+    wifi_mgr_api_unlock();
+    if (err == ESP_OK) {
+        *out = (c6_memory_values_t) {
+            /* The upstream name means FREE heap, not heap capacity. */
+            .free_heap = info.curr_total_heap_size,
+            .internal_free = info.curr_internal.cap_8bit.free_size,
+            .internal_largest = info.curr_internal.cap_8bit.largest_free_block,
+            .dma_free = info.curr_internal.cap_dma.free_size,
+            .dma_largest = info.curr_internal.cap_dma.largest_free_block,
+        };
+    }
+    return err;
+#else
+    (void)out;
+    *busy = false;
+    return ESP_ERR_NOT_SUPPORTED;
+#endif
+}
+
 static void hosted_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     (void)arg;
@@ -939,19 +988,35 @@ static void hosted_event_handler(void *arg, esp_event_base_t event_base, int32_t
     }
 
     if (event_id == ESP_HOSTED_EVENT_TRANSPORT_UP) {
+        c6_memory_transport(true);
         xEventGroupSetBits(s_hosted_event_group, HOSTED_TRANSPORT_UP_BIT);
     } else if (event_id == ESP_HOSTED_EVENT_TRANSPORT_DOWN || event_id == ESP_HOSTED_EVENT_TRANSPORT_FAILURE) {
+        c6_memory_transport(false);
         xEventGroupSetBits(s_hosted_event_group, HOSTED_TRANSPORT_FAIL_BIT);
     } else if (event_id == ESP_HOSTED_EVENT_CP_INIT) {
+        c6_memory_cp_init();
         esp_hosted_event_init_t *event = (esp_hosted_event_init_t *)event_data;
         if (event != NULL) {
             ESP_LOGI(TAG_WIFI, "ESP-Hosted coprocessor init event, reset reason=%d", (int)event->reason);
         }
+    } else if (event_id == ESP_HOSTED_EVENT_MEM_MONITOR && event_data != NULL) {
+        const esp_hosted_event_mem_info_t *info = event_data;
+        const c6_memory_values_t values = {
+            .free_heap = info->curr_total_free_heap_size,
+            .min_free_heap = info->curr_min_free_heap_size,
+            .has_minimum = true,
+            .internal_free = info->curr_internal.cap_8bit.free_size,
+            .internal_largest = info->curr_internal.cap_8bit.largest_free_block,
+            .dma_free = info->curr_internal.cap_dma.free_size,
+            .dma_largest = info->curr_internal.cap_dma.largest_free_block,
+        };
+        c6_memory_report(&values);
     }
 }
 
 static esp_err_t wifi_mgr_init_hosted_transport(void)
 {
+    c6_memory_init(wifi_mgr_configure_c6_memory);
     if (s_hosted_transport_ready) {
         return ESP_OK;
     }
@@ -1212,6 +1277,9 @@ static esp_err_t wifi_mgr_force_hosted_hard_recover(void)
 
 static esp_err_t wifi_mgr_force_hosted_hard_recover_locked(int64_t now_ms)
 {
+    c6_memory_note_incident();
+    c6_memory_allow(false);
+    c6_memory_transport(false);
     s_wifi_connected = false;
     s_last_connect_request_ms = 0;
     s_last_recover_disc_conn_ms = 0;
@@ -1430,6 +1498,7 @@ esp_err_t wifi_mgr_start_setup_ap(const wifi_mgr_ap_config_t *cfg)
         xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT);
     }
     wifi_mgr_set_setup_ap_state(true, ap_ssid);
+    c6_memory_allow(!s_c6_update_deferred);
     ESP_LOGW(TAG_WIFI, "Setup AP active: SSID=%s", s_setup_ap_ssid);
     return ESP_OK;
 #endif

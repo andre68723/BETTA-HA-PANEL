@@ -1207,6 +1207,43 @@ function chipFirmwareLabel(silicon) {
   return t("settings.status.chip_firmware_range", { min: rev(min), max: rev(max) });
 }
 
+// /api/version contains a cached C6 report: this renderer never schedules a radio RPC.
+function renderC6MemoryStatus(info) {
+  const set = (id, value) => {
+    const node = document.getElementById(id);
+    if (node) node.textContent = value;
+  };
+  const mem = info?.c6_memory;
+  const bytes = (n) => Number.isFinite(n) && n >= 0 ? formatKb(n) : "--";
+  const age = (n) => Number.isFinite(n) && n >= 0
+    ? t("settings.status.c6_age", { seconds: Math.floor(n / 1000) }) : "--";
+  const states = ["fresh", "stale", "collecting", "unavailable", "unsupported"];
+  const state = states.includes(mem?.state) ? mem.state : "unavailable";
+  const status = t(`settings.status.c6_${state}`);
+  const hasSample = mem?.available === true;
+  set("settingsStatusC6", hasSample
+    ? t("settings.status.c6_values", {
+      free: bytes(mem.free_heap_bytes), min: bytes(mem.min_free_heap_bytes),
+      largest: bytes(mem.internal_largest_block_bytes), age: age(mem.sample_age_ms), status,
+    }) : status);
+  set("settingsStatusC6Dma", t("settings.status.c6_dma", {
+    free: bytes(hasSample ? mem.dma_free_bytes : null),
+    largest: bytes(hasSample ? mem.dma_largest_block_bytes : null),
+  }));
+  const error = document.getElementById("settingsStatusC6Error");
+  if (error) {
+    error.hidden = !Number.isInteger(mem?.last_error_code) || mem.last_error_code === 0;
+    error.textContent = error.hidden ? "" : t("settings.status.c6_error", { code: mem.last_error_code });
+  }
+  const incident = info?.wifi_diag?.c6_last_incident;
+  set("settingsStatusC6Incident", incident
+    ? t("settings.status.c6_incident", {
+      free: bytes(incident.free_heap_bytes), age: age(incident.sample_age_ms),
+      boot: t(incident.same_host_boot === true ? "settings.status.c6_this_boot" : "settings.status.c6_earlier_boot"),
+    }) + (["net_watchdog", "http_watchdog"].includes(incident.restart_cause) ? ` ${t(`settings.status.c6_restart_${incident.restart_cause}`)}` : "")
+    : t("settings.status.c6_no_incident"));
+}
+
 async function refreshDeviceStatus() {
   const pane = document.getElementById("settingsDeviceSection");
   if (!pane || pane.classList.contains("hidden")) return;
@@ -1214,6 +1251,7 @@ async function refreshDeviceStatus() {
     const response = await fetch("/api/version", { cache: "no-store" });
     if (!response.ok) return;
     const info = await response.json();
+    renderC6MemoryStatus(info);
     const mem = info.memory || {};
     const cpu = info.cpu || {};
     const set = (id, text) => {

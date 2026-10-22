@@ -13,18 +13,19 @@ function solarPreviewValue(entityId) {
 
 function solarPreviewFormatValue(value, includeUnit = true) {
   if (value === null) return "--";
-  const formatted = value >= 100 ? value.toFixed(0) : value.toFixed(1);
+  const formatted = value.toFixed(0); // whole kWh, as solar_format_value() in w_solar_forecast.c
   return includeUnit ? `${formatted} kWh` : formatted;
 }
 
 function solarPreviewRows(widget) {
   const rows = [
     { label: t("preview.solar.rest"), entityId: widget.entity_id },
-    { label: t("preview.solar.today"), entityId: widget.forecast_today_entity_id },
-    { label: t("preview.solar.tomorrow"), entityId: widget.forecast_tomorrow_entity_id },
-    { label: t("preview.solar.day_3"), entityId: widget.forecast_day_3_entity_id },
-    { label: t("preview.solar.day_4"), entityId: widget.forecast_day_4_entity_id },
-    { label: t("preview.solar.day_5"), entityId: widget.forecast_day_5_entity_id },
+    // Two-letter weekday names from today on, as solar_day_label() ("solar.weekday_*") once the panel's clock is set.
+    { label: previewWeekday(0).slice(0, 2), entityId: widget.forecast_today_entity_id },
+    { label: previewWeekday(1).slice(0, 2), entityId: widget.forecast_tomorrow_entity_id },
+    { label: previewWeekday(2).slice(0, 2), entityId: widget.forecast_day_3_entity_id },
+    { label: previewWeekday(3).slice(0, 2), entityId: widget.forecast_day_4_entity_id },
+    { label: previewWeekday(4).slice(0, 2), entityId: widget.forecast_day_5_entity_id },
   ];
   const values = rows.map((row) => solarPreviewValue(row.entityId));
   const configuredMax = Number(widget.solar_forecast_bar_max_kwh);
@@ -41,12 +42,14 @@ function solarPreviewRows(widget) {
 function solarPreviewMarkup(widget) {
   const orientation = normalizeSolarForecastBarOrientation(widget.solar_forecast_bar_orientation);
   const allRows = solarPreviewRows(widget);
-  const fitting = Math.max(2, Math.min(5, Math.floor(((Number(widget.rect && widget.rect.h) || 310) - 60) / 38)));
+  // solar_visible_rows(): 30 px rows with 3 px gaps from y 54, at least three and at most five.
+  const fitting = clamp(Math.floor(((Number(widget.rect && widget.rect.h) || 310) - 68 + 3) / 33), 3, 5);
   // The remaining reading shares today's row: the part of today's total that is still to come stays bright, the rest is dimmed.
   const rest = allRows[0].value;
   const today = allRows[1].value;
   const days = allRows.slice(1);
-  const rows = widget.align_forecast ? days.slice(0, forecastPreviewCount(widget, 5)) : orientation === "vertical" ? days : days.slice(0, fitting);
+  const aligned = widget.align_forecast === true && orientation === "vertical"; // as w_solar_forecast.c: columns only
+  const rows = aligned ? days.slice(0, forecastPreviewCount(widget, 5)) : orientation === "vertical" ? days : days.slice(0, fitting);
   const rowMarkup = rows.map((row) => {
     const split = row === allRows[1] && rest !== null && today !== null && today > 0
       ? ` style="--split:${100 - clamp(Math.round((rest * 100) / today), 0, 100)}%"` : "";
@@ -73,7 +76,7 @@ function solarPreviewMarkup(widget) {
   return `
     <div class="solar-preview ${orientation}">
       ${widgetNamePreview(widget, "div", 'class="solar-preview-title"')}
-      <div class="solar-preview-unit">${widget.align_forecast ? `${escapeHtml(t("preview.solar.rest"))} ${escapeHtml(solarPreviewFormatValue(allRows[0].value))}` : "kWh"}</div>
+      <div class="solar-preview-unit">${aligned ? `${escapeHtml(t("preview.solar.rest"))} ${escapeHtml(solarPreviewFormatValue(allRows[0].value))}` : "kWh"}</div>
       <div class="solar-preview-body">${rowMarkup}</div>
     </div>
     <div class="resize-handle"></div>
@@ -81,15 +84,15 @@ function solarPreviewMarkup(widget) {
 }
 
 function carPreviewNumber(entityId, fallback = null) {
-  const raw = editor.states.get(entityId) ?? "";
-  const parsed = Number(String(raw).replace(",", "."));
+  const raw = entityId ? String(editor.states.get(entityId) ?? "").trim() : "";
+  const parsed = raw === "" ? NaN : Number(raw.replace(",", "."));
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 // The optional bottom row of the car tile (only drawn from 330 px height, like the panel).
 function carPreviewExtrasMarkup(widget) {
   const h = Number(widget.rect && widget.rect.h) || 0;
-  if (h < 330) return "";
+  if (h < 330 || (Number(widget.rect && widget.rect.w) || 0) < 200) return "";
   const cells = [];
   if (widget.lock_entity_id) cells.push(`<span class="car-x-ok">${pvText("car_locked")}</span>`);
   if (widget.interior_temp_entity_id) cells.push("<span>21.5\u00B0C</span>");
@@ -97,39 +100,57 @@ function carPreviewExtrasMarkup(widget) {
   return cells.length ? `<div class="car-preview-extras">${cells.join("")}</div>` : "";
 }
 
+// Always kilometres, as w_car_widget.c: some cars report metres (ID.4) or miles.
+function carPreviewRangeText(entityId) {
+  const range = carPreviewNumber(entityId, null);
+  if (range === null) return "-- km";
+  const unit = editor.entities.find((entity) => entity?.id === entityId)?.unit || "km";
+  const factor = { km: 1, m: 0.001, mi: 1.609344 }[unit];
+  return factor === undefined ? `${range.toFixed(0)} ${unit}` : `${(range * factor).toFixed(0)} km`;
+}
+
+// The ring and the texts placed on it like car_layout() in w_car_widget.c: the ring takes the card but the extras row, the
+// range above and the charge in the middle, the name in the ring's open segment. Panel4 and Tab5 use larger roles from 190 px.
 function carPreviewMarkup(widget) {
+  const w = Number(widget.rect && widget.rect.w) || 220;
+  const h = Number(widget.rect && widget.rect.h) || 260;
   const soc = clamp(Math.round(carPreviewNumber(widget.entity_id, 27)), 0, 100);
-  const range = carPreviewNumber(widget.tertiary_entity_id, null);
   const power = carPreviewNumber(widget.secondary_entity_id, null);
-  const rangeText = range === null ? "-- km" : `${range.toFixed(range >= 100 ? 0 : 1)} km`;
   const powerText = power === null ? "-- W" : (Math.abs(power) >= 10000 ? `${(power / 1000).toFixed(1)} kW` : `${power.toFixed(0)} W`);
+  const extras = carPreviewExtrasMarkup(widget);
+  const minDim = Math.min(w, h);
+  const size = Math.max(96, Math.min(minDim - 24, h - 24 - (extras ? 48 : 0)));
+  const r = size / 2;
+  const cy = 12 + r;
+  const large = previewTextAdaptive() && minDim >= 190;
+  const role = (name) => textRoleSize(name, PREVIEW_ROLE_FALLBACK[name]);
+  const titleRole = minDim >= 190 ? "label" : "meta";
+  const at = (top, px, extra = "") => `style="top:${Math.round(top)}px;font-size:${px}px;${extra}"`;
+  const socRole = large ? (widget.secondary_entity_id ? "value" : "key") : "value";
   return `
-    <div class="car-preview" style="--soc:${soc};">
-      <div class="car-preview-gauge">
-        <div class="car-preview-range">${escapeHtml(rangeText)}</div>
-        <div class="car-preview-soc">${escapeHtml(String(soc))}<span>%</span></div>
-        <div class="car-preview-power">${escapeHtml(powerText)}</div>
-      </div>
-      ${carPreviewExtrasMarkup(widget)}
-      ${widgetNamePreview(widget, "div", 'class="car-preview-title"')}
+    <div class="car-preview${widget.secondary_entity_id ? " with-power" : ""}" style="--soc:${soc};">
+      <div class="car-preview-gauge" style="width:${size}px;top:12px;left:${Math.round((w - size) / 2)}px"></div>
+      <div class="car-preview-range" ${at(large ? cy - 61 : cy - (r * 3) / 5, role(large ? "value" : "meta"), `width:${w - 20}px`)}>${escapeHtml(carPreviewRangeText(widget.tertiary_entity_id))}</div>
+      <div class="car-preview-soc" ${at(large ? cy - 18 : cy - 24, role(socRole))}>${escapeHtml(String(soc))}<span style="font-size:${role(large ? "label" : "meta")}px">%</span></div>
+      ${widget.secondary_entity_id ? `<div class="car-preview-power" ${at(large ? cy + 20 : cy + (r * 3) / 10, role("meta"), `width:${w - 36}px`)}>${escapeHtml(powerText)}</div>` : ""}
+      ${widgetNamePreview(widget, "div", `class="car-preview-title" ${at(cy + (r * 37) / 50 - previewLineHeight(role(titleRole)) / 2, role(titleRole), `width:${Math.round((r * 13) / 10)}px`)}`)}
+      ${extras}
     </div>
     <div class="resize-handle"></div>
   `;
 }
 
 function sonosFavoritesPreviewMarkup(widget) {
-  const title = widget.title || "Sonos Favorites";
-  const player = widget.entity_id || "media_player.*";
-  const sensor = widget.secondary_entity_id || DEFAULT_SONOS_FAVORITES_SENSOR;
   const sampleRows = ["Absolut TOP", "SWR3", "Yoga"];
+  // Name, the player's state and one button per favourite (w_sonos_favorites.c).
+  const state = previewEntityState(widget.entity_id) || "playing";
   return `
     <div class="sonos-preview">
       ${widgetNamePreview(widget, "div", 'class="sonos-preview-title"')}
-      <div class="sonos-preview-meta">${escapeHtml(player)}</div>
+      <div class="sonos-preview-meta">${escapeHtml(t(`preview.media.state.${state}`, {}, state))}</div>
       <div class="sonos-preview-list">
         ${sampleRows.map((name) => `<div>\u25B6 ${escapeHtml(name)}</div>`).join("")}
       </div>
-      <div class="w-hint">${escapeHtml(sensor)}</div>
     </div>
     <div class="resize-handle"></div>
   `;
@@ -381,6 +402,137 @@ function roomPreviewChips(summary, cardWidth) {
   return chips.map(([, cls, text]) => `<i class="${cls}">${escapeHtml(text)}</i>`).join("");
 }
 
+// Line height of a panel text size: k_text_metrics in text_scale.c, interpolated between its sizes.
+const PREVIEW_LINE_METRICS = [[16, 21], [20, 25], [24, 32], [28, 35], [32, 39], [36, 44], [42, 53], [48, 60], [56, 69], [64, 80]];
+function previewLineHeight(px) {
+  const rows = PREVIEW_LINE_METRICS;
+  if (px <= rows[0][0]) return Math.round((px * rows[0][1]) / rows[0][0]);
+  for (let i = 1; i < rows.length; i += 1) {
+    const [p1, l1] = rows[i];
+    const [p0, l0] = rows[i - 1];
+    if (px <= p1) return Math.round(l0 + ((px - p0) * (l1 - l0)) / (p1 - p0));
+  }
+  const [pn, ln] = rows[rows.length - 1];
+  return Math.round((px * ln) / pn);
+}
+
+// Width of a preview text in the panel font; a rough estimate where the canvas is unavailable (tests).
+function previewTextWidth(text, px) {
+  try {
+    return readabilityTextWidth(text, px);
+  } catch (_) {
+    return Math.ceil(String(text).length * px * 0.58);
+  }
+}
+
+// The semi arc of a heating tile, placed like heating_apply_layout() in w_heating_tile.c (16 px card padding): the ring
+// against the edge opposite its opening, plus and minus in the opening, target, reading and status between them, and the
+// scale ends just outside the ring's ends. The reading drops from KEY to VALUE and the block loses "Target" and the status
+// when they do not fit.
+function heatingSemiPreview(widget, w, h, opening) {
+  const role = (key) => textRoleSize(key, PREVIEW_ROLE_FALLBACK[key]);
+  const line = previewLineHeight;
+  const cw = Math.max(1, w - 32);
+  const ch = Math.max(1, h - 32);
+  const titleReserve = widgetShowsName(widget) ? line(role("meta")) + 6 : 0;
+  const arcW = w >= 300 ? 16 : 15;
+  const btn = 48;
+  const gap = 8;
+  const sideways = opening === "left" || opening === "right";
+  const availH = ch - titleReserve;
+  const size = Math.max(1, Math.min(cw, availH, 340));
+  const cx = opening === "left" ? cw - size / 2 : opening === "right" ? size / 2 : cw / 2;
+  const cy = opening === "bottom" ? titleReserve + size / 2 : opening === "top" ? ch - size / 2 : titleReserve + availH / 2;
+  const rInner = size / 2 - arcW - arcW / 2;
+  let textCx = cx;
+  let textCy = cy;
+  let textW;
+  let textH;
+  const buttons = [];
+  if (sideways) {
+    const bx = opening === "left" ? 0 : cw - btn;
+    buttons.push(["+", bx, cy - gap / 2 - btn], ["\u2212", bx, cy + gap / 2]);
+    const lo = opening === "left" ? btn + gap : cx - rInner + gap;
+    const hi = opening === "left" ? cx + rInner - gap : cw - btn - gap;
+    textCx = (lo + hi) / 2;
+    textW = hi - lo;
+    textH = 2 * rInner;
+  } else {
+    const by = opening === "top" ? titleReserve : ch - btn;
+    buttons.push(["\u2212", cx - gap / 2 - btn, by], ["+", cx + gap / 2, by]);
+    const lo = opening === "top" ? by + btn + gap : cy - rInner + gap;
+    const hi = opening === "top" ? cy + rInner - gap : by - gap;
+    textCy = (lo + hi) / 2;
+    textW = (rInner * 3) / 2;
+    textH = hi - lo;
+  }
+  const actual = "21.0\u00B0C";
+  const actualPx = previewTextWidth(actual, role("key")) > textW ? role("value") : role("key");
+  let target = t("layout.preview.heating_target", { temp: "22.5\u00B0C" });
+  const status = t("layout.preview.heating_active");
+  let withStatus = previewTextWidth(status, role("meta")) <= textW;
+  const stack = line(role("meta")) + 2 + line(actualPx) + (withStatus ? 2 + line(role("meta")) : 0);
+  if (previewTextWidth(target, role("meta")) > textW || stack > textH) {
+    target = "22.5\u00B0C";
+    withStatus = false;
+  }
+  const total = line(role("meta")) + 2 + line(actualPx) + (withStatus ? 2 + line(role("meta")) : 0);
+  const top = textCy - total / 2;
+  // Scale ends: min at the ring's start, max at its end, pushed out towards the opening and kept inside the card.
+  const [start, stop] = { left: [270, 90], right: [90, 270], top: [0, 180], bottom: [180, 360] }[opening];
+  const dirY = opening === "top" ? -1 : sideways ? 0 : 1;
+  const rMid = size / 2 - arcW / 2;
+  const endLabel = (text, angle) => {
+    const rad = (angle * Math.PI) / 180;
+    const dirX = sideways ? (opening === "left" ? -1 : 1) : (Math.cos(rad) >= 0 ? 1 : -1);
+    const lw = previewTextWidth(text, role("meta"));
+    const lh = line(role("meta"));
+    const x = cx + rMid * Math.cos(rad) + dirX * (arcW / 2 + 4 + lw / 2) - lw / 2;
+    const y = cy + rMid * Math.sin(rad) + dirY * (arcW / 2 + 4 + lh / 2) - lh / 2;
+    return `<em class="tp-scale" style="left:${Math.round(clamp(x, 0, cw - lw))}px;top:${Math.round(clamp(y, 0, ch - lh))}px">${text}</em>`;
+  };
+  const r = size / 2 - arcW / 2;
+  const half = Math.PI * r;
+  const ring = `<svg class="tp-semi-ring" style="left:${Math.round(cx - size / 2)}px;top:${Math.round(cy - size / 2)}px;width:${size}px;height:${size}px" viewBox="0 0 ${size} ${size}">
+    <g transform="rotate(${start} ${size / 2} ${size / 2})" fill="none" stroke-width="${arcW}" stroke-linecap="round">
+    <circle class="track" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke-dasharray="${half} ${2 * half}"/>
+    <circle class="fill" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke-dasharray="${half * 0.5} ${2 * half}"/></g></svg>`;
+  const centred = (cls, text, px, y) => `<${cls === "b" ? "b" : "small"} class="${cls === "b" ? "" : cls}" style="left:${Math.round(textCx)}px;top:${Math.round(y)}px;font-size:${px}px">${escapeHtml(text)}</${cls === "b" ? "b" : "small"}>`;
+  return `<div class="tp-semi">${ring}${endLabel("5", start)}${endLabel("30", stop)}
+    ${buttons.map(([text, x, y]) => `<span class="tp-semi-btn" style="left:${Math.round(x)}px;top:${Math.round(y)}px">${text}</span>`).join("")}
+    ${centred("tp-heat-target", target, role("meta"), top)}${centred("b", actual, actualPx, top + line(role("meta")) + 2)}
+    ${withStatus ? centred("tp-heat-status", status, role("meta"), top + line(role("meta")) + 2 + line(actualPx) + 2) : ""}</div>`;
+}
+
+// A gauge's extra reading (gauge_format_info() in w_gauge.c): a distance in metres from 1 km on reads as kilometres.
+function previewGaugeInfo(entityId) {
+  const info = editor.entities.find((entity) => entity?.id === entityId) || {};
+  const metres = Number(editor.states.get(entityId));
+  if (info.device_class === "distance" && info.unit === "m" && Number.isFinite(metres) && Math.abs(metres) >= 1000) {
+    return escapeHtml(`${previewLocalizeNumber((metres / 1000).toFixed(1).replace(/\.0$/, ""))} km`);
+  }
+  return previewEntityValue(entityId, "");
+}
+
+// The round symbol of a lock, alarm or scene tile: as in w_lock.c, larger from 100 px height and 260 px width.
+function previewCircleSize(w, h) {
+  const roomy = h >= 100;
+  const max = roomy ? (w >= 260 ? 72 : 56) : 52;
+  return `width:${clamp(h - 28, 30, max)}px`;
+}
+
+// The room tile's ring diameter, or 0 when the card shows the plain number (w_room.c): the ring must hold "88.8°C" in the
+// meta text between its strokes and needs 140 px of width.
+function roomPreviewRing(widget, w, h) {
+  const meta = textRoleSize("meta", 20);
+  const line = Math.round(meta * 1.5);
+  const ringTop = 10 + (widgetShowsName(widget) ? line + 6 : 0);
+  const chipTop = h - (line + 10) - 12;
+  const availW = w - 28;
+  const ring = Math.min(chipTop - ringTop - 6, Math.floor((availW * 42) / 100));
+  return ring >= Math.max(Math.round(meta * 3.2) + 22, 56) && availW >= 140 ? Math.min(ring, 108) : 0;
+}
+
 // The unit's blocks of a segmented gauge preview; `filled` of `count` are lit.
 function previewSegments(count, filled, direction) {
   return `<div class="tp-segs ${direction}">${Array.from({ length: count }, (_, i) => `<u${i < filled ? ' class="on"' : ""}></u>`).join("")}</div>`;
@@ -404,13 +556,14 @@ function previewGraphMarkup(mode) {
   return `<svg viewBox="0 0 100 40" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#6fe8ff" stroke-width="2" vector-effect="non-scaling-stroke"/>${points}</svg>`;
 }
 
-// Weekday names in the editor language, from the day after today.
+// Short weekday names in the editor language, `offset` days from today.
 function previewWeekday(offset) {
-  const date = new Date(2026, 9, 5 + offset);
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
   try {
     return date.toLocaleDateString(editor.i18nLanguage || "en", { weekday: "short" }).replace(/\.$/, "");
   } catch (_) {
-    return ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"][offset % 7];
+    return ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"][date.getDay()];
   }
 }
 
@@ -425,14 +578,30 @@ function tilePreviewMarkup(widget) {
       const cols = forecastPreviewCount(widget);
       const current = previewWeatherCondition(widget);
       const days = [t("preview.weather.today"), ...[1, 2, 3, 4, 5].map(previewWeekday)];
-      const rain = widget.show_precipitation !== false && h >= 200;
       const rainValues = [["5 %", "0 mm"], ["20 %", "0.2 mm"], ["80 %", "6.5 mm"], ["40 %", "1.4 mm"], ["10 %", "0 mm"], ["0 %", "0 mm"]];
       const conditions = [editor.states.get(widget.entity_id) || "partlycloudy", "sunny", "rainy", "sunny", "partlycloudy", "sunny"];
+      // The 10-inch boards (weather_tile_render.c without UI_TEXT_ADAPTIVE): a large icon with temperature and a two-line
+      // condition, the report beside them, cards at most 96 px wide whose height decides the low and rain lines.
+      // A short tile gets a one-line header with a 40 px icon and the temperature in META.
+      const fixed = !previewTextAdaptive();
+      const line = (key) => previewLineHeight(textRoleSize(key, PREVIEW_ROLE_FALLBACK[key]));
+      const headY = widgetShowsName(widget) ? 36 : 8;
+      const cardFixed = line("label") + 4 + line("value") + 12;
+      const large = w - 32 >= 260 && h - 32 - (headY + 122) >= cardFixed + 64;
+      const shortHead = !large && h - 32 - (headY + 74) < cardFixed + 24;
+      const iconPx = large ? 112 : shortHead ? 40 : 64;
+      const textH = shortHead ? 2 * line("meta") : line("value") + 4 + 2 * line("meta");
+      const cardH = Math.min(h - 32 - (headY + Math.max(iconPx, textH) + 10), 236);
+      const rainLines = widget.show_precipitation === false ? 0 : fixed ? (cardH >= 210 ? 2 : cardH >= 180 ? 1 : 0) : (h >= 200 ? 2 : 0);
+      const showLow = !fixed || cardH >= 150;
       const cards = days.slice(0, cols).map((d, i) =>
-        `<div class="tp-day"><span>${d}</span><i>${previewWeatherIcon(conditions[i])}</i><b>${22 - i}°</b><small>${11 + i}°</small>${rain ? `<em class="tp-rain">${rainValues[i][0]}<br>${rainValues[i][1]}</em>` : ""}</div>`).join("");
-      return `<div class="tp tp-weather3">${name('div', 'class="tp-name"')}
-        <div class="tp-wx-head"><i>${current.icon}</i><div><b>21.5 °C</b><small>${current.text}</small></div></div>
-        <div class="tp-days" style="--cols:${cols}">${cards}</div></div>${handle}`;
+        `<div class="tp-day"><span>${d}</span><i>${previewWeatherIcon(conditions[i])}</i><b>${22 - i}°</b>${showLow ? `<small>${11 + i}°</small>` : ""}${rainLines ? `<em class="tp-rain">${rainValues[i].slice(0, rainLines).join("<br>")}</em>` : ""}</div>`).join("");
+      const report = fixed && widget.secondary_entity_id ? t("preview.weather.report") : ""; // the panel shows the report attribute "s"
+      const head = fixed
+        ? `<div class="tp-wx-head tp-wx-fixed${shortHead ? " tp-wx-short" : ""}" style="--icon:${iconPx}px"><i>${current.icon}</i><div><b>21.5 °C</b><small>${current.text}${shortHead ? " | " : "<br>"}38 %</small></div>${report && w - 32 - iconPx - 218 >= 150 ? `<p>${escapeHtml(report)}</p>` : ""}</div>`
+        : `<div class="tp-wx-head"><i>${current.icon}</i><b>21.5 °C</b><small>${current.text} | 38 %</small></div>`;
+      return `<div class="tp tp-weather3${fixed ? " tp-weather3-fixed" : ""}">${name('div', 'class="tp-name"')}
+        ${head}<div class="tp-days" style="--cols:${cols}">${cards}</div></div>${handle}`;
     }
     case "weather_tile": {
       const current = previewWeatherCondition(widget);
@@ -446,20 +615,30 @@ function tilePreviewMarkup(widget) {
       const showCover = h - 28 - (widgetShowsName(widget) ? 22 : 0) - 226 >= 72;
       const extras = w >= 280;
       const showArtist = showCover || h >= 234;
+      // Position and duration beside the progress bar, the larger play button in the middle and the volume bar with its
+      // speaker symbol, or between minus and plus in the glow and glass styles (w_media_player.c).
       return `<div class="tp tp-media${showCover ? "" : " tp-media-nocover"}">${name('div', 'class="tp-name"')}
         ${showCover ? '<div class="tp-cover"></div>' : ""}<div class="tp-track"><b>${pvText("song")}</b>${showArtist ? `<small>${pvText("artist")}</small>` : ""}</div>
-        <div class="tp-bar"><i style="width:35%"></i></div>
-        <div class="tp-btns">${extras ? "<span>\u21C4</span>" : ""}<span>\u23EE</span><span class="tp-primary">\u23F5</span><span>\u23ED</span>${extras ? "<span>\u21BB</span>" : ""}</div>
-        <div class="tp-vol"><span>\u2212</span><div class="tp-bar"><i style="width:55%"></i></div><span>+</span></div></div>${handle}`;
+        <div class="tp-media-progress"><small>1:24</small><div class="tp-bar"><i style="width:35%"></i></div><small>3:30</small></div>
+        <div class="tp-btns">${extras ? "<span>\u21C4</span>" : ""}<span>\u23EE</span><span class="tp-primary">\u23F8</span><span>\u23ED</span>${extras ? "<span>\u21BB</span>" : ""}</div>
+        <div class="tp-vol"><span class="tp-vol-btn">\u2212</span><i>\uD83D\uDD08</i><div class="tp-bar tp-bar-knob"><i style="width:45%"></i><u></u></div><span class="tp-vol-btn">+</span></div></div>${handle}`;
     }
     case "vacuum_tile": {
       const state = previewEntityState(widget.entity_id);
       const cleaning = ["cleaning", "returning", "mopping"].includes(state);
       const wide = w >= h * 1.8;
       const robot = h >= 260 || wide;
-      return `<div class="tp tp-vac${wide ? " tp-vac-wide" : ""}">${robot ? '<div class="tp-robot"><i></i></div>' : ""}<div class="tp-vac-body">${name('div', 'class="tp-name"')}<span class="tp-vac-battery">82 %</span>
-        <small>${state ? escapeHtml(t(`preview.vacuum.state.${state}`, {}, state)) : pvText("vacuum_docked")}</small><div class="tp-chip">${pvText("mode")} \u25BE</div>
-        <div class="tp-btns"><span class="tp-primary">${cleaning ? "\u23F8" : "\u23F5"}</span><span>\u23F9</span><span>\u2302</span>${wide ? "" : "<span>\u25CE</span>"}</div></div></div>${handle}`;
+      // The robot (or the map picture of the second entity), name and state, the suction level as a select field and three
+      // square buttons (w_vacuum.c); a cleaning robot lights the card.
+      const art = widget.secondary_entity_id ? '<div class="tp-vac-map"><i></i><i></i><i></i><i></i></div>' : '<div class="tp-robot"><i></i></div>';
+      // Without the picture (or beside it) name and state are left-aligned next to the charge chip; the cleaning mode of the
+      // select entity and the suction level share the chip row.
+      const battery = Number(previewEntityState(widget.battery_entity_id));
+      const batteryText = widget.battery_entity_id && previewEntityState(widget.battery_entity_id) !== "" && Number.isFinite(battery) ? `${Math.round(battery)} %` : "82 %";
+      const mode = widget.tertiary_entity_id ? `<div class="tp-vac-select">${escapeHtml(previewEntityState(widget.tertiary_entity_id) || "--")}</div>` : "";
+      return `<div class="tp tp-vac${wide ? " tp-vac-wide" : ""}${robot && !wide ? "" : " tp-vac-beside"}${cleaning ? " active" : ""}">${robot ? art : ""}<div class="tp-vac-body">${name('div', 'class="tp-name"')}<span class="tp-vac-battery">${batteryText}</span>
+        <small>${state ? escapeHtml(t(`preview.vacuum.state.${state}`, {}, state)) : pvText("vacuum_docked")}</small><div class="tp-vac-chips">${mode}<div class="tp-vac-select">balanced</div></div>
+        <div class="tp-vac-btns"><span class="on">${cleaning ? "\u23F8" : "\u23F5"}</span><span>\u23F9</span><span>\u2302</span></div></div></div>${handle}`;
     }
     case "cover_tile":
       return `<div class="tp tp-blind"><div class="tp-blind-text">${name('b', '')}<small>${pvText("open_pct", { pct: 70 })}</small><div class="tp-bar"><i style="width:70%"></i></div></div>
@@ -482,23 +661,45 @@ function tilePreviewMarkup(widget) {
     }
     case "lock_tile": {
       const state = editor.states.get(widget.entity_id) || "locked";
-      return `<div class="tp tp-contact"><div class="tp-icon-circle">${["locked", "locking"].includes(state) ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(t(`preview.lock.state.${state}`, {}, state))}</small></div></div>${handle}`;
+      return `<div class="tp tp-contact"><div class="tp-icon-circle" style="${previewCircleSize(w, h)}">${["locked", "locking"].includes(state) ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(t(`preview.lock.state.${state}`, {}, state))}</small></div></div>${handle}`;
     }
     case "alarm_tile": {
       const state = editor.states.get(widget.entity_id) || "disarmed";
       const armed = state.startsWith("armed");
-      return `<div class="tp tp-contact"><div class="tp-icon-circle">${armed ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(t(`preview.alarm.state.${state}`, {}, state.replace(/_/g, " ")))}</small></div></div>${handle}`;
+      return `<div class="tp tp-contact"><div class="tp-icon-circle${armed ? " on" : ""}" style="${previewCircleSize(w, h)}">${armed ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(t(`preview.alarm.state.${state}`, {}, state.replace(/_/g, " ")))}</small></div></div>${handle}`;
     }
     case "energy_timeline": {
-      // The counters as rings (or nested rings with a legend), a bar chart with the forecast line below (w_energy_timeline.c).
+      // As w_energy_timeline.c: name and the time of the last update on top; four counter rings with unit and caption and a
+      // legend row, or nested rings with a list of readings; the 24 hours as bars above (solar, battery, grid) and below
+      // (feed-in, charging) a zero line with the forecast line and four times underneath.
       const nested = widget.style_variant === "nested";
       const palette = energyTimelinePalette(widget);
-      const counters = [["home", palette.grid, 70, "23.1"], ["feed_in", palette.export, 100, "7.5"], ["solar", palette.solar_dest, 55, "31.5"], ["battery", palette.battery_out, 64, "64"]];
-      const labels = { home: t("layout.energy.home"), feed_in: t("layout.energy.grid_export"), solar: t("layout.energy.solar"), battery: t("layout.energy.battery") };
-      const top = nested
-        ? `<div class="tp-etl-nested"><i style="--r:100%;--p:64;--c:${palette.grid}"></i><i style="--r:76%;--p:90;--c:${palette.solar}"></i><i style="--r:52%;--p:55;--c:${palette.battery_out}"></i></div><span class="tp-etl-legend"><em class="e-solar">${escapeHtml(labels.solar)}</em><em class="e-grid">${escapeHtml(t("layout.energy.grid"))}</em><em class="e-out">${escapeHtml(labels.feed_in)}</em></span>`
-        : counters.map(([id, color, pct, value]) => `<span class="tp-etl-counter"><i style="--p:${pct};--c:${color}"><b>${value}</b></i><small>${escapeHtml(labels[id])}</small></span>`).join("");
-      return `<div class="tp tp-etl${nested ? " tp-etl-is-nested" : ""}" style="${Object.entries(palette).map(([key, value]) => `--etl-${key}:${value}`).join(";")}">${name('small', '')}<div class="tp-etl-top">${top}</div><div class="tp-etl-bars">${Array.from({ length: 48 }, (_, i) => `<u style="height:${12 + Math.round(38 * Math.abs(Math.sin(i / 7.6)))}%;background:linear-gradient(var(--etl-grid) 0 50%,var(--etl-battery_out) 50% 65%,var(--etl-solar) 65%)"></u>`).join("")}<svg class="tp-etl-line" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M0,8 C12,10 22,30 40,32 S70,32 80,24 S92,6 100,10" fill="none" stroke="${palette.forecast}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg></div></div>${handle}`;
+      const label = (key) => escapeHtml(t(`preview.etl.${key}`));
+      const head = `<div class="tp-etl-head">${name('span', '')}<span>${escapeHtml(t("preview.etl.updated", { time: "14:35" }))}</span></div>`;
+      let top;
+      if (nested) {
+        const rings = [[100, palette.battery_out, 64], [82, palette.solar, 70], [64, palette.battery_in, 55], [46, palette.battery_out, 40]]
+          .map(([r, c, p]) => `<i style="--r:${r}%;--p:${p};--c:${c}"></i>`).join("");
+        const list = [["home_use", "#ffffff", "23.1 kWh"], ["from_solar", palette.solar, "8.9 kWh"], ["from_grid", palette.grid, "1.2 kWh"],
+          ["feed_in", palette.export, "7.5 kWh"], ["from_battery", palette.battery_out, "13.0 kWh"]]
+          .map(([key, c, v]) => `<li style="--c:${c}">${label(key)} ${v}</li>`).join("");
+        top = `<div class="tp-etl-top"><div class="tp-etl-nested">${rings}<b>23.1</b></div><ul class="tp-etl-list">${list}</ul></div>`;
+      } else {
+        const counters = [["home", palette.solar, 70, "23.1", "kWh"], ["feed_in", palette.solar, 100, "7.5", "kWh"],
+          ["solar_short", palette.solar_dest, 55, "31.5", "kWh"], ["battery", palette.battery_out, 64, "64", "%"]];
+        const legend = [["solar_short", palette.solar], ["battery", palette.battery_out], ["grid", palette.grid], ["feed_in", palette.export],
+          ["charging", palette.battery_in], ["forecast", palette.forecast]].map(([key, c]) => `<em style="--c:${c}">${label(key)}</em>`).join("");
+        top = `<div class="tp-etl-top">${counters.map(([key, color, pct, value, unit]) =>
+          `<span class="tp-etl-counter"><i style="--p:${pct};--c:${color}"><b>${value}<small>${unit}</small></b></i><small>${label(key)}</small></span>`).join("")}</div>
+          <div class="tp-etl-legend">${legend}</div>`;
+      }
+      const bars = Array.from({ length: 48 }, (_, i) => {
+        const day = Math.max(0, Math.sin(((i - 6) / 48) * Math.PI * 2));
+        const up = 12 + Math.round(70 * day), down = Math.round(60 * Math.max(0, Math.sin((i / 48) * Math.PI * 2 + 2.2)));
+        return `<u><b style="height:${up}%;background:linear-gradient(0deg,${palette.solar} 0 ${day > 0.2 ? 70 : 0}%,${palette.battery_out} 0)"></b><i style="height:${down}%;background:${i % 3 ? palette.battery_in : palette.export}"></i></u>`;
+      }).join("");
+      return `<div class="tp tp-etl${nested ? " tp-etl-is-nested" : ""}">${head}${top}<div class="tp-etl-bars">${bars}<svg class="tp-etl-line" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M0,6 C10,8 14,16 22,18 S70,18 76,14 S88,2 100,4" fill="none" stroke="${palette.forecast}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg></div>
+        <div class="tp-etl-axis"><small>14:45</small><small>20:45</small><small>02:45</small><small>08:45</small></div></div>${handle}`;
     }
     case "price_forecast": {
       // A day of bars like the panel (w_price_forecast.c): below the day's average green, above it orange, hours that are over dimmed,
@@ -531,7 +732,10 @@ function tilePreviewMarkup(widget) {
       const bandStart = ((44 - shift) % 96 + 96) % 96;
       const bandWidth = Math.min(20, 96 - bandStart);
       const band = cheap ? `<u class="tp-price-band" style="left:${(bandStart / 96 * 100).toFixed(1)}%;width:${(bandWidth / 96 * 100).toFixed(1)}%"></u>` : "";
-      const foot = cheap ? `<div class="tp-price-cheap">${escapeHtml(t("preview.price.cheap"))} 11:00-16:00</div>` : "";
+      // The bottom line: the next cheap window on the left (cheap_times), the day's lowest and highest price on the right.
+      const low = Math.min(...profile).toFixed(1).replace(".", ","), high = peak.toFixed(1).replace(".", ",");
+      const stats = w >= 360 ? `<span class="tp-price-stats">min ${low}  max ${high}</span>` : "";
+      const foot = cheap || stats ? `<div class="tp-price-cheap">${cheap ? `<span>${escapeHtml(t("preview.price.cheap"))} 11:00-16:00</span>` : "<span></span>"}${stats}</div>` : "";
       // ticks at 00, 06, 12 and 18 o'clock where they fall in the view
       const ticks = [0, 6, 12, 18].map((h) => ({ h, at: ((h * 4 - shift) % 96 + 96) % 96 })).filter((x) => daySwitch || x.at < 96)
         .map((x) => `<span style="left:${(x.at / 96 * 100).toFixed(1)}%">${String(x.h).padStart(2, "0")}</span>`).join("");
@@ -640,7 +844,7 @@ function tilePreviewMarkup(widget) {
       return `<div class="tp tp-datetime">${name('small', '')}<b>${previewEntityValue(widget.entity_id, "06:30", previewDateTimeValue)}</b></div>${handle}`;
     }
     case "scene_tile":
-      return `<div class="tp tp-contact"><div class="tp-icon-circle">\u25B6</div><div class="tp-blind-text">${name('b', '')}<small>${pvText("scene")}</small></div></div>${handle}`;
+      return `<div class="tp tp-contact"><div class="tp-icon-circle on" style="${previewCircleSize(w, h)}">\u25B6</div><div class="tp-blind-text">${name('b', '')}<small>${pvText("scene")}</small></div></div>${handle}`;
     case "binary_tile":
       if (widget.display_mode === "door") {
         const open = previewEntityState(widget.entity_id) !== "off";
@@ -657,11 +861,20 @@ function tilePreviewMarkup(widget) {
       const chips = known ? roomPreviewChips(summary, w)
         : `<i class="c-green">${pvText("room_closed")}</i><i class="c-amber">${pvText("room_light_on")}</i><i class="c-teal">${pvText("room_present")}</i>`;
       const temp = escapeHtml(summary.temp ?? (widget.entity_id ? "--" : "21.8\u00B0C"));
-      const side = extra === "humidity" ? `<b class="tp-room-side">${escapeHtml(summary.hum ?? "45 %")}</b>`
-        : extra === "cover" ? `<span class="tp-room-action">\u2193 ${pvText("room_open")}</span>`
-          : extra === "media_player" ? `<span class="tp-room-action">\u23F8 ${pvText("room_playing")}</span>`
-            : summary.hum !== null ? `<b class="tp-room-side tp-room-hum">${escapeHtml(summary.hum)}</b>` : "";
-      return `<div class="tp tp-room">${name('div', 'class="tp-name" style="text-align:left"')}<div class="tp-room-main">${w >= 230 && h >= 180 ? `<i class="tp-room-ring"><b>${temp}</b></i>` : `<b class="tp-room-temp">${temp}</b>`}${side}</div>
+      const ring = roomPreviewRing(widget, w, h);
+      // A cover or media action (w_room.c): beside a ring with 130 px to its right the status word and the buttons (a cover
+      // gets up and down when the word still fits), otherwise one button with icon and word in the bottom right corner.
+      const action = extra === "cover" || extra === "media_player";
+      const rightW = w - 28 - ring - 10;
+      const expanded = action && ring >= 56 && rightW >= 130;
+      const compact = action && !expanded && h >= 100 && w >= 200;
+      const word = extra === "cover" ? pvText("room_open") : pvText("room_playing");
+      const buttons = extra === "cover" ? (rightW - 2 * 44 - 16 >= 56 ? ["\u2191", "\u2193"] : ["\u2193"]) : ["\u25B6"];
+      const side = extra === "humidity" ? `<b class="tp-room-side${ring >= 90 ? " big" : ""}">${escapeHtml(summary.hum ?? "45 %")}</b>`
+        : expanded ? `<span class="tp-room-extra">${word}</span>${buttons.map((b) => `<span class="tp-room-btn">${b}</span>`).join("")}`
+          : !action && summary.hum !== null ? `<b class="tp-room-side tp-room-hum">${escapeHtml(summary.hum)}</b>` : "";
+      const corner = compact ? `<span class="tp-room-action"><i>${extra === "cover" ? "\u2193" : "\u25B6"}</i>${word}</span>` : "";
+      return `<div class="tp tp-room">${corner}${name('div', 'class="tp-name" style="text-align:left"')}<div class="tp-room-main">${ring ? `<i class="tp-room-ring" style="width:${ring}px;height:${ring}px"><b>${temp}</b></i>` : `<b class="tp-room-temp">${temp}</b>`}${side}</div>
         <div class="tp-room-chips">${chips}</div></div>${handle}`;
     }
     case "climate_tile":
@@ -676,10 +889,18 @@ function tilePreviewMarkup(widget) {
       // only the semi arc has the plus and minus buttons.
       const semi = widget.style_variant === "arc_semi";
       const opening = ["left", "right", "top", "bottom"].includes(widget.arc_opening) ? widget.arc_opening : "left";
-      return `<div class="tp tp-heat${semi ? ` tp-heat-semi open-${opening}` : " tp-heat-arc"}"><div class="tp-ring"><small class="tp-heat-target">${pvText("heating_target", { temp: "22.5\u00B0" })}</small><b>21.0\u00B0</b>${name('small', '')}</div>${semi ? '<div class="tp-btns"><span>\u2212</span><span>+</span></div>' : `<small class="tp-heat-status">${pvText("heating_active")}</small>`}</div>${handle}`;
+      // The name with the power symbol on top, the ring below (w_heating_tile.c): target, reading and action inside the arc;
+      // the semi arc has its scale ends and the plus and minus buttons on the open side.
+      const head = `<div class="tp-heat-head"><i>\u23FB</i>${name('span', '')}</div>`;
+      if (semi) return `<div class="tp tp-heat tp-heat-semi open-${opening}">${head}${heatingSemiPreview(widget, w, h, opening)}</div>${handle}`;
+      return `<div class="tp tp-heat tp-heat-arc">${head}<div class="tp-ring"><small class="tp-heat-target">${pvText("heating_target", { temp: "22.5\u00B0C" })}</small><b>21.0\u00B0C</b><small class="tp-heat-status">${pvText("heating_active")}</small></div></div>${handle}`;
     }
-    case "button":
+    case "button": {
+      // A media mode shows its 48 px transport symbol over the name instead of the switch (w_button.c).
+      const symbols = { play_pause: previewEntityState(widget.entity_id) === "playing" ? "\u23F8" : "\u25B6", stop: "\u25A0", previous: "\u23EE", next: "\u23ED" };
+      if (symbols[widget.button_mode]) return `<div class="tp tp-button tp-button-icon"><i>${symbols[widget.button_mode]}</i>${name('b', '')}</div>${handle}`;
       return `<div class="tp tp-button">${h >= 140 ? `<small class="tp-button-state">${pvText("on_state")}</small>` : ""}<div class="tp-switch tp-switch-big"><i></i></div>${name('b', '')}</div>${handle}`;
+    }
     case "slider": {
       // Vertical when the direction says so (blinds), horizontal otherwise; like the panel it shows state and value.
       const dir = widget.slider_direction || "auto";
@@ -697,31 +918,72 @@ function tilePreviewMarkup(widget) {
       const showLabel = widgetShowsName(widget);
       const valueOnly = !showLabel && widget.sensor_show_age === false;
       const value = previewSensorValue(widget) ?? previewEntityValue(widget.entity_id, "23.4 \u00B0C");
-      return `<div class="tp tp-sensor${valueOnly ? " tp-sensor-value-only" : ""}">${showLabel ? `${name('small', '')}` : ""}<b>${value}</b></div>${handle}`;
+      const age = widget.sensor_show_age !== false ? `<small class="tp-sensor-age">${escapeHtml(t("preview.sensor.just_now"))}</small>` : "";
+      return `<div class="tp tp-sensor${valueOnly ? " tp-sensor-value-only" : ""}">${showLabel ? `${name('small', '')}` : ""}<b>${value}</b>${age}</div>${handle}`;
     }
     case "graph": {
       // Like the panel: the name and the current value on top, the chart below; the window sits after the value.
       const windowMin = Number(widget.graph_time_window_min) || 120;
       const window = windowMin % 60 === 0 ? `${windowMin / 60}h` : `${windowMin} min`;
-      return `<div class="tp tp-graph"><div class="tp-graph-head">${name('small', '')}<b>${previewEntityValue(widget.entity_id, "2450 W")}</b></div><small class="tp-graph-window">${window}</small>${previewGraphMarkup(widget.graph_display_mode)}</div>${handle}`;
+      // The line under the value: the window's lowest and highest reading and the window (w_graph.c), from the shown value.
+      const graphValue = previewEntityValue(widget.entity_id, "2450 W");
+      const reading = /^(-?[\d.,]+)\s*(.*)$/.exec(String(graphValue).replace(/<[^>]*>/g, ""));
+      const number = reading ? Number(reading[1].replace(",", ".")) : NaN;
+      const digits = reading && /[.,]/.test(reading[1]) ? reading[1].split(/[.,]/)[1].length : 0;
+      const range = Number.isFinite(number)
+        ? `min ${previewLocalizeNumber((number * 0.77).toFixed(digits))} ${reading[2]}   max ${previewLocalizeNumber((number * 1.15).toFixed(digits))} ${reading[2]} | ` : "";
+      return `<div class="tp tp-graph"><div class="tp-graph-head">${name('small', '')}<b>${graphValue}</b></div><small class="tp-graph-window">${escapeHtml(range)}${window}</small>${previewGraphMarkup(widget.graph_display_mode)}</div>${handle}`;
     }
     case "gauge": {
       const gaugeValue = previewEntityValue(widget.entity_id, "6.7 kW");
       const segmented = widget.gauge_bar_style === "segmented";
+      // The bar follows the live value within the configured range; the sample fills 60 %.
+      const gaugeMin = Number.isFinite(widget.gauge_min) ? widget.gauge_min : 0;
+      const gaugeMax = Number.isFinite(widget.gauge_max) && widget.gauge_max > gaugeMin ? widget.gauge_max : gaugeMin + 100;
+      const live = carPreviewNumber(widget.entity_id, null);
+      const fill = live === null ? 0.6 : clamp((live - gaugeMin) / (gaugeMax - gaugeMin), 0, 1);
+      const segments = (fallback) => { const count = Math.min(Number(widget.gauge_segment_count) || fallback, 30); return [count, Math.round(count * fill)]; };
       if (widget.style_variant === "radial") {
-        return `<div class="tp tp-gauge-radial"><div class="tp-arc"><b>${gaugeValue}</b></div>${name('small', '')}</div>${handle}`;
+        // gauge_apply_layout_radial(): the ring takes the card (10 px padding), the name in its open segment or, on a narrow
+        // tile, below it. The reading is KEY fitted to the ring on Panel4/Tab5, VALUE (META below 140 px) on the 10-inch boards.
+        const role = (key) => textRoleSize(key, PREVIEW_ROLE_FALLBACK[key]);
+        const cw = Math.max(1, w - 20);
+        const ch = Math.max(1, h - 20);
+        const arc = Math.min(cw, ch);
+        const r = arc / 2;
+        const metaLine = previewLineHeight(role("meta"));
+        const below = widgetShowsName(widget) && arc < 130 && ch >= arc + metaLine + 4;
+        const valuePx = previewTextAdaptive() ? Math.min(role("key"), Math.floor(arc / 4.5)) : role(arc >= 140 ? "value" : "meta");
+        const titlePx = below ? role("meta") : role("label");
+        const titleTop = below ? arc + 4 : Math.min(r + (r * 37) / 50 - previewLineHeight(titlePx) / 2, ch - previewLineHeight(titlePx));
+        return `<div class="tp tp-gauge-radial" style="--arc:${arc}px"><div class="tp-arc" style="width:${arc}px;left:${10 + (cw - arc) / 2}px"><b style="font-size:${valuePx}px">${gaugeValue}</b></div>${name('small', `style="top:${10 + Math.round(titleTop)}px;font-size:${titlePx}px;width:${below ? cw : Math.round((r * 13) / 10)}px"`)}</div>${handle}`;
       }
       if (widget.style_variant === "horizontal") {
-        const extras = [widget.secondary_entity_id, widget.tertiary_entity_id].filter(Boolean)
-          .map((id) => `<span>${previewEntityValue(id, "")}</span>`).join("");
-        const bar = segmented ? previewSegments(Math.min(Number(widget.gauge_segment_count) || 20, 30), 12, "h")
-          : '<div class="tp-bar tall"><i style="width:60%"></i></div>';
-        return `<div class="tp tp-gauge-h"><div class="tp-light-top">${name('span', '')}<span>${gaugeValue}</span></div>${bar}${extras ? `<small class="tp-gauge-extras">${extras}</small>` : ""}</div>${handle}`;
+        // gauge_apply_layout_horizontal(): on Panel4/Tab5 a tile under 80 px content height puts the extra readings in the
+        // top row beside the value; otherwise they get a row under the bar when it has room.
+        const infos = [widget.secondary_entity_id, widget.tertiary_entity_id].filter(Boolean).map((id) => `<span>${previewGaugeInfo(id)}</span>`);
+        const compact = previewTextAdaptive() && h - 20 < 80 && infos.length > 0;
+        const rowH = previewLineHeight(textRoleSize(previewTextAdaptive() ? "label" : "meta", 24));
+        const infoRow = !compact && h - 20 - rowH - 8 >= 20 + previewLineHeight(textRoleSize("value", 28));
+        const extras = infoRow ? infos.join("") : "";
+        const bar = segmented ? previewSegments(...segments(20), "h")
+          : `<div class="tp-bar tall"><i style="width:${Math.round(fill * 100)}%"></i></div>`;
+        return `<div class="tp tp-gauge-h${compact ? " tp-gauge-compact" : ""}"><div class="tp-light-top">${name('span', '')}${compact ? infos.map((i) => i.replace("<span>", '<span class="tp-gauge-info">')).join("") : ""}<span>${gaugeValue}</span></div>${bar}${extras ? `<small class="tp-gauge-extras">${extras}</small>` : ""}</div>${handle}`;
       }
       // Vertical: the value on top, the bar, then the name (w_gauge.c).
-      const bar = segmented ? previewSegments(Math.min(Number(widget.gauge_segment_count) || 10, 30), 7, "v")
-        : '<div class="tp-vbar"><i style="height:60%;bottom:0"></i></div>';
-      return `<div class="tp tp-gauge-v"><b class="tp-gauge-value">${gaugeValue}</b>${bar}${name('small', '')}</div>${handle}`;
+      const bar = segmented ? previewSegments(...segments(10), "v")
+        : `<div class="tp-vbar"><i style="height:${Math.round(fill * 100)}%;bottom:0"></i></div>`;
+      // Panel4/Tab5 put the unit on a second line when the reading does not fit the narrow bar in META (w_gauge.c).
+      const plain = String(gaugeValue).replace(/<[^>]*>/g, "");
+      const split = previewTextAdaptive() && previewTextWidth(plain, textRoleSize("meta", 20)) > w - 20 ? String(gaugeValue).replace(" ", "<br>") : gaugeValue;
+      // ...and fit the reading from KEY down in 2 px steps to the board's floor (ui_text_fit()).
+      let valuePx = textRoleSize("meta", 20);
+      if (previewTextAdaptive()) {
+        const longest = split === gaugeValue ? plain : plain.split(" ").reduce((a, b) => (b.length > a.length ? b : a), "");
+        const floor = Number(editor.appText?.floor) || 16;
+        for (valuePx = textRoleSize("key", 36); valuePx > floor && previewTextWidth(longest, valuePx) > w - 20; valuePx -= 2);
+      }
+      return `<div class="tp tp-gauge-v"><b class="tp-gauge-value" style="font-size:${valuePx}px">${split}</b>${bar}${name('small', '')}</div>${handle}`;
     }
     case "todo_list":
       return `<div class="tp tp-todo"><div class="tp-todo-head">${name('div', 'class="tp-name"')}<span class="tp-badge">3</span></div>${["Milk", "Bread", "Call"].map((t2, i) => `<div class="tp-row"><i class="${i === 1 ? "done" : ""}"></i>${t2}</div>`).join("")}</div>${handle}`;

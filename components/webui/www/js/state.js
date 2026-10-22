@@ -152,7 +152,7 @@ const editor = {
   appBuildDate: "",
   appBuildTime: "",
   appGitCommit: "",
-  haDiagnostics: { total: 0, listed: 0, updatedUnixMs: 0, names: [], dismissedSignature: "" },
+  haDiagnostics: { total: 0, listed: 0, updatedUnixMs: 0, names: [] },
   wifiScanItems: [],
   wifiScanHasRun: false,
   wifiScanInProgress: false,

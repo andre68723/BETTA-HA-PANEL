@@ -17,6 +17,7 @@
 
 #include "app_config.h"
 #include "ha/ha_client.h"
+#include "net/c6_memory.h"
 #include "net/wifi_mgr.h"
 #include "util/log_tags.h"
 #include "util/net_watchdog.h"
@@ -143,7 +144,10 @@ static void net_watchdog_task(void *arg)
                           : (s_last_decision == NET_WD_RESTART_LINK ? "no Wi-Fi link" : "gateway silent, no Home Assistant traffic"),
                      (int)(now_s - since), (unsigned)s_rtc.restarts_in_a_row + 1U);
             s_rtc.restarts_in_a_row++;
-            reboot_log_mark(http ? REBOOT_CAUSE_HTTP_WATCHDOG : REBOOT_CAUSE_NET_WATCHDOG);
+            const uint8_t cause = http ? REBOOT_CAUSE_HTTP_WATCHDOG : REBOOT_CAUSE_NET_WATCHDOG;
+            /* the C6 memory at the restart: a silent network with the link up records no disconnect incident */
+            if (!c6_memory_retain_for_restart(cause, 1000)) ESP_LOGW(TAG_WIFI, "network watchdog: no C6 memory sample retained");
+            reboot_log_mark(cause);
             vTaskDelay(pdMS_TO_TICKS(500));
             esp_restart();
         }

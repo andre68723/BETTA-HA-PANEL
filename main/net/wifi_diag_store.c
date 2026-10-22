@@ -78,3 +78,35 @@ bool wifi_diag_store_load(wifi_mgr_diag_t *out)
     }
     return true;
 }
+
+bool wifi_diag_store_save_c6(const c6_memory_incident_t *record)
+{
+    if (!c6_memory_incident_valid(record, sizeof(*record)) || !flash_gate_enter(2000)) return false;
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(WIFI_DIAG_NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (err == ESP_OK) {
+        err = nvs_set_blob(handle, "c6_last", record, sizeof(*record));
+        if (err == ESP_OK) {
+            FLASH_TRACE_BEGIN(trace_start);
+            err = nvs_commit(handle);
+            FLASH_TRACE_END(trace_start, "C6 memory incident (nvs)", sizeof(*record));
+        }
+        nvs_close(handle);
+    }
+    flash_gate_leave();
+    return err == ESP_OK;
+}
+
+bool wifi_diag_store_load_c6(c6_memory_incident_t *out)
+{
+    if (out == NULL) return false;
+    memset(out, 0, sizeof(*out));
+    nvs_handle_t handle;
+    if (nvs_open(WIFI_DIAG_NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK) return false;
+    size_t size = sizeof(*out);
+    esp_err_t err = nvs_get_blob(handle, "c6_last", out, &size);
+    nvs_close(handle);
+    if (err == ESP_OK && c6_memory_incident_valid(out, size)) return true;
+    memset(out, 0, sizeof(*out));
+    return false;
+}

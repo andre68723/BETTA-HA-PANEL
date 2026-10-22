@@ -30,21 +30,10 @@
 .tp-todo-head { display: flex; align-items: center; justify-content: space-between; }
 .tp-todo-head .tp-name { text-align: left; }
 .tp-badge { min-width: 18px; padding: 0 5px; border-radius: 999px; border: 1px solid #4e6a84; text-align: center; font-size: 11px; }
-.tp-heat-semi { flex-direction: row; gap: 10px; }
-.tp-heat-semi .tp-btns { flex-direction: column; }
-.tp-heat-semi .tp-ring { border-color: rgba(255, 255, 255, 0.14); border-top-color: #ff7043; border-right-color: #ff7043; width: 58%; }
-.tp-heat-semi.open-left .tp-ring { border-left-color: transparent; }
-.tp-heat-semi.open-right { flex-direction: row-reverse; }
-.tp-heat-semi.open-right .tp-ring { border-right-color: transparent; }
-.tp-heat-semi.open-top, .tp-heat-semi.open-bottom { flex-direction: column; }
-.tp-heat-semi.open-top .tp-btns, .tp-heat-semi.open-bottom .tp-btns { flex-direction: row; }
-.tp-heat-semi.open-top .tp-ring { border-top-color: transparent; }
-.tp-heat-semi.open-bottom .tp-ring { border-bottom-color: transparent; }
 .tp-etl-counter { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .tp-etl-counter i { position: relative; display: grid; place-items: center; width: 100%; max-width: clamp(56px, 22vw, 120px); aspect-ratio: 1; border-radius: 50%; background: conic-gradient(var(--c) calc(var(--p) * 1%), rgba(255, 255, 255, 0.14) 0); }
 .tp-etl-counter i::before { content: ""; position: absolute; inset: 18%; border-radius: 50%; background: #1d2b3a; }
 .tp-etl-counter b { position: relative; font-size: 13px; }
-.tp-heat-semi .tp-ring small:not(.tp-heat-target) { max-width: 90%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .tp-etl-top:has(.tp-etl-counter) { gap: 6px; }
 .tp-etl-nested { position: relative; width: 110px; aspect-ratio: 1; flex: none; }
 .tp-etl-nested i { position: absolute; inset: 0; margin: auto; width: var(--r); height: var(--r); border-radius: 50%; background: conic-gradient(var(--c) calc(var(--p) * 1%), rgba(255, 255, 255, 0.14) 0); -webkit-mask: radial-gradient(circle, transparent 58%, #000 60%); mask: radial-gradient(circle, transparent 58%, #000 60%); }

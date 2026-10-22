@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="/css/layout-actions.css" />
   <link rel="stylesheet" href="/css/evcc-wallbox.css" />
   <link rel="stylesheet" href="/css/stock-quotes.css" />
+  <link rel="stylesheet" href="/css/preview-roles.css" />
   <link rel="stylesheet" href="/css/inspector.css" />
 </head>
 <body>
@@ -213,7 +214,7 @@
 
           <h2 id="settingsStatusHeading">Device status</h2>
           <div class="form">
-            <dl class="kv-list">
+            <dl class="kv-list device-status-list">
               <dt id="settingsStatusCpuLabel">CPU load</dt>
               <dd id="settingsStatusCpu">-</dd>
               <dt id="settingsStatusRamLabel">Internal RAM</dt>
@@ -230,6 +231,17 @@
                 <div class="mem-bar" id="settingsStatusPsramBar" role="img">
                   <div class="mem-bar-fill" id="settingsStatusPsramBarFill"></div>
                 </div>
+              </dd>
+              <dt id="settingsStatusC6Label">Wi-Fi processor (ESP32-C6)</dt>
+              <dd class="c6-memory-status">
+                <span id="settingsStatusC6">--</span>
+                <details class="restart-history">
+                  <summary id="settingsStatusC6DetailsLabel">Memory details</summary>
+                  <p id="settingsStatusC6Dma" class="meta">--</p>
+                  <p id="settingsStatusC6Error" class="meta" hidden></p>
+                  <p id="settingsStatusC6Incident" class="meta">--</p>
+                  <p id="settingsStatusC6Hint" class="meta"></p>
+                </details>
               </dd>
               <dt id="settingsStatusUptimeLabel">Uptime</dt>
               <dd id="settingsStatusUptime">-</dd>
@@ -1714,13 +1726,13 @@
                   <div id="forecastReadabilityOptions" class="slider-options hidden">
                     <label><span id="fForecastDaysLabel">Visible days</span>
                       <select id="fForecastDays">
-                        <option value="">Keep existing day count</option>
+                        <option value="">Default</option>
                         <option value="0">Auto (readable columns)</option>
                         <option value="1">1</option><option value="2">2</option><option value="3">3</option>
                         <option value="4">4</option><option value="5">5</option><option value="6">6</option>
                       </select>
                     </label>
-                    <label class="row"><input id="fAlignForecast" type="checkbox" /><span id="fAlignForecastLabel">Align dated solar columns</span></label>
+                    <label class="row"><input id="fAlignForecast" type="checkbox" /><span id="fAlignForecastLabel">Line up days with the weather tile</span></label>
                     <div class="meta" id="fReadabilityHint"></div>
                   </div>
                   <div id="weatherForecastOptions" class="slider-options hidden">

@@ -45,6 +45,19 @@ POST/PUT bodies must be `application/json` (`application/octet-stream` for `/api
 
 ## Memory and heap
 
+- C6 memory diagnostics (`net/c6_memory*`) configure ESP-Hosted's memory monitor from a low-priority worker
+  under the Wi-Fi API mutex, after station setup or setup AP startup. `/api/version` only copies the cache.
+  In ESP-Hosted 2.12.13 the config reply's `curr_total_heap_size` means **free** heap; only periodic events
+  contain the C6 boot minimum. Internal 8-bit and DMA capabilities overlap. Reset generations invalidate old
+  samples and in-flight replies; transport loss or an age over 180 seconds marks cached values stale.
+  Incident hooks copy the latest sample; the worker retains it under the separate versioned NVS key
+  `wifi_diag/c6_last`, at most once per five seconds, without changing the legacy Wi-Fi diagnostic blob.
+  Before a network-watchdog restart, `c6_memory_retain_for_restart()` tags a fresh sample with the reboot cause
+  (record version 2) and wakes the worker to write it at once; the watchdog runs on a PSRAM stack and must not write
+  flash itself, so it waits at most one second for the worker.
+  Ordinary minute reports never write flash. Runtime C6 support and reconnect behaviour need device trials;
+  host tests and firmware builds alone do not establish them.
+
 Internal RAM is scarce (Wi-Fi/SDIO buffers, TLS, task stacks); keep large buffers in PSRAM.
 
 - **LVGL allocates from PSRAM first** (`ui/lvgl_alloc.c`, `CONFIG_APP_LVGL_ALLOC_PSRAM_FIRST`, default for every

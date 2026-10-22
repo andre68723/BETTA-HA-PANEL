@@ -60,7 +60,7 @@ Weather retains the existing number of days unless `forecast_days` is chosen.
 Use 0 for measured auto or 1..6 explicitly (columns including today: up to five future days plus today). Fewer wider columns are an optional
 trade-off; they make room for low temperatures and configured rain. Long weather
 reports remain in detail. Narrow columns may use the short weekday instead of
-“Today”. Solar's `align_forecast: true` puts Rest in the header and aligns up to
+“Today”. Solar's `align_forecast: true` (vertical bars only) puts Rest in the header and aligns up to
 five dated columns with weather. Give both tiles equal x/width and day count.
 The Solar detail popup retains every configured daily reading.
 

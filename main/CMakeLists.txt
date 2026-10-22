@@ -235,6 +235,8 @@ idf_component_register(
         "settings/i18n_store.c"
         "net/wifi_mgr.c"
         "net/wifi_diag_store.c"
+        "net/c6_memory.c"
+        "net/c6_memory_state.c"
         "net/time_sync.c"
         "net/mqtt_mgr.c"
         "net/wifi_signal_level.c"

@@ -40,13 +40,22 @@ test("every entity-first widget choice has a translated label and a complete suc
   }
 });
 
-test("solar previews translate every day and the remaining forecast in both orientations", () => {
+test("solar previews name the days by weekday in the editor language and translate the remaining forecast", () => {
   const { run, fn } = loadEditor();
-  for (const [language, today, tomorrow, rest] of [["en", "Today", "Tomorrow", "Remaining"], ["de", "Heute", "Morgen", "Rest"]]) {
-    run(`editor.i18nMap = WEB_I18N_BUILTIN.${language};`);
+  const weekday = (language, offset) => {
+    const date = new Date();
+    date.setDate(date.getDate() + offset);
+    return date.toLocaleDateString(language, { weekday: "short" }).replace(/\.$/, "").slice(0, 2);
+  };
+  for (const [language, rest] of [["en", "Remaining"], ["de", "Rest"]]) {
+    run(`editor.i18nMap = WEB_I18N_BUILTIN.${language}; editor.i18nLanguage = "${language}";`);
     for (const orientation of ["horizontal", "vertical"]) {
       const markup = fn("solarPreviewMarkup")({ rect: { w: 640, h: 400 }, solar_forecast_bar_orientation: orientation, align_forecast: true });
-      for (const text of [today, tomorrow, rest]) assert.ok(markup.includes(text), `${language} ${orientation}: ${text}`);
+      // As solar_day_label(): today's two-letter weekday first. Rest moves into the header only for lined-up columns; horizontal bars
+      // ignore align_forecast, as on the panel.
+      for (const text of [weekday(language, 0), weekday(language, 1)]) assert.ok(markup.includes(`>${text}<`), `${language} ${orientation}: ${text}`);
+      if (orientation === "vertical") assert.ok(markup.includes(rest), `${language} vertical: ${rest}`);
+      else assert.ok(!markup.includes(`${rest} `), `${language} horizontal: no ${rest} header`);
       assert.doesNotMatch(markup, /preview\.solar\./);
       if (language === "en") assert.doesNotMatch(markup, /Heute|Morgen|\bRest\b|Tag [345]/);
     }

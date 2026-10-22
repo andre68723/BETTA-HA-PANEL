@@ -192,6 +192,7 @@ function bambuPreviewMarkup(widget) {
         ${widgetNamePreview(widget, "span", 'class="bambu-preview-name"')}
         <span class="bambu-preview-status">${escapeHtml(t(statusKey, {}, statusFallback))}</span>
       </div>
+      ${widget.stage_entity_id ? `<small class="bambu-preview-step">${escapeHtml(t("layout.preview.bambu_step"))}</small>` : ""}
       <div class="bambu-preview-stage">
         ${BAMBU_PREVIEW_SVG}
       </div>

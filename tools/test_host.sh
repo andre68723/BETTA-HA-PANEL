@@ -48,6 +48,18 @@ cc -std=gnu11 -Wall -Wextra -Werror -g -I main \
 "$out/test_display_rotation"
 "$out/test_host"
 
+# C6 diagnostic snapshots: lifecycle/retry policy and versioned incident records, no radio.
+cc -std=gnu11 -Wall -Wextra -Werror -g -I main "${cjson_flags[@]}" \
+  tests/host/test_c6_memory.c main/net/c6_memory_state.c main/util/reboot_log.c \
+  "${cjson_sources[@]}" "${cjson_libs[@]}" -o "$out/test_c6_memory"
+"$out/test_c6_memory"
+
+cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-variable -g -I main \
+  -I tests/host/storage_stubs -I tests/host/stubs "${cjson_flags[@]}" \
+  tests/host/test_c6_memory_store.c main/net/wifi_diag_store.c main/net/c6_memory_state.c main/util/reboot_log.c \
+  "${cjson_sources[@]}" "${cjson_libs[@]}" -o "$out/test_c6_memory_store"
+"$out/test_c6_memory_store"
+
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/host/stubs \
   -DCONFIG_IDF_TARGET_ESP32P4=1 "${cjson_flags[@]}" \
   tests/host/test_ha_controls.c main/ha/ha_registry_discovery.c main/ha/ha_control_options.c \

@@ -456,6 +456,18 @@ async function loadHaDiagnostics() {
   renderHaDiagnosticsBanner();
 }
 
+// Dismissal is remembered for this set of missing entities; another missing entity shows the banner again.
+const HA_DIAGNOSTICS_DISMISS_KEY = "betta.haDiagnosticsDismissed";
+
+function bindHaDiagnosticsBanner() {
+  if (!el.haDiagnosticsDismiss) return;
+  el.haDiagnosticsDismiss.onclick = () => {
+    const signature = haDiagnosticsSignature();
+    if (signature) storageSet(HA_DIAGNOSTICS_DISMISS_KEY, signature);
+    if (el.haDiagnosticsBanner) el.haDiagnosticsBanner.hidden = true;
+  };
+}
+
 function haDiagnosticsSignature() {
   const d = editor.haDiagnostics;
   if (!d || !d.total) return "";
@@ -476,7 +488,7 @@ function renderHaDiagnosticsBanner() {
     banner.hidden = true;
     return;
   }
-  if (d.dismissedSignature && d.dismissedSignature === signature) {
+  if (storageGet(HA_DIAGNOSTICS_DISMISS_KEY) === signature) {
     banner.hidden = true;
     return;
   }

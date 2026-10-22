@@ -128,6 +128,14 @@ need USB, see [Install and set up](getting-started.md#update-later).
 **Settings → Device → Restart panel** restarts the device without clearing layout or settings; the page also
 shows the recent restart history, device information, memory and the log.
 
+**Device status → C6 Wi-Fi memory** shows the Wi-Fi coprocessor's free heap, its lowest free heap since
+the C6 started and its largest internal allocation block. A report arrives about once a minute; the minimum
+appears after the first periodic report. Samples older than three minutes or from a lost transport are marked stale.
+Expand **Memory details** for DMA memory, the last diagnostic error and the sample retained at the last
+connection incident. That incident is separate from the live reading and can belong to an earlier panel boot.
+Unavailable or unsupported diagnostics do not prevent Wi-Fi from working. C6 memory is separate from the
+panel's RAM and PSRAM; internal and DMA memory overlap and cannot be added together.
+
 If a crash report is stored, the editor shows a banner. Download the report under **Settings → Device** before
 removing it; it may belong to an earlier run, so check its time, and it can contain private memory contents,
 so share it only with someone you trust.

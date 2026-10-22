@@ -958,6 +958,9 @@ function renderEnergyCanvasPreview(page) {
   el.canvas.appendChild(node);
 }
 
+// Role sizes of the 720 px and 1280 px boards at the standard step, used until /api/version has answered.
+const PREVIEW_ROLE_FALLBACK = { meta: 20, label: 24, value: 28, key: 36, hero: 42 };
+
 function renderCanvas() {
   if (editor.activePane === "settings") {
     setActiveSettingsSection(editor.activeSettingsSection);
@@ -965,6 +968,12 @@ function renderCanvas() {
   }
   updateCanvasScale();
   el.canvas.classList.toggle("panel4-readable", panel4Typography());
+  el.canvas.classList.toggle("text-fixed", !previewTextAdaptive());
+  el.canvas.classList.toggle("panel-large", CANVAS_WIDTH >= 1000); // APP_VIEW_WIDTH >= 1000 in the widgets
+  // The panel's text roles at the chosen text step (css/preview-roles.css sizes the preview texts with them).
+  for (const [role, fallback] of Object.entries(PREVIEW_ROLE_FALLBACK)) {
+    el.canvas.style.setProperty(`--r-${role}`, `${textRoleSize(role, fallback)}px`);
+  }
   // While the user is actively dragging or resizing a tile we must not rebuild
   // the canvas DOM — doing so would destroy the element that owns the pointer
   // capture and cause the drag to "let go" mid-motion. Remember that a render

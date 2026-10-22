@@ -529,6 +529,7 @@ if (el.addBambuPrinterBtn) {
   }
   bindUpdateCheck();
   bindCrashBanner();
+  bindHaDiagnosticsBanner();
   initInspectorLayout();
   bindStockInspector();
   if (el.followPageToggle) {

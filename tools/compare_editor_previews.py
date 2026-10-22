@@ -170,6 +170,8 @@ def main():
         lvgl = render_cases(fixture, chosen, args.style, args.output)
     responses = demo_api(fixture)
     responses["/api/settings"]["ui"]["style"] = args.style
+    # The gallery fixture holds one page per widget; the panel's page limit would reject the layout.
+    responses["/api/version"]["max_pages"] = max(responses["/api/version"]["max_pages"], len(fixture["pages"]))
     server = serve(responses)
     problems, images = [], []
     try:
@@ -207,7 +209,7 @@ def main():
                 key = widget["id"] if widget else page_id
                 shot = args.output / f"{key}_editor.png"
                 try:
-                    tile = page.locator("#canvas") if widget is None else page.locator(f'[data-widget-id="{key}"]')
+                    tile = page.locator("#canvas") if widget is None else page.locator(f'#canvas .widget-box[data-widget-id="{key}"]')
                     tile.wait_for(timeout=3000)
                     tile.screenshot(path=str(shot))
                 except Exception as error:  # noqa: BLE001 - report and go on with the next widget

@@ -32,6 +32,7 @@
 #define HISTORY_CACHE_US (60LL * 1000000LL)
 #define HISTORY_TASK_STACK 10240
 #define HISTORY_DISPATCH_LOCK_MS 2000
+#define HISTORY_QUEUE_LEN 4
 
 static const char *TAG = "ha_history";
 
@@ -220,7 +221,9 @@ esp_err_t ha_history_request(const char *entity_id, bool numeric, uint32_t gener
             return ESP_ERR_INVALID_ARG;
     }
     if (s_queue == NULL) {
-        s_queue = xQueueCreate(1, sizeof(history_request_t));
+        /* One place per caller with a request outstanding (graph feed, quote feed, popup) plus a spare: a single
+         * overwritten place let a graph's request replace the waiting quote request, which then never got an answer. */
+        s_queue = xQueueCreate(HISTORY_QUEUE_LEN, sizeof(history_request_t));
         if (s_queue == NULL) return ESP_ERR_NO_MEM;
         BaseType_t created;
 /* the stack lives in PSRAM (2 KB of 8 KB were left with a 5,000-value day); the task never touches flash */
@@ -235,5 +238,5 @@ esp_err_t ha_history_request(const char *entity_id, bool numeric, uint32_t gener
     }
     history_request_t request = {.numeric = numeric, .generation = generation, .callback = callback};
     strlcpy(request.entity_id, entity_id, sizeof(request.entity_id));
-    return xQueueOverwrite(s_queue, &request) == pdPASS ? ESP_OK : ESP_ERR_TIMEOUT;
+    return xQueueSend(s_queue, &request, 0) == pdPASS ? ESP_OK : ESP_ERR_TIMEOUT;
 }

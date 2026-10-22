@@ -53,6 +53,7 @@ set(WEBUI_CSS_SOURCES
     css/layout-actions.css
     css/evcc-wallbox.css
     css/stock-quotes.css
+    css/preview-roles.css
     css/inspector.css)
 
 set(WEBUI_JS_DEPENDS "")

@@ -13,6 +13,7 @@
 #include <stdbool.h>
 
 #include "net/wifi_mgr.h"
+#include "net/c6_memory_state.h"
 
 /* Save a diagnostic snapshot. Routine disconnect bursts are rate-limited;
  * critical C6 hard-recover results bypass the limit so a reset immediately
@@ -22,3 +23,7 @@ void wifi_diag_store_save(const wifi_mgr_diag_t *diag, bool critical);
 /* Loads the last saved snapshot (typically from before the current boot) into *out. Returns false
  * and zeroes *out when nothing was ever saved. */
 bool wifi_diag_store_load(wifi_mgr_diag_t *out);
+
+/* Separate versioned key; invoked by the diagnostics worker, never a Hosted callback. */
+bool wifi_diag_store_save_c6(const c6_memory_incident_t *record);
+bool wifi_diag_store_load_c6(c6_memory_incident_t *out);

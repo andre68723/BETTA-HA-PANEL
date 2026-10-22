@@ -8,6 +8,22 @@
   display: none;
 }
 
+.device-status-list .c6-memory-status {
+  min-width: 0;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .device-status-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .device-status-list dt:not(:first-child) {
+    margin-top: 8px;
+  }
+}
+
 /* A label is a grid, which would beat the hidden attribute (the custom time zone field). */
 .settings-content-section label[hidden] {
   display: none;

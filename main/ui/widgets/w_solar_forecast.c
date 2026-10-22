@@ -580,7 +580,7 @@ esp_err_t w_solar_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, 
     lv_obj_set_style_pad_all(card, 0, LV_PART_MAIN);
     lv_obj_set_scrollable(card, false);
 
-    ctx->aligned = def->align_forecast;
+    ctx->aligned = def->align_forecast && ctx->vertical_bars; /* the day grid exists only for columns */
     ctx->forecast_days = def->forecast_days < 0 ? 0 : def->forecast_days;
     ctx->summary = lv_label_create(card);
     ui_text_record(ctx->summary, UI_TEXT_LABEL, true);

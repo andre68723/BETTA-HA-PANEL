@@ -1,0 +1,344 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork */
+/* Preview texts in the panel's text roles. renderCanvas() sets --r-meta/label/value/key/hero on #canvas from /api/version
+ * "text" at the chosen text step; each rule names the role the widget's C source gives that label (ui_font_role(),
+ * ui_text_set()). Where the panel picks a role by tile size, a container query on the .widget-box does the same.
+ * Loaded after the other preview sheets: these sizes win. Poppins Medium is the panel's only text weight. */
+#canvas .widget-box { --meta: var(--r-meta, 20px); --label: var(--r-label, 24px); --value: var(--r-value, 28px); --key: var(--r-key, 36px); }
+#canvas .tp { line-height: 1.3; }
+#canvas .tp b, #canvas .tp strong { font-weight: 500; }
+#canvas .tp small, #canvas .tp .tp-name, #canvas .tp .tp-chip, #canvas .tp .tp-badge { font-size: var(--meta); }
+#canvas .tp .tp-name { color: var(--pv-text); }
+
+/* sensor: name LABEL (muted), value KEY fitted to the tile, age META */
+#canvas .tp-sensor small { font-size: var(--label); color: var(--pv-muted); }
+#canvas .tp-sensor b { font-size: min(var(--key), 20cqw); }
+#canvas .tp-sensor .tp-sensor-age { font-size: var(--meta); }
+#canvas .tp-sensor-value-only b { font-size: min(var(--key), 22cqw); }
+
+/* graph: name LABEL (muted), value VALUE, the min/max line META */
+#canvas .tp-graph-head small { font-size: var(--label); color: var(--pv-muted); }
+#canvas .tp-graph-head b { font-size: var(--value); }
+#canvas .tp-graph-window { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+
+/* gauge: value KEY fitted to the arc, name LABEL (META on a small arc); horizontal name LABEL, value VALUE */
+#canvas .tp-gauge-radial .tp-arc b { font-size: min(var(--key), 20cqmin); }
+#canvas .tp-gauge-radial > small, #canvas .tp-gauge-v > small { font-size: var(--label); color: var(--pv-muted); }
+#canvas .tp-gauge-v .tp-gauge-value { font-size: min(var(--key), 22cqw); }
+#canvas .tp-gauge-h .tp-light-top, #canvas .panel4-readable .tp-gauge-h .tp-light-top { font-size: var(--label); line-height: 1.3; color: var(--pv-muted); }
+#canvas .tp-gauge-h .tp-light-top > span:last-child { font-size: var(--key); line-height: 1.3; color: var(--pv-text); }
+@container (max-height: 110px) {
+  #canvas .tp-gauge-h .tp-light-top > span:last-child { font-size: var(--value); }
+}
+
+/* button, slider, light, scene, binary, contact, cover, fan, select, datetime, camera: META throughout */
+#canvas .tp-button-state, #canvas .tp-button b, #canvas .tp-slider b, #canvas .tp-hbar2 span, #canvas .tp-vbar2 span,
+#canvas .tp-light b, #canvas .tp-light-top, #canvas .tp-contact b, #canvas .tp-contact small, #canvas .tp-blind b,
+#canvas .tp-blind small, #canvas .tp-fanbig-top b, #canvas .tp-fanbig-top small, #canvas .tp-chips i, #canvas .tp-cam-strip,
+#canvas .tp-select small, #canvas .tp-datetime small { font-size: var(--meta); }
+/* select and datetime: the value is VALUE on a roomy tile, META on a low one */
+#canvas .tp-select b, #canvas .tp-datetime b { font-size: var(--meta); }
+@container (min-height: 110px) { #canvas .tp-select b { font-size: var(--value); } }
+@container (min-width: 220px) and (min-height: 100px) { #canvas .tp-datetime b { font-size: var(--value); } }
+
+/* lock and alarm: from 100 px height the name is LABEL (VALUE from 240 px width) and the state LABEL */
+@container (min-height: 100px) {
+  #canvas .tp-icon-circle ~ .tp-blind-text b { font-size: var(--label); }
+  #canvas .tp-icon-circle ~ .tp-blind-text small { font-size: var(--label); }
+}
+@container (min-height: 100px) and (min-width: 240px) {
+  #canvas .tp-icon-circle ~ .tp-blind-text b { font-size: var(--value); }
+}
+
+/* climate: name and current META, target VALUE, mode and chips META */
+#canvas .tp-climate .tp-name, #canvas .tp-climate small, #canvas .tp-clim-modes i, #canvas .tp-clim-chips i { font-size: var(--meta); }
+#canvas .tp-clim-mid b { font-size: var(--value); }
+
+/* heating: actual KEY (VALUE on a small ring), target, name and status META */
+#canvas .tp-heat .tp-ring b { font-size: min(var(--key), 14cqmin); }
+#canvas .tp-heat small, #canvas .tp-heat .tp-heat-status, #canvas .tp-heat .tp-heat-target { font-size: var(--meta); }
+
+/* media, sonos, vacuum, todo: META */
+#canvas .tp-media .tp-name, #canvas .tp-media .tp-track b, #canvas .tp-media .tp-track small, #canvas .tp-vac .tp-name,
+#canvas .tp-vac small, #canvas .tp-vac-battery, #canvas .tp-todo .tp-name, #canvas .tp-todo .tp-row { font-size: var(--meta); }
+
+/* room tile: name META, temperature VALUE (META on a small ring), chips META */
+#canvas .tp-room .tp-name, #canvas .panel4-readable .tp-room .tp-name { font-size: var(--meta); }
+#canvas .tp-room-temp, #canvas .tp-room-ring b { font-size: var(--value); }
+#canvas .tp-room-side, #canvas .tp-room-chips i, #canvas .tp-room-action { font-size: var(--meta); }
+
+/* weather: day LABEL, high and low VALUE, rain META; the current reading LABEL */
+#canvas .tp-day span { font-size: var(--label); }
+#canvas .tp-day b, #canvas .tp-day small { font-size: var(--value); }
+#canvas .tp-day .tp-rain { font-size: var(--meta); }
+#canvas .tp-wx-head b { font-size: var(--label); }
+#canvas .tp-wx-head small { font-size: var(--meta); }
+#canvas .tp-weather-main b { font-size: var(--label); }
+
+/* energy timeline: title, captions and legend META; the ring value VALUE (KEY on a large ring) */
+#canvas .tp-etl > small, #canvas .tp-etl-counter small, #canvas .tp-etl-legend { font-size: var(--meta); }
+#canvas .tp-etl-counter b { font-size: var(--value); }
+
+/* ---- shapes that follow the panel's layout ---- */
+#canvas .tp * { font-synthesis: none; }
+#canvas .tp-select .tp-name, #canvas .tp-select small { color: var(--pv-muted); }
+
+/* lock, alarm, scene: the symbol circle (size set inline as in w_lock.c), light when armed or for a scene */
+#canvas .tp-icon-circle { height: auto; aspect-ratio: 1; font-size: calc(var(--meta) * 1.1); background: #2b3d4f; border-color: #3d5468; }
+#canvas .tp-icon-circle.on { background: #e8f3fb; color: #10202e; border-color: #c9d8e6; }
+
+/* room tile: outlined status chips, the ring's reading in META, cover arrows and the media button beside it */
+#canvas .tp-room-ring { height: auto; max-height: none; }
+#canvas .tp-room-ring b { font-size: var(--meta); }
+#canvas .tp-room-side.big { font-size: var(--value); }
+#canvas .tp-room-extra { flex: 1; min-width: 0; font-size: var(--meta); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#canvas .tp-room-btn { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 8px; background: #2b4658; border: 1px solid #3d6079; font-size: var(--meta); }
+#canvas .tp-room-chips i { background: transparent; border: 1px solid currentColor; border-radius: 8px; padding: 2px 0; }
+#canvas .tp-room-chips .c-muted { color: var(--pv-muted); }
+
+/* heating: power symbol and name on top, a large ring with target, reading and action */
+#canvas .tp-heat { justify-content: flex-start; gap: 4px; }
+#canvas .tp-heat-head { position: relative; width: 100%; text-align: center; font-size: var(--meta); color: var(--pv-text); }
+#canvas .tp-heat-head i { position: absolute; left: 4px; top: 0; color: #ff7043; font-size: var(--meta); }
+#canvas .tp-heat-arc .tp-ring { flex: 1; width: auto; height: auto; max-height: 100%; aspect-ratio: 1; gap: 0; }
+#canvas .tp-heat-arc .tp-ring b { font-size: min(var(--key), 15cqmin); }
+#canvas .tp-heat-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 8px; width: 100%; }
+/* semi arc: placed by heatingSemiPreview() like heating_apply_layout() */
+#canvas .tp-semi { position: absolute; inset: 16px; }
+#canvas .tp-semi > * { position: absolute; }
+#canvas .tp-semi-ring .track { stroke: color-mix(in srgb, var(--pv-text) 18%, transparent); }
+#canvas .tp-semi-ring .fill { stroke: #ff7043; }
+#canvas .tp-semi .tp-scale { font-style: normal; font-size: var(--meta); line-height: 1.25; color: var(--pv-muted); }
+#canvas .tp-semi-btn { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; background: #ff7043; color: #fff; font-size: var(--label); }
+#canvas .tp-semi > :is(small, b) { transform: translateX(-50%); line-height: 1.25; white-space: nowrap; font-weight: 500; }
+#canvas .tp-semi .tp-heat-target, #canvas .tp-semi .tp-heat-status { color: var(--pv-muted); }
+#canvas .tp-room-main:not(:has(.tp-room-ring)) { align-items: flex-start; }
+
+/* media player: name left on top, title and artist META, position and duration beside the bar, 52 px buttons with a
+ * 64 px play button, the volume bar with its speaker */
+#canvas .tp-media { gap: 4px; }
+#canvas .tp-media .tp-name { text-align: left; }
+#canvas .tp-media .tp-track b { font-weight: 500; }
+#canvas .tp-media .tp-track small { color: var(--pv-muted); }
+#canvas .tp-media-progress { display: flex; align-items: center; gap: 8px; }
+#canvas .tp-media-progress small { color: var(--pv-muted); }
+#canvas .tp-media-progress .tp-bar { height: 10px; background: color-mix(in srgb, var(--pv-text) 14%, transparent); }
+#canvas .tp-media .tp-bar i { background: var(--pv-accent); }
+#canvas .tp.tp-media .tp-btns { gap: 6px; align-items: center; }
+#canvas .tp.tp-media .tp-btns span { width: 52px; height: 52px; font-size: var(--meta); }
+#canvas .tp.tp-media .tp-btns span.tp-primary { width: 64px; height: 64px; background: var(--pv-accent); color: #10202e; border-color: var(--pv-accent); }
+#canvas .tp-media .tp-vol { gap: 10px; }
+#canvas .tp-media .tp-vol > i { font-size: var(--meta); opacity: 0.7; }
+#canvas .tp-media .tp-vol .tp-bar { height: 22px; }
+#canvas .tp-media .tp-cover { max-height: none; flex: 1; min-height: 0; width: auto; }
+
+/* vacuum: robot or map, name and state META centred, the suction level as a select field, three square buttons;
+ * the card lights up while the robot cleans */
+#canvas .tp-vac .tp-vac-body { width: 100%; text-align: center; }
+#canvas .tp-vac .tp-name, #canvas .tp-vac small { color: var(--pv-text); }
+#canvas .tp-vac-chips { display: flex; gap: 8px; width: 100%; }
+#canvas .tp-vac-select { flex: 1; min-width: 0; height: 40px; padding: 0 8px; display: flex; align-items: center; border-radius: 6px; background: #22445a;
+  font-size: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#canvas .tp-vac-select:first-child:not(:last-child) { background: var(--pv-accent); color: #10202e; }
+/* w_vacuum.c beside_chip: name and state left-aligned, as wide as the card minus the charge chip */
+#canvas .tp-vac-beside .tp-vac-body { align-items: flex-start; justify-content: flex-start; text-align: left; }
+#canvas .tp-vac-beside .tp-vac-body > :is(.tp-name, small) { max-width: calc(100% - 4.5em); }
+#canvas .tp-vac .tp-vac-body > small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#canvas .tp-vac-beside .tp-vac-battery { top: 0; right: 0; }
+#canvas .tp-vac-beside .tp-vac-btns { margin-top: auto; }
+#canvas .tp-vac-btns { display: flex; gap: 8px; width: 100%; justify-content: center; }
+#canvas .tp-vac-btns span { flex: 1; max-width: 72px; height: 46px; display: grid; place-items: center; border-radius: 6px; background: #1b2c3f; font-size: var(--meta); }
+#canvas .tp-vac-btns span.on { background: #a9c6dc; color: #10202e; }
+#canvas .widget-box:has(.tp-vac.active) { background: #6b7f93; }
+#canvas .tp-vac-map { position: relative; width: 92%; flex: 1; min-height: 80px; max-height: 55%; border-radius: 14px; background: #1b2c3f; padding: 10%; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+#canvas .tp-vac-map i { background: #3c6a8a; } #canvas .tp-vac-map i:nth-child(2) { background: #3f7a5a; }
+#canvas .tp-vac-map i:nth-child(3) { background: #5a4f7f; } #canvas .tp-vac-map i:nth-child(4) { background: #6e5a3f; }
+#canvas .tp-vac-battery { background: #2e5a44; }
+
+/* sonos: name, the player's state in META, one 46 px button per favourite */
+#canvas .sonos-preview { grid-template-rows: auto auto 1fr; gap: 4px; }
+#canvas .sonos-preview-title { font-size: var(--meta); font-weight: 500; }
+#canvas .sonos-preview-meta { font-size: var(--meta); color: var(--pv-muted); }
+#canvas .sonos-preview-list div { font-size: var(--meta); font-weight: 500; padding: 0 16px; height: 46px; display: flex; align-items: center; }
+
+/* car: placed and sized by carPreviewMarkup() like car_layout() in w_car_widget.c; extras META */
+#canvas .car-preview { position: absolute; inset: 0; display: block; }
+#canvas .car-preview-gauge { position: absolute; border: 0; aspect-ratio: 1; }
+#canvas .car-preview > :is(.car-preview-range, .car-preview-soc, .car-preview-power, .car-preview-title) {
+  position: absolute; left: 50%; transform: translateX(-50%); max-width: none; line-height: 1.25; font-weight: 500; text-align: center; }
+#canvas .car-preview-range { text-overflow: clip; }
+#canvas .car-preview-soc { display: flex; gap: 3px; overflow: visible; }
+#canvas .car-preview-soc span { margin: 8px 0 0; line-height: 1.25; font-weight: 500; vertical-align: 0; }
+#canvas .car-preview-extras { position: absolute; left: 12px; right: 12px; bottom: 12px; height: 36px; margin: 0; font-size: var(--meta); }
+
+/* light: the colour button as a 52 px circle under the brightness, a small lamp, the 24 px bar with its 40 px knob */
+#canvas .tp-light .tp-light-pct { position: relative; }
+#canvas .tp-light .tp-wheel { position: absolute; right: 0; top: calc(100% + 6px); width: 52px; height: 52px; }
+#canvas .tp-light .tp-bulb-svg { max-width: 40px; margin-top: 36px; }
+#canvas .tp-light .tp-bar-knob, #canvas .tp-media .tp-vol .tp-bar-knob { height: 24px; overflow: visible; }
+#canvas .tp-light .tp-bar-knob u, #canvas .tp-media .tp-bar-knob u { width: 40px; height: 40px; }
+#canvas .tp-media .tp-bar-knob u { left: 45%; background: #b8f3ff; }
+/* volume row (w_media_player.c): 56 px with a 22 px bar and a 40 px knob, 50/20/34 px on the 1280 px boards; minus and plus
+ * buttons (52/46 px) replace the speaker in the glow and glass styles */
+#canvas .tp-media .tp-vol { flex: none; height: var(--vol-row, 56px); --vol-bar: 22px; --vol-knob: 40px; --vol-btn: 52px; }
+#canvas.panel-large .tp-media .tp-vol { --vol-row: 50px; --vol-bar: 20px; --vol-knob: 34px; --vol-btn: 46px; }
+#canvas .tp-media .tp-vol .tp-bar-knob { height: var(--vol-bar); }
+#canvas .tp-media .tp-vol .tp-bar-knob u { width: var(--vol-knob); height: var(--vol-knob); }
+#canvas .tp-media .tp-vol .tp-vol-btn { display: none; flex: none; width: var(--vol-btn); height: var(--vol-btn); font-size: var(--meta); }
+body:is([data-ui-style="glow"], [data-ui-style="glass"]) #canvas .tp-media .tp-vol .tp-vol-btn { display: grid; }
+body:is([data-ui-style="glow"], [data-ui-style="glass"]) #canvas .tp-media .tp-vol > i { display: none; }
+
+/* energy timeline */
+#canvas .tp-etl { gap: 4px; padding: 8px 10px; }
+#canvas .tp-etl-head { display: flex; justify-content: space-between; gap: 8px; font-size: var(--meta); color: var(--pv-muted); white-space: nowrap; }
+#canvas .tp-etl-head > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+#canvas .tp-etl-top { gap: 8px; }
+#canvas .tp-etl-counter i { max-width: none; width: 100%; }
+#canvas .tp-etl-counter i::before { inset: 10%; }
+#canvas .tp-etl-counter b { display: flex; flex-direction: column; align-items: center; font-size: min(var(--key), 9cqw); line-height: 1.1; }
+#canvas .tp-etl-counter b small { font-size: var(--meta); color: var(--pv-muted); }
+#canvas .tp-etl-counter > small { color: var(--pv-muted); }
+#canvas .tp-etl-legend { display: flex; flex-direction: row; flex-wrap: wrap; gap: 2px 12px; font-size: var(--meta); color: var(--pv-text); }
+#canvas .tp-etl-legend em, #canvas .tp-etl-list li { font-style: normal; white-space: nowrap; }
+#canvas .tp-etl-legend em::before, #canvas .tp-etl-list li::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 4px; border-radius: 50%; background: var(--c); }
+#canvas .tp-etl-nested { width: min(40%, 260px); flex: none; display: grid; place-items: center; }
+#canvas .tp-etl-nested b { position: relative; font-size: var(--value); }
+#canvas .tp-etl-list { list-style: none; margin: 0; padding: 0; font-size: var(--meta); overflow: hidden; }
+#canvas .tp-etl-bars { position: relative; flex: 1; min-height: 40px; display: flex; align-items: stretch; gap: 1px; }
+#canvas .tp-etl-bars u { position: relative; flex: 1; background: none; }
+#canvas .tp-etl-bars u b { position: absolute; left: 0; right: 0; bottom: 55%; max-height: 55%; }
+#canvas .tp-etl-bars u i { position: absolute; left: 0; right: 0; top: 45%; max-height: 55%; }
+#canvas .tp-etl-bars u b { top: auto; }
+#canvas .tp-etl-bars u b, #canvas .tp-etl-bars u i { display: block; }
+#canvas .tp-etl-bars::after { content: ""; position: absolute; left: 0; right: 0; top: 45%; border-top: 1px solid color-mix(in srgb, var(--pv-text) 30%, transparent); }
+#canvas .tp-etl-axis { display: flex; justify-content: space-between; font-size: var(--meta); color: var(--pv-muted); }
+#canvas .tp-etl-bars { overflow: hidden; }
+#canvas .tp-wx-head { gap: 12px; }
+#canvas .tp-wx-head > i { font-size: var(--label); }
+#canvas .tp-wx-head small { flex: 1; text-align: center; color: var(--pv-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#canvas .tp-weather3 .tp-days { flex: none; height: auto; margin-top: auto; margin-bottom: auto; }
+#canvas .tp-light .tp-bulb-svg { margin: 36px auto 0; }
+#canvas .tp-light > b { margin-top: auto; }
+
+/* portfolio (w_parqet_portfolio.c): name, interval and chips META, the total KEY, gain LABEL, figure names META and values
+ * LABEL, holdings META */
+#canvas .tp-pq .tp-name, #canvas .tp-price .tp-name, #canvas .tp-stock .tp-name { text-align: left; font-size: var(--meta); }
+#canvas .tp-pq-interval, #canvas .tp-pq-chips, #canvas .tp-pq-kpis small, #canvas .tp-pq-row, #canvas .tp-pq-row small { font-size: var(--meta); }
+#canvas .tp-pq-head b { font-size: var(--key); }
+#canvas .tp-pq-gain, #canvas .tp-pq-kpis span { font-size: var(--label); }
+#canvas .tp-pq-kpis small { color: var(--pv-muted); opacity: 1; }
+#canvas .tp-pq-row i { background: color-mix(in srgb, var(--pv-text) 80%, transparent); height: 2px; }
+
+/* price (w_price_forecast.c): name, unit, interval, day buttons, axis, cheap window and min/max META, the price KEY */
+#canvas .tp-price-head b { font-size: var(--key); }
+#canvas .tp-price-head small, #canvas .tp-price-slot, #canvas .tp-price-days, #canvas .tp-price-foot, #canvas .tp-price-cheap { font-size: var(--meta); }
+#canvas .tp-price-foot { height: auto; min-height: 1.3em; }
+#canvas .tp-price-cheap { display: flex; justify-content: space-between; gap: 8px; white-space: pre; }
+#canvas .tp-price-stats { color: var(--pv-text); }
+
+/* stocks (w_stock_quotes.c): name and chips META; name, price and change LABEL; symbol and second change META */
+#canvas .tp-stock-row, #canvas .tp-stock-short .tp-stock-row { font-size: var(--label); }
+#canvas .tp-stock-row span small, #canvas .tp-stock-row em small, #canvas .tp-stock-section > small, #canvas .tp-stock-chips { font-size: var(--meta); }
+#canvas .tp-stock-row span small { opacity: 1; color: var(--pv-muted); }
+#canvas .tp-stock-chips em.on { background: #e8f3fb; color: #10202e; }
+
+/* wallbox (w_wallbox_evcc.c): name, captions and status META; modes, readings and vehicle LABEL; the charge VALUE */
+#canvas .evcc-preview { font-size: var(--meta); }
+#canvas .evcc-head, #canvas .evcc-reading small, #canvas .evcc-status, #canvas .evcc-soc small { font-size: var(--meta); }
+#canvas .evcc-modes span, #canvas .evcc-reading b, #canvas .evcc-control, #canvas .evcc-last { font-size: var(--label); font-weight: 500; }
+#canvas .evcc-soc b { font-size: var(--value); font-weight: 500; }
+#canvas .evcc-control { width: 100%; text-align: left; }
+
+/* bambu (w_bambu_printer.c): name META (LABEL from 300 px height), status VALUE, step and temperatures META, progress KEY,
+ * remaining VALUE, buttons LABEL */
+#canvas .bambu-preview-name, #canvas .bambu-preview-step, #canvas .bambu-preview-temperatures { font-size: var(--meta); font-weight: 500; }
+@container (min-height: 300px) { #canvas .bambu-preview-name { font-size: var(--label); } }
+#canvas .bambu-preview-step { color: var(--pv-muted); }
+#canvas .bambu-preview-status { font-size: var(--value); font-weight: 500; }
+#canvas .bambu-preview-readings b { font-size: var(--key); font-weight: 500; }
+#canvas .bambu-preview-readings span { font-size: var(--value); }
+#canvas .bambu-preview-buttons span { font-size: var(--label); font-weight: 500; }
+
+/* solar (w_solar_forecast.c): name and day LABEL, values VALUE */
+#canvas .solar-preview-title, #canvas .solar-preview-unit { font-size: var(--label); font-weight: 500; }
+#canvas .solar-preview-row strong, #canvas .solar-preview-col strong { font-size: var(--label); font-weight: 500; color: var(--pv-muted); }
+#canvas .solar-preview-row span, #canvas .solar-preview-col span { font-size: var(--value); font-weight: 500; }
+
+/* todo (w_todo.c): name, count and entries META in 56 px rows with a 34 px check circle */
+#canvas .tp-todo .tp-row { min-height: 56px; padding: 0 10px; gap: 14px; background: transparent; border: 1px solid color-mix(in srgb, var(--pv-text) 18%, transparent); font-weight: 500; }
+#canvas .tp-todo .tp-row i { width: 34px; height: 34px; border: 1px solid color-mix(in srgb, var(--pv-text) 25%, transparent); background: color-mix(in srgb, #000 20%, transparent); }
+#canvas .tp-todo .tp-row i.done { background: #4fcb7e; border-color: #4fcb7e; }
+#canvas .tp-badge { min-width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; }
+#canvas .evcc-preview small { font-size: var(--meta); opacity: 1; color: var(--pv-text); }
+#canvas .evcc-control { align-self: stretch; justify-content: space-between; }
+#canvas .solar-preview-row { grid-template-columns: auto minmax(40px, 1fr) auto; gap: 12px; }
+#canvas .evcc-preview { gap: 4px; padding: 10px 12px; }
+#canvas .evcc-preview small { margin-bottom: 0; }
+#canvas .tp-stock-section > small { color: var(--pv-muted); }
+#canvas .tp-stock-section > small em { font-style: normal; }
+/* the list's prices and changes fall back to META when they leave less than three name characters (w_stock_quotes.c) */
+@container (max-width: 440px) { #canvas .tp-stock-row b, #canvas .tp-stock-row em { font-size: var(--meta); } }
+
+/* ---- small tiles: one line per label, cut with dots as LV_LABEL_LONG_DOT does ---- */
+#canvas .tp .tp-name, #canvas .tp-blind-text b, #canvas .tp-blind-text small, #canvas .tp-slider > b, #canvas .tp-gauge-radial > small,
+#canvas .tp-gauge-v > small, #canvas .tp-etl-counter > small, #canvas .tp-etl-list li, #canvas .tp-heat-head span, #canvas .tp-light > b,
+#canvas .tp-button > b, #canvas .tp-sensor small, #canvas .tp-datetime small, #canvas .tp-graph-head small {
+  display: block; max-width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#canvas .tp-blind-text { min-width: 0; }
+#canvas .tp-heat-head { padding: 0 calc(var(--meta) + 8px); }
+/* the sensor drops its age when the reading leaves no line for it */
+@container (max-height: 90px) { #canvas .tp-sensor .tp-sensor-age { display: none; } }
+/* energy timeline on a small card: the ring reading by ring size, no unit and no legend (w_energy_timeline.c) */
+@container (max-height: 300px) {
+  #canvas .tp-etl-legend, #canvas .tp-etl-counter b small { display: none; }
+  #canvas .tp-etl-counter b { font-size: var(--meta); }
+}
+#canvas .tp-light .tp-bulb-svg { max-width: max(40px, 22cqmin); margin: auto; }
+#canvas .tp-light > b { margin-top: 0; }
+#canvas .solar-preview-row strong { font-size: min(var(--label), 9cqw); }
+#canvas .solar-preview-row span { font-size: min(var(--value), 10cqw); }
+
+/* 10-inch boards (#canvas.text-fixed, previewTextAdaptive()): the widgets keep their fixed rows. Solar shows no unit header;
+ * the 3-day weather a large icon, the temperature over a two-line condition and the report beside them, cards up to 96 px. */
+#canvas.text-fixed .solar-preview-unit { display: none; }
+#canvas .tp-wx-fixed { align-items: center; gap: 6px; }
+#canvas .tp-wx-fixed > i { flex: none; width: var(--icon); font-size: calc(var(--icon) * 0.7); line-height: 1; text-align: center; }
+#canvas .tp-wx-fixed > div { flex: none; display: flex; flex-direction: column; gap: 4px; width: 200px; }
+#canvas .tp-wx-fixed b { font-size: var(--value); font-weight: 500; }
+#canvas .tp-wx-fixed small { flex: none; font-size: var(--meta); line-height: 1.25; text-align: left; white-space: normal; }
+#canvas .tp-wx-fixed p { flex: 1; min-width: 0; max-height: var(--icon); margin: 0 0 0 12px; overflow: hidden; color: var(--pv-muted);
+  font-size: var(--meta); line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
+#canvas .tp-weather3-fixed .tp-days { grid-template-columns: repeat(var(--cols), minmax(0, 96px)); justify-content: center; }
+#canvas .tp-button-icon { justify-content: center; gap: 12px; }
+#canvas .tp-button-icon > i { font-size: 40px; line-height: 48px; font-style: normal; color: var(--pv-accent); }
+/* radial gauge: ring and name placed by tilePreviewMarkup() like gauge_apply_layout_radial() */
+#canvas .tp-gauge-radial { position: absolute; inset: 0; padding: 0; display: block; }
+#canvas .tp-gauge-radial .tp-arc { position: absolute; top: 10px; max-width: none; }
+#canvas .tp-gauge-radial .tp-arc b { max-width: calc(var(--arc) - 16px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#canvas .tp-gauge-radial > small { position: absolute; left: 50%; transform: translateX(-50%); line-height: 1.25; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* bar gauges on the 10-inch boards keep the created META name and reading (w_gauge.c without UI_TEXT_ADAPTIVE) */
+#canvas.text-fixed .tp-gauge-h .tp-light-top, #canvas.text-fixed .tp-gauge-h .tp-light-top > span:last-child,
+#canvas.text-fixed .tp-gauge-v > small, #canvas.text-fixed .tp-gauge-v .tp-gauge-value { font-size: var(--meta); }
+/* the graph's reading stays on one line beside the shortened name */
+#canvas .tp-graph-head b { flex: none; white-space: nowrap; }
+#canvas .tp-wx-short > div { gap: 0; }
+#canvas .tp-wx-short b { font-size: var(--meta); }
+#canvas .tp-wx-short small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* horizontal solar rows on the 10-inch boards: 30 px rows, 3 px apart, day and value in LABEL */
+#canvas.text-fixed .solar-preview.horizontal .solar-preview-body { gap: 3px; }
+#canvas.text-fixed .solar-preview-row { height: 30px; }
+#canvas.text-fixed .solar-preview-row span { font-size: min(var(--label), 10cqw); }
+#canvas.text-fixed .solar-preview-row .solar-preview-hbar { height: 16px; }
+/* the room tile's compact action: icon and status word in a 44 px button in the bottom right corner */
+#canvas .tp-room-action { position: absolute; right: 14px; bottom: 6px; height: 44px; max-width: 52%; display: flex; align-items: center; gap: 4px;
+  padding: 0 8px; border-radius: 8px; background: #2b4658; border: 1px solid #3d6079; font-size: var(--meta); white-space: nowrap; overflow: hidden; }
+#canvas .tp-room-action i { flex: none; width: 24px; text-align: center; font-style: normal; }
+#canvas .tp-gauge-h .tp-light-top > span:first-child { flex: 1; }
+#canvas .tp-gauge-h .tp-gauge-info { flex: none; white-space: nowrap; font-size: var(--value); }
+#canvas .tp-gauge-v .tp-gauge-value { line-height: 1.25; text-align: center; }
+#canvas .tp-sensor b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+#canvas .tp-gauge-h { justify-content: flex-start; gap: 8px; }
+#canvas .tp-gauge-compact { gap: 4px; }
+#canvas .tp-gauge-compact > :is(.tp-bar, .tp-segs) { flex: 1; height: auto; min-height: 6px; }
+#canvas .tp-gauge-h .tp-light-top { position: static; width: 100%; align-items: baseline; }

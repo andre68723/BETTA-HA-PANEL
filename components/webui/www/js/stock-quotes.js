@@ -122,12 +122,14 @@ function stockPreviewMarkup(widget, name, height) {
     const sections = quotes.map((q, i) => {
       const change = delta === "absolute" ? `${number(amountOf(q), 2, true)} ${q.currency}` : delta === "both"
         ? `${number(amountOf(q), 2, true)} ${q.currency}  ${number(q.change, 2, true)} %` : `${number(q.change, 2, true)} %`;
+      // The period's reference price after the change, as the panel's "since 126.84 €" (w_stock_quotes.c).
+      const since = t("preview.stock.since", { price: `${number(q.price - amountOf(q), 2)} ${q.currency}` });
       const points = Array.from({ length: 24 }, (_, k) => {
         const y = 50 - q.change * 6 * (k / 23) + 8 * Math.sin(k / 3 + i);
         return `${(k / 23 * 100).toFixed(1)},${Math.max(4, Math.min(96, y)).toFixed(1)}`;
       }).join(" ");
       return `<div class="tp-stock-section"><div class="tp-stock-row"><span>${escapeHtml(q.name)}${widget.stock_ticker ? ` \u00b7 ${escapeHtml(q.symbol)}` : ""}</span><b>${number(q.price, 2)} ${escapeHtml(q.currency)}</b></div>
-        <small class="${sign(q.change)}">${escapeHtml(change)}</small>
+        <small><em class="${sign(q.change)}">${escapeHtml(change)}</em> ${escapeHtml(since)}</small>
         <svg class="tp-stock-spark ${sign(q.change)}" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${points}"/></svg></div>`;
     }).join("");
     return `<div class="tp tp-stock">${name("div", 'class="tp-name"')}<div class="tp-stock-chips">${chips}</div><div class="tp-stock-list">${sections}</div></div>`;

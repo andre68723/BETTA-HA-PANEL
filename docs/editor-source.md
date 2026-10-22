@@ -18,6 +18,7 @@ www/styles.css        base editor styles, the canvas and the layout preview shar
 www/css/style-*.css   rules for one appearance style (depth: shared by Glow and Glass), after the base
 www/css/readability.css  the readability controls' styles, after the style files
 www/css/preview-fit.css  tile preview sizes that follow the tile (container units) and the looks matched to the panel
+www/css/preview-roles.css  preview texts in the panel's text roles (`--r-meta` … `--r-key` from `/api/version`), loaded last
 www/css/settings.css compact settings forms and the offline alert example
 www/css/layout-toolbar.css compact layout header, icon actions and JSON menu
 www/css/layout-actions.css widget context menu and page-transfer dialog
@@ -144,6 +145,9 @@ Home Assistant and back without saving. Check for console errors and the generat
 - **Previews follow the panel.** A tile preview matches the panel render in size, proportions, visible elements and
   their order at the same geometry and text step; it is not a pixel copy. The thresholds it copies from a `w_*.c`
   (a row appears above some height, a cover below some width) change together with the widget.
+  Panel4 and Tab5 lay their widgets out from the text roles; the 10-inch boards keep fixed rows (`UI_TEXT_ADAPTIVE`).
+  `/api/version` reports this as `text.adaptive`, `previewTextAdaptive()` reads it and `#canvas.text-fixed` carries
+  the 10-inch rules in `css/preview-roles.css`. Line heights come from `previewLineHeight()` (the panel's metrics table).
 - **Readability** (`js/readability.js`, `css/readability.css`) mirrors the panel4 role sizes in 720 × 600 previews.
   Weather offers auto or 1-6 days, aligned solar auto or 1-5; Save does not resize tiles or enable rain. Gauge width
   hints measure state, range and unit at 38 px and are suggestions.

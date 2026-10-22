@@ -29,6 +29,7 @@
 #include "drivers/display_backlight.h"
 #include "drivers/touch_track.h"
 #include "net/wifi_diag_store.h"
+#include "net/c6_memory.h"
 #include "net/wifi_mgr.h"
 #include "settings/night_mode.h"
 #include "ui/ui_display_protection.h"
@@ -210,7 +211,8 @@ esp_err_t api_version_get_handler(httpd_req_t *req)
         }
     }
     /* Text sizes of this board (ui/text_scale.h): px per role (meta, label, value, key, hero) for the user steps 0..2, so the editor
-     * previews the panel's sizes without a table of its own. "step" is the step in use now. */
+     * previews the panel's sizes without a table of its own. "step" is the step in use now; "adaptive" says whether the widgets
+     * lay out from their text roles (UI_TEXT_ADAPTIVE) or keep the 10-inch boards' fixed rows and smaller roles. */
     {
         static const char *const role_names[] = {"meta", "label", "value", "key", "hero"};
         cJSON *text = cJSON_AddObjectToObject(root, "text");
@@ -220,6 +222,7 @@ esp_err_t api_version_get_handler(httpd_req_t *req)
             const text_board_t board = text_scale_build_board();
             cJSON_AddNumberToObject(text, "step", ui_fonts_user_step());
             cJSON_AddNumberToObject(text, "floor", text_scale_floor_px(board));
+            cJSON_AddBoolToObject(text, "adaptive", UI_TEXT_ADAPTIVE);
             for (size_t r = 0; r < sizeof(role_names) / sizeof(role_names[0]); r++) {
                 cJSON_AddItemToArray(roles, cJSON_CreateString(role_names[r]));
             }
@@ -450,6 +453,7 @@ esp_err_t api_version_get_handler(httpd_req_t *req)
     if (wifi_diag_store_load(&wifi_diag_prev)) {
         api_version_add_wifi_diag(cJSON_AddObjectToObject(wifi_diag_obj, "prev_boot"), &wifi_diag_prev);
     }
+    c6_memory_add_json(root, wifi_diag_obj);
 
     /* Touch contact counters since boot (all zero on boards whose driver does not feed them): "lost" are contacts that
      * ended before they were reported, "flagged" points carried the controller's weak-signal flag. */

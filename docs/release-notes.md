@@ -30,6 +30,11 @@ Release candidate, not published. Changes since [v0.9.0](#v090-fork).
 
 ### Editor
 
+- **C6 memory:** Settings → Device → Device status shows the Wi-Fi coprocessor's free heap, boot minimum,
+  largest internal block and sample age. Details include DMA memory, diagnostic errors and a retained sample
+  from the last connection incident or network-watchdog restart. Reports are cached once a minute; stale or
+  unsupported data is labelled.
+
 - **German and English:** the colour-theme editor, time-zone choices and solar-preview days follow the selected
   language. Entity-first Date/Time and Alarm choices have labels, and the add-widget message fills its placeholders
   in both languages. Setup, update and notification hints match the current controls. Language files are separate,
@@ -494,6 +499,8 @@ style; text and symbols use the same fonts throughout. See
   Previews scale with the tile (text, arcs, icons, switches) and drop what the panel drops at small sizes;
   sliders show their value in the bar, the button its state and a large switch, and contact, scene, lock and binary tiles use the panel's icons.
   The house page preview uses the panel's grid and room cards with the states of the room's entities.
+  On the 10-inch boards the previews keep the panel's fixed rows and smaller texts; car, radial gauge and semi-arc
+  heating are placed like on the panel, a car range in metres or miles reads in kilometres, and solar days use weekday names.
   Editor usability: Settings > Design and Top bar are separate pages; long settings hints show their first sentence with an info button;
   the right column stays reserved for the selected widget or page; below 1100 px the
   canvas rises (lists collapsed, page chips, sticky header actions, a multi-column settings navigation);
@@ -516,7 +523,7 @@ style; text and symbols use the same fonts throughout. See
   Manual Energy-page sensors also offer Search.
 - **Inspector consistency:** the new Gauge keeps extra entities through import and Save; sensor name
   and freshness switches apply immediately. The missing-entity banner clears
-  after Save, inspector hints fit narrower windows, and translated picker and
+  after Save and its close button hides it until another entity goes missing, inspector hints fit narrower windows, and translated picker and
   page controls no longer expose raw translation keys. Sidebar controls have
   clearer accessibility labels.
 
