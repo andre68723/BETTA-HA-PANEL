@@ -331,14 +331,18 @@ WIDGETS = {
     "wallbox_evcc": {
         "summary": "Shows and controls an evcc loadpoint through its entities (the mode `select.*` and the related sensors, numbers and selects): charging mode, vehicle, target SOC, power, energy and remaining time.",
         "entities": [("Loadpoint mode", "`select.*`", True), ("Vehicle, target SOC", "`select.*`, `number.*`", False),
-                     ("Status, power, energy, remaining time, SOC", "`sensor.*`, `binary_sensor.*`", False)],
+                     ("Status, power, energy, remaining time, SOC", "`sensor.*`, `binary_sensor.*`", False),
+                     ("PV, battery, grid and home power (energy-flow header)", "`sensor.*`", False)],
         "requirements": "The **[evcc Home Assistant integration](https://github.com/marq24/ha-evcc)** (HACS), connected to an evcc server "
                         "(the add-on or a standalone server). Enable the loadpoint mode, vehicle, charge limit, power, charged energy, remaining "
                         "duration, SOC and connection entities. Smart mode needs integration 2026.8.3 or later; checked with 2026.10.2. All "
                         "actions pass through Home Assistant.",
         "options": [("Loadpoint", "**Find loadpoints** reads the integration; existing bindings stay until you accept a replacement"),
-                    ("Advanced entities", "every binding and its target domain")],
-        "panel": ["Status, power, charged energy, remaining time and the current SOC on a green bar."],
+                    ("Advanced entities", "every binding and its target domain"),
+                    ("Header", "off, the charging power as a bar up to **Maximum charging power (kW)** (empty = 11), or the energy flow: "
+                               "sources above two bars on one scale, consumers below; **Find loadpoints** also fills the site sensors")],
+        "panel": ["Status, power, charged energy, remaining time and the current SOC on a green bar.",
+                  "The optional header sits above the modes: the charging power against its maximum, or the site's flow in kW (PV, battery, grid in; home, car, battery, export out). It needs about 400 px (power) or 440 px (flow) of height and stays off on a shorter card."],
     },
     "weather_3day": {
         "summary": "Compares forecast days of a `weather.*` entity: temperatures and precipitation in configurable columns.",

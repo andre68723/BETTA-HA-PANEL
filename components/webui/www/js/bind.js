@@ -94,6 +94,9 @@ function bindUi() {
   if (el.addEvccWallboxBtn) el.addEvccWallboxBtn.onclick = () => void addEvccWallboxWidget();
 if (el.fEvccDetectBtn) el.fEvccDetectBtn.onclick = () => void evccDetectLoadpoints();
 if (el.fEvccLoadpoint) el.fEvccLoadpoint.addEventListener("change", () => evccChooseLoadpoint(el.fEvccLoadpoint.value));
+for (const input of [el.fEvccHeader, el.fEvccPowerMax].filter(Boolean)) {
+  input.addEventListener("change", () => { evccHeaderVisibility(); autoApplyInspector(); });
+}
 for (const input of evccInspectorInputs()) {
   input.addEventListener("change", () => { if (input === el.fEvccMode) el.fEntity.value = input.value; autoApplyInspector(); });
   input.addEventListener("blur", () => { if (input === el.fEvccMode) el.fEntity.value = input.value; autoApplyInspector(); });

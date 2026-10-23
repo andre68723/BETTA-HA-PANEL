@@ -221,6 +221,9 @@
     {"tile": "Wallbox", "w": 320, "h": 360, "fields": {}},
     {"tile": "Wallbox", "w": 360, "h": 360, "fields": {}},
     {"tile": "Wallbox", "w": 700, "h": 580, "fields": {}},
+    {"tile": "Wallbox", "w": 320, "h": 420, "fields": {"evcc_header": "power"}},
+    {"tile": "Wallbox", "w": 320, "h": 460, "fields": {"evcc_header": "flow", "evcc_pv_power_entity_id": "sensor.demo_evcc_pv_power", "evcc_battery_power_entity_id": "sensor.demo_evcc_battery_power", "evcc_grid_power_entity_id": "sensor.demo_evcc_grid_power", "evcc_home_power_entity_id": "sensor.demo_evcc_home_power"}},
+    {"tile": "Wallbox", "w": 320, "h": 360, "fields": {"evcc_header": "flow", "evcc_pv_power_entity_id": "sensor.demo_evcc_pv_power", "evcc_battery_power_entity_id": "sensor.demo_evcc_battery_power", "evcc_grid_power_entity_id": "sensor.demo_evcc_grid_power", "evcc_home_power_entity_id": "sensor.demo_evcc_home_power"}},
     {"tile": "Wallbox", "w": 320, "h": 360, "fields": {"show_name": false}}
   ]
 }

@@ -1243,10 +1243,49 @@
                     <datalist id="carPrecondOptions"></datalist>
                     <datalist id="carLockOptions"></datalist>
                   </div>
+                  <div id="evccHeaderOptions" class="hidden">
+                    <label><span id="fEvccHeaderLabel">Header</span>
+                      <select id="fEvccHeader">
+                        <option value="">Off</option>
+                        <option value="power">Charging power</option>
+                        <option value="flow">Energy flow</option>
+                      </select>
+                    </label>
+                    <label id="fEvccPowerMaxWrap"><span id="fEvccPowerMaxLabel">Maximum charging power (kW)</span>
+                      <input id="fEvccPowerMax" type="number" min="1" max="50" step="0.1" placeholder="11" />
+                    </label>
+                    <div class="meta" id="evccHeaderHint"></div>
+                  </div>
                   <div id="evccFields" class="hidden">
                     <label><span id="fEvccLoadpointLabel">Loadpoint</span><select id="fEvccLoadpoint"></select></label>
                     <button id="fEvccDetectBtn" type="button" class="btn small">Find loadpoints</button>
                     <div class="meta" id="evccStatus"></div>
+                    <div id="evccSiteFields" class="hidden">
+                      <label><span id="fEvccPvPowerLabel">PV power (sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccPvPower" type="text" list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_pvpower">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccBatteryPowerLabel">Battery power (sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccBatteryPower" type="text" list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_batterypower">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccGridPowerLabel">Grid power (sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccGridPower" type="text" list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_gridpower">Search</button>
+                        </div>
+                      </label>
+                      <label><span id="fEvccHomePowerLabel">Home power (sensor)</span>
+                        <div class="entity-input-row">
+                          <input id="fEvccHomePower" type="text" list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_homepower">Search</button>
+                        </div>
+                      </label>
+                    </div>
                     <details><summary id="evccDetailsSummary">Advanced entities</summary>
                       <label><span id="fEvccModeLabel">Mode (select)</span>
                         <div class="entity-input-row">

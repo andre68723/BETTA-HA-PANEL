@@ -16,6 +16,13 @@ const evcc_binding_t k_evcc_bindings[EVCC_ROLE_COUNT] = {
     {"evcc_remaining_entity_id", "charge_remaining_duration", "sensor"},
 };
 
+const evcc_binding_t k_evcc_site_bindings[EVCC_SITE_COUNT] = {
+    {"evcc_pv_power_entity_id", "pv_power", "sensor"},
+    {"evcc_battery_power_entity_id", "battery_power", "sensor"},
+    {"evcc_grid_power_entity_id", "grid_power", "sensor"},
+    {"evcc_home_power_entity_id", "home_power", "sensor"},
+};
+
 static bool domain(const char *id, const char *name)
 {
     const size_t n = strlen(name);
@@ -36,6 +43,23 @@ void evcc_slots_from_json(const cJSON *widget, char *primary, char *secondary, c
         if (out && value && strlen(value) < APP_MAX_ENTITY_ID_LEN) strcpy(out, value);
     }
 }
+void evcc_header_from_json(const cJSON *widget, char *mode, size_t mode_len, float *max_kw, char *const site[EVCC_SITE_COUNT])
+{
+    const char *value = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(widget, "evcc_header"));
+    const bool known = value && (!strcmp(value, "power") || !strcmp(value, "flow"));
+    if (mode && mode_len) { mode[0] = '\0'; if (known && strlen(value) < mode_len) strcpy(mode, value); }
+    const cJSON *max = cJSON_GetObjectItemCaseSensitive(widget, "evcc_power_max_kw");
+    if (max_kw) {
+        *max_kw = cJSON_IsNumber(max) && max->valuedouble >= EVCC_POWER_MAX_KW_MIN && max->valuedouble <= EVCC_POWER_MAX_KW_MAX
+            ? (float)max->valuedouble : EVCC_POWER_MAX_KW_DEFAULT;
+    }
+    for (size_t i = 0; i < EVCC_SITE_COUNT; i++) {
+        if (!site || !site[i]) continue;
+        const char *id = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(widget, k_evcc_site_bindings[i].key));
+        site[i][0] = '\0';
+        if (id && strlen(id) < APP_MAX_ENTITY_ID_LEN) strcpy(site[i], id);
+    }
+}
 bool evcc_registry_role(const char *id, const char *uid, char *stem, size_t capacity, size_t *role)
 {
     const char *prefix = "evcc_intg.";
@@ -54,4 +78,20 @@ bool evcc_registry_role(const char *id, const char *uid, char *stem, size_t capa
     if (count >= capacity || !memchr(slug, '_', count)) return false; /* site entities are not loadpoints */
     memcpy(stem, slug, count); stem[count] = '\0'; *role = chosen;
     return true;
+}
+bool evcc_registry_site_role(const char *id, const char *uid, size_t *role)
+{
+    const char *prefix = "evcc_intg.";
+    if (!id || !uid || !role || strncmp(uid, prefix, strlen(prefix)) || !domain(id, "sensor")) return false;
+    const char *slug = uid + strlen(prefix);
+    const size_t n = strlen(slug);
+    for (size_t i = 0; i < EVCC_SITE_COUNT; i++) {
+        const size_t len = strlen(k_evcc_site_bindings[i].role);
+        if (n > len + 1 && slug[n - len - 1] == '_' && !strcmp(slug + n - len, k_evcc_site_bindings[i].role) &&
+            !memchr(slug, '_', n - len - 1)) {
+            *role = i;
+            return true;
+        }
+    }
+    return false;
 }

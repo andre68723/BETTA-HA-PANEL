@@ -208,6 +208,7 @@ void ha_layout_entities_collect(cJSON *root, ha_layout_entity_set_t *set)
                 }
                 if (cJSON_IsString(type) && !strcmp(type->valuestring, "wallbox_evcc")) {
                     for (size_t b = 0; b < EVCC_ROLE_COUNT; b++) ha_layout_collect_field(widget, k_evcc_bindings[b].key, set);
+                    for (size_t b = 0; b < EVCC_SITE_COUNT; b++) ha_layout_collect_field(widget, k_evcc_site_bindings[b].key, set);
                 }
                 /* the room card's list and the Stocks & ETFs quotes after the first */
                 static const char *const lists[] = {"room_entities", "stock_entities"};

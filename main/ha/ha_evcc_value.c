@@ -102,3 +102,32 @@ bool ha_evcc_control_attrs(const cJSON *attributes, bool number, char *out, size
     if (ok) strcpy(out, json);
     cJSON_free(json); cJSON_Delete(root); return ok;
 }
+
+bool evcc_power_kw(const char *raw, const char *unit, float *kw)
+{
+    float value;
+    if (!kw || !unit || !evcc_number(raw, &value)) return false;
+    if (!strcmp(unit, "W")) *kw = value / 1000.0f;
+    else if (!strcmp(unit, "kW")) *kw = value;
+    else if (!strcmp(unit, "MW")) *kw = value * 1000.0f;
+    else return false;
+    return true;
+}
+
+static float positive(float value) { return value > 0.0f && isfinite(value) ? value : 0.0f; }
+
+void evcc_flow_compute(float pv, float battery, float grid, float home, float car, evcc_flow_t *flow)
+{
+    if (!flow) return;
+    flow->in[EVCC_FLOW_PV] = positive(pv);
+    flow->in[EVCC_FLOW_BATTERY_OUT] = positive(battery);
+    flow->in[EVCC_FLOW_GRID_IN] = positive(grid);
+    flow->out[EVCC_FLOW_HOME] = positive(home);
+    flow->out[EVCC_FLOW_CAR] = positive(car);
+    flow->out[EVCC_FLOW_BATTERY_IN] = positive(-battery);
+    flow->out[EVCC_FLOW_EXPORT] = positive(-grid);
+    float in = 0.0f, out = 0.0f;
+    for (int i = 0; i < EVCC_FLOW_IN_COUNT; i++) in += flow->in[i];
+    for (int i = 0; i < EVCC_FLOW_OUT_COUNT; i++) out += flow->out[i];
+    flow->scale = in > out ? in : out;
+}

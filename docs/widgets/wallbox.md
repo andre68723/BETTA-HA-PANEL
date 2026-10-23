@@ -15,6 +15,7 @@ Shows and controls an evcc loadpoint through its entities (the mode `select.*` a
 | Loadpoint mode | `select.*` |
 | Vehicle, target SOC *(optional)* | `select.*`, `number.*` |
 | Status, power, energy, remaining time, SOC *(optional)* | `sensor.*`, `binary_sensor.*` |
+| PV, battery, grid and home power (energy-flow header) *(optional)* | `sensor.*` |
 
 ## Requirements
 
@@ -26,10 +27,12 @@ The **[evcc Home Assistant integration](https://github.com/marq24/ha-evcc)** (HA
 | --- | --- |
 | Loadpoint | **Find loadpoints** reads the integration; existing bindings stay until you accept a replacement |
 | Advanced entities | every binding and its target domain |
+| Header | off, the charging power as a bar up to **Maximum charging power (kW)** (empty = 11), or the energy flow: sources above two bars on one scale, consumers below; **Find loadpoints** also fills the site sensors |
 
 ## On the panel
 
 - Status, power, charged energy, remaining time and the current SOC on a green bar.
+- The optional header sits above the modes: the charging power against its maximum, or the site's flow in kW (PV, battery, grid in; home, car, battery, export out). It needs about 400 px (power) or 440 px (flow) of height and stays off on a shorter card.
 
 ### Charging controls
 

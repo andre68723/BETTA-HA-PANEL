@@ -30,6 +30,8 @@ typedef struct {
 } loadpoint_t;
 static instance_t s_instances[MAX_INSTANCES];
 static loadpoint_t *s_points;
+/* The site power sensors of each instance, for the wallbox's energy-flow header (PSRAM like the loadpoints). */
+static char (*s_sites)[EVCC_SITE_COUNT][APP_MAX_ENTITY_ID_LEN];
 static char (*s_related)[APP_MAX_ENTITY_ID_LEN];
 static size_t s_instances_count, s_current, s_related_count, s_next, s_count;
 static int s_phase;
@@ -45,14 +47,16 @@ void ha_evcc_lookup_request(void) { LOCK(); s_restart = true; UNLOCK(); }
 static void start(void)
 {
     if (!s_points) s_points = ALLOC(HA_EVCC_LOOKUP_MAX_LOADPOINTS, sizeof(*s_points));
+    if (!s_sites) s_sites = ALLOC(MAX_INSTANCES, sizeof(*s_sites));
     if (!s_related) s_related = ALLOC(MAX_RELATED, sizeof(*s_related));
     LOCK();
     s_count = 0;
     if (s_points) memset(s_points, 0, HA_EVCC_LOOKUP_MAX_LOADPOINTS * sizeof(*s_points));
+    if (s_sites) memset(s_sites, 0, MAX_INSTANCES * sizeof(*s_sites));
     UNLOCK();
     s_instances_count = s_current = s_related_count = s_next = 0;
     s_inflight = 0;
-    if (!s_points || !s_related) { fail(); return; }
+    if (!s_points || !s_related || !s_sites) { fail(); return; }
     s_send = true; phase(ENTRIES);
 }
 void ha_evcc_lookup_cancel(void)
@@ -107,6 +111,12 @@ static bool store(const char *id, const cJSON *entry)
     const cJSON *disabled = cJSON_GetObjectItemCaseSensitive(entry, "disabled_by");
     if (disabled && !cJSON_IsNull(disabled)) return true;
     char stem[96]; size_t role;
+    if (evcc_registry_site_role(id, string(entry, "unique_id"), &role)) {
+        LOCK();
+        if (!s_sites[s_current][role][0]) snprintf(s_sites[s_current][role], APP_MAX_ENTITY_ID_LEN, "%s", id);
+        UNLOCK();
+        return true;
+    }
     if (!evcc_registry_role(id, string(entry, "unique_id"), stem, sizeof(stem), &role)) return true;
     LOCK();
     size_t n;
@@ -175,10 +185,14 @@ bool ha_evcc_lookup_handle_result(uint32_t id, bool success, const cJSON *result
 char *ha_evcc_lookup_json(void)
 {
     loadpoint_t *snapshot = ALLOC(HA_EVCC_LOOKUP_MAX_LOADPOINTS, sizeof(*snapshot));
-    if (!snapshot) return NULL;
+    char (*sites)[EVCC_SITE_COUNT][APP_MAX_ENTITY_ID_LEN] = ALLOC(MAX_INSTANCES, sizeof(*sites));
+    if (!snapshot || !sites) { free(snapshot); free(sites); return NULL; }
+    instance_t instances[MAX_INSTANCES];
     LOCK();
-    int state = s_restart ? ENTRIES : s_phase; size_t count = s_count;
+    int state = s_restart ? ENTRIES : s_phase; size_t count = s_count, instance_count = s_instances_count;
     if (s_points) memcpy(snapshot, s_points, count * sizeof(*snapshot));
+    if (s_sites) memcpy(sites, s_sites, MAX_INSTANCES * sizeof(*sites));
+    memcpy(instances, s_instances, sizeof(instances));
     UNLOCK();
     cJSON *root = cJSON_CreateObject();
     if (!root) { free(snapshot); return NULL; }
@@ -195,7 +209,13 @@ char *ha_evcc_lookup_json(void)
         cJSON_AddStringToObject(item, "instance", lp->instance_name);
         cJSON *bindings = cJSON_AddObjectToObject(item, "entities");
         for (size_t j = 0; j < EVCC_ROLE_COUNT; j++) if (lp->entity[j][0]) cJSON_AddStringToObject(bindings, k_evcc_bindings[j].key, lp->entity[j]);
+        /* the instance's site sensors, for the energy-flow header */
+        for (size_t k = 0; k < instance_count; k++) {
+            if (strcmp(instances[k].id, lp->instance)) continue;
+            for (size_t j = 0; j < EVCC_SITE_COUNT; j++)
+                if (sites[k][j][0]) cJSON_AddStringToObject(bindings, k_evcc_site_bindings[j].key, sites[k][j]);
+        }
         cJSON_AddItemToArray(list, item);
     }
-    char *out = cJSON_PrintUnformatted(root); cJSON_Delete(root); free(snapshot); return out;
+    char *out = cJSON_PrintUnformatted(root); cJSON_Delete(root); free(snapshot); free(sites); return out;
 }

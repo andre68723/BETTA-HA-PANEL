@@ -642,6 +642,68 @@ for (const [input,key,entity] of [
     await run("el.saveBtn.onclick()"); assert.equal(run(`savedLayout.pages[0].widgets[0].${key}`),undefined);
   });
 }
+for (const [input,key,entity] of [
+  ["fEvccPvPower","evcc_pv_power_entity_id","sensor.demo_pv"],
+  ["fEvccBatteryPower","evcc_battery_power_entity_id","sensor.demo_battery"],
+  ["fEvccGridPower","evcc_grid_power_entity_id","sensor.demo_grid"],
+  ["fEvccHomePower","evcc_home_power_entity_id","sensor.demo_home"]
+]) {
+  test(`${input}: actual input event, save, reload and clear`, async () => {
+    const run = setupInspector("wallbox_evcc", "select.demo_mode");
+    run(`el.${input}.value=${JSON.stringify(entity)}; el.${input}.dispatch('change')`);
+    assert.equal(run(`selectedWidget().${key}`), entity);
+    await run("el.saveBtn.onclick()");
+    assert.equal(run(`savedLayout.pages[0].widgets[0].${key}`), entity);
+    run("editor.layout=savedLayout; evccLoadInspector(selectedWidget())");
+    assert.equal(run(`el.${input}.value`), entity);
+    run(`el.${input}.value=''; el.${input}.dispatch('change')`);
+    await run("el.saveBtn.onclick()"); assert.equal(run(`savedLayout.pages[0].widgets[0].${key}`), undefined);
+  });
+}
+test("wallbox header: choice, maximum and site sensors survive save, reload, switching and clearing", async () => {
+  const run = setupInspector("wallbox_evcc", "select.demo_mode");
+  run(`for (const key of ["fEvccPowerMaxWrap", "evccSiteFields"]) {
+    const names = new Set();
+    el[key].classList = { toggle(name, force) { if (force ?? !names.has(name)) names.add(name); else names.delete(name); },
+      add(name) { names.add(name); }, remove(name) { names.delete(name); }, contains(name) { return names.has(name); } };
+  }`);
+  run("el.fEvccHeader.value='power'; el.fEvccHeader.dispatch('change'); el.fEvccPowerMax.value='22'; el.fEvccPowerMax.dispatch('change')");
+  assert.equal(run("selectedWidget().evcc_header"), "power");
+  assert.equal(run("selectedWidget().evcc_power_max_kw"), 22);
+  assert.equal(run("el.fEvccPowerMaxWrap.classList.contains('hidden')"), false);
+  assert.equal(run("el.evccSiteFields.classList.contains('hidden')"), true);
+  run("el.fEvccPvPower.value='sensor.demo_pv'; el.fEvccPvPower.dispatch('change')");
+  run("el.fEvccHeader.value='flow'; el.fEvccHeader.dispatch('change')");
+  assert.equal(run("el.evccSiteFields.classList.contains('hidden')"), false);
+  await run("el.saveBtn.onclick()");
+  assert.equal(run("savedLayout.pages[0].widgets[0].evcc_header"), "flow");
+  assert.equal(run("savedLayout.pages[0].widgets[0].evcc_pv_power_entity_id"), "sensor.demo_pv");
+  run("editor.layout=savedLayout; evccLoadInspector(selectedWidget())");
+  assert.equal(run("el.fEvccHeader.value"), "flow");
+  assert.equal(run("el.fEvccPowerMax.value"), "22");
+  // an out-of-range maximum is refused and the saved one stays
+  run("el.fEvccPowerMax.value='80'; el.fEvccPowerMax.dispatch('change')");
+  assert.equal(run("selectedWidget().evcc_power_max_kw"), 22);
+  run("el.fEvccPowerMax.value=''; el.fEvccHeader.value=''; el.fEvccHeader.dispatch('change')");
+  await run("el.saveBtn.onclick()");
+  assert.equal(run("savedLayout.pages[0].widgets[0].evcc_header"), undefined);
+  assert.equal(run("savedLayout.pages[0].widgets[0].evcc_power_max_kw"), undefined);
+  assert.equal(run("savedLayout.pages[0].widgets[0].evcc_pv_power_entity_id"), "sensor.demo_pv");
+});
+test("wallbox header hint names the height the header needs", () => {
+  const run = setupInspector("wallbox_evcc", "select.demo_mode");
+  run("selectedWidget().rect = { x: 0, y: 0, w: 320, h: 360 }; el.fEvccHeader.value='flow'; evccHeaderVisibility()");
+  assert.match(run("el.evccHeaderHint.textContent"), /360/);
+  run("selectedWidget().rect.h = 600; evccHeaderVisibility()");
+  assert.equal(run("el.evccHeaderHint.textContent"), "");
+});
+test("a loadpoint brings its instance's site sensors", () => {
+  const run = setupInspector("wallbox_evcc", "select.demo_mode");
+  run(`evccLoadpoints=[{id:'demo',entities:{entity_id:'select.demo_mode',evcc_pv_power_entity_id:'sensor.site_pv',evcc_home_power_entity_id:'sensor.site_home'}}]`);
+  assert.equal(run("evccChooseLoadpoint('demo')"), true);
+  assert.equal(run("selectedWidget().evcc_pv_power_entity_id"), "sensor.site_pv");
+  assert.equal(run("selectedWidget().evcc_home_power_entity_id"), "sensor.site_home");
+});
 test("loadpoint choice replaces only with acceptance and saves the number binding", async () => {
   const run=setupInspector("wallbox_evcc","select.manual");
   run(`evccLoadpoints=[{id:'demo',entities:{entity_id:'select.demo_mode',evcc_target_soc_entity_id:'number.demo_target',evcc_soc_entity_id:'sensor.demo_soc'}}]; window.confirm=()=>false;`);
@@ -736,7 +798,7 @@ test("Every Inspector entity input has a Search button", () => {
   const html = fs.readFileSync("components/webui/www/index.html", "utf8");
   const entityInputs = [...html.matchAll(/<input\b[^>]*id="(f[^" ]+)"[^>]*list="[^"]*Options"[^>]*>/g)].map(match=>match[1]);
   entityInputs.push("fRoomEntities", "fRoomExtraEntity");
-  assert.equal(entityInputs.length, 47);
+  assert.equal(entityInputs.length, 51);
   for (const id of entityInputs) {
     const row = new RegExp(`<div class="entity-input-row">\\s*<(?:input|textarea|select)\\b[^>]*id="${id}"[^>]*>[\\s\\S]*?data-inspector-entity-target="[^"]+"[\\s\\S]*?</div>`);
     assert.match(html, row, `${id} lacks a Search button`);

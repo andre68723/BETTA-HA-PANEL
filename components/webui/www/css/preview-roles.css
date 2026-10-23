@@ -372,3 +372,16 @@ body:is([data-ui-style="glow"], [data-ui-style="glass"]) #canvas .tp-media .tp-v
 #canvas .tp-room-controls i { background: color-mix(in srgb, var(--pv-text) 10%, transparent); }
 #canvas .tp-empty { justify-content: flex-start; align-items: flex-start; }
 #canvas .tp-empty .tp-name { text-align: left; }
+/* wallbox header (evccHeaderPreview()): META rows, 12 px power bar, two 10 px flow bars 3 px apart */
+#canvas .evcc-header { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+#canvas .evcc-header-row { display: flex; justify-content: space-between; align-items: center; font-size: var(--meta); line-height: 1.25; white-space: nowrap; overflow: hidden; }
+#canvas .evcc-header-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: color-mix(in srgb, var(--pv-text) 14%, transparent); }
+#canvas .evcc-flow .evcc-header-bar { height: 10px; }
+#canvas .evcc-flow .evcc-header-bar + .evcc-header-bar { margin-top: -1px; }
+#canvas .evcc-header-bar i { display: block; height: 100%; }
+#canvas .evcc-flow-row { justify-content: flex-start; gap: 10px; }
+#canvas .evcc-flow-row span { display: inline-flex; align-items: center; gap: 4px; }
+#canvas .evcc-flow-row span i { width: 8px; height: 8px; border-radius: 50%; }
+#canvas .evcc-flow-unit { margin-left: auto; color: var(--pv-muted); }
+/* the wallbox draws from 12 px inside its card like w_wallbox_evcc.c, without the preview box's own padding */
+#canvas .widget-box:has(> .evcc-preview) { padding: 0; }

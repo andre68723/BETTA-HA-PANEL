@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 */
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,6 +27,8 @@ static void lookup(bool number_first)
     const char *names[] = {"select.renamed_mode", "sensor.renamed_power", "number.target", "select.plan_target", "sensor.effective", "binary_sensor.disabled"};
     for (int i = 0; i < 6; i++) cJSON_AddItemToArray(ids, cJSON_CreateString(names[i]));
     for (int i = 0; i < 25; i++) { char name[50]; snprintf(name, sizeof(name), "sensor.other_%d", i); cJSON_AddItemToArray(ids, cJSON_CreateString(name)); }
+    /* two site power sensors of the instance (evcc_intg.<instance>_<role>, no loadpoint in between) */
+    cJSON_AddItemToArray(ids, cJSON_CreateString("sensor.site_pv")); cJSON_AddItemToArray(ids, cJSON_CreateString("sensor.site_grid"));
     if (!number_first) { cJSON *n = cJSON_DetachItemFromArray(ids, 2); cJSON_InsertItemInArray(ids, 3, n); }
     CHECK(ha_evcc_lookup_handle_result(id, true, related)); cJSON_Delete(r); cJSON_Delete(related);
     int batches = 0;
@@ -39,7 +42,10 @@ static void lookup(bool number_first)
                 !strcmp(item->valuestring, names[4]) ? "effective_limit_soc" : !strcmp(item->valuestring, names[5]) ? "disabled_in_config" : "not_used";
             cJSON *e = cJSON_AddObjectToObject(entries, item->valuestring);
             cJSON_AddStringToObject(e, "config_entry_id", "demo"); cJSON_AddStringToObject(e, "platform", "evcc_intg");
-            char uid[100]; snprintf(uid, sizeof(uid), "evcc_intg.evcc_demo_driveway_%s", key); cJSON_AddStringToObject(e, "unique_id", uid);
+            char uid[100]; snprintf(uid, sizeof(uid), "evcc_intg.evcc_demo_driveway_%s", key);
+            if (!strcmp(item->valuestring, "sensor.site_pv")) strcpy(uid, "evcc_intg.evcc_pv_power");
+            if (!strcmp(item->valuestring, "sensor.site_grid")) strcpy(uid, "evcc_intg.evcc_grid_power");
+            cJSON_AddStringToObject(e, "unique_id", uid);
             if (!strcmp(key, "disabled_in_config")) cJSON_AddStringToObject(e, "disabled_by", "user");
             else cJSON_AddNullToObject(e, "disabled_by");
         }
@@ -50,12 +56,17 @@ static void lookup(bool number_first)
     CHECK(!strcmp(str(out, "status"), "ready")); cJSON *points = cJSON_GetObjectItemCaseSensitive(out, "loadpoints"); CHECK(cJSON_GetArraySize(points) == 1);
     cJSON *bindings = cJSON_GetObjectItemCaseSensitive(cJSON_GetArrayItem(points, 0), "entities");
     CHECK(!strcmp(str(bindings, "entity_id"), names[0])); CHECK(!strcmp(str(bindings, "evcc_target_soc_entity_id"), "number.target"));
-    CHECK(!strcmp(str(bindings, "evcc_effective_soc_entity_id"), "sensor.effective")); CHECK(!str(bindings, "evcc_disabled_entity_id")); cJSON_Delete(out);
+    CHECK(!strcmp(str(bindings, "evcc_effective_soc_entity_id"), "sensor.effective")); CHECK(!str(bindings, "evcc_disabled_entity_id"));
+    CHECK(!strcmp(str(bindings, "evcc_pv_power_entity_id"), "sensor.site_pv")); CHECK(!strcmp(str(bindings, "evcc_grid_power_entity_id"), "sensor.site_grid"));
+    CHECK(!str(bindings, "evcc_home_power_entity_id")); cJSON_Delete(out);
 }
 void test_evcc_sessions(void);
 int main(void)
 {
     float value, lo, hi, step; char stem[96], out[1280]; size_t role;
+    CHECK(evcc_registry_site_role("sensor.evcc_home_power", "evcc_intg.evcc_home_power", &role) && role == EVCC_SITE_HOME);
+    CHECK(!evcc_registry_site_role("sensor.lp_power", "evcc_intg.evcc_stellplatz_pv_power", &role)); /* a loadpoint stem */
+    CHECK(!evcc_registry_site_role("switch.evcc_pv_power", "evcc_intg.evcc_pv_power", &role));
     const char *bad[] = {"", "unknown", "unavailable", "nan", "inf", "1junk", "-1", "100.1"};
     for (size_t i = 0; i < sizeof(bad)/sizeof(*bad); i++) CHECK(!evcc_soc(bad[i], &value));
     CHECK(evcc_soc("0", &value) && value == 0); CHECK(evcc_soc("62.187", &value)); CHECK(evcc_soc("100", &value));
@@ -85,6 +96,31 @@ int main(void)
     char primary[APP_MAX_ENTITY_ID_LEN]={0},secondary[APP_MAX_ENTITY_ID_LEN]={0},tertiary[APP_MAX_ENTITY_ID_LEN]={0},extra[8][APP_MAX_ENTITY_ID_LEN]={{0}};
     evcc_slots_from_json(widget,primary,secondary,tertiary,extra,8); CHECK(!strcmp(primary,"select.mode")); CHECK(!strcmp(tertiary,"number.target")); CHECK(!strcmp(extra[5],"sensor.effective")); CHECK(!strcmp(extra[6],"sensor.energy")); CHECK(!strcmp(extra[7],"sensor.remaining"));
     cJSON_ReplaceItemInObjectCaseSensitive(widget,"evcc_target_soc_entity_id",cJSON_CreateString("light.invalid")); raw=cJSON_PrintUnformatted(json); CHECK(!layout_validate_json(raw,&validation)); free(raw); cJSON_Delete(json);
+    /* The optional header: valid keys pass, a wrong mode, maximum or domain does not; its four site sensors are
+     * subscribed and land in the forecast slots; the flow splits evcc's signed readings. */
+    json=cJSON_Parse(contract); widget=cJSON_GetArrayItem(cJSON_GetObjectItemCaseSensitive(cJSON_GetArrayItem(cJSON_GetObjectItemCaseSensitive(json,"pages"),0),"widgets"),0);
+    cJSON_AddStringToObject(widget,"evcc_header","flow"); cJSON_AddNumberToObject(widget,"evcc_power_max_kw",22);
+    cJSON_AddStringToObject(widget,"evcc_pv_power_entity_id","sensor.pv"); cJSON_AddStringToObject(widget,"evcc_battery_power_entity_id","sensor.battery");
+    cJSON_AddStringToObject(widget,"evcc_grid_power_entity_id","sensor.grid"); cJSON_AddStringToObject(widget,"evcc_home_power_entity_id","sensor.home");
+    raw=cJSON_PrintUnformatted(json); CHECK(layout_validate_json(raw,&validation)); free(raw);
+    char site_ids[16][APP_MAX_ENTITY_ID_LEN]={{0}}; ha_layout_entity_set_t site_set={.ids=&site_ids[0][0],.capacity=16};
+    ha_layout_entities_collect(json,&site_set); CHECK(site_set.count==15);
+    char mode[16], pv[APP_MAX_ENTITY_ID_LEN], bat[APP_MAX_ENTITY_ID_LEN], grid[APP_MAX_ENTITY_ID_LEN], home[APP_MAX_ENTITY_ID_LEN]; float max_kw=0;
+    char *const site[EVCC_SITE_COUNT]={pv,bat,grid,home};
+    evcc_header_from_json(widget,mode,sizeof(mode),&max_kw,site); CHECK(!strcmp(mode,"flow")); CHECK(max_kw==22.0f); CHECK(!strcmp(home,"sensor.home"));
+    cJSON_ReplaceItemInObjectCaseSensitive(widget,"evcc_header",cJSON_CreateString("graph")); raw=cJSON_PrintUnformatted(json); CHECK(!layout_validate_json(raw,&validation)); free(raw);
+    evcc_header_from_json(widget,mode,sizeof(mode),&max_kw,site); CHECK(!mode[0]);
+    cJSON_ReplaceItemInObjectCaseSensitive(widget,"evcc_header",cJSON_CreateString("power"));
+    cJSON_ReplaceItemInObjectCaseSensitive(widget,"evcc_power_max_kw",cJSON_CreateNumber(80)); raw=cJSON_PrintUnformatted(json); CHECK(!layout_validate_json(raw,&validation)); free(raw);
+    evcc_header_from_json(widget,mode,sizeof(mode),&max_kw,site); CHECK(max_kw==EVCC_POWER_MAX_KW_DEFAULT);
+    cJSON_ReplaceItemInObjectCaseSensitive(widget,"evcc_power_max_kw",cJSON_CreateNumber(11));
+    cJSON_ReplaceItemInObjectCaseSensitive(widget,"evcc_grid_power_entity_id",cJSON_CreateString("switch.grid")); raw=cJSON_PrintUnformatted(json); CHECK(!layout_validate_json(raw,&validation)); free(raw);
+    cJSON_Delete(json);
+    float kw; CHECK(evcc_power_kw("3700","W",&kw) && fabsf(kw-3.7f)<0.001f); CHECK(evcc_power_kw("3.7","kW",&kw) && kw==3.7f); CHECK(!evcc_power_kw("3.7","A",&kw));
+    evcc_flow_t flow; evcc_flow_compute(8.4f,-1.0f,2.2f,1.2f,11.0f,&flow);
+    CHECK(flow.in[EVCC_FLOW_BATTERY_OUT]==0 && flow.out[EVCC_FLOW_BATTERY_IN]==1.0f && flow.in[EVCC_FLOW_GRID_IN]==2.2f && flow.out[EVCC_FLOW_EXPORT]==0);
+    CHECK(fabsf(flow.scale-13.2f)<0.001f);
+    evcc_flow_compute(5.0f,0.5f,-3.0f,2.5f,0.0f,&flow); CHECK(flow.out[EVCC_FLOW_EXPORT]==3.0f && fabsf(flow.scale-5.5f)<0.001f);
     lookup(true); lookup(false);
     ha_evcc_lookup_request(); cJSON *r=request(); uint32_t stale=id;
     ha_evcc_lookup_request(); cJSON *newr=request(); CHECK(!ha_evcc_lookup_handle_result(stale,true,NULL));

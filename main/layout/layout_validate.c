@@ -734,6 +734,26 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
                 layout_validation_add(result, msg);
             }
         }
+        /* The optional header: "power" (a bar up to evcc_power_max_kw) or "flow" (the site's four power sensors). */
+        for (size_t i = 0; i < EVCC_SITE_COUNT; i++) {
+            const cJSON *value = cJSON_GetObjectItemCaseSensitive(widget, k_evcc_site_bindings[i].key);
+            if (!value || (cJSON_IsString(value) && value->valuestring && !*value->valuestring)) continue;
+            if (!cJSON_IsString(value) || !value->valuestring || strlen(value->valuestring) >= APP_MAX_ENTITY_ID_LEN ||
+                !is_valid_entity_id(value->valuestring) || !entity_in_domain(value->valuestring, "sensor")) {
+                snprintf(msg, sizeof(msg), "widget %s: invalid %s", cJSON_IsString(id) ? id->valuestring : "?", k_evcc_site_bindings[i].key);
+                layout_validation_add(result, msg);
+            }
+        }
+        const cJSON *header = cJSON_GetObjectItemCaseSensitive(widget, "evcc_header");
+        if (header && (!cJSON_IsString(header) || (strcmp(header->valuestring, "power") && strcmp(header->valuestring, "flow")))) {
+            snprintf(msg, sizeof(msg), "widget %s: evcc_header must be power or flow", cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+        const cJSON *max_kw = cJSON_GetObjectItemCaseSensitive(widget, "evcc_power_max_kw");
+        if (max_kw && (!cJSON_IsNumber(max_kw) || max_kw->valuedouble < EVCC_POWER_MAX_KW_MIN || max_kw->valuedouble > EVCC_POWER_MAX_KW_MAX)) {
+            snprintf(msg, sizeof(msg), "widget %s: evcc_power_max_kw must be 1-50", cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
     }
 
     if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "car_widget") == 0) {

@@ -1076,6 +1076,13 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     if (cJSON_IsString(display_mode) && display_mode->valuestring != NULL) {
         snprintf(out->display_mode, sizeof(out->display_mode), "%s", display_mode->valuestring);
     }
+    /* The wallbox header lives in fields the wallbox does not use otherwise (layout/evcc_slots.h). */
+    if (!strcmp(out->type, "wallbox_evcc")) {
+        char *const site[EVCC_SITE_COUNT] = {out->forecast_today_entity_id, out->forecast_tomorrow_entity_id,
+                                             out->forecast_day_3_entity_id, out->forecast_day_4_entity_id};
+        out->forecast_day_5_entity_id[0] = '\0';
+        evcc_header_from_json(widget_json, out->style_variant, sizeof(out->style_variant), &out->gauge_max, site);
+    }
     /* A binary tile in the "door" look is drawn by the door / window contact renderer. */
     if (strcmp(out->type, "binary_tile") == 0 && strcmp(out->display_mode, "door") == 0) {
         snprintf(out->type, sizeof(out->type), "%s", "contact_tile");

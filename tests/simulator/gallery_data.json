@@ -1751,6 +1751,42 @@
         "unit_of_measurement": "EUR",
         "friendly_name": "Emerging Markets"
       }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_pv_power",
+      "state": "5400",
+      "attributes": {
+        "unit_of_measurement": "W",
+        "device_class": "power",
+        "friendly_name": "demo evcc pv power"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_battery_power",
+      "state": "-1200",
+      "attributes": {
+        "unit_of_measurement": "W",
+        "device_class": "power",
+        "friendly_name": "demo evcc battery power"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_grid_power",
+      "state": "300",
+      "attributes": {
+        "unit_of_measurement": "W",
+        "device_class": "power",
+        "friendly_name": "demo evcc grid power"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_evcc_home_power",
+      "state": "800",
+      "attributes": {
+        "unit_of_measurement": "W",
+        "device_class": "power",
+        "friendly_name": "demo evcc home power"
+      }
     }
   ],
   "house": {

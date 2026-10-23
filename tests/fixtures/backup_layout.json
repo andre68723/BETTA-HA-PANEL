@@ -358,7 +358,13 @@
           "evcc_disabled_entity_id": "binary_sensor.d",
           "evcc_effective_soc_entity_id": "sensor.e",
           "evcc_energy_entity_id": "sensor.en",
-          "evcc_remaining_entity_id": "sensor.r"
+          "evcc_remaining_entity_id": "sensor.r",
+          "evcc_header": "flow",
+          "evcc_power_max_kw": 22,
+          "evcc_pv_power_entity_id": "sensor.pv",
+          "evcc_battery_power_entity_id": "sensor.bat",
+          "evcc_grid_power_entity_id": "sensor.grid",
+          "evcc_home_power_entity_id": "sensor.home"
         }
       ]
     },

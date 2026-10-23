@@ -679,7 +679,7 @@ function inspectorEntityPickerTarget(targetKey) {
       allowedDomains: domains.split(","), titleKey: `layout.inspector.${title}`, titleFallback: "Choose Entity" };
   }
   if (widgetType === "wallbox_evcc") {
-    for (const [, field, domains] of EVCC_BINDINGS) {
+    for (const [, field, domains] of [...EVCC_BINDINGS, ...EVCC_SITE_BINDINGS]) {
       extraTargets[`evcc_${field.toLowerCase()}`] = { input: el[`fEvcc${field}`],
         domain: domains.includes(",") ? "any" : domains, allowedDomains: domains.split(","),
         titleKey: `evcc.${field.toLowerCase()}`, titleFallback: "Choose Entity" };

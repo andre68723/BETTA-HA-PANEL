@@ -305,6 +305,10 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     }
     if (!strcmp(def->type, "wallbox_evcc")) {
         evcc_slots_from_json(json, def->entity_id, def->secondary_entity_id, def->tertiary_entity_id, def->extra_entity_id, UI_WIDGET_EXTRA_ENTITIES);
+        char *const site[EVCC_SITE_COUNT] = {def->forecast_today_entity_id, def->forecast_tomorrow_entity_id,
+                                             def->forecast_day_3_entity_id, def->forecast_day_4_entity_id};
+        def->forecast_day_5_entity_id[0] = '\0';
+        evcc_header_from_json(json, def->style_variant, sizeof(def->style_variant), &def->gauge_max, site);
     }
     if (strcmp(def->type, "bambu_printer") == 0) {
         bambu_printer_slots_from_json(json, def->entity_id, def->secondary_entity_id, def->tertiary_entity_id,

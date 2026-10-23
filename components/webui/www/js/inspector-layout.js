@@ -154,6 +154,7 @@ function initInspectorLayout() {
   move("display", byId("sliderOptions"), byId("graphOptions"), byId("solarForecastStyleOptions"), byId("gaugeOptions"),
     byId("sensorOptions"), byId("cameraOptions"));
   follow(byId("priceOptions"), [label(el.fPriceCheapTimes), label(el.fPriceLine)], "display");
+  move("display", byId("evccHeaderOptions"));
   move("display", byId("stockOptions"), byId("parqetOptions"), byId("forecastReadabilityOptions"), byId("weatherForecastOptions"),
     byId("heatingOptions"), etlStyle, byId("energyTimelineColorOptions"));
   // Controls: what tap and long press do.
