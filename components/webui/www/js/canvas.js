@@ -666,6 +666,7 @@ function attachDragAndResize(box, widget) {
         widget.rect.h = nextH;
         if (nextW !== startRect.w) autoGaugeName(widget);
         geometryStyle(box, widget.rect);
+        markOverlappingWidgets();
         renderInspector();
       }
     };
@@ -961,6 +962,30 @@ function renderEnergyCanvasPreview(page) {
 // Role sizes of the 720 px and 1280 px boards at the standard step, used until /api/version has answered.
 const PREVIEW_ROLE_FALLBACK = { meta: 20, label: 24, value: 28, key: 36, hero: 42 };
 
+// Updates the overlap marks while a tile is dragged (the canvas is not rebuilt during a drag).
+function markOverlappingWidgets() {
+  const page = selectedPage();
+  if (!page || !Array.isArray(page.widgets)) return;
+  const ids = overlappingWidgetIds(page.widgets);
+  for (const box of el.canvas.querySelectorAll(".widget-box[data-widget-id]")) box.classList.toggle("overlapping", ids.has(box.dataset.widgetId));
+}
+
+// The ids of the widgets whose rectangles overlap another widget's on the same page.
+function overlappingWidgetIds(widgets) {
+  const ids = new Set();
+  const rects = widgets.map((widget) => ({ id: widget.id, r: widget.rect || {} }));
+  for (let i = 0; i < rects.length; i += 1) {
+    for (let j = i + 1; j < rects.length; j += 1) {
+      const a = rects[i].r, b = rects[j].r;
+      if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) {
+        ids.add(rects[i].id);
+        ids.add(rects[j].id);
+      }
+    }
+  }
+  return ids;
+}
+
 function renderCanvas() {
   if (editor.activePane === "settings") {
     setActiveSettingsSection(editor.activeSettingsSection);
@@ -1001,6 +1026,8 @@ function renderCanvas() {
   }
   if (!page.widgets.length) renderEmptyPageHint(page);
 
+  // Tiles that overlap cover each other on the panel; mark them so a resize that runs into a neighbour is seen.
+  const overlapping = overlappingWidgetIds(page.widgets);
   for (const widget of page.widgets) {
     const box = document.createElement("div");
     const isEmptyTile = widget.type === "empty_tile";
@@ -1010,6 +1037,7 @@ function renderCanvas() {
     if ((Number(widget.rect && widget.rect.w) || 0) >= 260) box.classList.add("matte-wide");
     box.classList.toggle("name-hidden", !widgetShowsName(widget));
     box.dataset.widgetId = widget.id;
+    box.classList.toggle("overlapping", overlapping.has(widget.id));
     box.style.zIndex = isEmptyTile ? "1" : "10";
     const previewState = isEmptyTile ? "design" : (editor.states.get(widget.entity_id) || "unavailable");
     box.classList.toggle("matte-on", ["on", "open", "playing", "home"].includes(String(previewState).toLowerCase()));

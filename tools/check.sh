@@ -134,6 +134,7 @@ if in_group web; then
     "tools/generate_widget_fonts.py main/ui/fonts" python3 tools/generate_widget_fonts.py --check
   step "source file sizes" "" python3 tools/check_source_sizes.py
   step "documentation page sizes" "" python3 tools/check_docs_size.py
+  step "simulator layout fields" "" python3 tools/check_simulator_fields.py
 
   # A hint, never a failure: show its one line when it has something to say.
   python3 tools/check_gallery_fresh.py 2>&1 | grep '^WARN' | cut -c1-200

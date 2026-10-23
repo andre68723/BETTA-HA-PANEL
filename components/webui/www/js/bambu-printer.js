@@ -186,6 +186,7 @@ function bambuPreviewMarkup(widget) {
   const remaining = bambuPreviewNumber(widget.remaining_time_entity_id);
   const temp = (value, fallback) => `${value === null ? fallback : Math.round(value)} °C`;
   const canPause = Boolean(widget.pause_entity_id || widget.resume_entity_id);
+  // A paused job offers Resume in the first button (primary_resume in w_bambu_printer.c).
   return `
     <div class="bambu-preview">
       <div class="bambu-preview-head">
@@ -203,7 +204,7 @@ function bambuPreviewMarkup(widget) {
       <div class="bambu-preview-readings"><b>${percent}%</b><span>${remaining === null ? 22 : Math.round(remaining)} ${escapeHtml(t("layout.preview.bambu_min", {}, "min"))}</span></div>
       <div class="bambu-preview-bar"><i style="width:${percent}%"></i></div>
       <div class="bambu-preview-buttons">
-        <span class="${canPause ? "" : "off"}">${escapeHtml(t("layout.preview.bambu_pause", {}, "Pause"))}</span>
+        <span class="${canPause ? "" : "off"}">${escapeHtml(status === "pause" ? t("layout.preview.bambu_resume", {}, "Resume") : t("layout.preview.bambu_pause", {}, "Pause"))}</span>
         <span>${escapeHtml(t("layout.preview.bambu_status", {}, "Status"))}</span>
         <span class="${widget.stop_entity_id ? "" : "off"}">${escapeHtml(t("layout.preview.bambu_stop", {}, "Stop"))}</span>
       </div>

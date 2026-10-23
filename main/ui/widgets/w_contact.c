@@ -52,6 +52,8 @@ static lv_obj_t *contact_rect(lv_obj_t *parent, lv_coord_t radius)
     return o;
 }
 
+static const char *contact_state_text(const w_contact_ctx_t *ctx);
+
 static void contact_layout(w_contact_ctx_t *ctx)
 {
     lv_obj_update_layout(ctx->card);
@@ -59,6 +61,7 @@ static void contact_layout(w_contact_ctx_t *ctx)
     const lv_coord_t h = lv_obj_get_height(ctx->card);
     lv_coord_t side = h - 24;
     if (side > 56) side = 56;
+    if (side > w / 5) side = w / 5; /* a narrow tile keeps its width for the state word ("Geschlossen") */
     if (side < 28) side = 28;
     const lv_coord_t fw = ctx->door ? (side * 62) / 100 : (side * 85) / 100;
     const lv_coord_t fh = side;
@@ -99,11 +102,16 @@ static void contact_layout(w_contact_ctx_t *ctx)
         lv_obj_set_hidden(ctx->handle, false);
     }
 
-    const lv_coord_t text_x = pad + side + 14;
+    /* The text starts after the drawn frame (a door is narrower than the symbol's square), and the state shrinks to the
+     * board's smallest text before it ends in dots: "Geschlossen" did not fit a 180 px tile. */
+    const lv_coord_t text_x = fx + fw + 12;
     lv_coord_t text_w = w - text_x - pad;
     if (text_w < 40) text_w = 40;
     const lv_coord_t title_h = ui_widget_name_height(ctx->title, ui_font_role(UI_TEXT_META));
     const lv_coord_t state_h = lv_font_get_line_height(ui_font_role(UI_TEXT_META));
+    ui_text_record(ctx->state, UI_TEXT_META, true);
+    lv_obj_set_style_text_font(ctx->state, ui_text_fit(contact_state_text(ctx), ui_font_role(UI_TEXT_META), text_w, state_h),
+                               LV_PART_MAIN);
     const lv_coord_t top = (h - (title_h + ui_widget_name_gap(ctx->title, 2) + state_h)) / 2;
     lv_obj_set_size(ctx->title, text_w, title_h);
     lv_obj_set_size(ctx->state, text_w, state_h);

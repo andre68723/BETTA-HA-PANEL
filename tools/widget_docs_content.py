@@ -68,7 +68,7 @@ WIDGETS = {
         "requirements": None,
         "options": [],
         "panel": ["Rings for the battery level and, when set, the range and charging power.",
-                  "From 200 × 330 px a row under the rings shows preconditioning, lock and interior temperature.",
+                  "From 200 × 330 px the lock state and interior temperature share a line under the rings, with the preconditioning button across the card below it; the Inspector says when the tile is too small for them.",
                   "Preconditioning is a button; everything else is read-only."],
     },
     "climate_tile": {
@@ -83,9 +83,9 @@ WIDGETS = {
         "summary": "Shows whether a door or window `binary_sensor.*` is open, with optional history on tap.",
         "entities": [("Door or window sensor", "`binary_sensor.*`", True)],
         "requirements": None,
-        "options": [("Display", "state words, an icon only, or a door/window pictogram"),
-                    ("History on tap", "a tap opens the Recorder history")],
-        "panel": ["Door or window follows the device class, otherwise the name.", "Read-only."],
+        "options": [("History on tap", "a tap opens the Recorder history")],
+        "panel": ["Door or window follows the device class, otherwise the name.",
+                  "On a narrow tile the state takes a smaller size before it is shortened.", "Read-only."],
     },
     "cover_tile": {
         "summary": "Shows the position of a `cover.*` entity such as a blind and operates it with up, stop and down.",

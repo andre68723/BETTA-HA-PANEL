@@ -762,11 +762,15 @@ for (const key of ["grid", "solar", "export", "battery_out", "battery_in", "fore
 test("Energy custom palette reaches both preview presentations and preserves original defaults", () => {
   const run = setupInspector("energy_timeline", "sensor.grid_import");
   run("selectedWidget().energy_colors = {solar:'#010203', grid:'#000000', battery_out:'#040506', forecast:'#070809'}");
+  // The nested look draws the timeline (and its forecast line) only on a card with 330 px inside, as the panel does.
+  run("selectedWidget().rect = { x: 0, y: 0, w: 720, h: 600 }");
   for (const variant of ["default", "nested"]) {
     run(`selectedWidget().style_variant = "${variant}"`);
     const markup = run("tilePreviewMarkup(selectedWidget())");
     for (const hex of ["#010203", "#000000", "#040506", "#070809"]) assert.ok(markup.includes(hex));
   }
+  run("selectedWidget().rect = { x: 0, y: 0, w: 420, h: 330 }");
+  assert.ok(!run("tilePreviewMarkup(selectedWidget())").includes("tp-etl-bars"));
   run("delete selectedWidget().energy_colors");
   assert.equal(run("energyTimelinePalette(selectedWidget()).solar_dest"), "#8bc34a");
 });

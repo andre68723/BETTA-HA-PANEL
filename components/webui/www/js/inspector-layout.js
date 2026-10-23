@@ -297,6 +297,19 @@ function refreshInspectorLayout() {
     el.fSecondaryEntityWrap.classList.toggle("hidden", !extras);
     el.fTertiaryEntityWrap.classList.toggle("hidden", !extras);
   }
+  // A car whose extras are bound on a tile too small for them (w_car_widget.c: 200 x 330 px): say so beside the bindings,
+  // not only in the section's info popup; the extras were missed on the panel otherwise.
+  let carNote = ui.sections.entities.querySelector("#carExtrasSizeNote");
+  if (!carNote) {
+    carNote = document.createElement("div");
+    carNote.id = "carExtrasSizeNote";
+    carNote.className = "meta inspector-size-note";
+    ui.sections.entities.querySelector(".inspector-sec-body").append(carNote);
+  }
+  const carExtras = widget?.type === "car_widget" && [widget.precond_entity_id, widget.lock_entity_id, widget.interior_temp_entity_id].some(Boolean);
+  const carShort = carExtras && (Number(widget.rect?.w) < 200 || Number(widget.rect?.h) < 330);
+  carNote.hidden = !carShort;
+  carNote.textContent = carShort ? t("layout.inspector.car_extras_size", { w: widget.rect.w, h: widget.rect.h }) : "";
   for (const { wrapper, copy } of ui.follows) copy.classList.toggle("hidden", wrapper.classList.contains("hidden"));
   // A long caption beside a short field leaves neither enough room: it goes above, and the field takes the full width.
   for (const root of [ui.root, ui.pageRoot]) {

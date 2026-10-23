@@ -22,12 +22,12 @@ None beyond the entities.
 
 | Option | Effect |
 | --- | --- |
-| Display | state words, an icon only, or a door/window pictogram |
 | History on tap | a tap opens the Recorder history |
 
 ## On the panel
 
 - Door or window follows the device class, otherwise the name.
+- On a narrow tile the state takes a smaller size before it is shortened.
 - Read-only.
 
 ### History

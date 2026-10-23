@@ -139,6 +139,16 @@ static void solar_format_number(char *dst, size_t dst_size, float value)
     }
 }
 
+#if !UI_TEXT_ADAPTIVE
+/* A row of the 10-inch layout: 30 px, or the line height of the row font when that is taller (32 px at the standard
+ * step), so the day and value are never cut at the bottom. */
+static lv_coord_t solar_fixed_row_h(void)
+{
+    const lv_coord_t line = lv_font_get_line_height(SOLAR_ROW_FONT);
+    return line > 30 ? line : 30;
+}
+#endif
+
 static int solar_visible_rows(lv_obj_t *card)
 {
     if (card == NULL) {
@@ -146,7 +156,11 @@ static int solar_visible_rows(lv_obj_t *card)
     }
     lv_coord_t h = lv_obj_get_height(card);
     const lv_coord_t rows_top = 54;
-    const lv_coord_t row_h = 30;
+#if UI_TEXT_ADAPTIVE
+    const lv_coord_t row_h = 30; /* the adaptive rows shrink to the tile themselves */
+#else
+    const lv_coord_t row_h = solar_fixed_row_h();
+#endif
     const lv_coord_t row_gap = 3;
     lv_coord_t avail = h - rows_top - 14;
     int rows = 5;
@@ -436,7 +450,7 @@ static void solar_render(w_solar_forecast_ctx_t *ctx)
     if (row_h < 20) row_h = 20;
 #else
     lv_coord_t row_y = ui_widget_name_enabled(ctx->title_label) ? 54 : 16;
-    const lv_coord_t row_h = 30, row_gap = 3, bar_h = 16;
+    const lv_coord_t row_h = solar_fixed_row_h(), row_gap = 3, bar_h = 16;
 #endif
 
     const lv_coord_t row_y_first = row_y;

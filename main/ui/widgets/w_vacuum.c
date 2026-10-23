@@ -539,6 +539,17 @@ static void w_rr_popup_show_map_placeholder(w_rr_ctx_t *ctx, const char *text, b
 static void w_rr_update_popup_clean_button(w_rr_ctx_t *ctx);
 static void w_rr_apply_visual(w_rr_ctx_t *ctx);
 static void w_rr_layout_card(w_rr_ctx_t *ctx);
+
+/* The state ("In der Station") shrinks to the board's smallest text before it ends in dots beside the charge chip. */
+static void w_rr_fit_state(w_rr_ctx_t *ctx)
+{
+    const lv_coord_t width = lv_obj_get_width(ctx->state_label);
+    if (width <= 0) return;
+    ui_text_record(ctx->state_label, UI_TEXT_META, true);
+    lv_obj_set_style_text_font(ctx->state_label, ui_text_fit(ctx->state_text, ui_font_role(UI_TEXT_META), width,
+                                                             lv_font_get_line_height(ui_font_role(UI_TEXT_META))),
+                               LV_PART_MAIN);
+}
 static void w_rr_render_map_overlay(w_rr_ctx_t *ctx);
 
 static void w_rr_update_map_content_bounds(w_rr_ctx_t *ctx)
@@ -1517,6 +1528,7 @@ static void w_rr_layout_generic(w_rr_ctx_t *ctx, lv_coord_t inner_w, lv_coord_t 
         lv_obj_set_style_text_align(ctx->state_label, beside_chip ? LV_TEXT_ALIGN_LEFT : LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_obj_set_size(ctx->state_label, text_w, name_line);
         lv_obj_set_pos(ctx->state_label, col_x, name_y + ui_widget_name_gap(ctx->title_label, name_gap));
+        w_rr_fit_state(ctx);
     }
 
     /* Controls: chip on top, icon buttons at the bottom. */
@@ -1907,6 +1919,7 @@ static void w_rr_apply_visual(w_rr_ctx_t *ctx)
 
     if (ctx->state_label != NULL) {
         lv_label_set_text(ctx->state_label, ctx->state_text);
+        w_rr_fit_state(ctx);
     }
     if (ctx->detail_label != NULL) {
         lv_label_set_text(ctx->detail_label, ctx->detail_text);

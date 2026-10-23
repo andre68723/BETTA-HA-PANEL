@@ -168,7 +168,14 @@
 #canvas .car-preview-range { text-overflow: clip; }
 #canvas .car-preview-soc { display: flex; gap: 3px; overflow: visible; }
 #canvas .car-preview-soc span { margin: 8px 0 0; line-height: 1.25; font-weight: 500; vertical-align: 0; }
-#canvas .car-preview-extras { position: absolute; left: 12px; right: 12px; bottom: 12px; height: 36px; margin: 0; font-size: var(--meta); }
+#canvas .car-preview-extras { position: absolute; left: 12px; right: 12px; bottom: 12px; margin: 0; display: flex; flex-direction: column;
+  align-items: stretch; gap: 6px; font-size: var(--meta); }
+#canvas .car-x-status { display: flex; justify-content: space-between; gap: 8px; line-height: 1.25; white-space: nowrap; }
+#canvas .car-x-status > span { padding: 0; flex: none; }
+#canvas .car-x-status > span:only-child { flex: 1; text-align: center; }
+#canvas .car-x-status > span:first-child:not(:only-child) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+#canvas .car-preview-extras > .car-x-btn { flex: none; height: 44px; display: grid; place-items: center; padding: 0 4px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
 
 /* light: the colour button as a 52 px circle under the brightness, a small lamp, the 24 px bar with its 40 px knob */
 #canvas .tp-light .tp-light-pct { position: relative; }
@@ -314,7 +321,10 @@ body:is([data-ui-style="glow"], [data-ui-style="glass"]) #canvas .tp-media .tp-v
 /* radial gauge: ring and name placed by tilePreviewMarkup() like gauge_apply_layout_radial() */
 #canvas .tp-gauge-radial { position: absolute; inset: 0; padding: 0; display: block; }
 #canvas .tp-gauge-radial .tp-arc { position: absolute; top: 10px; max-width: none; }
-#canvas .tp-gauge-radial .tp-arc b { max-width: calc(var(--arc) - 16px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#canvas .tp-gauge-radial .tp-arc-text { position: absolute; line-height: 1.25; text-align: center; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; }
+#canvas .tp-gauge-radial .tp-arc-text b { font-size: inherit; }
+#canvas .tp-gauge-radial .tp-arc-info { color: var(--pv-muted); }
 #canvas .tp-gauge-radial > small { position: absolute; left: 50%; transform: translateX(-50%); line-height: 1.25; text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* bar gauges on the 10-inch boards keep the created META name and reading (w_gauge.c without UI_TEXT_ADAPTIVE) */
@@ -325,9 +335,9 @@ body:is([data-ui-style="glow"], [data-ui-style="glass"]) #canvas .tp-media .tp-v
 #canvas .tp-wx-short > div { gap: 0; }
 #canvas .tp-wx-short b { font-size: var(--meta); }
 #canvas .tp-wx-short small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* horizontal solar rows on the 10-inch boards: 30 px rows, 3 px apart, day and value in LABEL */
+/* horizontal solar rows on the 10-inch boards: 30 px or the LABEL line, 3 px apart, day and value in LABEL */
 #canvas.text-fixed .solar-preview.horizontal .solar-preview-body { gap: 3px; }
-#canvas.text-fixed .solar-preview-row { height: 30px; }
+#canvas.text-fixed .solar-preview-row { height: max(30px, calc(var(--label) * 4 / 3)); }
 #canvas.text-fixed .solar-preview-row span { font-size: min(var(--label), 10cqw); }
 #canvas.text-fixed .solar-preview-row .solar-preview-hbar { height: 16px; }
 /* the room tile's compact action: icon and status word in a 44 px button in the bottom right corner */
@@ -338,7 +348,27 @@ body:is([data-ui-style="glow"], [data-ui-style="glass"]) #canvas .tp-media .tp-v
 #canvas .tp-gauge-h .tp-gauge-info { flex: none; white-space: nowrap; font-size: var(--value); }
 #canvas .tp-gauge-v .tp-gauge-value { line-height: 1.25; text-align: center; }
 #canvas .tp-sensor b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-#canvas .tp-gauge-h { justify-content: flex-start; gap: 8px; }
-#canvas .tp-gauge-compact { gap: 4px; }
-#canvas .tp-gauge-compact > :is(.tp-bar, .tp-segs) { flex: 1; height: auto; min-height: 6px; }
+/* horizontal gauge: the bar and the extras row placed by tilePreviewMarkup() like gauge_apply_layout_horizontal() */
+#canvas .tp-gauge-h { justify-content: flex-start; }
+#canvas .tp-gauge-h > :is(.tp-bar, .tp-segs) { position: absolute; left: 10px; right: 10px; width: auto; margin: 0; }
+#canvas .tp-gauge-h > .tp-gauge-extras { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex;
+  justify-content: space-between; font-size: var(--value); line-height: 1.25; color: var(--pv-muted); }
+#canvas .tp-gauge-h > .tp-gauge-extras > span:only-child { flex: 1; text-align: center; }
 #canvas .tp-gauge-h .tp-light-top { position: static; width: 100%; align-items: baseline; }
+#canvas .tp-roomy .tp-blind-text small { font-size: var(--label); }
+#canvas .tp-roomy .tp-blind-text b { font-size: var(--label); }
+#canvas .tp-roomy-wide .tp-blind-text b { font-size: var(--value); }
+#canvas .tp-room-cornered .tp-room-chips { margin-right: calc(var(--corner) + 8px); }
+#canvas .tp-light-off .tp-wheel { background: color-mix(in srgb, var(--pv-text) 18%, transparent); }
+/* control buttons as large as the panel's (--btn from tilePreviewMarkup(): w_cover.c, w_fan.c, w_climate.c) */
+#canvas .tp-blind .tp-btns span { width: var(--btn, 32px); height: var(--btn, 32px); }
+#canvas .tp-clim-mid span { width: var(--btn, 48px); height: var(--btn, 48px); }
+#canvas .tp-blind .tp-btns span.tp-primary.off { background: color-mix(in srgb, var(--pv-text) 14%, transparent); color: var(--pv-text); }
+/* select tiles from 110 px height show the option in VALUE (w_select.c) */
+#canvas .tp-select-tall .tp-blind-text b { font-size: var(--value); }
+#canvas .tp-etl-noplot .tp-etl-top { flex: 1; align-items: center; }
+#canvas .tp-etl-is-nested .tp-etl-nested { flex: none; aspect-ratio: 1; height: auto; }
+/* the room card's control row (room_controls) is a row of toggles, the empty card's name sits top left (w_empty_tile.c) */
+#canvas .tp-room-controls i { background: color-mix(in srgb, var(--pv-text) 10%, transparent); }
+#canvas .tp-empty { justify-content: flex-start; align-items: flex-start; }
+#canvas .tp-empty .tp-name { text-align: left; }

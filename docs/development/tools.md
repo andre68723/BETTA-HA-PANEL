@@ -27,7 +27,7 @@ table: a step with inputs goes through `step "<name>" "<inputs>" <command>` in `
 | `generate_component_versions.py` | Component versions for `GET /api/version` from `dependencies.lock` | every CMake configure |
 | **Checks** | | |
 | `check.sh` | All checks without a device ([Checks](testing.md)) | by hand before a commit; CI with `--full` |
-| `check_web.py`<br>`check_source_sizes.py`<br>`check_docs_size.py`<br>`check_gallery_fresh.py`<br>`check_widget_layout.py`<br>`test_host.sh` | Single checks | every check (the slow ones skipped when unchanged) |
+| `check_web.py`<br>`check_source_sizes.py`<br>`check_docs_size.py`<br>`check_simulator_fields.py`<br>`check_gallery_fresh.py`<br>`check_widget_layout.py`<br>`test_host.sh` | Single checks | every check (the slow ones skipped when unchanged) |
 | `generate_widget_fonts.py` | Font subsets; `--check` runs in `check.sh` | every check, skipped when unchanged; regenerate when a font changes |
 | `check_component_updates.py` | Outdated components ([components](components.md#keeping-components-current)) | on demand, before touching lock files |
 | **Build and flash** | | |

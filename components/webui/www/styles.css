@@ -2993,3 +2993,6 @@ input[type="time"] {
 .tp-etl-bars { margin-bottom: 8px; }
 .tp-etl-bars u { position: relative; }
 .tp-etl-bars u::after { content: ""; position: absolute; top: 100%; left: 0; right: 0; height: 6px; background: linear-gradient(var(--etl-export) 50%, var(--etl-battery_in) 50%); }
+
+/* Tiles that overlap cover each other on the panel (overlappingWidgetIds() in js/canvas.js). */
+#canvas .widget-box.overlapping { outline: 3px dashed var(--danger); outline-offset: -3px; }

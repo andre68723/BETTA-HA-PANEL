@@ -30,7 +30,7 @@ No options beyond the entities; the controls follow what the entity supports.
 ## On the panel
 
 - Rings for the battery level and, when set, the range and charging power.
-- From 200 × 330 px a row under the rings shows preconditioning, lock and interior temperature.
+- From 200 × 330 px the lock state and interior temperature share a line under the rings, with the preconditioning button across the card below it; the Inspector says when the tile is too small for them.
 - Preconditioning is a button; everything else is read-only.
 
 ## Size

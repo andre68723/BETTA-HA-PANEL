@@ -27,11 +27,26 @@ test("the car preview shows the range in whole kilometres like the panel", () =>
   assert.equal(range(""), "-- km");
 });
 
-test("the car preview places the ring like car_layout(): the card minus 24 px, less the extras row", () => {
+test("the car preview places the ring like car_layout(): the card minus 24 px, less the extras", () => {
   const { run, fn } = loadEditor();
   run("editor.appText = { adaptive: false };");
   const markup = fn("carPreviewMarkup");
   assert.match(markup({ rect: { w: 220, h: 260 }, title: "Car" }), /car-preview-gauge" style="width:196px;top:12px;left:12px"/);
   assert.match(markup({ rect: { w: 260, h: 360 }, lock_entity_id: "lock.car" }), /width:236px/);
-  assert.match(markup({ rect: { w: 400, h: 360 }, lock_entity_id: "lock.car" }), /width:288px/);
+  // The status line (25 px) alone, then with the 44 px pre-conditioning button 6 px below it, plus the 12 px margin.
+  assert.match(markup({ rect: { w: 400, h: 360 }, lock_entity_id: "lock.car" }), /width:299px/);
+  const full = markup({ rect: { w: 400, h: 360 }, lock_entity_id: "lock.car", interior_temp_entity_id: "sensor.t", precond_entity_id: "climate.c" });
+  assert.match(full, /width:249px/);
+  assert.match(full, /car-x-status"><span class="car-x-ok">[^<]+<\/span><span>21.5°C<\/span><\/div><span class="car-x-btn">/);
+});
+
+test("overlapping tiles are found, tiles that only touch are not", () => {
+  const { fn } = loadEditor();
+  const ids = fn("overlappingWidgetIds")([
+    { id: "weather", rect: { x: 0, y: 0, w: 630, h: 360 } },
+    { id: "car", rect: { x: 500, y: 310, w: 240, h: 370 } },
+    { id: "solar", rect: { x: 0, y: 370, w: 280, h: 310 } },
+    { id: "beside", rect: { x: 280, y: 370, w: 100, h: 100 } },
+  ]);
+  assert.deepEqual([...ids].sort(), ["car", "weather"]);
 });

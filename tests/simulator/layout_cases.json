@@ -208,6 +208,8 @@
     {"tile": "Sonos favorites", "w": 280, "h": 320},
     {"tile": "Car", "w": 220, "h": 270},
     {"tile": "Car", "w": 200, "h": 200},
+    {"tile": "Car", "w": 240, "h": 370, "fields": {"lock_entity_id": "lock.demo_front_door"}},
+    {"tile": "Car", "w": 200, "h": 330, "fields": {"lock_entity_id": "lock.demo_front_door"}},
     {"tile": "Vacuum", "w": 560, "h": 220},
     {"tile": "Binary sensor", "w": 300, "h": 120},
     {"tile": "Contact", "w": 300, "h": 120},

@@ -12,7 +12,8 @@ first, then review on hardware.
 - `tools/check.sh` runs editor JavaScript syntax, editor tests (`tests/webui/*.test.mjs`), HTML balance, `en`/`de`
   tables with identical keys and interpolation variables, non-empty values, duplicate-free firmware JSON, matching
   printf formats and an ASCII English firmware table (German may use umlauts and `ß`), the source and
-  documentation size checks and, with cmake and SDL2, the simulator regressions, the widget layout check and the host
+  documentation size checks, that the simulator reads every widget field the firmware reads
+  (`check_simulator_fields.py`) and, with cmake and SDL2, the simulator regressions, the widget layout check and the host
   tests. `--build` also builds all five variants (`panel4`, `panel10`, `paneljc`, `paneljc-v2`, `tab5`) with the full
   define set and checks the flash size in `flash_args`. Run it before committing editor or translation changes.
   `.github/workflows/check.yml` runs the checks with `--full`; `.github/workflows/build.yml` builds and packages every
@@ -84,7 +85,9 @@ object's rectangle (`--dump-layout`). It fails when two texts overlap, a text ov
 bar or picture, or anything reaches outside its tile. `check.sh`, CI and `tools/generate_simulator_gallery.py` run it
 (panel4; `--variant paneljc|tab5` for the 1280 px geometry; the panel4-only readability fixtures are skipped there). It
 also renders the Matte comparison (`tests/simulator/matte_reference.json`) and edge cases
-(`tests/simulator/layout_cases.json`: tiles at minimum and large sizes and in every variant).
+(`tests/simulator/layout_cases.json`: tiles at minimum and large sizes and in every variant). A text recorded as essential
+(`ui_text_record(label, role, true)`) also fails when it is cut: record states, readings and button words that way, while
+names may end in dots.
 
 - Rectangles cannot see a ring's shape, and a widget that leaves content out passes: look at the images for text on
   arcs and knobs and for whether a tile still shows what it is for.

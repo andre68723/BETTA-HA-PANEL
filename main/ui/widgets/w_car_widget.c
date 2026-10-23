@@ -22,10 +22,12 @@
 #include "ui/theme/ui_style.h"
 
 #define CAR_CHARGE_POWER_MAX_W 11000.0f
-/* The optional bottom row (lock, interior temperature, pre-conditioning) needs this much room. */
+/* The optional extras (a status line with lock and interior temperature, the pre-conditioning button below it) need
+ * this much room. */
 #define CAR_EXTRAS_MIN_H 330
 #define CAR_EXTRAS_MIN_W 200
-#define CAR_EXTRAS_ROW_H 36
+#define CAR_EXTRAS_BTN_H 44 /* a touch target, as wide as the card */
+#define CAR_EXTRAS_GAP 6
 #define CAR_STATE_LEN 24
 
 typedef struct {
@@ -141,39 +143,70 @@ static bool car_extras_visible(const w_car_widget_ctx_t *ctx, lv_coord_t w, lv_c
     return car_has_extras(ctx) && h >= CAR_EXTRAS_MIN_H && w >= CAR_EXTRAS_MIN_W;
 }
 
+/* Height of the extras block: the status line (lock, interior temperature) and the pre-conditioning button, each when set. */
+static lv_coord_t car_extras_height(const w_car_widget_ctx_t *ctx)
+{
+    const bool status = ctx->lock_entity_id[0] != '\0' || ctx->temp_entity_id[0] != '\0';
+    const bool button = ctx->precond_entity_id[0] != '\0';
+    return (status ? lv_font_get_line_height(ui_font_role(UI_TEXT_META)) : 0) + (status && button ? CAR_EXTRAS_GAP : 0) +
+           (button ? CAR_EXTRAS_BTN_H : 0);
+}
+
+/* The status line holds the lock state on the left and the interior temperature on the right (one of them alone is
+ * centred); the pre-conditioning button spans the card below it. Words such as "Entriegelt" or "Vorklimatisieren" no
+ * longer share a third of the width each. */
 static void car_layout_extras(w_car_widget_ctx_t *ctx, lv_coord_t w, lv_coord_t h, bool visible)
 {
-    lv_obj_t *cells[3] = {ctx->lock_label, ctx->temp_label, ctx->precond_btn};
-    const bool wanted[3] = {ctx->lock_entity_id[0] != '\0', ctx->temp_entity_id[0] != '\0',
-                            ctx->precond_entity_id[0] != '\0'};
-    int n = 0;
-    for (int i = 0; i < 3; i++) {
-        if (visible && wanted[i]) {
-            n++;
-            lv_obj_set_hidden(cells[i], false);
-        } else {
-            lv_obj_set_hidden(cells[i], true);
-        }
-    }
-    if (n == 0) {
+    const bool lock = visible && ctx->lock_entity_id[0] != '\0';
+    const bool temp = visible && ctx->temp_entity_id[0] != '\0';
+    const bool button = visible && ctx->precond_entity_id[0] != '\0';
+    lv_obj_set_hidden(ctx->lock_label, !lock);
+    lv_obj_set_hidden(ctx->temp_label, !temp);
+    lv_obj_set_hidden(ctx->precond_btn, !button);
+    if (!lock && !temp && !button) {
         return;
     }
+    /* Essential: the layout check reports them when they are cut (the German words were, unnoticed). */
+    ui_text_record(ctx->lock_label, UI_TEXT_META, true);
+    ui_text_record(ctx->temp_label, UI_TEXT_META, true);
+    ui_text_record(ctx->precond_label, UI_TEXT_META, true);
     const lv_coord_t pad = 12;
-    const lv_coord_t gap = 8;
-    const lv_coord_t cell_w = (w - 2 * pad - (n - 1) * gap) / n;
-    const lv_coord_t y = h - 12 - CAR_EXTRAS_ROW_H;
-    int k = 0;
-    for (int i = 0; i < 3; i++) {
-        if (!wanted[i]) {
-            continue;
-        }
-        lv_obj_set_size(cells[i], cell_w, CAR_EXTRAS_ROW_H);
-        lv_obj_set_pos(cells[i], pad + k * (cell_w + gap), y);
-        k++;
+    const lv_coord_t inner_w = w - 2 * pad;
+    lv_coord_t bottom = h - 12;
+    if (button) {
+        lv_obj_set_size(ctx->precond_btn, inner_w, CAR_EXTRAS_BTN_H);
+        lv_obj_set_pos(ctx->precond_btn, pad, bottom - CAR_EXTRAS_BTN_H);
+        /* "Vorklimatisieren" nearly fills a 200 px card's button: 4 px padding, and a step smaller where the board allows it. */
+        const lv_font_t *font = ui_text_fit(lv_label_get_text(ctx->precond_label), ui_font_role(UI_TEXT_META), inner_w - 8,
+                                            CAR_EXTRAS_BTN_H);
+        lv_obj_set_style_text_font(ctx->precond_label, font, LV_PART_MAIN);
+        lv_obj_set_width(ctx->precond_label, inner_w - 8);
+        lv_obj_center(ctx->precond_label);
+        bottom -= CAR_EXTRAS_BTN_H + CAR_EXTRAS_GAP;
     }
-    /* The plain labels are vertically centred in the row. */
-    lv_obj_set_style_pad_top(ctx->lock_label, (CAR_EXTRAS_ROW_H - lv_font_get_line_height(ui_font_role(UI_TEXT_META))) / 2, LV_PART_MAIN);
-    lv_obj_set_style_pad_top(ctx->temp_label, (CAR_EXTRAS_ROW_H - lv_font_get_line_height(ui_font_role(UI_TEXT_META))) / 2, LV_PART_MAIN);
+    if (!lock && !temp) {
+        return;
+    }
+    const lv_coord_t line = lv_font_get_line_height(ui_font_role(UI_TEXT_META));
+    const lv_coord_t y = bottom - line;
+    if (lock && temp) {
+        /* The temperature keeps the width of a widest reading (a label in dot mode rewrites its own text, so it is not
+         * measured); the lock word takes the rest and ends in dots if it must. */
+        lv_point_t temp_size;
+        lv_text_get_size(&temp_size, "-88.8°C", ui_font_role(UI_TEXT_META), 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        const lv_coord_t temp_w = temp_size.x + 2 < inner_w / 2 ? temp_size.x + 2 : inner_w / 2;
+        lv_obj_set_size(ctx->temp_label, temp_w, line);
+        lv_obj_set_style_text_align(ctx->temp_label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+        lv_obj_set_pos(ctx->temp_label, pad + inner_w - temp_w, y);
+        lv_obj_set_size(ctx->lock_label, inner_w - temp_w - 8, line);
+        lv_obj_set_style_text_align(ctx->lock_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+        lv_obj_set_pos(ctx->lock_label, pad, y);
+        return;
+    }
+    lv_obj_t *only = lock ? ctx->lock_label : ctx->temp_label;
+    lv_obj_set_size(only, inner_w, line);
+    lv_obj_set_style_text_align(only, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_pos(only, pad, y);
 }
 
 static void car_layout(w_car_widget_ctx_t *ctx)
@@ -195,7 +228,7 @@ static void car_layout(w_car_widget_ctx_t *ctx)
     }
 #endif
     /* The title sits in the ring's open segment, so the ring takes the whole card but the extras row. */
-    const lv_coord_t extras_h = extras ? CAR_EXTRAS_ROW_H + 12 : 0;
+    const lv_coord_t extras_h = extras ? car_extras_height(ctx) + 12 : 0;
     lv_coord_t arc_size = min_dim - 24;
     if (arc_size > h - 24 - extras_h) {
         arc_size = h - 24 - extras_h;
@@ -298,7 +331,7 @@ static void car_render_extras(w_car_widget_ctx_t *ctx)
                         strncmp(ctx->precond_entity_id, "button.", 7) != 0 &&
                         strncmp(ctx->precond_entity_id, "input_button.", 13) != 0;
     lv_label_set_text(ctx->precond_label,
-        is_select && ctx->has_precond ? ctx->precond_state : ui_i18n_get("car.precond", "Precond."));
+        is_select && ctx->has_precond ? ctx->precond_state : ui_i18n_get("car.precond", "Precondition"));
     const lv_color_t base = active ? lv_color_mix(lv_color_hex(APP_UI_COLOR_STATE_ON), lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 180)
                                    : lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE);
     ui_style_button_auto(ctx->precond_btn, base, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
@@ -483,7 +516,7 @@ esp_err_t w_car_widget_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
         lv_obj_t *l = i == 0 ? ctx->lock_label : ctx->temp_label;
         lv_obj_set_style_text_font(l, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
         lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-        lv_label_set_long_mode(l, LV_LABEL_LONG_CLIP);
+        lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
     }
     lv_obj_set_style_text_color(ctx->temp_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     ctx->precond_btn = lv_btn_create(card);
@@ -494,6 +527,7 @@ esp_err_t w_car_widget_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     ctx->precond_label = lv_label_create(ctx->precond_btn);
     lv_obj_set_style_text_font(ctx->precond_label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_label_set_long_mode(ctx->precond_label, LV_LABEL_LONG_DOT);
+    lv_obj_set_style_text_align(ctx->precond_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_center(ctx->precond_label);
     lv_label_set_text(ctx->soc_unit_label, "%");
     lv_label_set_text(ctx->title_label, def->title[0] ? def->title : "Car");

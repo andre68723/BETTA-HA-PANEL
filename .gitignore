@@ -35,6 +35,7 @@ tools/*
 !tools/editor_local/**
 !tools/check_source_sizes.py
 !tools/check_docs_size.py
+!tools/check_simulator_fields.py
 !tools/test_host.sh
 !tools/apply_component_patches.py
 !tools/generate_gallery.py

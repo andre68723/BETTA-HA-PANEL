@@ -248,11 +248,18 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     copy_field(def->button_accent_color, sizeof(def->button_accent_color), json, "button_accent_color");
     copy_field(def->button_mode, sizeof(def->button_mode), json, "button_mode");
     copy_field(def->graph_line_color, sizeof(def->graph_line_color), json, "graph_line_color");
+    /* As ui_runtime_widget_from_json(): the sensor's value format and unit style (missing here, the formats rendered raw). */
+    copy_field(def->sensor_format, sizeof(def->sensor_format), json, "sensor_format");
+    copy_field(def->sensor_unit, sizeof(def->sensor_unit), json, "sensor_unit");
     if (strcmp(def->type, "energy_timeline") == 0) def->energy_palette = etl_palette_from_json(json);
     copy_field(def->graph_display_mode, sizeof(def->graph_display_mode), json, "graph_display_mode");
     copy_field(def->style_variant, sizeof(def->style_variant), json, "style_variant");
     copy_field(def->arc_opening, sizeof(def->arc_opening), json, "arc_opening");
     copy_field(def->display_mode, sizeof(def->display_mode), json, "display_mode");
+    /* As ui_runtime_widget_from_json(): a binary tile in the "door" look is drawn by the contact renderer. */
+    if (strcmp(def->type, "binary_tile") == 0 && strcmp(def->display_mode, "door") == 0) {
+        snprintf(def->type, sizeof(def->type), "%s", "contact_tile");
+    }
     copy_field(def->default_mode, sizeof(def->default_mode), json, "default_mode");
     copy_field(def->gauge_bar_style, sizeof(def->gauge_bar_style), json, "gauge_bar_style");
     def->gauge_segment_count = json_int(json, "gauge_segment_count", 0);

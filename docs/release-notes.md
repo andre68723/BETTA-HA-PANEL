@@ -437,6 +437,10 @@ style; text and symbols use the same fonts throughout. See
   media and climate. Long labels truncate, unavailable values are formatted,
   and value-coded buttons keep contrast across styles. The SDL
   [widget gallery](gallery.md) and [simulator](simulator.md) cover these layouts.
+  States, readings and button words are no longer cut: the car shows lock and interior temperature on one line and a
+  full-width pre-conditioning button below, the radial gauge stacks its extra readouts without overlap, a narrow
+  vertical gauge puts the unit on a second line, contact and vacuum states shrink before they shorten, and the
+  10-inch solar rows are as tall as their text.
 - **German and English texts:** every built-in section follows the panel language.
 
 - **Notification emphasis:** message bodies recognize paired `**bold**` and `__bold__` markers, including inline
@@ -499,6 +503,9 @@ style; text and symbols use the same fonts throughout. See
   Previews scale with the tile (text, arcs, icons, switches) and drop what the panel drops at small sizes;
   sliders show their value in the bar, the button its state and a large switch, and contact, scene, lock and binary tiles use the panel's icons.
   The house page preview uses the panel's grid and room cards with the states of the room's entities.
+  Overlapping tiles are outlined in red, also while one is dragged or resized, since they cover each other on the panel.
+  The Inspector of a car with lock, interior temperature or pre-conditioning says when the tile is too small to show them,
+  and the gauge's colour modes are translated.
   On the 10-inch boards the previews keep the panel's fixed rows and smaller texts; car, radial gauge and semi-arc
   heating are placed like on the panel, a car range in metres or miles reads in kilometres, and solar days use weekday names.
   Editor usability: Settings > Design and Top bar are separate pages; long settings hints show their first sentence with an info button;

@@ -322,6 +322,7 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("fGaugeMaxLabel", "layout.inspector.gauge_max");
   setTextById("fGaugeHint", "layout.inspector.gauge_hint");
   setTextById("fGaugeColorModeLabel", "layout.gauge.color_mode");
+  for (const opt of el.fGaugeColorMode?.options || []) opt.textContent = t(`layout.gauge.color_mode_${opt.value || "fill"}`);
   setTextById("fGaugeTargetLowLabel", "layout.gauge.target_low");
   setTextById("fGaugeTargetHighLabel", "layout.gauge.target_high");
   setTextById("fGaugeTargetColorLabel", "layout.gauge.target_color");
