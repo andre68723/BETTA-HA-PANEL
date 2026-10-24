@@ -41,6 +41,7 @@ table: a step with inputs goes through `step "<name>" "<inputs>" <command>` in `
 | **Inspect** | | |
 | `simulator.sh` | LVGL widgets on the desktop ([simulator](../simulator.md)) | on demand |
 | `screenshot.sh`<br>`capture_device_pages.py` | Screen of a real panel | on demand |
+| `test_pages.sh`<br>`test_layouts.py` | Test pages of every widget and variant, by topic and panel size, in the simulator or on a panel ([test layouts](testing.md#test-layouts)) | on demand |
 | `stress_test.py` | Page switches, discovery and editor load on a panel | on demand |
 | `compare_editor_previews.py`<br>`style_diff.py` | Review aids, gate nothing ([editor preview](../editor-source.md#layout-preview), [styles](../appearance-implementation.md)) | on demand |
 | `calibrate_text_caps.py` | Text size caps ([conventions](conventions.md#text-and-fonts)) | on demand, after a layout change |

@@ -36,6 +36,10 @@ tools/*
 !tools/check_source_sizes.py
 !tools/check_docs_size.py
 !tools/check_simulator_fields.py
+!tools/test_layouts.py
+!tools/test_pages.sh
+!tools/test_layout_cases.json
+!tools/test_layout_entities_demo.json
 !tools/test_host.sh
 !tools/apply_component_patches.py
 !tools/generate_gallery.py

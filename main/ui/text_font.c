@@ -42,12 +42,17 @@ void ui_fonts_set_board(text_board_t board)
 
 text_board_t ui_fonts_board(void) { return s_board_set ? s_board : text_scale_build_board(); }
 
+/* Tile contexts nest: a widget's lv_obj_update_layout() can run another tile's size-change handler, which opens and
+ * closes that tile's context; its end must give the outer tile its own cap back, not leave the inner one. */
+#define TILE_STACK_MAX 8
 static int s_tile_depth;
 static int s_tile_cap = TEXT_TILE_CAP_NONE;
+static int s_tile_stack[TILE_STACK_MAX];
 static int s_cap_override = -1;
 
 void ui_fonts_tile_begin(const char *widget_type, int w, int h)
 {
+    if (s_tile_depth < TILE_STACK_MAX) s_tile_stack[s_tile_depth] = s_tile_cap;
     s_tile_depth++;
     s_tile_cap = s_cap_override >= 0 ? s_cap_override : text_scale_tile_cap(ui_fonts_board(), widget_type, w, h);
 }
@@ -55,7 +60,8 @@ void ui_fonts_tile_begin(const char *widget_type, int w, int h)
 void ui_fonts_tile_end(void)
 {
     if (s_tile_depth > 0) s_tile_depth--;
-    if (s_tile_depth == 0) s_tile_cap = TEXT_TILE_CAP_NONE;
+    s_tile_cap = s_tile_depth == 0 ? TEXT_TILE_CAP_NONE
+                                   : (s_tile_depth < TILE_STACK_MAX ? s_tile_stack[s_tile_depth] : s_tile_cap);
 }
 
 void ui_fonts_set_cap_override(int cap) { s_cap_override = cap < 0 ? -1 : (cap > TEXT_TILE_CAP_NONE ? TEXT_TILE_CAP_NONE : cap); }

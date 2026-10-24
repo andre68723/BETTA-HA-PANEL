@@ -1095,6 +1095,11 @@ int main(int argc, char **argv)
         cJSON_Delete(root);
         return 1;
     }
+    if (sim_clock_fixed()) {
+        /* after lv_sdl_window_create(), which sets SDL's real tick: animations follow the virtual time (sim_clock.h) */
+        lv_tick_set_cb(sim_virtual_tick);
+        lv_delay_set_cb(sim_virtual_delay);
+    }
     lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
     lv_sdl_window_set_title(display, "BETTA widget simulator");
     lv_sdl_mouse_create();
@@ -1342,7 +1347,7 @@ int main(int argc, char **argv)
     if (tap_count > 0) for (int n = 0; n < 12; n++) { lv_timer_handler(); lv_delay_ms(5); }
     if (screenshot_path != NULL && exit_after_ms == 0) exit_after_ms = 250;
     int64_t deadline_us = exit_after_ms > 0 ? esp_timer_get_time() + (int64_t)exit_after_ms * 1000 : INT64_MAX;
-    while (esp_timer_get_time() < deadline_us) {
+    while (esp_timer_get_time() < deadline_us) { /* virtual time on the fixed clock: lv_delay_ms() advances it */
         lv_timer_handler();
         lv_delay_ms(5);
     }

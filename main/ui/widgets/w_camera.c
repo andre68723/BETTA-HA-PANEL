@@ -229,7 +229,7 @@ esp_err_t w_camera_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_label_set_text(ctx->title, def->title[0] ? def->title : def->entity_id);
     lv_obj_set_style_text_font(ctx->title, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->title, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-    lv_label_set_long_mode(ctx->title, LV_LABEL_LONG_DOT);
+    ui_widget_name_one_line(ctx->title);
 
     lv_obj_add_event_cb(card, camera_clicked_cb, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(card, camera_event_cb, LV_EVENT_DELETE, ctx);

@@ -4,11 +4,11 @@
 #pragma once
 
 #include <stdint.h>
-#include <time.h>
 
+#include "sim_clock.h"
+
+/* Monotonic microseconds; virtual on the simulator's fixed clock (sim_clock.h). */
 static inline int64_t esp_timer_get_time(void)
 {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    return (int64_t)now.tv_sec * 1000000 + now.tv_nsec / 1000;
+    return sim_monotonic_us();
 }

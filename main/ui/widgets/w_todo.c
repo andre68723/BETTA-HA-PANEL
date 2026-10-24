@@ -1119,7 +1119,7 @@ esp_err_t w_todo_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_
     lv_label_set_text(title, def->title[0] ? def->title : def->id);
     lv_obj_set_style_text_color(title, theme_default_color_text_primary(), LV_PART_MAIN);
     lv_obj_set_style_text_font(title, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
-    lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
+    ui_widget_name_one_line(title);
     lv_obj_set_flex_grow(title, 1);
 
     lv_obj_t *status = lv_label_create(header);

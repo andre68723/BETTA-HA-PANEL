@@ -53,7 +53,6 @@ const ui_style_traits_t *ui_style_traits(void)
         .touch_tracks = true,
         .value_beside_slider = true,
         .caps_titles = true,
-        .single_line_titles = true,
         .round_switches = true,
         .frameless_page = true,
         .plain_tracks = true,

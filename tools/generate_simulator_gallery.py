@@ -104,7 +104,9 @@ def prepare_fixture(data, variant="panel4"):
         if picture.startswith("file:"):
             # Local placeholder pictures live next to the fixture; the simulator loads them.
             state["attributes"]["entity_picture"] = "file:" + str(DATA.parent / picture[len("file:"):])
-    today = date.today()
+    # The simulator's fixed clock (BETTA_SIM_NOW, Unix seconds) when set, so forecast days match its date.
+    fixed = os.environ.get("BETTA_SIM_NOW", "")
+    today = date.fromtimestamp(int(fixed)) if fixed.isdigit() else date.today()
     for state in fixture["states"]:
         forecast = state.get("attributes", {}).get("forecast", [])
         for day in forecast:

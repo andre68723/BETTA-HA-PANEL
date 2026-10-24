@@ -139,11 +139,20 @@ static void lock_layout(w_lock_ctx_t *ctx)
     lv_obj_set_hidden(ctx->open_btn, !open_btn);
     lv_coord_t right = w - pad;
     if (open_btn) {
-        const lv_coord_t btn_w = 84;
+        /* as wide as the word needs (larger text, longer translations), at most a third of the tile, the word fitted
+         * to that on one line */
+        const lv_font_t *font = ui_font_role(UI_TEXT_META);
+        const char *word = lv_label_get_text(ctx->open_label);
+        lv_point_t size;
+        lv_text_get_size(&size, word, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        lv_coord_t btn_w = size.x + 20;
+        btn_w = btn_w < 84 ? 84 : (btn_w > w / 3 ? w / 3 : btn_w);
         const lv_coord_t btn_h = side < 40 ? side : 40;
         lv_obj_set_size(ctx->open_btn, btn_w, btn_h);
         lv_obj_set_pos(ctx->open_btn, w - pad - btn_w, (h - btn_h) / 2);
-        lv_obj_set_width(ctx->open_label, btn_w - 8);
+        const lv_font_t *fitted = ui_text_fit(word, font, btn_w - 8, btn_h);
+        lv_obj_set_style_text_font(ctx->open_label, fitted, LV_PART_MAIN);
+        lv_obj_set_size(ctx->open_label, btn_w - 8, lv_font_get_line_height(fitted));
         lv_obj_center(ctx->open_label);
         right = w - pad - btn_w - 10;
     }

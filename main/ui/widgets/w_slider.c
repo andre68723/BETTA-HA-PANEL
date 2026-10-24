@@ -322,11 +322,20 @@ static void slider_layout_split_info(w_slider_ctx_t *ctx, lv_coord_t content_w, 
     lv_obj_set_align(ctx->title_label, LV_ALIGN_TOP_LEFT);
     lv_obj_set_style_text_align(ctx->title_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     lv_obj_set_width(ctx->title_label, info_w);
-    lv_obj_set_pos(ctx->title_label, 0, content_h / 2 - 25);
+    ui_widget_name_one_line(ctx->title_label);
     lv_obj_set_align(ctx->state_label, LV_ALIGN_TOP_LEFT);
     lv_obj_set_style_text_font(ctx->state_label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_obj_set_width(ctx->state_label, info_w);
-    lv_obj_set_pos(ctx->state_label, 0, ui_widget_name_enabled(ctx->title_label) ? content_h / 2 + 5 : (content_h - lv_font_get_line_height(ui_font_role(UI_TEXT_META))) / 2);
+    /* name and state stacked by their line heights around the middle */
+    const lv_coord_t title_h = lv_obj_get_height(ctx->title_label);
+    const lv_coord_t state_h = lv_font_get_line_height(ui_font_role(UI_TEXT_META));
+    if (ui_widget_name_enabled(ctx->title_label)) {
+        const lv_coord_t top = (content_h - title_h - 4 - state_h) / 2;
+        lv_obj_set_pos(ctx->title_label, 0, top);
+        lv_obj_set_pos(ctx->state_label, 0, top + title_h + 4);
+    } else {
+        lv_obj_set_pos(ctx->state_label, 0, (content_h - state_h) / 2);
+    }
 }
 
 static void slider_apply_layout(lv_obj_t *card, w_slider_ctx_t *ctx)

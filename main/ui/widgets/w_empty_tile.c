@@ -35,6 +35,7 @@ esp_err_t w_empty_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     lv_label_set_text(title, def->title[0] ? def->title : def->id);
     lv_obj_set_width(title, def->w - 32);
     lv_obj_set_style_text_font(title, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
+    ui_widget_name_one_line(title);
     lv_obj_set_style_text_color(title, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 0);

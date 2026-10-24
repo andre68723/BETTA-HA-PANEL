@@ -512,6 +512,7 @@ static void gauge_apply_layout_radial(w_gauge_ctx_t *ctx, lv_coord_t content_w, 
         lv_obj_set_height(ctx->title_label, title_line_h);
         lv_obj_set_width(ctx->title_label, content_w);
         lv_obj_align(ctx->title_label, LV_ALIGN_TOP_MID, 0, arc_y + arc_size + 4);
+        ui_widget_name_set_hidden(ctx->title_label, false);
         return;
     }
     /* The open segment is about 1.3 r wide at 0.74 r below the centre; below the info lines. */
@@ -526,6 +527,8 @@ static void gauge_apply_layout_radial(w_gauge_ctx_t *ctx, lv_coord_t content_w, 
     if (title_y > content_h - title_h) {
         title_y = content_h - title_h;
     }
+    /* a ring filled by the reading and its extras (larger text) leaves the name out rather than over the extras */
+    ui_widget_name_set_hidden(ctx->title_label, (info_1 || info_2) && title_y < info_bottom);
     lv_obj_set_width(ctx->title_label, r * 13 / 10);
     lv_obj_align(ctx->title_label, LV_ALIGN_TOP_MID, 0, title_y);
 }

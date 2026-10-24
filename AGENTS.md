@@ -13,6 +13,7 @@ is v0.9.1-rc1 (v0.9.0 is released).
 | --- | --- |
 | Fast checks: editor, host C tests and SDL layout | `tools/check.sh` |
 | Layout at a larger text step | `python3 tools/check_widget_layout.py --variant tab5 --text-step 2` |
+| Test pages of every widget and variant (simulator overview) | `tools/test_pages.sh [board] [--text-steps 0,1,2]` |
 | Render one LVGL fixture locally | `tools/simulator.sh panel4 --fixture <file> --page <id> --style <style> --screenshot <file>` |
 | Regenerate the widget gallery | `python3 tools/generate_simulator_gallery.py` |
 | Validate the documentation, as in CI | `uv run --locked --only-group docs zensical build --clean --strict` |
@@ -196,6 +197,13 @@ paneljc network freeze (2026-09) was resolved by the memory work and has not rec
   `main/ui/ui_widget_factory.c`, the widget source and `main/CMakeLists.txt`;
   account for its Home Assistant entity subscriptions in `main/ha/ha_layout_entities.c`.
   In the editor, update the picker configuration, Add menu, sizes and preview.
+- Widget test pages: `tools/test_layout_cases.json` holds a case per widget variant (topic, 10-inch size, `{role}`
+  entities, optional `expect` texts and simulator-only `sim` fields); a new type or enumerated layout value without a
+  case is reported by `tools/test_pages.sh`, which also checks layout and drawn content on all three sizes with a fixed
+  clock. Run it after a widget change; `load` on a household panel deletes its panel-only graph history
+  ([test layouts](docs/development/testing.md#test-layouts)).
+- Text size caps: `ui_fonts_tile_begin/end` nest (a widget's `lv_obj_update_layout()` can run another tile's handler);
+  a widget re-laying out from its own timer or event opens its tile context like `w_energy_price_forecast.c` does.
 - Widget or editor-preview change: keep `tilePreviewMarkup` and the panel widget in step (rule in `docs/editor-source.md`);
   `.local/skills/preview-parity/SKILL.md` audits the drift on demand and is not part of `tools/check.sh`.
 - Editor text: Inspector explanations open from their section's info button (`js/inspector-hints.js`). Author longer help

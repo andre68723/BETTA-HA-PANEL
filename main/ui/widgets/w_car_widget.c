@@ -266,13 +266,22 @@ static void car_layout(w_car_widget_ctx_t *ctx)
     lv_obj_set_style_text_font(ctx->title_label, min_dim >= 190 ? ui_font_role(UI_TEXT_LABEL) : (arc_size >= 130 ? ui_font_role(UI_TEXT_META) : ui_font_role(UI_TEXT_META)), LV_PART_MAIN);
     const lv_coord_t title_h = lv_font_get_line_height(lv_obj_get_style_text_font(ctx->title_label, LV_PART_MAIN));
     lv_obj_set_width(ctx->title_label, r * 13 / 10);
+    ui_widget_name_one_line(ctx->title_label);
     lv_obj_align(ctx->title_label, LV_ALIGN_TOP_MID, 0, center_y + r * 37 / 50 - title_h / 2);
 #if UI_TEXT_ADAPTIVE
     if (min_dim >= 190) {
         lv_obj_align(ctx->range_label, LV_ALIGN_TOP_MID, 0, center_y - 61);
-        lv_obj_align(ctx->soc_label, LV_ALIGN_TOP_LEFT, group_x, center_y - 18);
-        lv_obj_align(ctx->soc_unit_label, LV_ALIGN_TOP_LEFT, group_x + soc_w + 3, center_y - 10);
-        lv_obj_align(ctx->power_label, LV_ALIGN_TOP_MID, 0, center_y + 20);
+        /* the "%" ends with the digits and the power starts below both, whatever their sizes */
+        const lv_coord_t soc_y = center_y - 18;
+        const lv_coord_t soc_h = lv_obj_get_height(ctx->soc_label);
+        const lv_coord_t power_y = soc_y + soc_h > center_y + 20 ? soc_y + soc_h : center_y + 20;
+        lv_obj_align(ctx->soc_label, LV_ALIGN_TOP_LEFT, group_x, soc_y);
+        lv_obj_align(ctx->soc_unit_label, LV_ALIGN_TOP_LEFT, group_x + soc_w + 3, soc_y + soc_h - lv_obj_get_height(ctx->soc_unit_label));
+        lv_obj_align(ctx->power_label, LV_ALIGN_TOP_MID, 0, power_y);
+        /* a ring too small for the power above the name (larger text on a small tile) leaves the power out */
+        const bool power_fits = !ui_widget_name_enabled(ctx->title_label) ||
+            power_y + lv_obj_get_height(ctx->power_label) <= center_y + r * 37 / 50 - title_h / 2;
+        lv_obj_set_hidden(ctx->power_label, !power_fits || ctx->power_entity_id[0] == '\0');
     }
 #endif
     car_layout_extras(ctx, w, h, extras);

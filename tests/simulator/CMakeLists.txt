@@ -87,6 +87,7 @@ add_executable(betta-widget-sim
     price_regression.c
     parqet_regression.c
     pages_stubs.c
+    sim_clock.c
     "${REPO_ROOT}/main/build_stamp.c"
     "${REPO_ROOT}/main/net/wifi_signal_level.c"
     "${REPO_ROOT}/main/layout/widget_types.c"
@@ -221,7 +222,9 @@ target_compile_definitions(betta-widget-sim PRIVATE
     UI_FONTS_TEST_HOOKS=1
     SIM_WEATHER_ICON_DIR="${REPO_ROOT}/main/ui/assets/weather"
     SIM_DEFAULT_FIXTURE="${CMAKE_CURRENT_LIST_DIR}/demo.json")
-target_compile_options(betta-widget-sim PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+target_compile_options(betta-widget-sim PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
+    # time() reads BETTA_SIM_NOW when set (stubs/sim_clock.h)
+    -include "${CMAKE_CURRENT_LIST_DIR}/stubs/sim_clock.h")
 target_link_libraries(betta-widget-sim PRIVATE lvgl SDL2::SDL2 sim_cjson m)
 
 # the real top bar/navigation compiles with -Werror here; its wide-screen branch leaves a variable unused

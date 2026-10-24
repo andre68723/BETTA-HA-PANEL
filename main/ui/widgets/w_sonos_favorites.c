@@ -294,7 +294,7 @@ esp_err_t w_sonos_favorites_create(const ui_widget_def_t *def, lv_obj_t *parent,
     lv_label_set_text(ctx->title_label, def->title[0] != '\0' ? def->title : "Sonos Favorites");
     lv_obj_set_style_text_font(ctx->title_label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->title_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
-    lv_label_set_long_mode(ctx->title_label, LV_LABEL_LONG_DOT);
+    ui_widget_name_one_line(ctx->title_label);
     lv_obj_set_pos(ctx->title_label, 0, 0);
     lv_obj_set_width(ctx->title_label, def->w - 32);
 

@@ -43,7 +43,6 @@ typedef struct {
     bool touch_tracks;     /* thick slider and progress tracks, sized for a finger */
     bool value_beside_slider; /* a slider's value sits in its own fixed column beside the track */
     bool caps_titles;      /* widget titles in capitals (ui_style_title()) */
-    bool single_line_titles; /* widget titles on one line, ellipsized */
     bool round_switches;   /* switches are always pills, whatever the ends of the style's other tracks */
     bool frameless_page;   /* no frame around the page's content area */
     bool plain_tracks;     /* slider tracks: the style's track radius, no outline, no shadow */

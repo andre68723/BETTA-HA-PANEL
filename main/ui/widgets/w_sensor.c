@@ -325,6 +325,13 @@ static void sensor_apply_layout(w_sensor_ctx_t *ctx)
         value_room_h = content_h - min_value_y - 2;
     }
     const lv_font_t *value_font = sensor_fit_value_font(ctx, content_w, value_room_h);
+    if (show_title && lv_font_get_line_height(value_font) > value_room_h) {
+        /* Too low for the name and the smallest value text (larger text on a minimum-size tile): the value wins. */
+        ui_widget_name_set_hidden(ctx->title_label, true);
+        min_value_y = 0;
+        value_room_h = content_h - (show_age ? age_h + 6 : 2);
+        value_font = sensor_fit_value_font(ctx, content_w, value_room_h);
+    }
     lv_obj_set_style_text_font(ctx->value_label, value_font, LV_PART_MAIN);
     ui_text_compact(ctx->value_label, value_font == ui_font_role(UI_TEXT_META));
     lv_label_set_long_mode(ctx->value_label, LV_LABEL_LONG_DOT);

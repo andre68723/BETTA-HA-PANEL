@@ -900,7 +900,7 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     bool landscape = (content_w >= content_h * 3 / 2 && content_w >= 260 && content_h >= 130);
 
     bool has_widget_title = !def->hide_name && (def->title[0] != '\0');
-    const lv_coord_t widget_title_h = has_widget_title ? 22 : 0;
+    const lv_coord_t widget_title_h = has_widget_title ? lv_font_get_line_height(ui_font_role(UI_TEXT_META)) : 0;
     /* Line heights of the real fonts (20 px text is the floor on the 4-inch class and has taller lines than 16 px). */
     const lv_coord_t now_title_line = lv_font_get_line_height(ui_font_role(UI_TEXT_META));
     const lv_coord_t now_artist_line = lv_font_get_line_height(ui_font_role(UI_TEXT_META));
@@ -1013,7 +1013,7 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
         lv_obj_set_width(title, content_w);
         lv_obj_set_style_text_font(title, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
         lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-        lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
+        ui_widget_name_one_line(title);
         lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 0);
         ctx->title_label = title;
     }

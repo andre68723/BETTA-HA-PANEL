@@ -42,6 +42,20 @@ SDL_VIDEODRIVER=dummy tools/simulator.sh panel4 --fixture <file> --page <id> --s
 - `--screenshot f.bmp` writes a BMP and exits after 250 ms, or after `--exit-after-ms`.
 - `--dump-layout f.jsonl` writes one line per visible object (rectangle, label text and its drawn rectangle); it is
   the input of `tools/check_widget_layout.py`.
+- `BETTA_SIM_NOW=<Unix seconds>` in the environment fixes the clock: the firmware's `time()` returns it, and LVGL's
+  tick and `esp_timer_get_time()` advance only by the simulator's own delays, so dates, ages, forecast days and
+  animations render the same on every run. Set `TZ` for the local time.
+
+## Test pages
+
+```bash
+tools/test_pages.sh                      # all sizes, four styles, text step 0, German
+tools/test_pages.sh tab5 --text-steps 0,1,2 --languages de,en
+```
+
+Renders every widget and variant on topic pages for the 10-inch, Tab5 and 4-inch sizes, checks layout and content and
+opens an overview (`/private/tmp/betta-testenv/view/index.html`, rewritten by each run). See
+[Test layouts](development/testing.md#test-layouts).
 
 ## Fixture
 

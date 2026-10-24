@@ -29,6 +29,13 @@ static inline lv_obj_t *ui_widget_name_create(lv_obj_t *parent, bool visible)
     return label;
 }
 
+/* One line, ellipsized: a long name must not wrap into the content below it. Call after setting the font. */
+static inline void ui_widget_name_one_line(lv_obj_t *label)
+{
+    lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+    lv_obj_set_height(label, lv_font_get_line_height(lv_obj_get_style_text_font(label, LV_PART_MAIN)));
+}
+
 static inline lv_coord_t ui_widget_name_height(lv_obj_t *label, const lv_font_t *font)
 {
     return ui_widget_name_enabled(label) ? lv_font_get_line_height(font) : 0;

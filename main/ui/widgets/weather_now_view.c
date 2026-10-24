@@ -45,7 +45,9 @@ bool weather_now_render(lv_obj_t *card, lv_obj_t *condition, lv_obj_t *temp, lv_
     }
     int icon_size = large ? WEATHER_ICON_LARGE_PX : WEATHER_ICON_SMALL_PX;
     bool short_tile = height < 190;
-    int icon_y = data->hide_name ? 0 : 28;
+    /* below the one-line name, also when larger text makes its line taller */
+    const int below_name = lv_font_get_line_height(ui_font_role(UI_TEXT_META)) + 2;
+    int icon_y = data->hide_name ? 0 : (below_name > 28 ? below_name : 28);
     lv_obj_set_hidden(view->icon, false);
     lv_image_set_src(view->icon, image);
     lv_obj_align(view->icon, LV_ALIGN_TOP_LEFT, short_tile ? 0 : (width - icon_size) / 2, icon_y);

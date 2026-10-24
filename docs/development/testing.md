@@ -121,6 +121,45 @@ fixtures for numeric and discrete details.
 `GET /api/screenshot.bmp`. Do not give `curl` a short timeout: the image is about 3 MB on the 10-inch panel and a timeout
 truncates it silently.
 
+## Test layouts
+
+`tools/test_layouts.py` builds test pages for every widget and variant from `tools/test_layout_cases.json`, grouped by
+topic (energy, climate, controls, status, devices, finance) and placed for each board: `paneljc` (1280 x 680), `tab5`
+(1280 x 600) and `panel4` (720 x 600). Cases keep their 10-inch size, tallest first; a topic that exceeds the board's
+pages or 32 KB is split. Two generated topics add every type at its minimum size with a long name, without its name and
+with a missing entity (`grenzen`), and at its maximum size (`maximal`).
+
+**Simulator**
+
+`tools/test_pages.sh [board ...]` (`test_layouts.py view`) renders every page with the demo entities and opens an
+overview with board, style, text step and language buttons. `--styles`, `--text-steps` and `--languages` choose the
+renders (default: four styles, step 0, German, about two minutes; all three steps about six). The overview is a static
+page that each run rewrites; reload it after a run. `simulate <board> [--suite NAME]` prints the same in the terminal.
+
+The renders use a fixed clock (Thursday 15 October 2026, 12:00 Berlin; `--now` changes it, `--now real` uses the
+host clock), so two runs give identical images. Per text step the run reports:
+
+- layout findings of `check_widget_layout.py`, in every style, German and English;
+- content findings in the first style: a widget with an existing entity that shows a loading or unavailable text, and
+  texts its case lists in `expect` but does not draw (at text step 0; larger text may leave optional rows out);
+- demo entities without a state (`Demo-Daten`), and widget types or validated field values without a case.
+
+**Cases**
+
+A case is a widget definition with `w`, `h` and `{role}` entities. The roles come from
+`tools/test_layout_entities_demo.json` (its `_states` add demo states the gallery data lacks). `expect` lists texts that
+must be drawn, `sim` holds fields only the simulator fixture gets (for example to-do `items`); neither reaches a panel
+layout. A new widget type or enumerated field value needs a case, or the run names it.
+
+**Panel**
+
+`generate <board>` writes the layouts to `.local/test-layouts/<board>/` with the entities of
+`.local/test-layouts/entities.json` when it exists (the household's own, not committed; same roles). `load <panel-ip>
+<file>` replaces the panel's layout with one topic and saves the panel's own layout once to
+`.claude/layout-backups/testenv-<ip>.json`; `restore <panel-ip>` puts it back and checks it, `status` tells which is
+loaded. Saving a layout deletes the panel-only history of graphs it no longer contains, which `restore` cannot bring
+back: `load` refuses while the panel has such graphs, unless `--discard-graph-history`. Use it on a test panel.
+
 ## Device page captures
 
 `tools/capture_device_pages.py <panel-ip> [--reference-dir DIR]` visits every page of the saved layout, saves each
