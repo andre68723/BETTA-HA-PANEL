@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   firmware:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     container: espressif/idf:v6.1@sha256:81893c71bb5e570088901f21def8684c25cd2a9020281bd01b843a7655edb18c
     env:
@@ -25,7 +25,7 @@ jobs:
       matrix:
         variant: [panel4, panel10, paneljc, paneljc-v2, tab5]
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           persist-credentials: false
       - name: ESP-Hosted C6 firmware
@@ -47,23 +47,23 @@ jobs:
           version=$(sed -n 's/^set(BETTAOS_RELEASE_VERSION "\(.*\)")$/\1/p' CMakeLists.txt)
           tools/package_release.sh "$version" "$VARIANT"
           mkdir -p dist && cp release/out/"$version"/*.bin dist/
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
         with:
           name: images-${{ matrix.variant }}
           path: dist/*.bin
           if-no-files-found: error
   checksums:
     needs: firmware
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
         with:
           pattern: images-*
           merge-multiple: true
           path: dist
       - run: cd dist && sha256sum *.bin | tee SHA256SUMS
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
         with:
           name: release-images
           path: dist/

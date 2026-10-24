@@ -19,6 +19,6 @@ package = false
 # ESP-IDF maintains its own Python environment; local Node >=22 is also supported.
 [tool.betta.ci]
 python = "3.13"
-node = "22"
+node = "24"
 uv = "0.12.21"
 idf = "6.1"
