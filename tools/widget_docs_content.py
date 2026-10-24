@@ -11,7 +11,7 @@ panel         what the tile shows and how it reacts to touch, as list items
 
 WIDGETS = {
     "alarm_tile": {
-        "summary": "Shows the state of an `alarm_control_panel.*` entity and arms or disarms it, asking for a code when the entity needs one.",
+        "summary": "Shows the **state** of an `alarm_control_panel.*` entity and arms or disarms it, asking for a code when the entity needs one.",
         "entities": [("Alarm panel", "`alarm_control_panel.*`", True)],
         "requirements": None,
         "options": [("Actions offered on tap", "the arm and disarm actions the tile offers; by default all the entity supports"),
@@ -20,7 +20,7 @@ WIDGETS = {
                   "A tap opens the action list; a PIN pad follows when the entity needs a code."],
     },
     "bambu_printer": {
-        "summary": "Shows a Bambu Lab printer's status, temperatures, progress and remaining time from its `sensor.*` entities, with Pause/Resume and Stop buttons.",
+        "summary": "Shows a **Bambu Lab printer's status**, temperatures, progress and remaining time from its `sensor.*` entities, with Pause/Resume and Stop buttons.",
         "entities": [("Print status", "`sensor.*`", True), ("Nozzle and bed temperature", "`sensor.*`", True),
                      ("Progress, remaining time", "`sensor.*`", True), ("Current step, job name", "`sensor.*`", False),
                      ("Pause, Resume and Stop buttons", "`button.*`", False), ("Live camera", "`camera.*` (MJPEG)", False)],
@@ -34,7 +34,7 @@ WIDGETS = {
                   "**Pause** or **Resume** (one button), **Status** and **Stop**."],
     },
     "binary_tile": {
-        "summary": "Shows the state of a `binary_sensor.*` or `event.*` entity, with optional history on tap.",
+        "summary": "Shows the **state** of a `binary_sensor.*` or `event.*` entity, with optional history on tap.",
         "entities": [("Binary sensor or event", "`binary_sensor.*`, `event.*`", True)],
         "requirements": None,
         "options": [("Display", "text with the time since the change, an icon, or the time since only"),
@@ -44,7 +44,7 @@ WIDGETS = {
                   "Read-only."],
     },
     "button": {
-        "summary": "Switches a `switch.*` entity or sends a `media_player.*` action from a compact touch button.",
+        "summary": "Switches a `switch.*` entity or sends a `media_player.*` action from a **compact touch button**.",
         "entities": [("Switch or media player", "`switch.*`, `media_player.*`", True)],
         "requirements": None,
         "options": [("Button mode", "auto, play/pause, stop, next or previous"),
@@ -52,7 +52,7 @@ WIDGETS = {
         "panel": ["A tap runs the action directly, without a popup."],
     },
     "camera_tile": {
-        "summary": "Shows snapshots of a `camera.*` or `image.*` entity, or an optional MJPEG live picture.",
+        "summary": "Shows **snapshots** of a `camera.*` or `image.*` entity, or an optional MJPEG live picture.",
         "entities": [("Camera or image", "`camera.*`, `image.*`", True)],
         "requirements": None,
         "options": [("Live picture (MJPEG)", "streams while visible; off by default. Only cameras with MJPEG; RTSP, H.264/H.265 and audio are not supported")],
@@ -61,7 +61,7 @@ WIDGETS = {
                   "The source camera decides how often a new image is available. The onboard ambient-light camera is separate."],
     },
     "car_widget": {
-        "summary": "Shows a car's battery level from a `sensor.*` entity as rings, with optional range, charging power and vehicle controls.",
+        "summary": "Shows a **car's battery level** from a `sensor.*` entity as rings, with optional range, charging power and vehicle controls.",
         "entities": [("Battery level", "`sensor.*`", True), ("Charging power", "`sensor.*`", False), ("Range", "`sensor.*`", False),
                      ("Preconditioning", "`switch.*`, `climate.*`, `button.*`, `select.*`", False),
                      ("Door lock", "`lock.*`, `binary_sensor.*`", False), ("Interior · °C", "`sensor.*`", False)],
@@ -72,7 +72,7 @@ WIDGETS = {
                   "Preconditioning is a button; everything else is read-only."],
     },
     "climate_tile": {
-        "summary": "Controls a `climate.*` entity such as an air conditioner through its supported HVAC modes.",
+        "summary": "Controls a `climate.*` entity such as an air conditioner through its **supported HVAC modes**.",
         "entities": [("Climate", "`climate.*`", True)],
         "requirements": None,
         "options": [],
@@ -80,7 +80,7 @@ WIDGETS = {
                   "Mode, fan and swing chips when the entity supports them; a tap on a chip opens its picker."],
     },
     "contact_tile": {
-        "summary": "Shows whether a door or window `binary_sensor.*` is open, with optional history on tap.",
+        "summary": "Shows whether a **door or window** `binary_sensor.*` is open, with optional history on tap.",
         "entities": [("Door or window sensor", "`binary_sensor.*`", True)],
         "requirements": None,
         "options": [("History on tap", "a tap opens the Recorder history")],
@@ -88,7 +88,7 @@ WIDGETS = {
                   "On a narrow tile the state takes a smaller size before it is shortened.", "Read-only."],
     },
     "cover_tile": {
-        "summary": "Shows the position of a `cover.*` entity such as a blind and operates it with up, stop and down.",
+        "summary": "Shows the **position** of a `cover.*` entity such as a blind and operates it with up, stop and down.",
         "entities": [("Cover", "`cover.*`", True)],
         "requirements": None,
         "options": [],
@@ -96,7 +96,7 @@ WIDGETS = {
                   "Up, stop and down act directly. The bar is an indicator; to drag a position use a [Slider](slider.md) on the same cover."],
     },
     "datetime_tile": {
-        "summary": "Shows and edits an `input_datetime.*`, `time.*`, `date.*` or `datetime.*` entity with a roller popup.",
+        "summary": "Shows and edits an `input_datetime.*`, `time.*`, `date.*` or `datetime.*` entity with a **roller popup**.",
         "entities": [("Date or time", "`input_datetime.*`, `time.*`, `date.*`, `datetime.*`", True)],
         "requirements": None,
         "options": [],
@@ -104,14 +104,14 @@ WIDGETS = {
                   "A tap opens date and time rollers; **Save** sends one service call."],
     },
     "empty_tile": {
-        "summary": "Reserves dashboard space. It has no entity and subscribes to nothing.",
+        "summary": "Reserves **dashboard space**. It has no entity and subscribes to nothing.",
         "entities": [],
         "requirements": None,
         "options": [],
         "panel": ["Empty space, no touch action. In the editor it is added as **Empty**."],
     },
     "energy_timeline": {
-        "summary": "Compares cumulative energy counters (`sensor.*`, kWh) over 24 hours, with rings and a detailed timeline.",
+        "summary": "Compares **cumulative energy counters** (`sensor.*`, kWh) over 24 hours, with rings and a detailed timeline.",
         "entities": [("Grid import · kWh", "`sensor.*`", True), ("Grid export · kWh", "`sensor.*`", False),
                      ("Solar production · kWh", "`sensor.*`", False), ("Battery charge and discharge · kWh", "`sensor.*`", False),
                      ("State of charge · %", "`sensor.*`", False), ("Solcast sensor", "`sensor.*`", False)],
@@ -124,7 +124,7 @@ WIDGETS = {
                   "A tap opens a popup with the measured counters and the estimated mix."],
     },
     "fan_tile": {
-        "summary": "Controls a `fan.*` entity with the speed, preset and oscillation controls it supports.",
+        "summary": "Controls a `fan.*` entity with the **speed, preset and oscillation** controls it supports.",
         "entities": [("Fan", "`fan.*`", True)],
         "requirements": None,
         "options": [],
@@ -132,7 +132,7 @@ WIDGETS = {
                   "One chip per speed step, oscillation and up to three presets, as the entity supports them; every control acts directly."],
     },
     "gauge": {
-        "summary": "Shows a numeric `sensor.*` as a vertical, horizontal or radial gauge.",
+        "summary": "Shows a numeric `sensor.*` as a **vertical, horizontal or radial gauge**.",
         "entities": [("Sensor", "`sensor.*`", True), ("Extra readout 1 and 2", "`sensor.*`", False)],
         "requirements": None,
         "options": [("Gauge style", "linear (vertical bar), horizontal (bar, title and value in one row above it) or radial (arc)"),
@@ -143,7 +143,7 @@ WIDGETS = {
                   "A distance in metres is shown in km.", "Read-only."],
     },
     "graph": {
-        "summary": "Follows a numeric value over time as a line, smoothed line or bar chart; usually a `sensor.*`, any entity with a numeric state works.",
+        "summary": "Follows a numeric value over time as a **line, smoothed line or bar chart**; usually a `sensor.*`, any entity with a numeric state works.",
         "entities": [("Numeric entity", "a sensor or another entity with a numeric state", True)],
         "requirements": "For **History from Home Assistant**: the [Recorder](https://www.home-assistant.io/integrations/recorder/) must retain the entity.",
         "options": [("Display mode", "line, smoothed line, smoothed line with points, or bars"),
@@ -155,7 +155,7 @@ WIDGETS = {
         "panel": ["Read-only."],
     },
     "heating_tile": {
-        "summary": "Shows a heating `climate.*` entity's measured and target temperatures and adjusts the target.",
+        "summary": "Shows a heating `climate.*` entity's **measured and target temperatures** and adjusts the target.",
         "entities": [("Thermostat", "`climate.*`", True), ("Actual temperature", "`sensor.*`", True)],
         "requirements": None,
         "options": [("Heating style", "full arc, or a semi-arc with mode buttons"),
@@ -163,7 +163,7 @@ WIDGETS = {
         "panel": ["A tap on the card switches the thermostat on or off.", "**+** and **−** step the target temperature."],
     },
     "light_tile": {
-        "summary": "Switches a `light.*` entity and adjusts brightness, colour temperature, colour and effects as far as the light supports them.",
+        "summary": "Switches a `light.*` entity and adjusts **brightness, colour temperature, colour and effects** as far as the light supports them.",
         "entities": [("Light", "`light.*`", True)],
         "requirements": None,
         "options": [],
@@ -172,7 +172,7 @@ WIDGETS = {
                   "Controls appear only for what Home Assistant reports the light supports."],
     },
     "lock_tile": {
-        "summary": "Shows the state of a `lock.*` entity and locks or unlocks it; optional history opens with a long press.",
+        "summary": "Shows the state of a `lock.*` entity and **locks or unlocks** it; optional history opens with a long press.",
         "entities": [("Lock", "`lock.*`", True)],
         "requirements": None,
         "options": [("Ask before unlocking or opening", "a confirmation before unlocking or opening; off by default"),
@@ -182,14 +182,14 @@ WIDGETS = {
                   "From 260 px width an **Open** button when the lock supports it."],
     },
     "media_player": {
-        "summary": "Controls playback and volume of a `media_player.*` entity, with the current track and cover art.",
+        "summary": "Controls **playback and volume** of a `media_player.*` entity, with the current track and cover art.",
         "entities": [("Media player", "`media_player.*`", True)],
         "requirements": None,
         "options": [],
         "panel": ["The volume bar is a drag slider; minus, plus and play/pause act directly."],
     },
     "parqet_portfolio": {
-        "summary": "Shows a Parqet portfolio from its `sensor.*` entities: total value, gain, XIRR, dividends and the largest holdings.",
+        "summary": "Shows a **Parqet portfolio** from its `sensor.*` entities: total value, gain, XIRR, dividends and the largest holdings.",
         "entities": [("Total value entity", "`sensor.*`", True), ("Unrealised gain sensor", "`sensor.*`", False),
                      ("Unrealised return sensor (%)", "`sensor.*`", False), ("XIRR sensor", "`sensor.*`", False),
                      ("Dividends sensor", "`sensor.*`", False)],
@@ -207,7 +207,7 @@ WIDGETS = {
                   "The widget does not compute the return: the total value includes cash, and the result would differ from Parqet's figure."],
     },
     "stock_quotes": {
-        "summary": "Shows up to eight quotes of Yahoo Finance or Easy Stock `sensor.*` entities as a list or as charts, with the last session's change and a detail view over five periods.",
+        "summary": "Shows **up to eight quotes** of Yahoo Finance or Easy Stock `sensor.*` entities as a list or as charts, with the last session's change and a detail view over five periods.",
         "entities": [("Quote 1", "`sensor.*` of Yahoo Finance or Easy Stock", True), ("Quote 2 to 8", "`sensor.*` of Yahoo Finance or Easy Stock", False)],
         "requirements": "One of two integrations from HACS, or both mixed: **[Yahoo Finance](https://github.com/iprak/yahoofinance)** "
                         "(`iprak/yahoofinance`) or **[Easy Stock](https://github.com/derspe/ha-easy-stock)**. The panel reads from Home "
@@ -228,8 +228,8 @@ WIDGETS = {
                   "is a **trend**, not a market return. A shorter history says from when it starts.",
                   "Charts are fetched only for a page on screen, one at a time, and refreshed every 15 minutes."],
     },
-    "price_forecast": {
-        "summary": "Shows a day of electricity prices from a price `sensor.*` as bars, with the price now, today and tomorrow, and the cheap hours.",
+    "energy_price_forecast": {
+        "summary": "Shows **electricity prices** for today or tomorrow from a price `sensor.*` as bars, with the current interval's price and the next cheap window.",
         "entities": [("Price sensor", "`sensor.*` with a price list", True), ("Average sensor (EUR/kWh)", "`sensor.*`", False)],
         "requirements": None,
         "options": [("Average (fixed, EUR/kWh; empty = calculated)", "a fixed average instead of the day's own; an average sensor replaces it too"),
@@ -242,7 +242,7 @@ WIDGETS = {
                   "Design inspired by the community's price timeline cards, for example [Neisi/ha-price-timeline-card](https://github.com/Neisi/ha-price-timeline-card); the code is the panel's own."],
     },
     "room_tile": {
-        "summary": "Groups a room's values and controls in one card, with a popup for its entities; any domain, filled from a Home Assistant area or by hand.",
+        "summary": "Groups a **room's values and controls** in one card, with a popup for its entities; any domain, filled from a Home Assistant area or by hand.",
         "entities": [("Main entity", "any", True), ("Room entities (up to 7)", "any", False),
                      ("Extra field", "one of the room entities", False)],
         "requirements": None,
@@ -253,14 +253,14 @@ WIDGETS = {
                   "With **Controls on the card** lights and switches toggle together and covers get up and down."],
     },
     "scene_tile": {
-        "summary": "Runs a `scene.*`, `script.*`, `button.*`, `input_button.*` or `lock.*` action from a compact tile.",
+        "summary": "Runs a `scene.*`, `script.*`, `button.*`, `input_button.*` or `lock.*` **action** from a compact tile.",
         "entities": [("Action", "`scene.*`, `script.*`, `button.*`, `input_button.*`, `lock.*`", True)],
         "requirements": None,
         "options": [],
         "panel": ["A tap runs the action directly, without a popup."],
     },
     "select_tile": {
-        "summary": "Chooses an option of a `select.*` or `input_select.*` entity.",
+        "summary": "Chooses an **option** of a `select.*` or `input_select.*` entity.",
         "entities": [("Select", "`select.*`, `input_select.*`", True)],
         "requirements": None,
         "options": [],
@@ -268,7 +268,7 @@ WIDGETS = {
                   "Leave enough width for the title and the longest option; the example is 360 × 100 px."],
     },
     "sensor": {
-        "summary": "Shows the value of a `sensor.*` or `binary_sensor.*` entity, formatted by its device class, with optional name, age and Recorder history.",
+        "summary": "Shows the **value** of a `sensor.*` or `binary_sensor.*` entity, formatted by its device class, with optional name, age and Recorder history.",
         "entities": [("Sensor", "`sensor.*`, `binary_sensor.*`", True)],
         "requirements": None,
         "options": [("Show name", "the widget name; on by default"),
@@ -278,7 +278,7 @@ WIDGETS = {
         "panel": ["The value as formatted for its device class (see Options).", "Read-only."],
     },
     "slider": {
-        "summary": "Adjusts a writable number such as light brightness, cover position or an input number.",
+        "summary": "Adjusts a **writable number** such as light brightness, cover position or an input number.",
         "entities": [("Writable number", "light brightness, cover position, an input number and the like", True)],
         "requirements": None,
         "options": [("Slider entity type", "what the slider sets"),
@@ -287,7 +287,7 @@ WIDGETS = {
         "panel": ["Drag or tap the bar to set the value directly."],
     },
     "solar_forecast": {
-        "summary": "Compares the predicted solar production from `sensor.*` forecasts for today and the next four days.",
+        "summary": "Compares the **predicted solar production** from `sensor.*` forecasts for today and the next four days.",
         "entities": [("Remaining today (sensor)", "`sensor.*`", True), ("Today forecast", "`sensor.*`", False),
                      ("Tomorrow, Day 3–5 forecast", "`sensor.*`", False)],
         "requirements": "Sensors that forecast the solar production per day, for example from "
@@ -303,14 +303,14 @@ WIDGETS = {
                   "A tap opens a popup with Rest and every day's value; it closes after a minute."],
     },
     "sonos_favorites": {
-        "summary": "Plays a Sonos favourite on a `media_player.*` from a list on the dashboard.",
+        "summary": "Plays a **Sonos favourite** on a `media_player.*` from a list on the dashboard.",
         "entities": [("Sonos player", "`media_player.*`", True), ("Favorites sensor", "`sensor.sonos_favorites`", True)],
         "requirements": "The **[Sonos integration](https://www.home-assistant.io/integrations/sonos/)** with its favorites sensor.",
         "options": [],
         "panel": ["The favourites as rows, in one or two columns by name length.", "A tap on a favourite plays it directly."],
     },
     "todo_list": {
-        "summary": "Shows a `todo.*` list and marks single items done.",
+        "summary": "Shows a `todo.*` list and **marks single items done**.",
         "entities": [("To-do list", "`todo.*`", True)],
         "requirements": "A list of Home Assistant's **[To-do](https://www.home-assistant.io/integrations/todo/)** integration from any "
                         "provider, for example Local To-do, Shopping List or Todoist.",
@@ -318,7 +318,7 @@ WIDGETS = {
         "panel": ["A tap on a row marks that item done."],
     },
     "vacuum_tile": {
-        "summary": "Shows a `vacuum.*` entity's status, its cleaning actions and an optional map in the tile.",
+        "summary": "Shows a `vacuum.*` entity's status, its **cleaning actions** and an optional map in the tile.",
         "entities": [("Vacuum", "`vacuum.*`", True), ("Map image", "`image.*`", False), ("Cleaning mode", "`select.*`", False),
                      ("Battery sensor", "`sensor.*`", False)],
         "requirements": None,
@@ -329,7 +329,7 @@ WIDGETS = {
                   "The map is read-only. The legacy layout name `roborock_tile` uses this widget."],
     },
     "wallbox_evcc": {
-        "summary": "Shows and controls an evcc loadpoint through its entities (the mode `select.*` and the related sensors, numbers and selects): charging mode, vehicle, target SOC, power, energy and remaining time.",
+        "summary": "Shows and controls an **evcc loadpoint** through its Home Assistant integration. The detected mode `select.*` and related sensors supply charging mode, vehicle, target SOC, power, energy and remaining time.",
         "entities": [("Loadpoint mode", "`select.*`", True), ("Vehicle, target SOC", "`select.*`, `number.*`", False),
                      ("Status, power, energy, remaining time, SOC", "`sensor.*`, `binary_sensor.*`", False),
                      ("PV, battery, grid and home power (energy-flow header)", "`sensor.*`", False)],
@@ -337,15 +337,15 @@ WIDGETS = {
                         "(the add-on or a standalone server). Enable the loadpoint mode, vehicle, charge limit, power, charged energy, remaining "
                         "duration, SOC and connection entities. Smart mode needs integration 2026.8.3 or later; checked with 2026.10.2. All "
                         "actions pass through Home Assistant.",
-        "options": [("Loadpoint", "**Find loadpoints** reads the integration; existing bindings stay until you accept a replacement"),
-                    ("Advanced entities", "every binding and its target domain"),
+        "options": [("Loadpoint", "**Find loadpoints** refreshes the complete bindings from the selected evcc instance"),
+                    ("Detected entities", "read-only bindings from the selected evcc instance"),
                     ("Header", "off, the charging power as a bar up to **Maximum charging power (kW)** (empty = 11), or the energy flow: "
-                               "sources above two bars on one scale, consumers below; **Find loadpoints** also fills the site sensors")],
+                               "sources above two bars on one scale, consumers below; the selected loadpoint automatically supplies the site sensors")],
         "panel": ["Status, power, charged energy, remaining time and the current SOC on a green bar.",
                   "The optional header sits above the modes: the charging power against its maximum, or the site's flow in kW (PV, battery, grid in; home, car, battery, export out). It needs about 400 px (power) or 440 px (flow) of height and stays off on a shorter card."],
     },
     "weather_3day": {
-        "summary": "Compares forecast days of a `weather.*` entity: temperatures and precipitation in configurable columns.",
+        "summary": "Compares **forecast days** of a `weather.*` entity: temperatures and precipitation in configurable columns.",
         "entities": [("Weather", "`weather.*`", True), ("DWD weather report", "`sensor.*`", False)],
         "requirements": "A **[weather](https://www.home-assistant.io/integrations/weather/)** entity with daily forecasts. The report text "
                         "needs the **[DWD Weather integration](https://github.com/FL550/dwd_weather)** and its separate *Weather report* sensor "
@@ -357,7 +357,7 @@ WIDGETS = {
                   "With the report, a tap on the temperature shows the full text; a wide header shows a summary (about 150 × 40 px free)."],
     },
     "weather_tile": {
-        "summary": "Shows the current conditions of a `weather.*` entity, its temperature and the extra readings the provider supplies.",
+        "summary": "Shows the **current conditions** of a `weather.*` entity, its temperature and the extra readings the provider supplies.",
         "entities": [("Weather", "`weather.*`", True)],
         "requirements": None,
         "options": [("Show name", "off by default, to leave room for the conditions")],

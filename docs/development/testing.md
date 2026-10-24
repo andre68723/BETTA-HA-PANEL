@@ -52,6 +52,12 @@ first, then review on hardware.
   the stock popup and checks the real chart's elapsed-time coordinates and missing points; parser tests cover daily/weekly gaps across both clock changes.
 - Host tests need cJSON (`libcjson-dev`, `brew install cjson`, or fetched sources); `tools/test_host.sh` exits with 2
   when neither exists.
+- `test_aux_history.c` runs the real Recorder and Easy Stock HTTP workers with scripted replies and a virtual clock:
+  a permanently busy gate, a slow response that keeps making progress, oversized bodies, rejected tokens, cleanup and
+  a failed task creation followed by retry. `test_parqet_request.c` runs the production request scheduler with timer
+  allocation failures, gate/reply timeouts, late replies, shared requests, cache hits and cancellation.
+- `test_quote_feed.c` tests the production history distributor with 80 registrations, allocation failure during growth,
+  visibility, popup priority, deleting all slots, late replies and registration after cleanup.
 - `tests/host/test_coredump_store.c` checks two-report retention, failed imports, duplicate imports,
   raw downloads, metadata/diagnostic round-trips, corrupted payloads and stable-ID deletion.
   `tests/webui/coredump_reports.test.mjs` exercises individual erase clicks, confirmation,
@@ -173,3 +179,7 @@ icon and title (at most a quarter of the bar), the others are 64-96 px icon tabs
 page once the bar is compact (`navIconIssue()`); the simulator draws every icon as the list glyph, so judge icons in the
 editor or on a panel. More tabs would need a "More" list or lazy page building (owner decision 2026-10-01: not wanted).
 The widget total stays 224 (`APP_MAX_WIDGETS_TOTAL`).
+
+Dense stock layouts validate a full page set under the 32 KiB limit, then collect every quote, including the last one.
+A deliberately smaller collection buffer must report every omitted entity; registry tests cover 1,056 simultaneous
+quotes and more layout changes than the cache capacity. Pruning scratch stays in PSRAM rather than on the HA task stack.

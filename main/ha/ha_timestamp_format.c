@@ -7,6 +7,7 @@
 #include <time.h>
 
 #include "ha/ha_datetime_value.h"
+#include "ha/ha_sensor_value.h"
 #include "util/iso_time.h"
 
 bool ha_ts_style_from_string(const char *name, ha_ts_style_t *out)
@@ -43,13 +44,27 @@ bool ha_timestamp_parse(const char *state, int64_t *epoch_s)
     memcpy(text, state, n + 1);
     /* Some integrations write a space between date and time (str() of a Python datetime). */
     if (text[10] == ' ') text[10] = 'T';
+    char date[11];
+    memcpy(date, text, 10);
+    date[10] = '\0';
+    if (!ha_sv_date_parse(date, NULL, NULL, NULL) || text[10] != 'T' || text[13] != ':' || text[16] != ':') return false;
+    for (int i = 11; i < 19; i++) {
+        if (i != 13 && i != 16 && (text[i] < '0' || text[i] > '9')) return false;
+    }
     /* iso_time_parse() also takes a missing offset; a timestamp sensor's state always names one. */
     const char *tz = text + 19;
     if (*tz == '.') {
         tz++;
+        const char *fraction = tz;
         while (*tz >= '0' && *tz <= '9') tz++;
+        if (tz == fraction) return false;
     }
-    if (*tz != 'Z' && *tz != '+' && *tz != '-') return false;
+    if (*tz == 'Z') {
+        if (tz[1] != '\0') return false;
+    } else if (*tz == '+' || *tz == '-') {
+        if (strlen(tz) != 6 || tz[3] != ':' || tz[1] < '0' || tz[1] > '9' || tz[2] < '0' || tz[2] > '9' ||
+            tz[4] < '0' || tz[4] > '9' || tz[5] < '0' || tz[5] > '9') return false;
+    } else return false;
     return iso_time_parse(text, epoch_s);
 }
 

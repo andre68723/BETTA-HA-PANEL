@@ -91,8 +91,11 @@ def all_widgets_fixture(variant):
         ('solar_forecast_vertical', 'Solar vertikal', (640, 300, 580, 280), dict(solar_forecast_bar_max_kwh=60, forecast_days=5)),
     ])
     page('Energie-Widgets', [
-        ('energy_last_24_hours', 'Energie mit Batterie', (20, 20, 600, 540), {}),
-        ('nested_rings', 'Energie konzentrisch', (660, 20, 600, 540), {}),
+        ('energy_last_24_hours', 'Energie mit Batterie', (20, 20, 600, 250), {}),
+        ('nested_rings', 'Energie konzentrisch', (660, 20, 600, 250), {}),
+        ('energy_price_forecast', 'Energiepreisprognose', (20, 290, 400, 290), {}),
+        ('portfolio', 'Portfolio', (440, 290, 400, 290), dict(parqet_selector=True)),
+        ('stocks_charts', 'Aktien & ETFs', (860, 290, 400, 290), {}),
     ])
     page('Medien', [
         ('media_player', 'Musik', (20, 20, 500, 420), {}),

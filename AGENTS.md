@@ -29,7 +29,7 @@ is v0.9.1-rc1 (v0.9.0 is released).
 | Browser editor or theme preview | `docs/editor-source.md`, `docs/appearance.md` |
 | Board drivers, memory or flashing | `docs/choose-display.md`, the matching board/resources/storage guide in `docs/hardware/`, the relevant page under `docs/development/` (build, release, checks) |
 | Home Assistant, MQTT or API behaviour | `docs/home-assistant.md`, `docs/notifications.md` when applicable, relevant `main/ha/` or `main/api/` code |
-| User-visible behaviour | The matching topic and v0.9.0 entry in `docs/release-notes.md` |
+| User-visible behaviour | The matching topic and current v0.9.1 entry in `docs/release-notes.md` |
 | Documentation, screenshots or GitHub Pages | `docs/documentation.md` and the matching topic; `zensical.toml` for the current navigation |
 
 Read only the documents relevant to the task. `docs/README.md` indexes the focused documentation.
@@ -158,10 +158,9 @@ selects the target, config overlays and `build/<variant>/`; a bare `idf.py`
 can select the wrong flash configuration. The root `CMakeLists.txt` selects a
 variant manifest and applies `tools/apply_component_patches.py` to fetched
 components during configure. `main/idf_component.yml`, `managed_components/`
-and `build/` are generated or fetched, not primary sources. The root
-`dependencies.lock` is shared by `panel4` and `panel10`; building a
-different one can rewrite it. JC variants use `dependencies.lock.paneljc`;
-Tab5 uses `dependencies.lock.tab5`.
+and `build/` are generated or fetched, not primary sources. Panel4 uses the root
+`dependencies.lock`; Panel10 uses `dependencies.lock.panel10`. JC variants use `dependencies.lock.paneljc`;
+Tab5 uses `dependencies.lock.tab5`. Keep variant locks separate; builds still share managed components.
 
 Panel4 selects the official BSP 3.0.1 source under `third_party/`; the override changes only its
 adapter constraint. Preserve GPIO23 reset and the GT911 address probe. Read both BSP and panel
@@ -199,18 +198,20 @@ paneljc network freeze (2026-09) was resolved by the memory work and has not rec
   In the editor, update the picker configuration, Add menu, sizes and preview.
 - Widget or editor-preview change: keep `tilePreviewMarkup` and the panel widget in step (rule in `docs/editor-source.md`);
   `.local/skills/preview-parity/SKILL.md` audits the drift on demand and is not part of `tools/check.sh`.
-- Editor text: a hint longer than 100 characters in the Inspector is shortened to its first sentence plus an info button by
-  `js/inspector-hints.js`; keep hints short anyway. A gauge hides its name when it is too narrow (`autoGaugeName` in `layout-model.js`).
+- Editor text: Inspector explanations open from their section's info button (`js/inspector-hints.js`). Author longer help
+  with `**Section heading**` on its own line, a blank line and the explanation; do not run headings into prose with a colon.
+  Warnings and status messages remain directly visible (`warn`/`no-shorten`). Settings retain sentence summaries.
+  A gauge hides its name when it is too narrow (`autoGaugeName` in `layout-model.js`).
 - New editor file: add it to `WEBUI_JS_SOURCES` (or a stylesheet to
   `WEBUI_CSS_SOURCES`) in `components/webui/CMakeLists.txt` and the ordered
   script (or stylesheet link) list in `components/webui/www/index.html`. New text needs
-  English and German keys in `components/webui/www/js/i18n.js`.
+  English and German keys in `components/webui/www/js/i18n.js` and `js/i18n-de.js`.
 - Device tests without touch: `POST /api/ui/tap` opens a read-only popup, `/api/navigate` switches a page, `/api/screenshot.bmp`
   and `tools/capture_device_pages.py` capture it; before a risky layout test back up `GET /api/layout` to `.claude/layout-backups/`
   (ignored) and keep the USB recovery in mind (`esptool flash-id` resets a hung panel, then `PUT` the old layout).
 - Navigation or page limits: `ui/nav_layout.c` (pure, host-tested), `APP_MAX_PAGES` in `app_config.h`, the editor's `maxPages()`
   and `navIconIssue()` and `/api/version` (`max_pages`, `full_nav_pages`) stay in step.
-- User-visible behaviour: update the matching topic in the v0.9.0 section of
+- User-visible behaviour: update the matching topic in the current v0.9.1 section of
   `docs/release-notes.md`. Use `docs/README.md` to find the
   focused hardware, integration, appearance and widget documents.
 
@@ -220,6 +221,10 @@ Standing owner authorization (2026-10-12): read-only device diagnostics, includi
 reboot history and crash-dump downloads, matching-ELF decoding, local checks and firmware builds, and the cache/network
 access these checks need are pre-approved. Proceed without another confirmation. This does not authorize flashing,
 device resets, pushing, deleting retained crash reports or changing Home Assistant.
+
+Standing owner authorization (2026-10-22): all checks, firmware image builds, documentation builds and Safari browser
+checks (including window sizing and screenshot checks), with their required cache and network access, are always pre-approved. Run them
+without asking again.
 
 For interactive browser checks, prefer Safari MCP. Use text extraction and batched DOM interactions for speed and
 token efficiency; capture screenshots when visual appearance needs inspection. Set the visible browser window to

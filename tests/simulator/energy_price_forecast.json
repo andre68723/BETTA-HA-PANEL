@@ -7,7 +7,7 @@
    "widgets": [
     {
      "id": "epex",
-     "type": "price_forecast",
+     "type": "energy_price_forecast",
      "title": "EPEX Spot (DE-LU)",
      "entity_id": "sensor.epex_spot_data_market_price",
      "x": 16,
@@ -17,7 +17,7 @@
     },
     {
      "id": "dao",
-     "type": "price_forecast",
+     "type": "energy_price_forecast",
      "title": "Day Ahead Optimizer",
      "entity_id": "sensor.da_price",
      "x": 16,
@@ -27,7 +27,7 @@
     },
     {
      "id": "small",
-     "type": "price_forecast",
+     "type": "energy_price_forecast",
      "title": "Quarter hours",
      "entity_id": "sensor.price_15",
      "x": 368,
@@ -37,7 +37,7 @@
     },
     {
      "id": "nodata",
-     "type": "price_forecast",
+     "type": "energy_price_forecast",
      "title": "No data",
      "entity_id": "sensor.price_missing",
      "x": 16,
@@ -47,7 +47,7 @@
     },
     {
      "id": "neg",
-     "type": "price_forecast",
+     "type": "energy_price_forecast",
      "title": "Negative prices",
      "entity_id": "sensor.price_negative",
      "x": 368,
@@ -58,7 +58,7 @@
     },
     {
      "id": "raw",
-     "type": "price_forecast",
+     "type": "energy_price_forecast",
      "title": "Energy Price Forecast",
      "entity_id": "sensor.energy_price_forecast_de",
      "x": 16,

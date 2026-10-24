@@ -2,7 +2,7 @@
 
 # Fan
 
-Controls a `fan.*` entity with the speed, preset and oscillation controls it supports.
+Controls a `fan.*` entity with the **speed, preset and oscillation** controls it supports.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/fan_glow.png"><img src="../img/gallery/fan_glow.png" alt="Fan, Glow style" loading="lazy" width="300" height="240" style="width: 240px"></a></figure>

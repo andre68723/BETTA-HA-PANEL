@@ -41,6 +41,8 @@ dialog.inspector-help-dialog { margin:auto; width:min(560px,calc(100vw - 36px));
 .inspector-help-section h3 { margin:0 0 6px; font-size:12px; font-weight:700; color:var(--muted); }
 .inspector-help-section p { margin:6px 0; }
 .inspector-help-section strong { font-weight:650; color:var(--text); }
+.inspector-help-section h4 { margin:14px 0 6px; font-size:14px; font-weight:650; color:var(--text); }
+.inspector-help-section h4:first-child, .inspector-help-section h3 + h4 { margin-top:6px; }
 .inspector-help-section code { font-size:.92em; padding:1px 4px; border-radius:4px; background:var(--surf-2); }
 .inspector-help-footer { margin-top:16px; padding-top:12px; border-top:1px solid var(--line); font-size:13px; }
 .inspector-help-footer a { color:var(--accent); text-decoration:none; }

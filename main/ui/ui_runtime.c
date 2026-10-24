@@ -502,7 +502,14 @@ static void ui_runtime_stock_chip_tap(void)
     char current[40];
     ui_runtime_stock_symbol_from_entity(entity_id, title, sizeof(title));
     snprintf(current, sizeof(current), "%.20s", state->state);
-    cJSON *attrs = cJSON_Parse(state->attributes_json);
+    ha_quote_t quote;
+    const bool is_quote = ha_quote_parse(ha_quote_provider_from_platform(ha_display_precision_platform(entity_id)),
+                                         state->state, state->attributes_json, &quote);
+    if (is_quote && quote.available) {
+        if (quote.symbol[0] != '\0') ui_runtime_stock_symbol_from_entity(quote.symbol, title, sizeof(title));
+        snprintf(current, sizeof(current), "%.2f %s", quote.price, ha_quote_currency_sign(quote.currency));
+    }
+    cJSON *attrs = !is_quote ? cJSON_Parse(state->attributes_json) : NULL;
     if (attrs != NULL) {
         const cJSON *symbol = cJSON_GetObjectItemCaseSensitive(attrs, "symbol");
         if (cJSON_IsString(symbol) && symbol->valuestring != NULL && symbol->valuestring[0] != '\0') {

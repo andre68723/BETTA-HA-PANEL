@@ -2,7 +2,7 @@
 
 # Weather forecast
 
-Compares forecast days of a `weather.*` entity: temperatures and precipitation in configurable columns.
+Compares **forecast days** of a `weather.*` entity: temperatures and precipitation in configurable columns.
 
 <div class="widget-previews">
 <figure><a href="../img/examples/weather-forecast-report_glow.png"><img src="../img/examples/weather-forecast-report_glow.png" alt="Forecast with optional DWD report, Glow style" loading="lazy" width="680" height="520" style="width: 544px"></a></figure>

@@ -438,13 +438,13 @@
       }
     },
     {
-      "id": "p_price_forecast",
-      "title": "price_forecast",
+      "id": "p_energy_price_forecast",
+      "title": "energy_price_forecast",
       "widgets": [
         {
-          "id": "w_price_forecast",
-          "type": "price_forecast",
-          "title": "price_forecast",
+          "id": "w_energy_price_forecast",
+          "type": "energy_price_forecast",
+          "title": "energy_price_forecast",
           "rect": {
             "x": 20,
             "y": 20,

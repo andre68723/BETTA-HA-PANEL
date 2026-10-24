@@ -73,6 +73,8 @@ bool test_sensor_value(void)
     int y = 0, m = 0, d = 0;
     SV_CHECK(ha_sv_date_parse("2026-10-21", &y, &m, &d) && y == 2026 && m == 10 && d == 21);
     SV_CHECK(!ha_sv_date_parse("2026-10-21T05:00:00", &y, &m, &d) && !ha_sv_date_parse("2026-13-01", &y, &m, &d));
+    SV_CHECK(!ha_sv_date_parse("2026-02-29", &y, &m, &d) && !ha_sv_date_parse("2026-04-31", &y, &m, &d));
+    SV_CHECK(ha_sv_date_parse("2028-02-29", &y, &m, &d) && !ha_sv_date_parse("0000-01-01", &y, &m, &d));
     SV_CHECK(ha_sv_days_between(2026, 10, 21, 2026, 10, 22) == 1);
     SV_CHECK(ha_sv_days_between(2026, 12, 31, 2027, 1, 1) == 1);
     SV_CHECK(ha_sv_days_between(2028, 2, 28, 2028, 3, 1) == 2); /* leap year */
@@ -105,6 +107,11 @@ bool test_timestamp_format(void)
     SV_CHECK(!ha_timestamp_parse("2026-10-21", &other));
     SV_CHECK(!ha_timestamp_parse("unknown", &other));
     SV_CHECK(!ha_timestamp_parse("12.5", &other));
+    SV_CHECK(!ha_timestamp_parse("2026-02-30T05:56:10Z", &other));
+    SV_CHECK(!ha_timestamp_parse("2026-10-21T05:56:10Zjunk", &other));
+    SV_CHECK(!ha_timestamp_parse("2026-10-21T05:56:10+00:00junk", &other));
+    SV_CHECK(!ha_timestamp_parse("2026-10-21T05:56:10.Z", &other));
+    SV_CHECK(!ha_timestamp_parse("2026-10-21T-1:56:10Z", &other));
 
     const char *previous_tz = getenv("TZ");
     char *saved_tz = previous_tz ? strdup(previous_tz) : NULL;

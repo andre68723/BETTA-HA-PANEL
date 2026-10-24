@@ -2,7 +2,7 @@
 
 # Slider
 
-Adjusts a writable number such as light brightness, cover position or an input number.
+Adjusts a **writable number** such as light brightness, cover position or an input number.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/vertical_glow.png"><img src="../img/gallery/vertical_glow.png" alt="Vertical, Glow style" loading="lazy" width="120" height="240" style="width: 96px"></a></figure>

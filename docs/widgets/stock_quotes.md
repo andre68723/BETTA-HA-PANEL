@@ -2,7 +2,7 @@
 
 # Stocks & ETFs
 
-Shows up to eight quotes of Yahoo Finance or Easy Stock `sensor.*` entities as a list or as charts, with the last session's change and a detail view over five periods.
+Shows **up to eight quotes** of Yahoo Finance or Easy Stock `sensor.*` entities as a list or as charts, with the last session's change and a detail view over five periods.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/stocks_list_glow.png"><img src="../img/gallery/stocks_list_glow.png" alt="Stocks list, Glow style" loading="lazy" width="380" height="280" style="width: 304px"></a></figure>

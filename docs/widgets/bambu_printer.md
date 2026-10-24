@@ -2,7 +2,7 @@
 
 # Bambu printer
 
-Shows a Bambu Lab printer's status, temperatures, progress and remaining time from its `sensor.*` entities, with Pause/Resume and Stop buttons.
+Shows a **Bambu Lab printer's status**, temperatures, progress and remaining time from its `sensor.*` entities, with Pause/Resume and Stop buttons.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/bambu_a1_glow.png"><img src="../img/gallery/bambu_a1_glow.png" alt="Bambu A1, Glow style" loading="lazy" width="354" height="420" style="width: 283.2px"></a></figure>

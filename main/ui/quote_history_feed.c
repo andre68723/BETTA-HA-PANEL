@@ -12,8 +12,10 @@
 #include "ui/ui_memory.h"
 #include "util/history_feed_policy.h"
 
-/* Charts of a few widgets (up to eight quotes each) and one popup. */
-#define FEED_MAX 24
+/* Every saved stock tile may have eight charts; one further registration belongs to the popup.
+ * Grow in PSRAM as widgets register, rather than silently starving tiles after the first 24 quotes. */
+#define FEED_LIMIT (APP_MAX_WIDGETS_TOTAL * 8 + 1)
+#define FEED_GROW 24
 #define FEED_TICK_MS 2000
 
 typedef struct {
@@ -31,11 +33,31 @@ typedef struct {
     uint32_t generation;      /* of the request in flight for this slot */
 } feed_entry_t;
 
-static history_feed_slot_t s_slots[FEED_MAX];
-static feed_entry_t s_entries[FEED_MAX];
+static history_feed_slot_t *s_slots;
+static feed_entry_t *s_entries;
+static int s_capacity;
 static history_feed_state_t s_state;
 static lv_timer_t *s_timer;
 static ha_quote_series_t *s_series;        /* scratch, PSRAM */
+
+static bool grow(void)
+{
+    if (s_capacity >= FEED_LIMIT) return false;
+    const int next = s_capacity + FEED_GROW < FEED_LIMIT ? s_capacity + FEED_GROW : FEED_LIMIT;
+    history_feed_slot_t *slots = ui_calloc_prefer_psram(next, sizeof(*slots));
+    feed_entry_t *entries = ui_calloc_prefer_psram(next, sizeof(*entries));
+    if (slots == NULL || entries == NULL) { free(slots); free(entries); return false; }
+    if (s_capacity > 0) {
+        memcpy(slots, s_slots, s_capacity * sizeof(*slots));
+        memcpy(entries, s_entries, s_capacity * sizeof(*entries));
+    }
+    free(s_slots);
+    free(s_entries);
+    s_slots = slots;
+    s_entries = entries;
+    s_capacity = next;
+    return true;
+}
 
 static ha_quote_series_t *scratch(void)
 {
@@ -53,7 +75,7 @@ static bool same_request(const feed_entry_t *a, const feed_entry_t *b)
 static void deliver(int slot, quote_feed_status_t status, const ha_quote_series_t *series, int64_t now_ms)
 {
     const feed_entry_t asked = s_entries[slot];
-    for (int i = 0; i < FEED_MAX; i++) {
+    for (int i = 0; i < s_capacity; i++) {
         if (!s_slots[i].used || !s_entries[i].configured || (i != slot && !same_request(&s_entries[i], &asked))) continue;
         s_slots[i].last_try_ms = now_ms;
         if (status != QUOTE_FEED_FAILED) s_slots[i].last_ok_ms = now_ms;
@@ -142,7 +164,7 @@ static int64_t now_ms(void)
 
 static int slot_of(uint32_t generation)
 {
-    for (int i = 0; i < FEED_MAX; i++) {
+    for (int i = 0; i < s_capacity; i++) {
         if (s_slots[i].used && s_entries[i].configured && s_entries[i].generation == generation && s_state.inflight == i) return i;
     }
     return -1;
@@ -201,7 +223,7 @@ static void deliver_daily(const char *symbol, const ha_quote_daily_t *daily, int
 {
     ha_quote_series_t *s = scratch();
     if (s == NULL) return;
-    for (int i = 0; i < FEED_MAX; i++) {
+    for (int i = 0; i < s_capacity; i++) {
         feed_entry_t *e = &s_entries[i];
         if (!s_slots[i].used || !e->configured || e->fallback || e->provider != HA_QUOTE_PROVIDER_EASY_STOCK ||
             e->period < HA_QUOTE_PERIOD_30D || strcmp(e->symbol, symbol) != 0) {
@@ -238,7 +260,7 @@ static void on_easy(uint32_t generation, ha_easy_stock_history_t *history)
             /* no endpoint (an older integration), another symbol or a bad reply: Home Assistant's own means instead */
             ESP_LOGW(TAG, "Easy Stock history of %s unavailable (%s, outcome %d), using statistics", s_entries[slot].symbol,
                      esp_err_to_name(history->status), (int)history->outcome);
-            for (int i = 0; i < FEED_MAX; i++) {
+            for (int i = 0; i < s_capacity; i++) {
                 if (s_slots[i].used && strcmp(s_entries[i].symbol, s_entries[slot].symbol) == 0) {
                     s_entries[i].fallback = true;
                     s_slots[i].last_try_ms = 0; /* due now, through the other source */
@@ -275,7 +297,7 @@ static esp_err_t start(int slot)
 
 static int pick_priority(int64_t now)
 {
-    for (int i = 0; i < FEED_MAX; i++) {
+    for (int i = 0; i < s_capacity; i++) {
         const history_feed_slot_t *slot = &s_slots[i];
         if (slot->used && slot->visible && s_entries[i].priority && slot->last_ok_ms == 0 &&
             (slot->last_try_ms == 0 || now - slot->last_try_ms >= HISTORY_FEED_RETRY_MS)) {
@@ -288,12 +310,12 @@ static int pick_priority(int64_t now)
 static void feed_tick(lv_timer_t *timer)
 {
     (void)timer;
-    for (int i = 0; i < FEED_MAX; i++) {
+    for (int i = 0; i < s_capacity; i++) {
         s_slots[i].visible = s_slots[i].used && s_entries[i].configured && s_entries[i].obj != NULL &&
                              lv_obj_is_visible(s_entries[i].obj);
     }
     const int64_t now = now_ms();
-    history_feed_decision_t decision = history_feed_decide(s_slots, FEED_MAX, &s_state, now);
+    history_feed_decision_t decision = history_feed_decide(s_slots, s_capacity, &s_state, now);
     if (decision.timed_out >= 0) {
         ESP_LOGW(TAG, "no answer for the history of %s, asking again later", s_entries[decision.timed_out].entity_id);
         s_slots[decision.timed_out].last_try_ms = now;
@@ -327,12 +349,23 @@ static void feed_tick(lv_timer_t *timer)
 void *quote_history_feed_register(lv_obj_t *obj, bool priority, quote_history_feed_cb_t cb, void *user)
 {
     if (obj == NULL || cb == NULL) return NULL;
+    int slot = 0;
+    while (slot < s_capacity && s_slots[slot].used) slot++;
+    if (slot == s_capacity && !grow()) return NULL;
     if (s_timer == NULL) {
         history_feed_state_init(&s_state);
         s_timer = lv_timer_create(feed_tick, FEED_TICK_MS, NULL);
+        if (s_timer == NULL) {
+            free(s_slots);
+            free(s_entries);
+            s_slots = NULL;
+            s_entries = NULL;
+            s_capacity = 0;
+            return NULL;
+        }
     }
-    for (int i = 0; i < FEED_MAX; i++) {
-        if (s_slots[i].used) continue;
+    {
+        const int i = slot;
         memset(&s_slots[i], 0, sizeof(s_slots[i]));
         memset(&s_entries[i], 0, sizeof(s_entries[i]));
         s_slots[i].used = true;
@@ -340,19 +373,21 @@ void *quote_history_feed_register(lv_obj_t *obj, bool priority, quote_history_fe
         s_entries[i].priority = priority;
         s_entries[i].cb = cb;
         s_entries[i].user = user;
-        return &s_slots[i];
+        /* Index handles survive growth of the backing arrays. Zero stays the invalid handle. */
+        return (void *)(uintptr_t)(i + 1);
     }
-    return NULL;
 }
 
 void quote_history_feed_set(void *handle, const char *entity_id, ha_quote_provider_t provider, const char *symbol,
                             ha_quote_period_t period, double price_hint)
 {
     if (handle == NULL) return;
-    const int i = (int)((history_feed_slot_t *)handle - s_slots);
-    if (i < 0 || i >= FEED_MAX || !s_slots[i].used) return;
+    const uintptr_t index = (uintptr_t)handle - 1;
+    if (index >= (uintptr_t)s_capacity) return;
+    const int i = (int)index;
+    if (i < 0 || i >= s_capacity || !s_slots[i].used) return;
     feed_entry_t *e = &s_entries[i];
-    const bool supported = entity_id != NULL && entity_id[0] != '\0' &&
+    const bool supported = entity_id != NULL && entity_id[0] != '\0' && period >= 0 && period < HA_QUOTE_PERIOD_COUNT &&
                            (provider == HA_QUOTE_PROVIDER_YAHOO || provider == HA_QUOTE_PROVIDER_EASY_STOCK);
     const char *sym = symbol != NULL ? symbol : "";
     const bool same = e->configured == supported && e->provider == provider && e->period == period &&
@@ -377,16 +412,23 @@ void quote_history_feed_set(void *handle, const char *entity_id, ha_quote_provid
 void quote_history_feed_unregister(void *handle)
 {
     if (handle == NULL) return;
-    const int i = (int)((history_feed_slot_t *)handle - s_slots);
-    if (i < 0 || i >= FEED_MAX) return;
+    const uintptr_t index = (uintptr_t)handle - 1;
+    if (index >= (uintptr_t)s_capacity) return;
+    const int i = (int)index;
+    if (i < 0 || i >= s_capacity) return;
     if (s_state.inflight == i) s_state.inflight = -1;
     memset(&s_slots[i], 0, sizeof(s_slots[i]));
     memset(&s_entries[i], 0, sizeof(s_entries[i]));
-    for (int k = 0; k < FEED_MAX; k++) {
+    for (int k = 0; k < s_capacity; k++) {
         if (s_slots[k].used) return;
     }
     if (s_timer != NULL) {
         lv_timer_delete(s_timer);
         s_timer = NULL;
     }
+    free(s_slots);
+    free(s_entries);
+    s_slots = NULL;
+    s_entries = NULL;
+    s_capacity = 0;
 }

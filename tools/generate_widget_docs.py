@@ -144,7 +144,7 @@ def option_details(kind):
         return GRAPH_HISTORY_SOURCE
     if kind == "parqet_portfolio":
         return PARQET_INTERVALS
-    if kind == "price_forecast":
+    if kind == "energy_price_forecast":
         return PRICE_SOURCES
     if kind == "bambu_printer":
         return ["### Find printers", "",
@@ -193,7 +193,18 @@ def panel_details(kind):
                   "those buttons disabled. The A1 is the initial target: other Bambu Lab models may work with the same bindings but have "
                   "not been tested.", ""]
     if kind == "wallbox_evcc":
-        lines += ["### Charging controls", "",
+        lines += ["### Headers", "",
+                  "**Charging power** shows the current load against the configured maximum. **Energy flow** compares the site's sources "
+                  "and consumers on one scale. Both are hidden in the editor preview and on the panel when the tile is too short; "
+                  "the editor names the required height. Increase it under **Placement**.", "",
+                  popup_image("gallery_wallbox_power", "Wallbox with charging-power header"), "",
+                  popup_image("gallery_wallbox_flow", "Wallbox with energy-flow header"), "",
+                  "Simulator examples in Glow style, 360 × 460 px, with public synthetic data from `gallery_data.json`.", "",
+                  "All bindings are detected through the selected evcc instance; the entity rows are read-only. Enable missing "
+                  "power sensors in the evcc Home Assistant integration and press **Find loadpoints** again. PV is positive generation; battery is positive discharge and negative charge; grid is "
+                  "positive import and negative export. The evcc site sensors already represent the whole installation. Energy counters in kWh "
+                  "cannot supply this live flow. Missing readings leave empty segments.", "",
+                  "### Charging controls", "",
                   "- **Off** requests stop through the loadpoint mode entity. **Smart** and **Fast** send the exact HA options `smart` and "
                   "`now`. Older mode options use a picker. A request stays pending until Home Assistant confirms the entity state; the "
                   "Charging status reports whether the charger is actually charging.",

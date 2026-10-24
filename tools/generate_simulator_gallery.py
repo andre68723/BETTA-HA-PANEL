@@ -272,15 +272,26 @@ def render_glow_popups(binary, fixture, output_dir, temp, env, dumps):
         with Image.open(bmp) as full:
             full.convert("RGB").save(output_dir / "gallery_vacuum_history_glow.png")
         count += 1
-    for name in ("disconnected", "sessions"):
-        path = REPO / "tests/simulator" / f"wallbox_{name}.json"
+    for name in ("disconnected", "sessions", "power", "flow"):
+        if name in ("power", "flow"):
+            example = json.loads(json.dumps(fixture))
+            page = next(p for p in example["pages"] if any(w["type"] == "wallbox_evcc" for w in p["widgets"]))
+            page["id"] = "wallbox"
+            widget = page["widgets"][0]
+            widget["rect"].update(w=360, h=460)
+            widget["evcc_header"] = name
+            example["pages"] = [page]
+            path = temp / f"wallbox_{name}.json"
+            path.write_text(json.dumps(example), encoding="utf-8")
+        else:
+            path = REPO / "tests/simulator" / f"wallbox_{name}.json"
         bmp, layout = temp / f"wallbox_{name}.bmp", temp / f"wallbox_{name}.jsonl"
         check_run([str(binary), "--fixture", str(path), "--page", "wallbox", "--theme", "dark_v2", "--style", "glow",
                    "--language", "en", "--screenshot", str(bmp), "--dump-layout", str(layout), "--exit-after-ms", "400"], env=env)
         dumps.append((f"wallbox_{name}/glow: ", layout))
         with Image.open(bmp) as full:
             image = full.convert("RGB")
-            if name == "disconnected":
+            if name != "sessions":
                 widget = json.loads(path.read_text())["pages"][0]["widgets"][0]
                 rect = widget["rect"]
                 image = image.crop((rect["x"], TOP_BAR_H+rect["y"], rect["x"]+rect["w"], TOP_BAR_H+rect["y"]+rect["h"]))

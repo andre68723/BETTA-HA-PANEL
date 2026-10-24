@@ -2,7 +2,7 @@
 
 # Sensor
 
-Shows the value of a `sensor.*` or `binary_sensor.*` entity, formatted by its device class, with optional name, age and Recorder history.
+Shows the **value** of a `sensor.*` or `binary_sensor.*` entity, formatted by its device class, with optional name, age and Recorder history.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/sensor_glow.png"><img src="../img/gallery/sensor_glow.png" alt="Sensor, Glow style" loading="lazy" width="200" height="140" style="width: 160px"></a></figure>

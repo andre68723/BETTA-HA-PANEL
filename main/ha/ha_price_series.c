@@ -144,7 +144,8 @@ static bool item_start(const cJSON *item, bool raw, int64_t *t)
         if (cJSON_IsNumber(ts)) {
             const double v = ts->valuedouble;
             if (!isfinite(v) || v < 0.0 || v > 4.0e12) return false;
-            const long long ms = llround(v);
+            if (trunc(v) != v) return false;
+            const long long ms = (long long)v;
             if (ms % 1000 != 0) return false;
             *t = ms / 1000;
             return true;
@@ -313,7 +314,10 @@ bool ha_price_series_from_json(const char *attributes_json, ha_price_series_t *o
         const cJSON *d = cJSON_GetObjectItemCaseSensitive((cJSON *)pf, "d");
         const cJSON *p = cJSON_GetObjectItemCaseSensitive((cJSON *)pf, "p");
         if (cJSON_IsObject(pf) && cJSON_IsNumber(v) && v->valueint == 2 && cJSON_IsNumber(s) && cJSON_IsNumber(d) && cJSON_IsArray(p) &&
-            d->valueint >= HA_PRICE_MIN_INTERVAL_S && d->valueint <= HA_PRICE_MAX_INTERVAL_S && s->valuedouble >= 0) {
+            isfinite(s->valuedouble) && s->valuedouble >= 0 && s->valuedouble <= 253402300799.0 &&
+            trunc(s->valuedouble) == s->valuedouble &&
+            d->valueint >= HA_PRICE_MIN_INTERVAL_S && d->valueint <= HA_PRICE_MAX_INTERVAL_S &&
+            d->valuedouble == d->valueint && d->valueint % 60 == 0 && v->valuedouble == 2) {
             const int n = cJSON_GetArraySize(p);
             if (n > 0 && n <= HA_PRICE_MAX_SLOTS) {
                 int i = 0;
@@ -323,9 +327,10 @@ bool ha_price_series_from_json(const char *attributes_json, ha_price_series_t *o
                 cJSON_ArrayForEach(e, p) {
                     if (cJSON_IsNull(e)) {
                         out->price[i] = HA_PRICE_MISSING;
-                    } else if (cJSON_IsNumber(e) && fabs(e->valuedouble) < 2.0e9) {
+                    } else if (cJSON_IsNumber(e) && isfinite(e->valuedouble) && fabs(e->valuedouble) < 2.0e9 &&
+                               trunc(e->valuedouble) == e->valuedouble) {
                         prev += (int64_t)e->valuedouble;
-                        if (prev > 2000000000LL || prev < -2000000000LL) {
+                        if (llabs(prev) > (int64_t)(PRICE_LIMIT_EUR * HA_PRICE_SCALE)) {
                             good = false;
                             break;
                         }

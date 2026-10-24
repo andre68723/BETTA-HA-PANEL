@@ -91,7 +91,7 @@ see [Contributing](docs/contributing.md) for a few practical tips.
 Maintained by [andre68723](https://github.com/andre68723/BETTA-HA-PANEL), based on
 [cptkirki/BETTA-HA-PANEL](https://github.com/cptkirki/BETTA-HA-PANEL) at upstream
 v0.8.2 (`420df764`). Changes are grouped in the
-[v0.9.0 release notes](docs/release-notes.md#v090-fork-unreleased), as required by
+[v0.9.0 release notes](docs/release-notes.md#v090), as required by
 the license's change-marking clause. Added or substantially modified fork files
 carry corresponding notices.
 

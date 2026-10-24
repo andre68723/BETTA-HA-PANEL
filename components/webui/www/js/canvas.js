@@ -309,7 +309,7 @@ const WIDGET_TYPE_LABEL_KEYS = {
   scene_tile: "layout.widgets.add_scene",
   select_tile: "layout.widgets.add_select",
   energy_timeline: "layout.widgets.add_energy_timeline",
-  price_forecast: "layout.widgets.add_price_forecast",
+  energy_price_forecast: "layout.widgets.add_energy_price_forecast",
   parqet_portfolio: "layout.widgets.add_parqet_portfolio",
   stock_quotes: "layout.widgets.add_stock_quotes",
   datetime_tile: "layout.widgets.add_datetime",
@@ -1361,11 +1361,11 @@ function renderInspector() {
   if (el.fParqetSelector) el.fParqetSelector.checked = widget.type === "parqet_portfolio" && widget.parqet_selector === true;
   if (el.fParqetView) el.fParqetView.value = widget.type === "parqet_portfolio" && widget.parqet_view === "holdings" ? "holdings" : "performance";
   if (el.fParqetInterval) el.fParqetInterval.value = widget.type === "parqet_portfolio" && ["1d", "1w", "1m", "ytd"].includes(widget.parqet_interval) ? widget.parqet_interval : "";
-  if (el.priceOptions) el.priceOptions.classList.toggle("hidden", widget.type !== "price_forecast");
-  if (el.fPriceDaySwitch) el.fPriceDaySwitch.checked = widget.type === "price_forecast" && widget.price_day_switch === true;
-  if (el.fPriceCheapTimes) el.fPriceCheapTimes.checked = widget.type === "price_forecast" && widget.price_cheap_times === true;
-  if (el.fPriceLine) el.fPriceLine.checked = widget.type === "price_forecast" && widget.price_line === true;
-  if (el.fPriceAverage) el.fPriceAverage.value = widget.type === "price_forecast" && widget.price_average > 0 ? String(widget.price_average) : "";
+  if (el.priceOptions) el.priceOptions.classList.toggle("hidden", widget.type !== "energy_price_forecast");
+  if (el.fPriceDaySwitch) el.fPriceDaySwitch.checked = widget.type === "energy_price_forecast" && widget.price_day_switch === true;
+  if (el.fPriceCheapTimes) el.fPriceCheapTimes.checked = widget.type === "energy_price_forecast" && widget.price_cheap_times === true;
+  if (el.fPriceLine) el.fPriceLine.checked = widget.type === "energy_price_forecast" && widget.price_line === true;
+  if (el.fPriceAverage) el.fPriceAverage.value = widget.type === "energy_price_forecast" && widget.price_average > 0 ? String(widget.price_average) : "";
   alarmLoadInspector(widget);
   if (el.historyOptions) el.historyOptions.classList.toggle("hidden",
     !["sensor", "binary_tile", "contact_tile", "lock_tile", "alarm_tile", "vacuum_tile"].includes(widget.type));
@@ -1543,6 +1543,7 @@ function syncPanelPage() {
   if (!saved?.pages?.some(page => page?.id === id)) return;
   followPageSent = id;
   fetch("/api/navigate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ page: id }) })
+    .then(response => { if (!response.ok && followPageSent === id) followPageSent = null; })
     .catch(() => { if (followPageSent === id) followPageSent = null; });
 }
 
@@ -2058,7 +2059,7 @@ function addWidget(type, options = {}) {
       : type === "wallbox_evcc" ? 360
       : type === "bambu_printer" ? 360
       : type === "energy_timeline" ? 420
-      : type === "price_forecast" ? 460
+      : type === "energy_price_forecast" ? 460
       : type === "parqet_portfolio" ? 360
       : type === "stock_quotes" ? 340
       : type === "todo_list" ? 360
@@ -2081,7 +2082,7 @@ function addWidget(type, options = {}) {
       : type === "wallbox_evcc" ? 300
       : type === "bambu_printer" ? 420
       : type === "energy_timeline" ? 260
-      : type === "price_forecast" ? 250
+      : type === "energy_price_forecast" ? 250
       : type === "parqet_portfolio" ? 330
       : type === "stock_quotes" ? 300
       : type === "todo_list" ? 360
@@ -2377,15 +2378,15 @@ function applyInspector(options = {}) {
   const parqetInterval = el.fParqetInterval?.value || "";
   if (widgetType === "parqet_portfolio" && ["1d", "1w", "1m", "ytd"].includes(parqetInterval)) widget.parqet_interval = parqetInterval; // max (the sensors) is the default
   else delete widget.parqet_interval;
-  // price_forecast: the price timeline card's options, all off by default; the average sensor is the secondary entity
-  if (widgetType === "price_forecast" && el.fPriceDaySwitch?.checked) widget.price_day_switch = true;
+  // energy_price_forecast: the price timeline card's options, all off by default; the average sensor is the secondary entity
+  if (widgetType === "energy_price_forecast" && el.fPriceDaySwitch?.checked) widget.price_day_switch = true;
   else delete widget.price_day_switch;
-  if (widgetType === "price_forecast" && el.fPriceCheapTimes?.checked) widget.price_cheap_times = true;
+  if (widgetType === "energy_price_forecast" && el.fPriceCheapTimes?.checked) widget.price_cheap_times = true;
   else delete widget.price_cheap_times;
-  if (widgetType === "price_forecast" && el.fPriceLine?.checked) widget.price_line = true;
+  if (widgetType === "energy_price_forecast" && el.fPriceLine?.checked) widget.price_line = true;
   else delete widget.price_line;
   const priceAverage = Number(String(el.fPriceAverage?.value ?? "").replace(",", "."));
-  if (widgetType === "price_forecast" && Number.isFinite(priceAverage) && priceAverage > 0 && priceAverage <= 5) widget.price_average = priceAverage;
+  if (widgetType === "energy_price_forecast" && Number.isFinite(priceAverage) && priceAverage > 0 && priceAverage <= 5) widget.price_average = priceAverage;
   else delete widget.price_average;
   const alarmChosen = ALARM_ACTION_FIELDS.filter(([key]) => el[key]?.checked).map(([, action]) => action);
   if (widgetType === "alarm_tile" && alarmChosen.length > 0 && alarmChosen.length < ALARM_ACTION_FIELDS.length) {

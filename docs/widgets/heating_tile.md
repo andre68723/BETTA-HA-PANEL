@@ -2,7 +2,7 @@
 
 # Heating
 
-Shows a heating `climate.*` entity's measured and target temperatures and adjusts the target.
+Shows a heating `climate.*` entity's **measured and target temperatures** and adjusts the target.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/heating_default_glow.png"><img src="../img/gallery/heating_default_glow.png" alt="Heating (default), Glow style" loading="lazy" width="230" height="240" style="width: 184px"></a></figure>

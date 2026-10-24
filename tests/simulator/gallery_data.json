@@ -11,7 +11,11 @@
       "evcc_connected_entity_id": "binary_sensor.demo_evcc_connected",
       "evcc_charging_entity_id": "binary_sensor.demo_evcc_charging",
       "evcc_disabled_entity_id": "binary_sensor.demo_evcc_disabled",
-      "evcc_effective_soc_entity_id": "sensor.demo_evcc_effective"
+      "evcc_effective_soc_entity_id": "sensor.demo_evcc_effective",
+      "evcc_pv_power_entity_id": "sensor.demo_evcc_pv_power",
+      "evcc_battery_power_entity_id": "sensor.demo_evcc_battery_power",
+      "evcc_grid_power_entity_id": "sensor.demo_evcc_grid_power",
+      "evcc_home_power_entity_id": "sensor.demo_evcc_home_power"
     },
     "sensor": "sensor.demo_room_temperature",
     "button": "switch.demo_lamp",
@@ -73,7 +77,7 @@
         "stop_entity_id": "button.demo_printer_stop"
       }
     },
-    "price_forecast": "sensor.demo_price",
+    "energy_price_forecast": "sensor.demo_price",
     "parqet": {
       "entity_id": "sensor.demo_portfolio_value",
       "secondary_entity_id": "sensor.demo_portfolio_gain",
@@ -1772,7 +1776,7 @@
     },
     {
       "entity_id": "sensor.demo_evcc_grid_power",
-      "state": "300",
+      "state": "4000",
       "attributes": {
         "unit_of_measurement": "W",
         "device_class": "power",

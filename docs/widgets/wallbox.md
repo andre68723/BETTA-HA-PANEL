@@ -2,7 +2,7 @@
 
 # Wallbox
 
-Shows and controls an evcc loadpoint through its entities (the mode `select.*` and the related sensors, numbers and selects): charging mode, vehicle, target SOC, power, energy and remaining time.
+Shows and controls an **evcc loadpoint** through its Home Assistant integration. The detected mode `select.*` and related sensors supply charging mode, vehicle, target SOC, power, energy and remaining time.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/wallbox_glow.png"><img src="../img/gallery/wallbox_glow.png" alt="Wallbox, Glow style" loading="lazy" width="360" height="360" style="width: 288px"></a></figure>
@@ -25,14 +25,26 @@ The **[evcc Home Assistant integration](https://github.com/marq24/ha-evcc)** (HA
 
 | Option | Effect |
 | --- | --- |
-| Loadpoint | **Find loadpoints** reads the integration; existing bindings stay until you accept a replacement |
-| Advanced entities | every binding and its target domain |
-| Header | off, the charging power as a bar up to **Maximum charging power (kW)** (empty = 11), or the energy flow: sources above two bars on one scale, consumers below; **Find loadpoints** also fills the site sensors |
+| Loadpoint | **Find loadpoints** refreshes the complete bindings from the selected evcc instance |
+| Detected entities | read-only bindings from the selected evcc instance |
+| Header | off, the charging power as a bar up to **Maximum charging power (kW)** (empty = 11), or the energy flow: sources above two bars on one scale, consumers below; the selected loadpoint automatically supplies the site sensors |
 
 ## On the panel
 
 - Status, power, charged energy, remaining time and the current SOC on a green bar.
 - The optional header sits above the modes: the charging power against its maximum, or the site's flow in kW (PV, battery, grid in; home, car, battery, export out). It needs about 400 px (power) or 440 px (flow) of height and stays off on a shorter card.
+
+### Headers
+
+**Charging power** shows the current load against the configured maximum. **Energy flow** compares the site's sources and consumers on one scale. Both are hidden in the editor preview and on the panel when the tile is too short; the editor names the required height. Increase it under **Placement**.
+
+<a href="../img/gallery/gallery_wallbox_power_glow.png"><img src="../img/gallery/gallery_wallbox_power_glow.png" alt="Wallbox with charging-power header, glow" loading="lazy" width="360" height="460" style="width: 288px"></a>
+
+<a href="../img/gallery/gallery_wallbox_flow_glow.png"><img src="../img/gallery/gallery_wallbox_flow_glow.png" alt="Wallbox with energy-flow header, glow" loading="lazy" width="360" height="460" style="width: 288px"></a>
+
+Simulator examples in Glow style, 360 × 460 px, with public synthetic data from `gallery_data.json`.
+
+All bindings are detected through the selected evcc instance; the entity rows are read-only. Enable missing power sensors in the evcc Home Assistant integration and press **Find loadpoints** again. PV is positive generation; battery is positive discharge and negative charge; grid is positive import and negative export. The evcc site sensors already represent the whole installation. Energy counters in kWh cannot supply this live flow. Missing readings leave empty segments.
 
 ### Charging controls
 

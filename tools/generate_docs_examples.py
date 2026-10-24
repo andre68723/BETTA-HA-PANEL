@@ -26,7 +26,7 @@ OUT = REPO / "docs/img/examples"
 WWW = REPO / "components/webui/www"
 # Widgets whose guide shows the inspector: many options, or options that depend on the entity.
 # Wallbox and Bambu printer are left out: their inspector fills from device detection, which the demo API does not offer.
-INSPECTOR_KINDS = ["sensor", "graph", "gauge", "price_forecast", "parqet_portfolio", "stock_quotes", "room_tile", "energy_timeline"]
+INSPECTOR_KINDS = ["sensor", "graph", "gauge", "energy_price_forecast", "parqet_portfolio", "stock_quotes", "room_tile", "energy_timeline"]
 
 
 def fixtures():
@@ -441,7 +441,8 @@ def capture_inspectors(output, executable):
                 try:
                     page.wait_for_function("editor.editorStarted && editor.entities.length > 0", timeout=15000)
                 except Exception as error:
-                    raise RuntimeError("\n".join(failures) or str(error)) from error
+                    state = page.evaluate("({started: editor.editorStarted, entities: editor.entities.length, status: document.getElementById('status')?.textContent, body: document.body.innerText.slice(0, 500)})")
+                    raise RuntimeError(("\n".join(failures) or str(error)) + f"\nEditor state: {state}") from error
                 page.evaluate("(id) => { editor.selectedPageId = 'inspector'; editor.selectedWidgetId = id; renderAll(); }",
                               widget["id"])
                 page.locator("#inspectorSection").wait_for(state="visible")

@@ -414,7 +414,7 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         }
     }
 
-    if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "price_forecast") == 0) {
+    if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "energy_price_forecast") == 0) {
         /* Optional average sensor and the price card's options. */
         cJSON *price_day_switch = cJSON_GetObjectItemCaseSensitive(widget, "price_day_switch");
         cJSON *price_cheap_times = cJSON_GetObjectItemCaseSensitive(widget, "price_cheap_times");

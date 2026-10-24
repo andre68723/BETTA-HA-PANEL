@@ -38,6 +38,8 @@ www/js/layout-model.js layout model, entity domains and suggestions, loading lay
 www/js/pickers.js     entity pickers, the "+ Widget" dialog (widget types and entity search)
 www/js/readability.js panel4 role sizes, day-count and gauge-width hints for the previews (after pickers, before canvas)
 www/js/bambu-printer.js Bambu printer widget: Inspector fields for its entity bindings and the canvas preview (before canvas)
+www/js/evcc-wallbox.js wallbox bindings, loadpoint discovery, optional power/flow header and its preview
+www/js/stock-quotes.js Stocks & ETFs: quote ordering and Inspector options
 www/js/energy-timeline-colors.js energy flow palette, compact color controls and HEX editing
 www/js/tile-previews.js  the schematic tile previews (solar, car, Sonos, `tilePreviewMarkup`) and the house page grid (before canvas)
 www/js/layout-history.js bounded layout/selection snapshots, edit grouping and Undo/Redo
@@ -132,14 +134,18 @@ Home Assistant and back without saving. Check for console errors and the generat
 - **Pages:** `maxPages()` comes from `/api/version` (`max_pages` 8 or 12). From `full_nav_pages` (5, 10) on, the page
   inspector warns about a missing or duplicate icon (`navIconIssue()`). The size limit is `layout_max_bytes` (32 KB);
   see [bottom navigation](development/testing.md#bottom-navigation-full-and-compact-tabs).
-- **Entity search** covers every widget entity binding. `inspectorEntityPickerTarget()` supplies
+- **Entity search** covers editable widget entity bindings. Wallbox bindings are read-only and come from discovery
+  of the selected evcc instance. `inspectorEntityPickerTarget()` supplies
   domain and Room candidate filters; picking a result dispatches the same change event as manual entry.
 - **Inspector presentation** retains the original fields and event handlers. Wrapping entity editors forward
   editing events to those fields; picker assignments mirror back into the visible editor. Position and size
   use a separate tab. Appearance opens when it fits, unless the user toggled it for that widget.
   The right column stays reserved and has no collapse button. Widget and special-page titles have
   an info icon with a short description and a documentation link. Extended help uses a label and an info icon opening the full explanation in a popup. Modal keyboard
-  events do not reach editor shortcuts. The local spike shares help popups and keeps its own presentation adapter.
+  events do not reach editor shortcuts. Help uses `**Section heading**`, a blank line and its explanation; standalone
+  bold headings render as headings, with separate body paragraphs. Do not join a heading and body with a colon.
+  Hidden optional groups contribute no help; warnings stay visible beside their controls.
+  The local spike shares help popups and keeps its own presentation adapter.
 - **Energy timeline and room extra field** live in `js/canvas.js`, validated in `js/layout-model.js` like
   `layout_validate.c` (an extra entity must be one of the card's own and fit the mode's domain).
 - **Previews follow the panel.** A tile preview matches the panel render in size, proportions, visible elements and

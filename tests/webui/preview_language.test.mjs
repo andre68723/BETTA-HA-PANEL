@@ -38,10 +38,30 @@ test("the media player preview drops the cover where the panel does", () => {
 test("price preview keeps the interval on its own row and one day toggle on a narrow tile", () => {
   const { fn, run } = loadEditor();
   run("editor.i18nMap = WEB_I18N_BUILTIN.en");
-  const tile = { type: "price_forecast", id: "p", title: "Price", price_day_switch: true, rect: { w: 240, h: 150 } };
+  const tile = { type: "energy_price_forecast", id: "p", title: "Price", price_day_switch: true, rect: { w: 240, h: 150 } };
   const narrow = fn("tilePreviewMarkup")(tile);
   assert.match(narrow, /class="tp-price-slot">\d{2}:\d{2}-\d{2}:\d{2}<\/div>/);
   assert.match(narrow, /Today/);
   assert.doesNotMatch(narrow, /Tomorrow/);
   assert.match(fn("tilePreviewMarkup")({ ...tile, rect: { w: 680, h: 300 } }), /Tomorrow/);
+});
+
+test("wallbox headers follow the panel's height threshold and never invent missing power", () => {
+  const { fn, run } = loadEditor();
+  run("editor.i18nMap = WEB_I18N_BUILTIN.en");
+  const widget = { type: "wallbox_evcc", id: "w", title: "Wallbox", rect: { w: 360, h: 600 } };
+  for (const header of ["power", "flow"]) {
+    const height = fn("evccHeaderNeededHeight")(header);
+    assert.equal(fn("evccHeaderPreview")({ ...widget, evcc_header: header, rect: { w: 360, h: height - 1 } }, null), "");
+    assert.match(fn("evccHeaderPreview")({ ...widget, evcc_header: header, rect: { w: 360, h: height } }, null), /evcc-header/);
+  }
+  assert.match(fn("evccHeaderPreview")({ ...widget, evcc_header: "power" }, null), /-- \/ 11 kW/);
+  const empty = fn("evccHeaderPreview")({ ...widget, evcc_header: "flow" }, null);
+  assert.doesNotMatch(empty, /PV |Battery |Grid |Home |Car |Export /);
+  run(`editor.states.set('sensor.pv', '5400'); editor.stateMeta.set('sensor.pv', {unit:'W'});
+       editor.states.set('sensor.battery', '-1.2'); editor.stateMeta.set('sensor.battery', {unit:'kW'});`);
+  const live = fn("evccHeaderPreview")({ ...widget, evcc_header: "flow", evcc_pv_power_entity_id: "sensor.pv", evcc_battery_power_entity_id: "sensor.battery" }, 3.7);
+  assert.match(live, /PV 5.4/);
+  assert.match(live, /Battery 1.2/);
+  assert.match(live, /Car 3.7/);
 });

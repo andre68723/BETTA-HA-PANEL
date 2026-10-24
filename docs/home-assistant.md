@@ -33,7 +33,7 @@ Each widget guide lists its own requirements at the top; this is the overview.
 | Weather tile, top-bar weather | a `weather.*` entity from any provider with daily forecasts | [Weather](widgets/weather_tile.md) |
 | German report text on the forecast | **DWD Weather** and its *Weather report* sensor, disabled by default: show disabled entities, enable it | [Weather forecast](widgets/weather_3day.md) |
 | Solar forecast | one `sensor.*` per day to show; Solcast PV Forecast is one source, replace the suggested IDs | [Solar forecast](widgets/solar_forecast.md) |
-| Price forecast | one `sensor.*` with a `data` list of prices: EPEX Spot (Germany and many markets); Nord Pool and Tibber through a helper that stores their prices as `data` | [Price forecast](widgets/price_forecast.md) |
+| Energy price forecast | one `sensor.*` with a `data` list of prices: EPEX Spot (Germany and many markets); Nord Pool and Tibber through a helper that stores their prices as `data` | [Energy price forecast](widgets/energy_price_forecast.md) |
 | Parqet portfolio | the total value `sensor.*` of the **Parqet Companion** integration (HACS), optionally its gain, XIRR and dividends sensors | [Parqet portfolio](widgets/parqet_portfolio.md) |
 | Stocks & ETFs | quote `sensor.*` of **Yahoo Finance** (`iprak/yahoofinance`) or **Easy Stock**, both from HACS; up to eight | [Stocks & ETFs](widgets/stock_quotes.md) |
 | Energy page, mode Home Assistant Energy | sources set up in HA's Energy dashboard | [below](#energy-and-rooms) |
@@ -41,7 +41,7 @@ Each widget guide lists its own requirements at the top; this is the overview.
 | Energy page: seven-day details | Gas, Water or Solar as cumulative counters with long-term statistics (volume or energy unit) | [Seven-day details](pages.md#seven-day-details) |
 | Room cards, house page | areas (and optionally floors) with devices or entities assigned | [below](#energy-and-rooms) |
 | History popups, graph from Home Assistant | Recorder history of the entity; for the 7-day view a `measurement` sensor with long-term statistics | [History](history.md#choose-the-history-view) |
-| Wallbox | evcc server (add-on or standalone) and the HACS ha-evcc integration; enable loadpoint controls, energy, remaining-duration and status entities; Sessions uses the integration’s WebSocket interface | [Wallbox](widgets/wallbox.md) |
+| Wallbox | evcc server and HACS ha-evcc integration; enable loadpoint entities and the site's PV, battery, grid and home power sensors for the flow header; bindings are detected from the same instance | [Wallbox](widgets/wallbox.md) |
 | Bambu printer | the Bambu Lab integration (`ha-bambulab`); the panel never talks to the printer | [Bambu printer](widgets/bambu_printer.md) |
 | Stock quote in the top bar | one numeric sensor, for example Yahoo Finance | [Top bar](top-bar.md) |
 | Sonos favorites | the Sonos integration: a `media_player.*` and `sensor.sonos_favorites` | [Sonos favorites](widgets/sonos_favorites.md) |

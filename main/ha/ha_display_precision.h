@@ -26,8 +26,8 @@
 typedef void (*ha_display_precision_changed_fn)(const char *entity_id);
 
 /* HA task: the layout's entities (entity_ids holds count ids, APP_MAX_ENTITY_ID_LEN apart). Keeps the
- * sensor/number/input_number ones and asks for all of them again. */
-void ha_display_precision_set_wanted(const char *entity_ids, size_t count);
+ * sensor/number/input_number ones and asks for all of them again. False on allocation failure; the caller retries. */
+bool ha_display_precision_set_wanted(const char *entity_ids, size_t count);
 /* HA task: whether a batch is waiting to be asked for. */
 bool ha_display_precision_is_due(int64_t now_ms);
 /* HA task: the next request with msg_id, or NULL when nothing is due (the caller deletes it). */

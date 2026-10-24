@@ -2,7 +2,7 @@
 
 # Weather (now)
 
-Shows the current conditions of a `weather.*` entity, its temperature and the extra readings the provider supplies.
+Shows the **current conditions** of a `weather.*` entity, its temperature and the extra readings the provider supplies.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/weather_now_glow.png"><img src="../img/gallery/weather_now_glow.png" alt="Weather (now), Glow style" loading="lazy" width="220" height="240" style="width: 176px"></a></figure>

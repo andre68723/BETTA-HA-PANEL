@@ -2,7 +2,7 @@
 
 # Gauge
 
-Shows a numeric `sensor.*` as a vertical, horizontal or radial gauge.
+Shows a numeric `sensor.*` as a **vertical, horizontal or radial gauge**.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/smooth_glow.png"><img src="../img/gallery/smooth_glow.png" alt="Smooth, Glow style" loading="lazy" width="150" height="240" style="width: 120px"></a></figure>

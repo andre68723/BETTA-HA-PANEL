@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 */
-/* Price forecast widget: what Home Assistant's price list becomes on the tile, the Today/Tomorrow buttons, the states without prices and the
+/* Energy price forecast widget: what Home Assistant's price list becomes on the tile, the Today/Tomorrow buttons, the states without prices and the
  * tile's own timer. The list is built like the real EPEX Spot attribute (public market data of 2026-10-17) around the simulator's local today. */
 #include <math.h>
 #include <stdio.h>
@@ -13,9 +13,9 @@
 #include "ui/ui_history_popup.h"
 #include "ui/ui_widget_factory.h"
 
-esp_err_t w_price_forecast_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
-void w_price_forecast_apply_state(ui_widget_instance_t *, const ha_state_t *);
-void w_price_forecast_mark_unavailable(ui_widget_instance_t *);
+esp_err_t w_energy_price_forecast_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
+void w_energy_price_forecast_apply_state(ui_widget_instance_t *, const ha_state_t *);
+void w_energy_price_forecast_mark_unavailable(ui_widget_instance_t *);
 
 static unsigned checks;
 #define CHECK(x) do { ++checks; if (!(x)) { fprintf(stderr, "price line %d: %s\n", __LINE__, #x); exit(1); } } while (0)
@@ -62,7 +62,7 @@ static void apply_attrs(ui_widget_instance_t *widget, const char *entity, const 
         snprintf(s.attributes_json, sizeof(s.attributes_json), "{}");
     }
     sim_host_state_add(&s);
-    w_price_forecast_apply_state(widget, &s);
+    w_energy_price_forecast_apply_state(widget, &s);
     advance(50);
 }
 
@@ -105,7 +105,7 @@ int sim_price_regression(void)
 {
     sim_host_set_online(true);
     ui_widget_def_t def = {.w = 700, .h = 400, .price_day_switch = true, .price_cheap_times = true};
-    strcpy(def.type, "price_forecast");
+    strcpy(def.type, "energy_price_forecast");
     strcpy(def.entity_id, "sensor.price");
     strcpy(def.title, "Price");
     ui_widget_instance_t widget = {0};
@@ -164,14 +164,14 @@ int sim_price_regression(void)
     attrs = list_attrs(2);
     apply_attrs(&widget, "sensor.price", "0.2", attrs);
     CHECK(find_prefix(widget.obj, "No prices") == NULL);
-    w_price_forecast_mark_unavailable(&widget);
+    w_energy_price_forecast_mark_unavailable(&widget);
     advance(50);
     CHECK(find_prefix(widget.obj, "No prices") != NULL);
     cJSON_Delete(attrs);
 
     /* a narrow tile has one button that names the day and switches it */
     ui_widget_def_t narrow_def = {.w = 300, .h = 220, .price_day_switch = true};
-    strcpy(narrow_def.type, "price_forecast");
+    strcpy(narrow_def.type, "energy_price_forecast");
     strcpy(narrow_def.entity_id, "sensor.price");
     strcpy(narrow_def.title, "Narrow");
     fresh_screen();
@@ -193,7 +193,7 @@ int sim_price_regression(void)
 
     /* the options default to off, as in the card: no day buttons, today only, no cheap line, the range still shown */
     ui_widget_def_t plain_def = {.w = 700, .h = 400};
-    strcpy(plain_def.type, "price_forecast");
+    strcpy(plain_def.type, "energy_price_forecast");
     strcpy(plain_def.entity_id, "sensor.price");
     strcpy(plain_def.title, "Plain");
     fresh_screen();
@@ -221,7 +221,7 @@ int sim_price_regression(void)
 
     /* an average sensor in secondary_entity_id: a usable state is taken, a broken one falls back to the day's average, neither disturbs the tile */
     ui_widget_def_t avg_def = {.w = 700, .h = 400};
-    strcpy(avg_def.type, "price_forecast");
+    strcpy(avg_def.type, "energy_price_forecast");
     strcpy(avg_def.entity_id, "sensor.price");
     strcpy(avg_def.secondary_entity_id, "sensor.price_avg");
     strcpy(avg_def.title, "Average");

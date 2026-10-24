@@ -8,6 +8,7 @@
 #include "app_config.h"
 #include "cJSON.h"
 #include "ha/ha_display_precision.h"
+#include "ha/ha_layout_entities.h"
 #include "ha/ha_quote.h"
 
 static int s_failures = 0;
@@ -77,6 +78,49 @@ static void test_registry_platform(void)
     Q_CHECK(ha_display_precision_handle_result(23, true, result, test_platform_changed));
     cJSON_Delete(result);
     Q_CHECK(strcmp(ha_display_precision_platform("sensor.quote_yahoo"), "yahoofinance") == 0);
+    /* More layout changes than the cache can hold must not leave the new quote permanently pending. */
+    for (int i = 0; i < HA_LAYOUT_ENTITY_CAPACITY + 8; i++) {
+        snprintf(ids[1], sizeof(ids[1]), "sensor.changed_quote_%d", i);
+        ha_display_precision_set_wanted(&ids[0][0], 2);
+        const uint32_t msg = (uint32_t)(100 + i);
+        req = ha_display_precision_next_request(msg, 8000 + i);
+        cJSON_Delete(req);
+        result = cJSON_CreateObject();
+        cJSON *entry = cJSON_AddObjectToObject(result, ids[0]);
+        cJSON_AddStringToObject(entry, "platform", "yahoofinance");
+        entry = cJSON_AddObjectToObject(result, ids[1]);
+        cJSON_AddStringToObject(entry, "platform", "easy_stock");
+        Q_CHECK(ha_display_precision_handle_result(msg, true, result, test_platform_changed));
+        cJSON_Delete(result);
+        Q_CHECK(strcmp(ha_display_precision_platform(ids[1]), "easy_stock") == 0);
+        Q_CHECK(strcmp(ha_display_precision_platform(ids[0]), "yahoofinance") == 0);
+    }
+    /* A multi-page stock layout can exceed the old 256-entry registry cache in one lookup. */
+    static char many[1056][APP_MAX_ENTITY_ID_LEN];
+    for (size_t i = 0; i < 1056; i++) snprintf(many[i], sizeof(many[i]), "sensor.stock_%zu", i);
+    Q_CHECK(ha_display_precision_set_wanted((const char *)many, 1056));
+    uint32_t message = 10000;
+    size_t loaded = 0;
+    while (ha_display_precision_is_due(0)) {
+        cJSON *request = ha_display_precision_next_request(message, 0);
+        Q_CHECK(request != NULL);
+        if (!request) break;
+        cJSON *result = cJSON_CreateObject();
+        const cJSON *requested;
+        cJSON_ArrayForEach(requested, cJSON_GetObjectItemCaseSensitive(request, "entity_ids")) {
+            cJSON *entry = cJSON_AddObjectToObject(result, requested->valuestring);
+            cJSON_AddStringToObject(entry, "platform", "easy_stock");
+            loaded++;
+        }
+        Q_CHECK(ha_display_precision_handle_result(message++, true, result, test_platform_changed));
+        cJSON_Delete(result);
+        cJSON_Delete(request);
+    }
+    Q_CHECK(loaded == 1056);
+    Q_CHECK(strcmp(ha_display_precision_platform(many[1055]), "easy_stock") == 0);
+    Q_CHECK(ha_display_precision_set_wanted(NULL, 0));
+    Q_CHECK(!ha_display_precision_is_due(0));
+    Q_CHECK(ha_display_precision_platform(many[1055]) == NULL);
 }
 
 bool test_quote(void)
@@ -106,6 +150,8 @@ bool test_quote(void)
     Q_CHECK(q.has_prev_close && q.prev_close == 201.55);
     Q_CHECK(q.market == HA_QUOTE_MARKET_POST && q.has_quote_time && q.quote_time == 1792598400);
     Q_CHECK(!q.has_live);
+    Q_CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_YAHOO, "208.65", "{\"regularMarketTime\":1e300}", &q));
+    Q_CHECK(!q.has_quote_time);
 
     /* A state that is not the session's price (converted or extended hours): no change rather than a wrong one. */
     Q_CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_YAHOO, "190.10", YAHOO_ATTRS, &q));

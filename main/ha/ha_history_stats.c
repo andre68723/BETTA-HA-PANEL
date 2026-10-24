@@ -4,6 +4,7 @@
 #include "ha/ha_history_stats.h"
 
 #include <math.h>
+#include <float.h>
 #include <string.h>
 #include <time.h>
 
@@ -51,7 +52,7 @@ bool ha_stats_parse_metadata(const cJSON *result, const char *stat_id, ha_stats_
         out->has_mean = json_bool(row, "has_mean");
         out->has_sum = json_bool(row, "has_sum");
         const cJSON *mean_type = cJSON_GetObjectItemCaseSensitive((cJSON *)row, "mean_type");
-        out->mean_type = cJSON_IsNumber(mean_type) ? (int)mean_type->valuedouble : 0;
+        out->mean_type = cJSON_IsNumber(mean_type) ? mean_type->valueint : 0;
         const char *unit = json_str(row, "statistics_unit_of_measurement");
         if (unit != NULL) {
             if (strlen(unit) >= sizeof(out->unit)) { out->found = false; return true; } /* unit we cannot compare: unusable */
@@ -190,6 +191,17 @@ static bool row_number(const cJSON *row, const char *key, double *out)
     return true;
 }
 
+static bool row_float(const cJSON *row, const char *key, double *out)
+{
+    return row_number(row, key, out) && fabs(*out) <= FLT_MAX;
+}
+
+/* HA uses integral epoch milliseconds. Bound before every integer cast, including a malformed end timestamp. */
+static bool row_time(const cJSON *row, const char *key, double *out)
+{
+    return row_number(row, key, out) && *out >= 0 && *out <= 253402300799000.0 && trunc(*out) == *out;
+}
+
 ha_stats_outcome_t ha_stats_parse_hourly(const cJSON *result, const char *stat_id, const ha_stats_window_t *window,
                                          ha_stats_value_t which, bool want_range, ha_stats_series_t *out)
 {
@@ -210,11 +222,12 @@ ha_stats_outcome_t ha_stats_parse_hourly(const cJSON *result, const char *stat_i
     const cJSON *row;
     cJSON_ArrayForEach(row, rows) {
         double start_ms, v;
-        if (!cJSON_IsObject(row) || !row_number(row, "start", &start_ms)) { out->rejected++; continue; }
+        if (!cJSON_IsObject(row) || !row_time(row, "start", &start_ms)) { out->rejected++; continue; }
         const int64_t start_s_x = (int64_t)(start_ms / 1000.0);
         if ((int64_t)start_ms % 1000 != 0 || start_s_x % HA_STATS_HOUR_S != 0) { out->rejected++; continue; }
         double end_ms;
-        if (row_number(row, "end", &end_ms) && (int64_t)end_ms != (int64_t)start_ms + (int64_t)HA_STATS_HOUR_S * 1000) {
+        const cJSON *end = cJSON_GetObjectItemCaseSensitive(row, "end");
+        if (end && (!row_time(row, "end", &end_ms) || (int64_t)end_ms != (int64_t)start_ms + (int64_t)HA_STATS_HOUR_S * 1000)) {
             out->rejected++;
             continue;
         }
@@ -223,14 +236,14 @@ ha_stats_outcome_t ha_stats_parse_hourly(const cJSON *result, const char *stat_i
         const size_t slot = (size_t)(offset / HA_STATS_HOUR_S);
         const cJSON *value_item = cJSON_GetObjectItemCaseSensitive((cJSON *)row, value_key);
         if (value_item == NULL || cJSON_IsNull(value_item)) continue; /* HA had no value for this hour: a gap */
-        if (!row_number(row, value_key, &v)) { out->rejected++; continue; }
+        if (!row_float(row, value_key, &v)) { out->rejected++; continue; }
         if (out->flags[slot] != 0) { out->rejected++; continue; } /* duplicate: the first row wins */
         out->value[slot] = (float)v;
         out->flags[slot] = HA_STATS_FLAG_VALUE;
         out->count[slot] = 1;
         out->valid++;
         double lo, hi;
-        if (want_range && row_number(row, "min", &lo) && row_number(row, "max", &hi) && lo <= hi) {
+        if (want_range && row_float(row, "min", &lo) && row_float(row, "max", &hi) && lo <= hi) {
             out->min[slot] = (float)lo;
             out->max[slot] = (float)hi;
             out->flags[slot] |= HA_STATS_FLAG_RANGE;
@@ -299,10 +312,10 @@ ha_stats_outcome_t ha_stats_parse_range(const cJSON *result, const char *stat_id
     const cJSON *row;
     cJSON_ArrayForEach(row, rows) {
         double start_ms, mean;
-        if (!cJSON_IsObject(row) || !row_number(row, "start", &start_ms)) { out->rejected++; continue; }
+        if (!cJSON_IsObject(row) || !row_time(row, "start", &start_ms)) { out->rejected++; continue; }
         const cJSON *mean_item = cJSON_GetObjectItemCaseSensitive((cJSON *)row, "mean");
         if (mean_item == NULL || cJSON_IsNull(mean_item)) continue; /* no value for the period: a gap */
-        if (!row_number(row, "mean", &mean)) { out->rejected++; continue; }
+        if (!row_float(row, "mean", &mean)) { out->rejected++; continue; }
         const int64_t start = (int64_t)(start_ms / 1000.0);
         if (start < window->start_epoch - lead || start >= window->end_epoch ||
             (out->count > 0 && start <= out->point[out->count - 1].start)) {
@@ -334,7 +347,7 @@ ha_stats_outcome_t ha_stats_parse_range(const cJSON *result, const char *stat_id
         p->start = start;
         p->mean = (float)mean;
         double lo, hi;
-        p->has_range = row_number(row, "min", &lo) && row_number(row, "max", &hi) && lo <= hi;
+        p->has_range = row_float(row, "min", &lo) && row_float(row, "max", &hi) && lo <= hi;
         p->min = p->has_range ? (float)lo : p->mean;
         p->max = p->has_range ? (float)hi : p->mean;
     }

@@ -2,7 +2,7 @@
 
 # Scene
 
-Runs a `scene.*`, `script.*`, `button.*`, `input_button.*` or `lock.*` action from a compact tile.
+Runs a `scene.*`, `script.*`, `button.*`, `input_button.*` or `lock.*` **action** from a compact tile.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/scene_glow.png"><img src="../img/gallery/scene_glow.png" alt="Scene, Glow style" loading="lazy" width="180" height="90" style="width: 144px"></a></figure>

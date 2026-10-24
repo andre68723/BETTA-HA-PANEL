@@ -26,3 +26,18 @@ test("Panel follows: off by default, then sends a saved page once and skips page
   assert.equal(run("sent.length"), 2);
   assert.equal(run("followPageEnabled()"), false);
 });
+
+test("Panel follows retries a page after HTTP rejection", async () => {
+  const { run } = loadEditor();
+  run(`
+    followPageEnabled = () => true;
+    savedLayoutSnapshot = JSON.stringify({pages: [{id: "living"}]});
+    editor.selectedPageId = "living";
+    globalThis.sent = 0;
+    globalThis.fetch = async () => { sent++; return {ok: false}; };
+  `);
+  run("syncPanelPage()");
+  await new Promise(resolve => setImmediate(resolve));
+  run("syncPanelPage()");
+  assert.equal(run("sent"), 2);
+});

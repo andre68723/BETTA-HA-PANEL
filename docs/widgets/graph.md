@@ -2,7 +2,7 @@
 
 # Graph
 
-Follows a numeric value over time as a line, smoothed line or bar chart; usually a `sensor.*`, any entity with a numeric state works.
+Follows a numeric value over time as a **line, smoothed line or bar chart**; usually a `sensor.*`, any entity with a numeric state works.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/graph_line_glow.png"><img src="../img/gallery/graph_line_glow.png" alt="Graph (line), Glow style" loading="lazy" width="340" height="150" style="width: 272px"></a></figure>

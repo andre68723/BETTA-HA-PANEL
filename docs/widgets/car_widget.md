@@ -2,7 +2,7 @@
 
 # Car
 
-Shows a car's battery level from a `sensor.*` entity as rings, with optional range, charging power and vehicle controls.
+Shows a **car's battery level** from a `sensor.*` entity as rings, with optional range, charging power and vehicle controls.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/car_glow.png"><img src="../img/gallery/car_glow.png" alt="Car, Glow style" loading="lazy" width="240" height="340" style="width: 192px"></a></figure>

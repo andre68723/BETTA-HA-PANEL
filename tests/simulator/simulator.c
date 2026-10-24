@@ -91,8 +91,8 @@ esp_err_t w_parqet_portfolio_create(const ui_widget_def_t *, lv_obj_t *, ui_widg
 esp_err_t w_stock_quotes_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_stock_quotes_apply_state(ui_widget_instance_t *, const ha_state_t *);
 void w_parqet_portfolio_apply_state(ui_widget_instance_t *, const ha_state_t *);
-esp_err_t w_price_forecast_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
-void w_price_forecast_apply_state(ui_widget_instance_t *, const ha_state_t *);
+esp_err_t w_energy_price_forecast_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
+void w_energy_price_forecast_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_energy_timeline_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_energy_timeline_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_select_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
@@ -145,7 +145,7 @@ static const sim_widget_type_t k_types[] = {
     {"datetime_tile", w_datetime_create, w_datetime_apply_state},
     {"lock_tile", w_lock_create, w_lock_apply_state},
     {"alarm_tile", w_alarm_create, w_alarm_apply_state},
-    {"price_forecast", w_price_forecast_create, w_price_forecast_apply_state},
+    {"energy_price_forecast", w_energy_price_forecast_create, w_energy_price_forecast_apply_state},
     {"parqet_portfolio", w_parqet_portfolio_create, w_parqet_portfolio_apply_state},
     {"stock_quotes", w_stock_quotes_create, w_stock_quotes_apply_state},
     {"energy_timeline", w_energy_timeline_create, w_energy_timeline_apply_state},

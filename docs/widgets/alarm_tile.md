@@ -2,7 +2,7 @@
 
 # Alarm
 
-Shows the state of an `alarm_control_panel.*` entity and arms or disarms it, asking for a code when the entity needs one.
+Shows the **state** of an `alarm_control_panel.*` entity and arms or disarms it, asking for a code when the entity needs one.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/alarm_glow.png"><img src="../img/gallery/alarm_glow.png" alt="Alarm, Glow style" loading="lazy" width="280" height="110" style="width: 224px"></a></figure>

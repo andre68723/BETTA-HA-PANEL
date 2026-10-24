@@ -88,17 +88,21 @@ tools/apply_component_patches.py           # apply without a build
   deleted context (`tlsf_free` assertion in `mp_release_cover`, OTA rollback after 20 s; the panic PC read "Illegal
   instruction", the decoded core dump showed the double free).
 
-### Shared lock files
+### Variant lock files
 
-`dependencies.lock` (root) is shared by `panel4` and `panel10`; `paneljc`/`paneljc-v2` use `dependencies.lock.paneljc`,
-`tab5` uses `dependencies.lock.tab5` (`idf_build_set_property(DEPENDENCIES_LOCK ...)` in the root `CMakeLists.txt`).
-Building one of the shared pair overwrites the root file with that variant's resolution and swaps `managed_components/`
-(their manifests pull different Waveshare BSP packages). `lvgl`, `esp_lcd_touch`, `littlefs`, `esp_websocket_client`,
-`mqtt`, `cjson`, `esp_lvgl_adapter` and `esp_lcd_touch_gt911` are pinned to the same version in every manifest, so only the BSP differs.
+Each dependency set has a committed lock file, selected by the root `CMakeLists.txt` and used for the component
+versions reported by `/api/version`:
 
-To get the current one back afterwards, back up first: `cp -R managed_components <backup>` and `cp dependencies.lock
-<backup>/`; restore with `rsync -a --delete <backup>/ managed_components/` and copy the lock back.
-`git checkout dependencies.lock` is safe only without uncommitted changes of its own (a manifest bump in progress).
+| Variant | Lock file |
+| --- | --- |
+| Panel4 | `dependencies.lock` |
+| Panel10 | `dependencies.lock.panel10` |
+| JC V1 and V2 | `dependencies.lock.paneljc` |
+| Tab5 | `dependencies.lock.tab5` |
+
+The manifests use different BSPs and can resolve different transitive versions. Building one variant must not
+replace another variant's lock. Builds still share `managed_components/`, so build variants serially. Review and
+commit the matching lock when changing a manifest; use a disposable checkout for dependency experiments.
 
 ## Keeping components current
 

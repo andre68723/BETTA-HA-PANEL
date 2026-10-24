@@ -236,7 +236,10 @@ bool ha_sv_date_parse(const char *state, int *year, int *month, int *day)
     const int y = atoi(state);
     const int m = atoi(state + 5);
     const int d = atoi(state + 8);
-    if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+    if (m < 1 || m > 12 || d < 1 || y < 1) return false;
+    static const int days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    const bool leap = y % 4 == 0 && (y % 100 != 0 || y % 400 == 0);
+    if (d > days[m - 1] + (m == 2 && leap)) return false;
     if (year != NULL) *year = y;
     if (month != NULL) *month = m;
     if (day != NULL) *day = d;

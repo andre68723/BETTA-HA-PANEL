@@ -279,13 +279,6 @@ esp_err_t touch_init(void)
      * pin stays configured for the reset sequence above; only the adapter's view of it changes. */
     s_touch_handle->config.int_gpio_num = GPIO_NUM_NC;
     touch_latch_reset(&s_latch);
-    if (s_scan_task == NULL &&
-        xTaskCreatePinnedToCore(touch_scan_task, "touch_scan", PANELJC_TOUCH_SCAN_STACK, s_touch_handle,
-                                PANELJC_TOUCH_SCAN_PRIO, &s_scan_task, 0) != pdPASS) {
-        touch_release_handles();
-        return ESP_ERR_NO_MEM;
-    }
-
     const esp_lv_adapter_touch_config_t touch_cfg = {
         .disp   = disp,
         .handle = s_touch_handle,
@@ -302,16 +295,23 @@ esp_err_t touch_init(void)
         lv_indev_add_event_cb(s_touch_indev, touch_activity_event_cb,
             LV_EVENT_PRESSED, NULL);
         lv_indev_add_event_cb(s_touch_indev, touch_ui_event_cb, LV_EVENT_ALL, NULL);
+        touch_apply_polling_tune(s_touch_indev);
+        /* Start the sole controller reader only after all fallible binding steps. Otherwise a failed
+         * registration would free the controller while the scan task still reads it. */
+        if (xTaskCreatePinnedToCore(touch_scan_task, "touch_scan", PANELJC_TOUCH_SCAN_STACK, s_touch_handle,
+                                   PANELJC_TOUCH_SCAN_PRIO, &s_scan_task, 0) != pdPASS) {
+            esp_lv_adapter_unregister_touch(s_touch_indev);
+            s_touch_indev = NULL;
+            err = ESP_ERR_NO_MEM;
+        }
     }
     display_unlock();
 
     if (s_touch_indev == NULL) {
         ESP_LOGE(TAG_TOUCH, "esp_lv_adapter_register_touch failed");
         touch_release_handles();
-        return ESP_FAIL;
+        return err == ESP_ERR_NO_MEM ? err : ESP_FAIL;
     }
-
-    touch_apply_polling_tune(s_touch_indev);
 
     s_touch_ready = true;
     ESP_LOGI(TAG_TOUCH,

@@ -2,7 +2,7 @@
 
 # Todo list
 
-Shows a `todo.*` list and marks single items done.
+Shows a `todo.*` list and **marks single items done**.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/todo_list_glow.png"><img src="../img/gallery/todo_list_glow.png" alt="Todo list, Glow style" loading="lazy" width="300" height="380" style="width: 240px"></a></figure>

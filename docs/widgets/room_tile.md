@@ -2,7 +2,7 @@
 
 # Room card
 
-Groups a room's values and controls in one card, with a popup for its entities; any domain, filled from a Home Assistant area or by hand.
+Groups a **room's values and controls** in one card, with a popup for its entities; any domain, filled from a Home Assistant area or by hand.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/room_humidity_glow.png"><img src="../img/gallery/room_humidity_glow.png" alt="Room, humidity, Glow style" loading="lazy" width="320" height="200" style="width: 256px"></a></figure>

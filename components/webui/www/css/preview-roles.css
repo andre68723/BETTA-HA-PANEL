@@ -235,7 +235,7 @@ body:is([data-ui-style="glow"], [data-ui-style="glass"]) #canvas .tp-media .tp-v
 #canvas .tp-pq-kpis small { color: var(--pv-muted); opacity: 1; }
 #canvas .tp-pq-row i { background: color-mix(in srgb, var(--pv-text) 80%, transparent); height: 2px; }
 
-/* price (w_price_forecast.c): name, unit, interval, day buttons, axis, cheap window and min/max META, the price KEY */
+/* price (w_energy_price_forecast.c): name, unit, interval, day buttons, axis, cheap window and min/max META, the price KEY */
 #canvas .tp-price-head b { font-size: var(--key); }
 #canvas .tp-price-head small, #canvas .tp-price-slot, #canvas .tp-price-days, #canvas .tp-price-foot, #canvas .tp-price-cheap { font-size: var(--meta); }
 #canvas .tp-price-foot { height: auto; min-height: 1.3em; }

@@ -49,7 +49,7 @@ typedef struct {
 typedef void (*ha_history_days_cb_t)(uint32_t generation, ha_history_days_t *days);
 typedef void (*ha_history_range_cb_t)(uint32_t generation, ha_history_range_t *range);
 
-/* Completion runs on the LVGL task. The week callback owns and frees the result with ha_history_week_free(). The The week callback owns and frees the result with ha_history_week_free(). The
+/* Completion runs on the LVGL task. The week callback owns and frees the result with ha_history_week_free(). The
  * generation ID lets a closed or replaced popup ignore an older answer without keeping a widget pointer. */
 typedef void (*ha_history_check_cb_t)(uint32_t generation, const ha_history_check_t *check);
 typedef void (*ha_history_week_cb_t)(uint32_t generation, ha_history_week_t *week);

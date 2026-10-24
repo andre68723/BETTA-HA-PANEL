@@ -80,13 +80,7 @@ typedef enum {
     HA_BG_BUDGET_CRITICAL = 3,
 } ha_bg_budget_level_t;
 
-#define HA_ENERGY_PAGE_ENTITY_MAX (APP_MAX_PAGES * 9)
-#define HA_SETTINGS_ENTITY_MAX 4
-/* Average entity-ID budget per widget. Most widgets use 1-2 IDs, but a
- * solar_forecast widget can contribute up to 8 (entity + secondary +
- * tertiary + 5 forecast days); 4 gives headroom for mixed layouts without
- * oversizing the subscription buffers. Overflow is logged, not silent. */
-#define HA_LAYOUT_ENTITY_MAX ((APP_MAX_WIDGETS_TOTAL * 4) + HA_ENERGY_PAGE_ENTITY_MAX + HA_SETTINGS_ENTITY_MAX)
+#define HA_LAYOUT_ENTITY_MAX HA_LAYOUT_ENTITY_CAPACITY
 #define HA_WS_ENTITIES_SUB_MAX HA_LAYOUT_ENTITY_MAX
 #define HA_WS_ENTITIES_SUB_ID_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * (size_t)APP_MAX_ENTITY_ID_LEN)
 #define HA_WS_ENTITIES_SUB_REQ_BYTES ((size_t)HA_WS_ENTITIES_SUB_MAX * sizeof(uint32_t))
@@ -1097,7 +1091,7 @@ static uint16_t ha_client_prepare_entities_resubscribe_locked(int64_t now_ms)
         bool need_weather_forecast = false;
         entity_count = ha_client_collect_layout_entity_ids(entity_ids, max_entities, &need_weather_forecast);
         s_client.layout_needs_weather_forecast = need_weather_forecast;
-        ha_display_precision_set_wanted(entity_ids, entity_count);
+        if (!ha_display_precision_set_wanted(entity_ids, entity_count)) s_registry_lookup_due = true;
     }
 
     uint16_t target_count =
@@ -6123,8 +6117,10 @@ static void ha_client_task(void *arg)
             if (ids != NULL) {
                 bool need_weather_forecast = false;
                 const size_t count = ha_client_collect_layout_entity_ids(ids, (size_t)HA_LAYOUT_ENTITY_MAX, &need_weather_forecast);
-                ha_display_precision_set_wanted(ids, count);
+                if (!ha_display_precision_set_wanted(ids, count)) s_registry_lookup_due = true;
                 free(ids);
+            } else {
+                s_registry_lookup_due = true; /* a temporary allocation failure must not lose the new layout's lookup */
             }
         }
         if (connected && authenticated && ha_display_precision_is_due(now_ms)) {

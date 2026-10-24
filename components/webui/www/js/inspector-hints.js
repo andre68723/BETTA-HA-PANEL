@@ -95,7 +95,7 @@ function inspectorFullHint(el) {
 function inspectorHelpTexts(source) {
   const hints = source.matches(".meta, .field-hint") ? [source]
     : Array.from(source.querySelectorAll(".meta, .field-hint, li"));
-  return hints.filter(hint => !hint.hidden && !hint.classList.contains("hidden"))
+  return hints.filter(hint => inspectorNodeShown(hint, source.parentElement))
     .map(inspectorFullHint).filter(Boolean);
 }
 
@@ -156,6 +156,11 @@ function inspectorHelpSection(dialog, title, texts) {
   const section = document.createElement("section"); section.className = "inspector-help-section";
   if (title) { const heading = document.createElement("h3"); heading.textContent = title; section.append(heading); }
   for (const text of texts.flatMap(inspectorHelpParagraphs)) {
+    const heading = /^\*\*([^*\n]+)\*\*$/.exec(text);
+    if (heading) {
+      const label = document.createElement("h4"); label.textContent = heading[1]; section.append(label);
+      continue;
+    }
     const paragraph = document.createElement("p");
     inspectorHelpInline(paragraph, inspectorHelpLabelled(text));
     section.append(paragraph);

@@ -4,7 +4,7 @@
 .evcc-head{font-size:16px}.evcc-head span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.evcc-link{text-decoration:underline;text-underline-offset:3px}
 .evcc-reading>div{flex:1;min-width:0}.evcc-reading b{font-size:20px;white-space:nowrap}.evcc-preview small{display:block;font-size:13px;opacity:.65;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .evcc-gauge{height:10px;min-height:10px;position:relative;background:rgba(128,128,128,.2)}
-.evcc-gauge i{display:block;width:100%;height:100%;background:linear-gradient(to right,#df5050 0%,#e7c547 20%,#43bf79 100%)}
+.evcc-gauge i{display:block;width:100%;height:100%;background:#43bf79}
 .evcc-modes{display:flex;gap:8px}.evcc-modes span,.evcc-control{background:rgba(128,128,128,.18);border:1px solid rgba(128,128,128,.25);border-radius:6px;display:flex;align-items:center;justify-content:center;min-height:42px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:16px}
 .evcc-modes span{flex:1}.evcc-modes .selected{background:var(--accent,#447c9a);color:white}.evcc-control.disconnected{background:transparent;border-color:transparent}.evcc-status{font-size:14px;opacity:.7}.evcc-soc b{font-size:24px}.evcc-soc>div:last-child{text-align:right}.evcc-last{display:flex;flex-direction:column;gap:8px;font-size:20px}.evcc-last span{font-size:18px}
 

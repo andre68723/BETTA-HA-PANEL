@@ -88,7 +88,7 @@ def find_problems(lines, context="", min_px=0):
         # Other surfaces directly in the tile (panels, forecast cards, pictures): a text either lies
         # within one or stays clear of it; half on it means one covers the other.
         surfaces = [r for r in recs if r["kind"] in ("obj", "bar", "slider") and r["depth"] == 1]
-        if wtype == "price_forecast" and any(r.get("text_role") == "key" for r in labels):
+        if wtype == "energy_price_forecast" and any(r.get("text_role") == "key" for r in labels):
             # A valid price tile must retain its plot and the complete interval, even at a forced growth cap.
             if not any(r["kind"] == "obj" and r["y2"] - r["y1"] + 1 >= 14 for r in surfaces):
                 problems.append(f"{where}: price plot is missing or too short")

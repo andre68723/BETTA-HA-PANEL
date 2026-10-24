@@ -2,7 +2,7 @@
 
 # Lock
 
-Shows the state of a `lock.*` entity and locks or unlocks it; optional history opens with a long press.
+Shows the state of a `lock.*` entity and **locks or unlocks** it; optional history opens with a long press.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/front_door_glow.png"><img src="../img/gallery/front_door_glow.png" alt="Front door, Glow style" loading="lazy" width="240" height="94" style="width: 192px"></a></figure>

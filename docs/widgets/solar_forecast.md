@@ -2,7 +2,7 @@
 
 # Solar forecast
 
-Compares the predicted solar production from `sensor.*` forecasts for today and the next four days.
+Compares the **predicted solar production** from `sensor.*` forecasts for today and the next four days.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/solar_forecast_glow.png"><img src="../img/gallery/solar_forecast_glow.png" alt="Solar forecast, Glow style" loading="lazy" width="350" height="310" style="width: 280px"></a></figure>

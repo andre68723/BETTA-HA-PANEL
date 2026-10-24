@@ -165,7 +165,8 @@ bool ha_quote_parse(ha_quote_provider_t provider, const char *state, const char 
 
     if (yahoo) {
         double at = 0.0;
-        if (quote_json_number(cJSON_GetObjectItemCaseSensitive(attrs, "regularMarketTime"), &at) && at > 0.0) {
+        if (quote_json_number(cJSON_GetObjectItemCaseSensitive(attrs, "regularMarketTime"), &at) &&
+            at > 0.0 && at <= 253402300799.0) {
             out->has_quote_time = true;
             out->quote_time = (int64_t)at;
         }

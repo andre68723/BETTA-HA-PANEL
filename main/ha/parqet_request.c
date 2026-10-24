@@ -50,7 +50,7 @@ static pq_wait_t s_wait[PQ_QUEUE];
 static size_t s_wait_count;
 static pq_wait_t s_current;
 static bool s_inflight;
-static uint32_t s_generation;
+static uint32_t s_generation = 0x70000000U; /* separate from the statistics worker's response tokens */
 static int s_retries;
 static lv_timer_t *s_timer; /* retry for the gate, or the reply timeout */
 static pq_cache_t s_cache[PQ_CACHE];
@@ -117,6 +117,7 @@ static void fail_current(esp_err_t status)
 {
     stop_timer();
     s_inflight = false;
+    ha_client_cancel_pending_responses_for_user((void *)(uintptr_t)s_generation);
     s_generation++; /* a late reply is dropped */
     char portfolio[APP_MAX_ENTITY_ID_LEN], interval[8];
     strlcpy(portfolio, s_current.portfolio_id, sizeof(portfolio));
@@ -190,6 +191,7 @@ static void send_current(void)
     if (err == ESP_ERR_INVALID_STATE && s_retries < PQ_RETRIES) { /* another heavy request runs: try again soon */
         s_retries++;
         s_timer = lv_timer_create(retry_cb, PQ_RETRY_MS, NULL);
+        if (s_timer == NULL) { fail_current(ESP_ERR_NO_MEM); return; }
         lv_timer_set_repeat_count(s_timer, 1);
         return;
     }
@@ -198,6 +200,7 @@ static void send_current(void)
         return;
     }
     s_timer = lv_timer_create(timer_cb, PQ_REPLY_TIMEOUT_MS, NULL);
+    if (s_timer == NULL) { fail_current(ESP_ERR_NO_MEM); return; }
     lv_timer_set_repeat_count(s_timer, 1);
 }
 

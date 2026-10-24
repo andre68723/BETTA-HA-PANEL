@@ -2,7 +2,7 @@
 
 # Light
 
-Switches a `light.*` entity and adjusts brightness, colour temperature, colour and effects as far as the light supports them.
+Switches a `light.*` entity and adjusts **brightness, colour temperature, colour and effects** as far as the light supports them.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/light_glow.png"><img src="../img/gallery/light_glow.png" alt="Light, Glow style" loading="lazy" width="200" height="220" style="width: 160px"></a></figure>

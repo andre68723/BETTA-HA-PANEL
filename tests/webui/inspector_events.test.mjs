@@ -62,6 +62,18 @@ function setupInspector(widgetType = "graph", entityId = "sensor.temperature", s
   return run;
 }
 
+test("Sensor accepts a binary sensor through the actual editing event, save and reload", async () => {
+  const run = setupInspector("sensor", "sensor.temperature");
+  run('el.fEntity.value = "binary_sensor.door"; el.fEntity.dispatch("change")');
+  assert.equal(run('selectedWidget().entity_id'), "binary_sensor.door");
+  await run('el.saveBtn.onclick()');
+  assert.equal(run('savedLayout.pages[0].widgets[0].entity_id'), "binary_sensor.door");
+  run('editor.layout = savedLayout; normalizeLayoutWidgets(editor.layout)');
+  assert.equal(run('selectedWidget().entity_id'), "binary_sensor.door");
+  assert.equal(run('entityMatchesWidgetType({id: "binary_sensor.door"}, "sensor")'), true);
+  assert.equal(run('entityPickerAllowedItems([{id:"binary_sensor.door"},{id:"light.demo"}], entityPickerConfig("sensor")).length'), 1);
+});
+
 for (const [input, property] of [
   ["fEntity", "entity_id"], ["fSecondaryEntity", "secondary_entity_id"],
   ["fTertiaryEntity", "tertiary_entity_id"], ["fEtlCharge", "battery_charge_entity_id"],
@@ -236,9 +248,9 @@ for (const [input, type, entity, property, firstChecked, firstValue, secondValue
   ["fHistoryPopup", "vacuum_tile", "vacuum.robot", "history_popup", true, true, undefined],
   ["fCameraLive", "camera_tile", "camera.printer", "camera_live", true, true, undefined],
   ["fLockConfirm", "lock_tile", "lock.front_door", "lock_confirm", true, true, undefined],
-  ["fPriceDaySwitch", "price_forecast", "sensor.epex_spot_data_market_price", "price_day_switch", true, true, undefined],
-  ["fPriceCheapTimes", "price_forecast", "sensor.epex_spot_data_market_price", "price_cheap_times", true, true, undefined],
-  ["fPriceLine", "price_forecast", "sensor.epex_spot_data_market_price", "price_line", true, true, undefined],
+  ["fPriceDaySwitch", "energy_price_forecast", "sensor.epex_spot_data_market_price", "price_day_switch", true, true, undefined],
+  ["fPriceCheapTimes", "energy_price_forecast", "sensor.epex_spot_data_market_price", "price_cheap_times", true, true, undefined],
+  ["fPriceLine", "energy_price_forecast", "sensor.epex_spot_data_market_price", "price_line", true, true, undefined],
   ["fParqetHideAmounts", "parqet_portfolio", "sensor.portfolio_value", "parqet_hide_amounts", true, true, undefined],
   ["fParqetSelector", "parqet_portfolio", "sensor.portfolio_value", "parqet_selector", true, true, undefined],
   ["fShowName", "sensor", "sensor.temperature", "show_name", false, false, undefined],
@@ -444,7 +456,7 @@ test("device class chips: named for sensors and binary sensors, none only for a 
 });
 
 test("price fixed average: edit, save, reload and clear through Inspector events", async () => {
-  const run = setupInspector("price_forecast", "sensor.price");
+  const run = setupInspector("energy_price_forecast", "sensor.price");
   run("renderEntityOptions = () => {}"); // unrelated select/datalist presentation
   run('el.fPriceAverage.value = "0.25"; el.fPriceAverage.dispatch("change")');
   assert.equal(run("selectedWidget().price_average"), 0.25);
@@ -672,9 +684,12 @@ test("wallbox header: choice, maximum and site sensors survive save, reload, swi
   assert.equal(run("selectedWidget().evcc_power_max_kw"), 22);
   assert.equal(run("el.fEvccPowerMaxWrap.classList.contains('hidden')"), false);
   assert.equal(run("el.evccSiteFields.classList.contains('hidden')"), true);
+  run("selectedWidget().rect.h = 600");
+  assert.match(run("evccHeaderPreview(selectedWidget(), 7.4)"), /7.4 \/ 22 kW/);
   run("el.fEvccPvPower.value='sensor.demo_pv'; el.fEvccPvPower.dispatch('change')");
   run("el.fEvccHeader.value='flow'; el.fEvccHeader.dispatch('change')");
   assert.equal(run("el.evccSiteFields.classList.contains('hidden')"), false);
+  assert.match(run("evccHeaderPreview(selectedWidget(), 7.4)"), /evcc-flow/);
   await run("el.saveBtn.onclick()");
   assert.equal(run("savedLayout.pages[0].widgets[0].evcc_header"), "flow");
   assert.equal(run("savedLayout.pages[0].widgets[0].evcc_pv_power_entity_id"), "sensor.demo_pv");
@@ -699,10 +714,53 @@ test("wallbox header hint names the height the header needs", () => {
 });
 test("a loadpoint brings its instance's site sensors", () => {
   const run = setupInspector("wallbox_evcc", "select.demo_mode");
+  run("el.fEvccGridPower.value='sensor.other_instance_grid'; el.fEvccGridPower.dispatch('change')");
   run(`evccLoadpoints=[{id:'demo',entities:{entity_id:'select.demo_mode',evcc_pv_power_entity_id:'sensor.site_pv',evcc_home_power_entity_id:'sensor.site_home'}}]`);
   assert.equal(run("evccChooseLoadpoint('demo')"), true);
   assert.equal(run("selectedWidget().evcc_pv_power_entity_id"), "sensor.site_pv");
   assert.equal(run("selectedWidget().evcc_home_power_entity_id"), "sensor.site_home");
+  assert.equal(run("selectedWidget().evcc_grid_power_entity_id"), undefined);
+});
+test("wallbox discovery uses only the selected evcc instance and removes unrelated saved bindings", async () => {
+  const run = setupInspector("wallbox_evcc", "select.demo_mode");
+  run(`selectedWidget().evcc_loadpoint_id='saved';
+    el.fEvccGridPower.value='sensor.manual_grid'; el.fEvccGridPower.dispatch('change');
+    apiGet=async()=>({status:'ready',loadpoints:[{id:'saved',entities:{entity_id:'select.demo_mode',evcc_pv_power_entity_id:'sensor.site_pv',evcc_grid_power_entity_id:'sensor.site_grid'}}]});`);
+  await run("evccDetectLoadpoints()");
+  assert.equal(run("selectedWidget().evcc_pv_power_entity_id"), "sensor.site_pv");
+  await run("el.fEvccDetectBtn.onclick()");
+  // onclick starts the async search; finish its microtask before checking the model.
+  await run("Promise.resolve()");
+  assert.equal(run("selectedWidget().evcc_pv_power_entity_id"), "sensor.site_pv");
+  assert.equal(run("selectedWidget().evcc_grid_power_entity_id"), "sensor.site_grid");
+  await run("el.saveBtn.onclick()");
+  run("editor.layout=savedLayout; evccLoadInspector(selectedWidget())");
+  assert.equal(run("el.fEvccPvPower.value"), "sensor.site_pv");
+  assert.equal(run("el.fEvccGridPower.value"), "sensor.site_grid");
+});
+test("a blank wallbox automatically chooses the only evcc loadpoint; several require a choice", async () => {
+  const run = setupInspector("wallbox_evcc", "");
+  run(`apiGet=async()=>({status:'ready',loadpoints:[{id:'one',entities:{entity_id:'select.one_mode',evcc_pv_power_entity_id:'sensor.one_pv'}}]});`);
+  await run("evccDetectLoadpoints()");
+  assert.equal(run("selectedWidget().evcc_loadpoint_id"), "one");
+  assert.equal(run("selectedWidget().entity_id"), "select.one_mode");
+  assert.equal(run("selectedWidget().evcc_pv_power_entity_id"), "sensor.one_pv");
+  const multiple = setupInspector("wallbox_evcc", "");
+  multiple(`apiGet=async()=>({status:'ready',loadpoints:[{id:'one',entities:{entity_id:'select.one_mode'}},{id:'two',entities:{entity_id:'select.two_mode'}}]});`);
+  await multiple("evccDetectLoadpoints()");
+  assert.equal(multiple("selectedWidget().evcc_loadpoint_id"), undefined);
+});
+test("legacy wallbox resolves its exact mode entity and never guesses a different loadpoint", async () => {
+  const run = setupInspector("wallbox_evcc", "select.existing_mode");
+  run(`apiGet=async()=>({status:'ready',loadpoints:[{id:'existing',entities:{entity_id:'select.existing_mode',evcc_pv_power_entity_id:'sensor.site_pv'}}]});`);
+  await run("evccDetectLoadpoints()");
+  assert.equal(run("selectedWidget().evcc_loadpoint_id"), "existing");
+  assert.equal(run("selectedWidget().evcc_pv_power_entity_id"), "sensor.site_pv");
+  const other = setupInspector("wallbox_evcc", "select.other_mode");
+  other(`apiGet=async()=>({status:'ready',loadpoints:[{id:'one',entities:{entity_id:'select.one_mode'}}]});`);
+  await other("evccDetectLoadpoints()");
+  assert.equal(other("selectedWidget().entity_id"), "select.other_mode");
+  assert.equal(other("selectedWidget().evcc_loadpoint_id"), undefined);
 });
 test("loadpoint choice replaces only with acceptance and saves the number binding", async () => {
   const run=setupInspector("wallbox_evcc","select.manual");

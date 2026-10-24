@@ -88,6 +88,28 @@ test("Grouped help has one popup with complete paragraphs and no nested info but
   assert.equal(run("dialog.querySelectorAll('p').map(p=>p.textContent).join(' ')"), run("full") + " Second complete explanation.");
 });
 
+test("help excludes explanations inside a hidden optional group and includes them after enabling it", () => {
+  const run = setup();
+  run(`globalThis.source=node('div'); source.append(hint);
+    globalThis.optional=node('div'); optional.className='hidden';
+    globalThis.extra=node('div'); extra.className='meta'; extra.textContent='Optional enabled explanation.';
+    optional.append(extra); source.append(optional);
+    openInspectorHelp('Options',source,{topic:{}}); globalThis.dialog=document.body.querySelector('dialog');`);
+  assert.equal(run("dialog.textContent.includes('Optional enabled explanation.')"), false);
+  run(`dialog.close(); optional.className=''; openInspectorHelp('Options',source,{topic:{}});
+    globalThis.dialog=document.body.querySelector('dialog');`);
+  assert.equal(run("dialog.textContent.includes('Optional enabled explanation.')"), true);
+});
+
+test("wallbox height warning remains directly visible rather than moving into a help popup", () => {
+  const run = setup();
+  run(`hint.id='evccHeaderHint'; hint.className='meta warn no-shorten';
+    hint.textContent=t('evcc.header_size',{h:440,current:410}); shortenHint(hint);`);
+  assert.equal(run("hint.parentElement"), run("root"));
+  assert.match(run("hint.textContent"), /410/);
+  assert.equal(run("root.querySelector('button')"), null);
+});
+
 test("Popup paragraphs preserve authored line breaks and complete entity IDs", () => {
   const run = setup();
   assert.deepEqual(Array.from(run(`inspectorHelpParagraphs("First line.\\nSecond line.\\n\\nNext paragraph.")`)), ["First line.\nSecond line.", "Next paragraph."]);
@@ -123,7 +145,7 @@ test("Every widget has translated top-level help and its own documentation secti
     run(`editor.layout={pages:[{id:'page', widgets:[{id:'widget',type:'${type}',title:'Demo'}]}]};
       editor.selectedPageId='page'; editor.selectedWidgetId='widget';`);
     for (const lang of ["en", "de"]) {
-      run(`editor.i18nLanguage='${lang}'`);
+      run(`editor.i18nLanguage='${lang}'; editor.i18nMap=WEB_I18N_BUILTIN['${lang}'];`);
       const helpType = run("inspectorHelpTopic().type");
       const key = `inspector.help.widget_${helpType}`;
       assert.notEqual(run(`t('${key}')`), key, `${lang} ${type}`);
@@ -142,4 +164,34 @@ test("Text-size info renders role sizes as a list and a separate explanation", (
   assert.equal(run("dialog.querySelectorAll('dt').length"), 5);
   assert.equal(run("dialog.querySelectorAll('dd').every(node=>node.textContent.endsWith(' px'))"), true);
   assert.equal(run("dialog.querySelectorAll('h3').length"), 2);
+});
+
+test("solar alignment help has separate bold headings and paragraphs in both languages", () => {
+  const run = setup();
+  for (const language of ["en", "de"]) {
+    run(`editor.i18nLanguage='${language}'; editor.i18nMap=WEB_I18N_BUILTIN['${language}']; hint.textContent=t('layout.inspector.readability_hint');
+      openInspectorHelp('Solar',hint,{topic:{}}); globalThis.dialog=document.body.querySelector('dialog');`);
+    const headings = Array.from(run("dialog.querySelectorAll('h4').map(n=>n.textContent)"));
+    assert.equal(headings.length, 3);
+    assert.ok(headings.every(text => !text.endsWith(":")));
+    assert.equal(headings[1], language === "de" ? "Tage am Wetter ausrichten" : "Line up days with the weather tile");
+    assert.equal(run("dialog.querySelectorAll('p').length"), 4);
+    assert.ok(run("dialog.querySelectorAll('strong').length") >= 3);
+    run("dialog.close()");
+  }
+});
+
+test("every built-in widget overview contains emphasis and preserves its documentation link", () => {
+  const run = setup();
+  for (const type of Array.from(run("WIDGET_NAME_TYPES"))) {
+    run(`editor.layout={pages:[{id:'page',widgets:[{id:'widget',type:'${type}',title:'Demo'}]}]};
+      editor.selectedPageId='page';editor.selectedWidgetId='widget';`);
+    for (const language of ["en", "de"]) {
+      run(`editor.i18nLanguage='${language}'; editor.i18nMap=WEB_I18N_BUILTIN['${language}']; openInspectorHelp('Demo',null,{overview:true});
+        globalThis.dialog=document.body.querySelector('dialog');`);
+      assert.ok(run("dialog.querySelectorAll('strong').length") > 0, `${language} ${type}`);
+      assert.equal(run("dialog.querySelector('a').href"), run("inspectorHelpTopic().url"));
+      run("dialog.close()");
+    }
+  }
 });

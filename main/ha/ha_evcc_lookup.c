@@ -195,7 +195,7 @@ char *ha_evcc_lookup_json(void)
     memcpy(instances, s_instances, sizeof(instances));
     UNLOCK();
     cJSON *root = cJSON_CreateObject();
-    if (!root) { free(snapshot); return NULL; }
+    if (!root) { free(snapshot); free(sites); return NULL; }
     cJSON_AddStringToObject(root, "status", state == READY ? "ready" : state == ERROR ? "error" : state == IDLE ? "idle" : "pending");
     cJSON *list = cJSON_AddArrayToObject(root, "loadpoints");
     for (size_t i = 0; state == READY && i < count && list; i++) {

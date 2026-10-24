@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  *
- * Price forecast (price_forecast): the electricity price of a day as one bar per interval, for a sensor whose attribute lists the prices of
+ * Energy price forecast (energy_price_forecast): the electricity price of a day as one bar per interval, for a sensor whose attribute lists the prices of
  * today and, once published, tomorrow (see ha/ha_price_series.h for the accepted shapes: ha_epex_spot, the Day Ahead Optimizer, Nord Pool and
  * Energy Price Forecast sensors, Tibber and Nord Pool templates).
  *
@@ -409,7 +409,7 @@ static void pf_refresh(w_pf_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->card == NULL) return;
     /* The timer, a button and a size change run outside the factory's calls: take the tile's text-size cap here as well. */
-    ui_fonts_tile_begin("price_forecast", (int)lv_obj_get_width(ctx->card), (int)lv_obj_get_height(ctx->card));
+    ui_fonts_tile_begin("energy_price_forecast", (int)lv_obj_get_width(ctx->card), (int)lv_obj_get_height(ctx->card));
     pf_update(ctx);
     pf_layout(ctx);
     ui_fonts_tile_end();
@@ -580,7 +580,7 @@ static lv_obj_t *pf_day_button(w_pf_ctx_t *ctx, const char *text)
     return b;
 }
 
-esp_err_t w_price_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance)
+esp_err_t w_energy_price_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance)
 {
     if (def == NULL || parent == NULL || out_instance == NULL) {
         return ESP_ERR_INVALID_ARG;
@@ -644,7 +644,7 @@ esp_err_t w_price_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, 
     return ESP_OK;
 }
 
-void w_price_forecast_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
+void w_energy_price_forecast_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
 {
     if (instance == NULL || instance->ctx == NULL || state == NULL) return;
     w_pf_ctx_t *ctx = (w_pf_ctx_t *)instance->ctx;
@@ -669,7 +669,7 @@ void w_price_forecast_apply_state(ui_widget_instance_t *instance, const ha_state
     pf_refresh(ctx);
 }
 
-void w_price_forecast_mark_unavailable(ui_widget_instance_t *instance)
+void w_energy_price_forecast_mark_unavailable(ui_widget_instance_t *instance)
 {
     if (instance == NULL || instance->ctx == NULL) return;
     w_pf_ctx_t *ctx = (w_pf_ctx_t *)instance->ctx;

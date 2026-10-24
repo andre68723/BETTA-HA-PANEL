@@ -64,7 +64,7 @@ function widgetSizeLimitsForCanvas(type) {
     case "energy_timeline":
       return { minW: 300, minH: 200, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "parqet_portfolio":
-    case "price_forecast":
+    case "energy_price_forecast":
       return { minW: 240, minH: 150, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "stock_quotes":
       return { minW: 240, minH: 120, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };

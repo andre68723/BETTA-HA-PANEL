@@ -133,7 +133,8 @@ function allowedEntityDomainsForWidgetType(
 ) {
   if (type === "wallbox_evcc") return ["select"];
   if (type === "empty_tile") return [];
-  if (type === "sensor" || type === "graph" || type === "gauge" || type === "solar_forecast" || type === "price_forecast" || type === "parqet_portfolio" || type === "stock_quotes" || type === "car_widget" || type === "bambu_printer" || type === "energy_timeline") return ["sensor"];
+  if (type === "sensor") return ["sensor", "binary_sensor"];
+  if (type === "graph" || type === "gauge" || type === "solar_forecast" || type === "energy_price_forecast" || type === "parqet_portfolio" || type === "stock_quotes" || type === "car_widget" || type === "bambu_printer" || type === "energy_timeline") return ["sensor"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     return buttonModeRequiresMediaPlayer(normalizedMode) ? ["media_player"] : ["switch", "media_player"];
@@ -246,12 +247,12 @@ function secondaryEntityConfigForWidgetType(type) {
       invalidStatusKey: "layout.status.secondary_sensor_required",
     };
   }
-  if (type === "price_forecast") {
+  if (type === "energy_price_forecast") {
     return {
       enabled: true,
       domain: "sensor",
       optional: true,
-      labelKey: "layout.inspector.secondary_entity_price_forecast",
+      labelKey: "layout.inspector.secondary_entity_energy_price_forecast",
       labelFallback: "Average sensor (EUR/kWh, optional)",
       invalidStatusKey: "layout.status.secondary_sensor_required",
     };

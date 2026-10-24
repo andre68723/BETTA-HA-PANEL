@@ -2,7 +2,7 @@
 
 # Climate
 
-Controls a `climate.*` entity such as an air conditioner through its supported HVAC modes.
+Controls a `climate.*` entity such as an air conditioner through its **supported HVAC modes**.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/climate_glow.png"><img src="../img/gallery/climate_glow.png" alt="Climate, Glow style" loading="lazy" width="280" height="220" style="width: 224px"></a></figure>

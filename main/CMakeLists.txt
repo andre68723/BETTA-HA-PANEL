@@ -49,6 +49,8 @@ if(CONFIG_APP_PANEL_VARIANT_10INCH_JC)
     set(APP_DEPENDENCIES_LOCK "${CMAKE_SOURCE_DIR}/dependencies.lock.paneljc")
 elseif(CONFIG_APP_PANEL_VARIANT_TAB5_1280)
     set(APP_DEPENDENCIES_LOCK "${CMAKE_SOURCE_DIR}/dependencies.lock.tab5")
+elseif(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
+    set(APP_DEPENDENCIES_LOCK "${CMAKE_SOURCE_DIR}/dependencies.lock.panel10")
 else()
     set(APP_DEPENDENCIES_LOCK "${CMAKE_SOURCE_DIR}/dependencies.lock")
 endif()
@@ -282,7 +284,7 @@ idf_component_register(
         "ui/widgets/weather_condition_icon.c"
         "ui/widgets/weather_now_view.c"
         "ui/widgets/w_solar_forecast.c"
-        "ui/widgets/w_price_forecast.c"
+        "ui/widgets/w_energy_price_forecast.c"
         "ui/widgets/w_parqet_portfolio.c"
         "ui/widgets/w_stock_quotes.c"
         "ui/quote_history_feed.c"

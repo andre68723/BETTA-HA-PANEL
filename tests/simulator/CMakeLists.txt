@@ -162,7 +162,7 @@ add_executable(betta-widget-sim
     "${REPO_ROOT}/main/ui/widgets/w_camera.c"
     "${REPO_ROOT}/main/ui/widgets/w_vacuum.c"
     "${REPO_ROOT}/main/ui/widgets/w_solar_forecast.c"
-    "${REPO_ROOT}/main/ui/widgets/w_price_forecast.c"
+    "${REPO_ROOT}/main/ui/widgets/w_energy_price_forecast.c"
     "${REPO_ROOT}/main/ui/widgets/w_parqet_portfolio.c"
     "${REPO_ROOT}/main/ui/widgets/w_stock_quotes.c"
     "${REPO_ROOT}/main/ui/quote_history_feed.c"

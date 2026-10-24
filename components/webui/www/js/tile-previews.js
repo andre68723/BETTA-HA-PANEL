@@ -809,8 +809,8 @@ function tilePreviewMarkup(widget) {
         <div class="tp-etl-axis"><small>14:45</small><small>20:45</small><small>02:45</small><small>08:45</small></div>` : "";
       return `<div class="tp tp-etl${nested ? " tp-etl-is-nested" : ""}${withPlot ? "" : " tp-etl-noplot"}">${head}${top}${plot}</div>${handle}`;
     }
-    case "price_forecast": {
-      // A day of bars like the panel (w_price_forecast.c): below the day's average green, above it orange, hours that are over dimmed,
+    case "energy_price_forecast": {
+      // A day of bars like the panel (w_energy_price_forecast.c): below the day's average green, above it orange, hours that are over dimmed,
       // the running hour outlined; the entity's state is the price now (EUR/kWh), the profile is a typical day.
       const raw = Number(String(editor.states.get(widget.entity_id) ?? "").replace(",", "."));
       const price = Number.isFinite(raw) && raw > 0 && raw < 5 ? (raw * 100).toFixed(1).replace(".", ",") : "20,1";

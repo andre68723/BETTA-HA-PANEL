@@ -2,7 +2,7 @@
 
 # Binary sensor
 
-Shows the state of a `binary_sensor.*` or `event.*` entity, with optional history on tap.
+Shows the **state** of a `binary_sensor.*` or `event.*` entity, with optional history on tap.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/binary_sensor_glow.png"><img src="../img/gallery/binary_sensor_glow.png" alt="Binary sensor, Glow style" loading="lazy" width="220" height="90" style="width: 176px"></a></figure>

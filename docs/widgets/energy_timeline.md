@@ -2,7 +2,7 @@
 
 # Energy timeline
 
-Compares cumulative energy counters (`sensor.*`, kWh) over 24 hours, with rings and a detailed timeline.
+Compares **cumulative energy counters** (`sensor.*`, kWh) over 24 hours, with rings and a detailed timeline.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/energy_last_24_hours_glow.png"><img src="../img/gallery/energy_last_24_hours_glow.png" alt="Energy last 24 hours, Glow style" loading="lazy" width="680" height="520" style="width: 544px"></a></figure>

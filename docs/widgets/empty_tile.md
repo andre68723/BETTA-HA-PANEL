@@ -2,7 +2,7 @@
 
 # Empty spacer
 
-Reserves dashboard space. It has no entity and subscribes to nothing.
+Reserves **dashboard space**. It has no entity and subscribes to nothing.
 
 ## Entities
 

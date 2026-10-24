@@ -10,6 +10,11 @@
 #include <stdint.h>
 
 #include "cJSON.h"
+#include "app_config.h"
+
+/* Transport and registry must cover the model, including valid multi-page layouts with eight quotes per tile.
+ * An average per-widget budget silently truncated layouts that still fit the 32 KiB file limit. */
+#define HA_LAYOUT_ENTITY_CAPACITY APP_HA_MAX_ENTITIES
 
 typedef void (*ha_layout_entity_overflow_fn)(size_t capacity, const char *entity_id);
 

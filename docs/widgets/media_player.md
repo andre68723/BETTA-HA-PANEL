@@ -2,7 +2,7 @@
 
 # Media player
 
-Controls playback and volume of a `media_player.*` entity, with the current track and cover art.
+Controls **playback and volume** of a `media_player.*` entity, with the current track and cover art.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/media_player_glow.png"><img src="../img/gallery/media_player_glow.png" alt="Media player, Glow style" loading="lazy" width="340" height="360" style="width: 272px"></a></figure>

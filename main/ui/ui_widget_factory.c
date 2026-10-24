@@ -55,9 +55,9 @@ void w_stock_quotes_apply_state(ui_widget_instance_t *instance, const ha_state_t
 void w_stock_quotes_mark_unavailable(ui_widget_instance_t *instance);
 void w_parqet_portfolio_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_parqet_portfolio_mark_unavailable(ui_widget_instance_t *instance);
-esp_err_t w_price_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
-void w_price_forecast_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
-void w_price_forecast_mark_unavailable(ui_widget_instance_t *instance);
+esp_err_t w_energy_price_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
+void w_energy_price_forecast_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
+void w_energy_price_forecast_mark_unavailable(ui_widget_instance_t *instance);
 
 esp_err_t w_cover_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void w_cover_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
@@ -220,8 +220,8 @@ static esp_err_t ui_widget_factory_create_inner(const ui_widget_def_t *def, lv_o
     if (strcmp(def->type, "parqet_portfolio") == 0) {
         return w_parqet_portfolio_create(def, parent, out_instance);
     }
-    if (strcmp(def->type, "price_forecast") == 0) {
-        return w_price_forecast_create(def, parent, out_instance);
+    if (strcmp(def->type, "energy_price_forecast") == 0) {
+        return w_energy_price_forecast_create(def, parent, out_instance);
     }
     if (!strcmp(def->type, "wallbox_evcc")) return w_wallbox_evcc_create(def, parent, out_instance);
     if (strcmp(def->type, "bambu_printer") == 0) {
@@ -313,8 +313,8 @@ static void ui_widget_factory_apply_state_inner(ui_widget_instance_t *instance, 
         w_stock_quotes_apply_state(instance, state);
     } else if (strcmp(instance->type, "parqet_portfolio") == 0) {
         w_parqet_portfolio_apply_state(instance, state);
-    } else if (strcmp(instance->type, "price_forecast") == 0) {
-        w_price_forecast_apply_state(instance, state);
+    } else if (strcmp(instance->type, "energy_price_forecast") == 0) {
+        w_energy_price_forecast_apply_state(instance, state);
     } else if (!strcmp(instance->type, "wallbox_evcc")) {
         w_wallbox_evcc_apply_state(instance, state);
     } else if (strcmp(instance->type, "bambu_printer") == 0) {
@@ -411,8 +411,8 @@ static void ui_widget_factory_mark_unavailable_inner(ui_widget_instance_t *insta
         w_stock_quotes_mark_unavailable(instance);
     } else if (strcmp(instance->type, "parqet_portfolio") == 0) {
         w_parqet_portfolio_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "price_forecast") == 0) {
-        w_price_forecast_mark_unavailable(instance);
+    } else if (strcmp(instance->type, "energy_price_forecast") == 0) {
+        w_energy_price_forecast_mark_unavailable(instance);
     } else if (!strcmp(instance->type, "wallbox_evcc")) {
         w_wallbox_evcc_mark_unavailable(instance);
     } else if (strcmp(instance->type, "bambu_printer") == 0) {
@@ -471,7 +471,7 @@ bool ui_widget_factory_needs_refresh_on_show(const char *type)
      * pages. Replaying them rebuilds their visuals before the first frame. */
     static const char *const kStateOnly[] = {
         "button", "car_widget", "climate_tile", "contact_tile", "cover_tile", "fan_tile", "heating_tile",
-        "light_tile", "room_tile", "lock_tile", "alarm_tile", "scene_tile", "select_tile", "datetime_tile", "sensor", "slider", "gauge", "solar_forecast", "price_forecast", "parqet_portfolio", "stock_quotes", "energy_timeline",
+        "light_tile", "room_tile", "lock_tile", "alarm_tile", "scene_tile", "select_tile", "datetime_tile", "sensor", "slider", "gauge", "solar_forecast", "energy_price_forecast", "parqet_portfolio", "stock_quotes", "energy_timeline",
         "bambu_printer", "wallbox_evcc", "sonos_favorites",
     };
     if (type == NULL) {

@@ -2,7 +2,7 @@
 
 # Contact
 
-Shows whether a door or window `binary_sensor.*` is open, with optional history on tap.
+Shows whether a **door or window** `binary_sensor.*` is open, with optional history on tap.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/contact_glow.png"><img src="../img/gallery/contact_glow.png" alt="Contact, Glow style" loading="lazy" width="180" height="70" style="width: 144px"></a></figure>

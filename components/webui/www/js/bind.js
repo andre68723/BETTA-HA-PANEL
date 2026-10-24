@@ -95,7 +95,8 @@ function bindUi() {
 if (el.fEvccDetectBtn) el.fEvccDetectBtn.onclick = () => void evccDetectLoadpoints();
 if (el.fEvccLoadpoint) el.fEvccLoadpoint.addEventListener("change", () => evccChooseLoadpoint(el.fEvccLoadpoint.value));
 for (const input of [el.fEvccHeader, el.fEvccPowerMax].filter(Boolean)) {
-  input.addEventListener("change", () => { evccHeaderVisibility(); autoApplyInspector(); });
+  input.addEventListener("change", () => { evccHeaderVisibility(); autoApplyInspector();
+    if (selectedWidget()?.type === "wallbox_evcc") evccBindingStatus(selectedWidget()); });
 }
 for (const input of evccInspectorInputs()) {
   input.addEventListener("change", () => { if (input === el.fEvccMode) el.fEntity.value = input.value; autoApplyInspector(); });
@@ -129,7 +130,7 @@ if (el.addBambuPrinterBtn) {
   if (el.addSceneTileBtn) el.addSceneTileBtn.onclick = () => openLightEntityPicker("scene_tile");
   if (el.addSelectTileBtn) el.addSelectTileBtn.onclick = () => openLightEntityPicker("select_tile");
   if (el.addEnergyTimelineBtn) el.addEnergyTimelineBtn.onclick = () => openLightEntityPicker("energy_timeline");
-  if (el.addPriceForecastBtn) el.addPriceForecastBtn.onclick = () => openLightEntityPicker("price_forecast");
+  if (el.addPriceForecastBtn) el.addPriceForecastBtn.onclick = () => openLightEntityPicker("energy_price_forecast");
   if (el.addParqetPortfolioBtn) el.addParqetPortfolioBtn.onclick = () => openLightEntityPicker("parqet_portfolio");
   if (el.addStockQuotesBtn) el.addStockQuotesBtn.onclick = () => openLightEntityPicker("stock_quotes");
   if (el.addDatetimeTileBtn) el.addDatetimeTileBtn.onclick = () => openLightEntityPicker("datetime_tile");

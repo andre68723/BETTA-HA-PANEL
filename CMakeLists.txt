@@ -66,6 +66,8 @@ if(_PV_SUFFIX STREQUAL "-jc" OR _PV_SUFFIX STREQUAL "-jc-v2")
     idf_build_set_property(DEPENDENCIES_LOCK dependencies.lock.paneljc)
 elseif(_PV_SUFFIX STREQUAL "-tab5")
     idf_build_set_property(DEPENDENCIES_LOCK dependencies.lock.tab5)
+elseif(_PV_SUFFIX STREQUAL "-10.1")
+    idf_build_set_property(DEPENDENCIES_LOCK dependencies.lock.panel10)
 endif()
 project(${_PROJECT_NAME})
 
@@ -85,4 +87,17 @@ execute_process(
 if(NOT _patch_result EQUAL 0)
     message(FATAL_ERROR "tools/apply_component_patches.py reported a problem (see output above): "
                          "a component version likely moved the place of an edit -- adjust the script.")
+endif()
+
+# The component manager fetches BSPs inside project(). Their CMake requirements have already been
+# expanded by the time source patches run above. Add the IDF 6 split drivers to the actual targets as
+# well, so a first build from a clean checkout gets their include paths without a second configure.
+if(TARGET __idf_waveshare__esp32_p4_nano)
+    target_link_libraries(__idf_waveshare__esp32_p4_nano PUBLIC
+        idf::esp_driver_ledc idf::esp_driver_gpio idf::esp_driver_i2c idf::esp_driver_i2s idf::esp_driver_sdmmc)
+endif()
+if(TARGET __idf_waveshare__esp32_p4_wifi6_touch_lcd_4b)
+    target_link_libraries(__idf_waveshare__esp32_p4_wifi6_touch_lcd_4b PUBLIC
+        idf::esp_driver_i2s idf::esp_driver_sdmmc)
+    target_link_libraries(__idf_waveshare__esp32_p4_wifi6_touch_lcd_4b PRIVATE idf::esp_driver_ledc)
 endif()

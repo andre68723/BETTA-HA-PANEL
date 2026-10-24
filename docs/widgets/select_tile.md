@@ -2,7 +2,7 @@
 
 # Select
 
-Chooses an option of a `select.*` or `input_select.*` entity.
+Chooses an **option** of a `select.*` or `input_select.*` entity.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/charge_mode_glow.png"><img src="../img/gallery/charge_mode_glow.png" alt="Charge mode, Glow style" loading="lazy" width="360" height="100" style="width: 288px"></a></figure>

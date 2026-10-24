@@ -2,7 +2,7 @@
 
 # Camera
 
-Shows snapshots of a `camera.*` or `image.*` entity, or an optional MJPEG live picture.
+Shows **snapshots** of a `camera.*` or `image.*` entity, or an optional MJPEG live picture.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/camera_glow.png"><img src="../img/gallery/camera_glow.png" alt="Camera, Glow style" loading="lazy" width="220" height="180" style="width: 176px"></a></figure>

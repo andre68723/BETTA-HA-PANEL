@@ -13,10 +13,12 @@ esp_err_t w_wallbox_evcc_create(const ui_widget_def_t *,lv_obj_t *,ui_widget_ins
 void w_wallbox_evcc_apply_state(ui_widget_instance_t *,const ha_state_t *);
 void w_wallbox_evcc_set_visible(ui_widget_instance_t *,bool);
 static unsigned checks;
+static unsigned draws;
 static uint32_t now;
 #define CHECK(x) do { ++checks; if (!(x)) { fprintf(stderr,"wallbox line %d: %s\n",__LINE__,#x); exit(1); } } while (0)
 static uint32_t tick(void) { return now; }
 static void advance(unsigned ms) { now += ms; lv_timer_handler(); lv_timer_handler(); }
+static void drawn(lv_event_t *event) { (void)event; draws++; }
 static lv_obj_t *find(lv_obj_t *root, const char *text, const lv_obj_class_t *kind)
 {
     if (kind && lv_obj_check_type(root,kind)) return root;
@@ -62,6 +64,13 @@ int sim_wallbox_regression(void)
     CHECK(find(widget.obj,"12.8 kWh",NULL)); CHECK(find(widget.obj,"3:53 h",NULL));
     lv_obj_t *car_button = lv_obj_get_parent(find(widget.obj,"Demo car",NULL)); CHECK(lv_obj_get_width(car_button)==def.w-24); CHECK(lv_obj_get_x(car_button)==12); /* as wide as the status line, name left-aligned */
     CHECK(find(widget.obj,"7.4 kW",NULL)); CHECK(find(widget.obj,"Charging",NULL));
+    /* Idle timer ticks must not invalidate the card. Prove the draw probe works
+     * first, then leave the confirmed state unchanged across four timer ticks. */
+    lv_obj_add_event_cb(widget.obj,drawn,LV_EVENT_DRAW_MAIN,NULL);
+    lv_obj_invalidate(widget.obj); advance(300); CHECK(draws>0);
+    advance(300); draws=0;
+    for (int i=0;i<4;i++) advance(300);
+    CHECK(draws==0);
     /* Cached hidden pages keep state events, without replaying all bindings on show. */
     ui_widget_factory_set_visible(&widget,false); lv_obj_set_hidden(widget.obj,true);
     apply(&widget,"sensor.power","1700","{\"unit_of_measurement\":\"W\"}");
@@ -75,6 +84,7 @@ int sim_wallbox_regression(void)
     apply(&widget,"select.mode","off",modes); CHECK(find(widget.obj,"Charging",NULL));
     sim_host_service_reset(ESP_OK); click(widget.obj,"Smart"); sent("select","select_option","select.mode","smart",0); apply(&widget,"select.mode","smart",modes);
     sim_host_service_reset(ESP_OK); click(widget.obj,"Fast"); sent("select","select_option","select.mode","now",0); advance(10100); CHECK(find(widget.obj,"Not confirmed",NULL));
+    advance(6100); CHECK(!find(widget.obj,"Not confirmed",NULL)); CHECK(find(widget.obj,"Charging",NULL));
     apply(&widget,"select.mode","now",modes);
     sim_host_service_reset(ESP_FAIL); click(widget.obj,"Off"); CHECK(find(widget.obj,"Not confirmed",NULL)); CHECK(!find(widget.obj,"Waiting...",NULL));
     /* Vehicle selection remains enabled with unknown SOC and preserves escaping. */
@@ -93,7 +103,9 @@ int sim_wallbox_regression(void)
     }
     click(widget.obj,"85 %"); CHECK(lv_obj_get_child_count(lv_layer_top())); w_wallbox_evcc_set_visible(&widget,false); CHECK(lv_obj_get_child_count(lv_layer_top())==0);
     w_wallbox_evcc_set_visible(&widget,true); click(widget.obj,"85 %"); sim_host_set_online(false); advance(300); CHECK(lv_obj_get_child_count(lv_layer_top())==0);
+    CHECK(find(widget.obj,"Unavailable",NULL));
     sim_host_service_reset(ESP_OK); click(widget.obj,"Off"); CHECK(sim_host_service_calls()->count==0); sim_host_set_online(true); advance(300);
+    CHECK(find(widget.obj,"Charging",NULL));
     cJSON *sessions=cJSON_Parse("[{\"created\":\"2026-10-10T11:54:00+02:00\",\"finished\":\"2026-10-10T15:00:00+02:00\",\"vehicle\":\"id4\",\"loadpoint\":\"Driveway\",\"chargedEnergy\":20.2}]");
     apply(&widget,"binary_sensor.connected","off","{}"); advance(300);
     ha_evcc_sessions_seed("select.mode","Driveway",sessions); cJSON_Delete(sessions); advance(300);

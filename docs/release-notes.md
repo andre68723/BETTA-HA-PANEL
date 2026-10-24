@@ -4,63 +4,62 @@
 
 Changes of **this fork**, compared with upstream v0.8.2. The release notes of the original project (v0.8.2 and earlier, by Cpt_Kirk) are kept unchanged in [Upstream release notes](release-notes-upstream.md).
 
-## v0.9.1-rc1 (fork)
+## v0.9.1-rc1
 
-Release candidate, not published. Changes since [v0.9.0](#v090-fork).
+Release candidate, not published. Changes since [v0.9.0](#v090).
 
 ### Widgets
 
 | Widget | Status | What is new or changed |
 | --- | --- | --- |
-| [Price forecast](widgets/price_forecast.md) | <span class="release-status release-status--new">New</span> | A day of electricity prices as bars (hourly or 15-minute) from the list attribute of a price sensor (EPEX Spot directly; Nord Pool and Tibber through a helper that stores the list as `data`): the price now, Today/Tomorrow, the day's minimum and maximum and the next cheap window. Raw EUR/cent units are converted before display; missing intervals stay gaps and all upcoming cheap windows remain available. Design inspired by the community's price timeline cards. |
+| [Energy price forecast](widgets/energy_price_forecast.md) | <span class="release-status release-status--new">New</span> | A day of electricity prices as bars (hourly or 15-minute) from the list attribute of a price sensor (EPEX Spot directly; Nord Pool and Tibber through a helper that stores the list as `data`): the price now, Today/Tomorrow, the day's minimum and maximum and the next cheap window. Raw EUR/cent units are converted before display; missing intervals stay gaps and all upcoming cheap windows remain available. Design inspired by the community's price timeline cards. |
 | [Parqet portfolio](widgets/parqet_portfolio.md) | <span class="release-status release-status--new">New</span> | A Parqet portfolio from the Parqet Companion sensors: total value, gain, the unrealised return in percent (from the integration's own sensor), XIRR, dividends and the largest holdings as weight bars; the tile names the interval the integration is set to. An option hides amounts and shows percentages only. Tabs (Performance, Holdings), interval buttons (1D, 1W, 1M, YTD, MAX) and, in Holdings, the choice Largest, Top 5 or Flop 5 can be shown on the tile; the intervals other than MAX are asked from the integration. |
 | [Stocks & ETFs](widgets/stock_quotes.md) | <span class="release-status release-status--new">New</span> | Up to eight quotes of Yahoo Finance or Easy Stock sensors, mixed, as a list (name, price, the last session's change in percent, amount or both, optionally the symbol) or as a chart per quote with one period selector (1D, 1W, 30D, YTD, 1Y). The integration of each sensor comes from Home Assistant's entity registry. A tap opens the details with market state, quote and update time and a chart whose source is named: Easy Stock's closes against the close before the period, or Home Assistant's records and means. The top bar's stock chip reads Yahoo Finance and Easy Stock sensors the same way. |
-| [Sensor](widgets/sensor.md) | <span class="release-status release-status--changed">Changed</span> | The value follows the device class: timestamps and dates in local time or relative, durations as text or clock, units hidden, as ° or scaled to kW/kWh, currency symbols with two decimals, readable enum values, binary sensor state words and the decimal comma of the panel language. |
+| [Sensor](widgets/sensor.md) | <span class="release-status release-status--changed">Changed</span> | The value follows the device class: timestamps in local time, calendar dates or relative dates, durations as text or clock, units hidden, as ° or scaled to kW/kWh, currency symbols with the entity's display precision (two decimals by default; yen without decimals), readable enum values, binary sensor state words and the decimal comma of the panel language. Binary sensors can also be selected and saved in the editor. Invalid calendar dates and malformed timestamps stay unformatted. |
+| [Wallbox](widgets/wallbox.md) | <span class="release-status release-status--changed">Changed</span> | An optional header shows charging power against an adjustable maximum, or the site's PV, battery, grid, home and car power as two flow bars. Loadpoint discovery assigns the site's power sensors from the same evcc instance automatically; the detected entity rows are read-only. The header appears only when the tile has room for all controls below it. |
+| [Car](widgets/car_widget.md), [Gauge](widgets/gauge.md), [Contact](widgets/contact_tile.md), [Vacuum](widgets/vacuum_tile.md), [Solar forecast](widgets/solar_forecast.md) | <span class="release-status release-status--changed">Changed</span> | Car status and preconditioning have separate rows; gauge extras follow the actual text height and narrow values can put the unit on a second line. Contact and vacuum states fit the available width. Solar rows on 10-inch layouts follow the font height; weather-day alignment applies to vertical bars only. |
+
+### Fixes
+
+- **Large stock layouts:** history registrations grow with the layout instead of stopping at 24 quotes across all pages, leaving room for the detail popup too. Registry lookups discard removed entities so repeated layout edits cannot exhaust the provider cache. Subscription and registry limits match the 4,096-entity model; a valid 1,056-quote layout no longer loses its last sensors silently.
+- **Clean Panel10 builds:** the Waveshare BSP receives its split ESP-IDF driver dependencies in the first configure, instead of requiring a second configure after patching.
+- **Entity lists:** the editor loads every page of the panel's entity and state lists, including layouts with more than 128 entities. Saving a layout refreshes registry lookups for newly used entities, including quote providers and display precision.
+- **History requests:** waiting requests from different callers no longer replace each other. Recorder and Easy Stock HTTP workers bound their gate waits and total body transfer time and can retry initialization after a failed task creation. Parqet requests handle timer allocation failures and cancel timed-out pending responses.
+- **Price and quote data:** compact price grids reject out-of-range or fractional timestamps and invalid grid values; quote times are bounded before integer conversion. Reduced quote charts preserve endpoints and short recording gaps. Recorder statistics reject out-of-range timestamps and values before numeric conversion; a failed registry-buffer allocation keeps the lookup pending for retry. The top-bar history popup uses the same quote price and currency as the chip, including converted Yahoo Finance sensors.
+- **Recovery:** a failed C6 incident write remains pending for retry. JC touch scanning starts only after a successful LVGL binding, so a failed initialization cannot leave a task reading a freed controller.
+- **Wallbox redraws:** idle timers no longer redraw the whole card four times a second. Connection changes, command timeouts and completed sessions still refresh it; the first render applies the layout before fitting button and reading text.
 
 ### Panel
 
-- **Translations:** common vacuum states and firmware-update progress follow German or English; energy, weather
-  and setup labels use clearer wording.
+- **Translations:** common vacuum states and firmware-update progress follow German or English; energy, weather and setup labels use clearer wording.
 
 - **Quote history:** a tap on the top bar stock item opens its price history, 30 days of daily means or 12 months of weekly means, from the Home Assistant statistics of the sensor. Missing periods stay gaps and dates follow elapsed time across clock changes.
-- **Touch on the 10-inch JC panel:** a separate scan task reads the controller every 5 ms and hands every tap to LVGL one by one
-  (`drivers/touch_latch.c`); the controller's weak-signal flag in the Y word is removed instead of dropping the point. Contact
-  counters are in `GET /api/version` (`touch`). Measured on a 10-inch unit (2026-10-18), see `docs/development/learnings.md`,
-  "Touch contacts".
+- **Touch on the 10-inch JC panel:** a separate scan task polls the controller at a 5 ms interval and queues short taps for LVGL (`drivers/touch_latch.c`); the controller's weak-signal flag in the Y word is removed instead of dropping the point. Contact counters are in `GET /api/version` (`touch`). Measured on a 10-inch unit (2026-10-18), see `docs/development/learnings.md`, "Touch contacts".
 
 ### Editor
 
-- **C6 memory:** Settings → Device → Device status shows the Wi-Fi coprocessor's free heap, boot minimum,
-  largest internal block and sample age. Details include DMA memory, diagnostic errors and a retained sample
-  from the last connection incident or network-watchdog restart. Reports are cached once a minute; stale or
-  unsupported data is labelled.
+- **C6 memory:** Settings → Device → Device status shows the Wi-Fi coprocessor's free heap, boot minimum, largest internal block and sample age. Details include DMA memory, diagnostic errors and a retained sample from the last connection incident or network-watchdog restart. Reports are cached once a minute; stale or unsupported data is labelled.
 
-- **German and English:** the colour-theme editor, time-zone choices and solar-preview days follow the selected
-  language. Entity-first Date/Time and Alarm choices have labels, and the add-widget message fills its placeholders
-  in both languages. Setup, update and notification hints match the current controls. Language files are separate,
-  with checks for missing keys, placeholders, empty texts and duplicate firmware entries.
+- **German and English:** the colour-theme editor, time-zone choices and solar-preview days follow the selected language. Entity-first Date/Time and Alarm choices have labels, and the add-widget message fills its placeholders in both languages. Setup, update and notification hints match the current controls. Language files are separate, with checks for missing keys, placeholders, empty texts and duplicate firmware entries.
 
-- **Device class:** search results and the entity picker name a sensor's device class; the inspector header shows it with the unit as chips
-  for every tile bound to a sensor or binary sensor, and the inspector offers the sensor's unit and format choices of
-  that class.
-- **Inspector:** one order for every widget: a header with type, name (edited in place) and device class, then
-  Entities, Display, Controls and Placement as foldable cards (empty ones left out; Placement folded).
-  Short fields put the label beside the control. The Properties and Position & size tabs are gone.
-  Entities are rows with the role and the Home Assistant name; a click opens the search, which can also remove an
-  optional entity or use a typed ID, and an ID Home Assistant does not list is marked.
-  A section's explanations open from an info icon behind its heading; the page inspector has the same form.
-  The info icon of a widget shows the summary of its guide.
-  **Panel follows** beside Text size shows the page chosen in the editor on the panel too.
-  The entity search keeps the current entity on top and starts with the entities of the same device; the Energy
-  page's sensors and the weather and stock entities in the settings use the same entity rows.
+- **Device class:** search results and the entity picker name a sensor's device class; the inspector header shows it with the unit as chips for every tile bound to a sensor or binary sensor, and the inspector offers the sensor's unit and format choices of that class.
+- **Inspector:** one order for every widget: a header with type, name (edited in place) and device class, then Entities, Display, Controls and Placement as foldable cards (empty ones left out; Placement folded). Short fields put the label beside the control. The Properties and Position & size tabs are gone. Entities are rows with the role and the Home Assistant name; a click opens the search, which can also remove an optional entity or use a typed ID, and an ID Home Assistant does not list is marked. The missing-entity banner can be dismissed; an incomplete search does not mark unseen entities as missing. A section's explanations open from an info icon behind its heading, with bold standalone headings and separate paragraphs; hidden optional groups are left out and warnings stay directly visible; the page inspector has the same form. The info icon of a widget shows the summary of its guide. **Panel follows** beside Text size shows the page chosen in the editor on the panel too. A rejected navigation request can be retried on the next page synchronization. The entity search keeps the current entity on top and starts with the entities of the same device; the Energy page's sensors and the weather and stock entities in the settings use the same entity rows.
+- **Preview:** widget text roles, fixed 10-inch layouts, visible elements and language follow the panel more closely. Overlapping tiles are marked on the canvas. Wallbox headers use the same height limit as the panel and show missing power without invented sample values; short tiles explain the required height. The SOC bar matches the panel's solid green fill. Documentation image zoom also recovers when a lazy thumbnail has not loaded yet. Preview checks remain separate from LVGL simulator and device validation.
 
 ### Dependencies
 
 - `esp_sccb_intf` 0.0.9 → 1.0.0 for the JC and Tab5 camera stack, the version a fresh configure resolves.
+- `libpng` 1.6.58~2 → 1.6.59 in the JC and Tab5 lock files; the Panel4 lock remains at 1.6.58~2. Panel10 now has its own lock at 1.6.59, so a fresh build cannot rewrite Panel4's dependencies.
 
-## v0.9.0 (fork)
+### Validation limits
 
-!!! info "Development fork · based on upstream v0.8.2"
+This candidate is not a published release. Host tests, simulator renders and firmware builds do not establish device behaviour.
+Panel10 and paneljc-v2 still need hardware testing. The renamed `energy_price_forecast` widget type replaces the unreleased
+`price_forecast` type; development layouts using the old type need their widget types changed alongside the firmware update.
+
+## v0.9.0
+
+!!! info "Release scope"
 
     Changes below belong to **andre68723's fork**, compared with upstream commit
     `420df764`. Images for all five variants are on
@@ -69,7 +68,7 @@ Release candidate, not published. Changes since [v0.9.0](#v090-fork).
     baseline. Device measurements below validate fork builds, rather than compare
     them with upstream firmware.
 
-### At a glance
+### Overview
 
 | Area | What changes in this fork |
 | --- | --- |
@@ -280,7 +279,7 @@ font and icon changes apply across the visible widgets.
 | [Sonos favorites](widgets/sonos_favorites.md) | <span class="release-status release-status--new">New</span> | Play configured media favorites directly. |
 | [Todo list](widgets/todo_list.md) | <span class="release-status release-status--changed">Changed</span> | Improved state handling, controls and layout. |
 | [Vacuum](widgets/vacuum_tile.md) | <span class="release-status release-status--changed">Changed</span> | General vacuum tile replaces the Roborock-specific type and also serves Matter-based vacuums; legacy layout name remains compatible. A suction-level picker follows the vacuum's supported fan speeds. The Locate button is gone, the charge comes from a battery sensor (Home Assistant 2026.9 removed the vacuum's own battery value; the editor suggests the sensor of a new card), and with **History on tap** a long press opens the last 24 hours of activity. |
-| [Wallbox](widgets/wallbox.md) | <span class="release-status release-status--new">New</span> | Minimal evcc loadpoint control through Home Assistant: direct Off, Smart/Fast mode, vehicle assignment and target SOC with Apply, plus status, power, charged energy, remaining time and a solid green horizontal SOC bar. Sessions lists completed charges; without a cable, the modes remain visible and the last session replaces SOC/target. The editor detects loadpoint bindings without a full registry dump and prefers the number charge limit. Commands wait for HA state confirmation; physical charger acceptance remains open. An optional header shows the charging power as a bar up to an adjustable maximum, or the site's energy flow from the evcc PV, battery, grid and home power sensors. |
+| [Wallbox](widgets/wallbox.md) | <span class="release-status release-status--new">New</span> | Minimal evcc loadpoint control through Home Assistant: direct Off, Smart/Fast mode, vehicle assignment and target SOC with Apply, plus status, power, charged energy, remaining time and a solid green horizontal SOC bar. Sessions lists completed charges; without a cable, the modes remain visible and the last session replaces SOC/target. The editor detects loadpoint bindings without a full registry dump and prefers the number charge limit. Commands wait for HA state confirmation; physical charger acceptance remains open. |
 | [Weather (now)](widgets/weather_tile.md) | <span class="release-status release-status--changed">Changed</span> | Shared condition icons, extra readings and optional Show name. |
 | [Weather forecast](widgets/weather_3day.md) | <span class="release-status release-status--changed">Changed</span> | Available highs/lows/rain, daily report details, compact fitting and optional Show name. |
 

@@ -40,10 +40,10 @@ For popups, enable [History on tap](history.md) in the widget's inspector.
 
 ## Electricity prices
 
-Show today's and tomorrow's prices, the current interval and the next cheap window with a Price forecast widget.
+Show today's and tomorrow's prices, the current interval and the next cheap window with an Energy price forecast widget.
 Choose bars or a stepped line. Missing intervals stay gaps, and all upcoming cheap windows remain available.
 
-**Set it up:** [Price forecast](widgets/price_forecast.md) lists supported price sensors, units and helper formats.
+**Set it up:** [Energy price forecast](widgets/energy_price_forecast.md) lists supported price sensors, units and helper formats.
 
 ## Parqet portfolio
 

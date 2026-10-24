@@ -998,8 +998,10 @@ static void test_ha_layout_entities(void)
     ha_layout_entities_collect(layout, &cap);
     CHECK_INT((int)cap.count, 2);
     CHECK(!ha_layout_entities_contains(cap.ids, cap.count, "sensor.three"));
+    CHECK_INT(s_layout_overflows, 1); /* the collector reports omitted entities rather than stopping silently */
     ha_layout_entities_add(&cap, "sensor.four");
-    CHECK_INT(s_layout_overflows, 1);
+    CHECK_INT(s_layout_overflows, 2);
+    ha_layout_entities_add(&cap, "sensor.one"); CHECK_INT(s_layout_overflows, 2); /* a stored duplicate is not an overflow */
     cJSON_Delete(layout);
 
     char ordered_a[2][APP_MAX_ENTITY_ID_LEN] = {{0}};

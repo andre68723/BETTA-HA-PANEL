@@ -2,7 +2,7 @@
 
 # Sonos favorites
 
-Plays a Sonos favourite on a `media_player.*` from a list on the dashboard.
+Plays a **Sonos favourite** on a `media_player.*` from a list on the dashboard.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/sonos_favorites_glow.png"><img src="../img/gallery/sonos_favorites_glow.png" alt="Sonos favorites, Glow style" loading="lazy" width="280" height="240" style="width: 224px"></a></figure>

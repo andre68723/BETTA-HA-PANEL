@@ -2,7 +2,7 @@
 
 # Vacuum
 
-Shows a `vacuum.*` entity's status, its cleaning actions and an optional map in the tile.
+Shows a `vacuum.*` entity's status, its **cleaning actions** and an optional map in the tile.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/vacuum_glow.png"><img src="../img/gallery/vacuum_glow.png" alt="Vacuum, Glow style" loading="lazy" width="280" height="300" style="width: 224px"></a></figure>

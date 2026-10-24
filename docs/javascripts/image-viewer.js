@@ -82,6 +82,12 @@
     close.textContent = 'Close';
     const image = document.createElement('img');
     image.className = 'image-viewer-image';
+    function sizeImage(width) {
+      // A lazy thumbnail may not have dimensions when clicked. Never retain a zero-width zoom after it loads.
+      if (width > 0) image.style.width = `${Math.max(width, Math.min(800, width * 2))}px`;
+      else image.style.removeProperty('width');
+    }
+    image.addEventListener('load', () => sizeImage(image.naturalWidth));
     const caption = document.createElement('p');
     caption.className = 'image-viewer-caption';
     caption.id = 'image-viewer-caption';
@@ -113,7 +119,7 @@
         if (typeof dialog.showModal !== 'function') return;
         event.preventDefault();
         image.src = img.src;
-        image.style.width = `${Math.max(img.naturalWidth, Math.min(800, img.naturalWidth * 2))}px`;
+        sizeImage(img.naturalWidth);
         image.alt = img.alt;
         caption.textContent = img.alt;
         original.href = img.src;

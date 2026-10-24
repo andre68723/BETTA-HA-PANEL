@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-FNCL-1.1
 // Copyright (c) 2026 andre68723
-// Explicit loadpoint bindings; discovery never rewrites existing bindings in the background.
+// Bindings come from the selected evcc instance; successful discovery synchronizes the bindings of the selected evcc instance.
 const EVCC_BINDINGS = [["entity_id", "Mode", "select"], ["evcc_vehicle_entity_id", "Vehicle", "select"], ["evcc_target_soc_entity_id", "Target", "number,select"], ["evcc_power_entity_id", "Power", "sensor"], ["evcc_soc_entity_id", "Soc", "sensor"], ["evcc_connected_entity_id", "Connected", "binary_sensor"], ["evcc_charging_entity_id", "Charging", "binary_sensor"], ["evcc_disabled_entity_id", "Disabled", "binary_sensor"], ["evcc_effective_soc_entity_id", "Effective", "sensor"], ["evcc_energy_entity_id", "Energy", "sensor"], ["evcc_remaining_entity_id", "Remaining", "sensor"]];
 // The optional header's site power sensors (layout/evcc_slots.c k_evcc_site_bindings): only the energy flow reads them.
 const EVCC_SITE_BINDINGS = [["evcc_pv_power_entity_id", "PvPower", "sensor"], ["evcc_battery_power_entity_id", "BatteryPower", "sensor"],
@@ -59,6 +59,11 @@ function evccLoadInspector(widget) {
   if (active && !evccSearched) {
     evccSearched = true;
     void evccDetectLoadpoints();
+  } else if (active && evccLoadpoints.length) {
+    // Rendering the inspector must finish before an automatic completion edits and renders the model again.
+    Promise.resolve().then(() => {
+      if (selectedWidget() === widget && evccSyncBindings(widget)) autoApplyInspector({softEntityValidation:true});
+    });
   }
 }
 function evccSaveInspector(widget, type) {
@@ -87,6 +92,32 @@ function evccFillOptions() {
   for (const domain of ["select", "number", "sensor", "binary_sensor"]) setEntityOptionsList(document.getElementById(`evcc${domain}Options`), listEntitiesByDomain(domain).slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS));
 }
 function evccStatus(text) { if (el.evccStatus) el.evccStatus.textContent = text; }
+// Use the complete, successful registry result of this loadpoint. Old manual or other-instance bindings must not survive it.
+function evccSyncBindings(widget) {
+  if (widget?.type !== "wallbox_evcc") return false;
+  let point = evccLoadpoints.find(candidate => candidate.id === widget?.evcc_loadpoint_id);
+  let changed = false;
+  // Older layouts may contain the detected mode but no saved loadpoint ID. Resolve only an exact, unique match.
+  if (!point && !widget.evcc_loadpoint_id && widget.entity_id) {
+    const matches = evccLoadpoints.filter(candidate => candidate.entities?.entity_id === widget.entity_id);
+    if (matches.length === 1) {
+      point = matches[0]; widget.evcc_loadpoint_id = point.id;
+      if (el.fEvccLoadpoint) el.fEvccLoadpoint.value = point.id;
+      changed = true;
+    }
+  }
+  if (!point) return false;
+  for (const [key, field] of [...EVCC_BINDINGS, ...EVCC_SITE_BINDINGS]) {
+    const input = el[`fEvcc${field}`];
+    const value = point.entities?.[key] || "";
+    if (input && (input.value.trim() !== value || String(widget[key] || "") !== value)) {
+      input.value = value;
+      if (key === "entity_id" && el.fEntity) el.fEntity.value = input.value;
+      changed = true;
+    }
+  }
+  return changed;
+}
 async function evccDetectLoadpoints() {
   const widget = selectedWidget(), generation = ++evccLookupGeneration;
   if (widget?.type !== "wallbox_evcc") return;
@@ -108,7 +139,15 @@ async function evccDetectLoadpoints() {
           }
           select.value = widget.evcc_loadpoint_id || "";
         }
-        evccStatus(!evccLoadpoints.length ? t("evcc.none_found") : widget.evcc_loadpoint_id ? "" : t("evcc.choose"));
+        if (evccSyncBindings(widget)) autoApplyInspector({softEntityValidation:true});
+        // A new blank wallbox with one loadpoint needs no extra choice; existing configurations are never replaced here.
+        if (!widget.evcc_loadpoint_id && evccLoadpoints.length === 1 && ![...EVCC_BINDINGS, ...EVCC_SITE_BINDINGS].some(([key]) => widget[key])) {
+          evccChooseLoadpoint(evccLoadpoints[0].id);
+          return;
+        }
+        if (!evccLoadpoints.length) evccStatus(t("evcc.none_found"));
+        else if (widget.evcc_loadpoint_id) evccBindingStatus(widget);
+        else evccStatus(t("evcc.choose"));
         return;
       }
       await new Promise(resolve => setTimeout(resolve, 400));
@@ -122,14 +161,18 @@ function evccChooseLoadpoint(id) {
   const changed = EVCC_BINDINGS.some(([key]) => widget[key] && widget[key] !== (point.entities?.[key] || ""));
   if (changed && !window.confirm(t("evcc.replace"))) { if (el.fEvccLoadpoint) el.fEvccLoadpoint.value = widget.evcc_loadpoint_id || ""; return false; }
   for (const [key, field] of EVCC_BINDINGS) if (el[`fEvcc${field}`]) el[`fEvcc${field}`].value = point.entities?.[key] || "";
-  // the instance's site sensors come with the loadpoint; a manual binding stays where the search found none
-  for (const [key, field] of EVCC_SITE_BINDINGS) if (el[`fEvcc${field}`] && point.entities?.[key]) el[`fEvcc${field}`].value = point.entities[key];
+  // The complete site binding set belongs to this instance; a missing role clears an old instance's value.
+  for (const [key, field] of EVCC_SITE_BINDINGS) if (el[`fEvcc${field}`]) el[`fEvcc${field}`].value = point.entities?.[key] || "";
   if (el.fEntity) el.fEntity.value = point.entities?.entity_id || "";
   widget.evcc_loadpoint_id = id;
   autoApplyInspector({softEntityValidation:true});
-  const missing = EVCC_BINDINGS.filter(([key]) => !point.entities?.[key]).map(([,field]) => t(`evcc.${field.toLowerCase()}`));
-  evccStatus(missing.length ? `${t("evcc.missing")}: ${missing.join(", ")}` : t("evcc.bound"));
+  evccBindingStatus(widget);
   return true;
+}
+function evccBindingStatus(widget) {
+  const bindings = widget.evcc_header === "flow" ? [...EVCC_BINDINGS, ...EVCC_SITE_BINDINGS] : EVCC_BINDINGS;
+  const missing = bindings.filter(([key]) => !widget[key]).map(([,field]) => t(`evcc.${field.toLowerCase()}`));
+  evccStatus(missing.length ? `${t("evcc.missing")}: ${missing.join(", ")}` : t("evcc.bound"));
 }
 async function addEvccWallboxWidget() { const widget = addWidget("wallbox_evcc", {entityId:""}); if (widget) await evccDetectLoadpoints(); }
 function evccTranslate() {
@@ -141,24 +184,24 @@ function evccTranslate() {
   for (const opt of el.fEvccHeader?.options || []) opt.textContent = t(`evcc.header_${opt.value || "off"}`);
 }
 // The header preview like render_header() in w_wallbox_evcc.c: the charging power against its maximum, or the energy flow
-// with sources above two bars on one scale and consumers below (live readings, samples where none are known).
+// with sources above two bars on one scale and consumers below. Missing readings follow the panel's empty bars.
 function evccHeaderPreview(widget, power) {
   const header = EVCC_HEADERS.includes(widget.evcc_header) ? widget.evcc_header : "";
   if (!header || Number(widget.rect?.h) < evccHeaderNeededHeight(header)) return "";
   const max = Number.isFinite(widget.evcc_power_max_kw) ? widget.evcc_power_max_kw : EVCC_POWER_MAX_KW_DEFAULT;
-  const car = power === null ? 3.7 : power;
+  const car = power === null ? 0 : power;
   if (header === "power") {
     const share = Math.max(0, Math.min(1, car / max));
-    return `<div class="evcc-header"><div class="evcc-header-row"><small>${escapeHtml(t("evcc.header_power"))}</small><small>${car.toFixed(1)} / ${Math.round(max)} kW</small></div>
+    return `<div class="evcc-header"><div class="evcc-header-row"><small>${escapeHtml(t("evcc.header_power"))}</small><small>${power === null ? "--" : car.toFixed(1)} / ${Math.round(max)} kW</small></div>
       <div class="evcc-header-bar"><i style="width:${(share * 100).toFixed(1)}%;background:#43bf79"></i></div></div>`;
   }
-  const kw = (id, sample) => {
+  const kw = (id) => {
     const value = bambuPreviewNumber(id), unit = editor.stateMeta.get(id)?.unit;
     const factor = { W: 0.001, kW: 1, MW: 1000 }[unit];
-    return value === null || factor === undefined ? sample : value * factor;
+    return value === null || factor === undefined ? 0 : value * factor;
   };
-  const pv = kw(widget.evcc_pv_power_entity_id, 5.4), battery = kw(widget.evcc_battery_power_entity_id, -1.2);
-  const grid = kw(widget.evcc_grid_power_entity_id, 0.3), home = kw(widget.evcc_home_power_entity_id, 0.8);
+  const pv = kw(widget.evcc_pv_power_entity_id), battery = kw(widget.evcc_battery_power_entity_id);
+  const grid = kw(widget.evcc_grid_power_entity_id), home = kw(widget.evcc_home_power_entity_id);
   const ins = [["pv", "#ff9800", Math.max(pv, 0)], ["battery", "#26a69a", Math.max(battery, 0)], ["grid", "#039bef", Math.max(grid, 0)]];
   const outs = [["home", "var(--pv-text)", Math.max(home, 0)], ["car", "#43bf79", Math.max(car, 0)], ["battery", "#e84393", Math.max(-battery, 0)],
     ["export", "#e45e65", Math.max(-grid, 0)]];

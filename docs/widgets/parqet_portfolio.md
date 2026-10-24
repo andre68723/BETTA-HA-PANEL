@@ -2,7 +2,7 @@
 
 # Parqet portfolio
 
-Shows a Parqet portfolio from its `sensor.*` entities: total value, gain, XIRR, dividends and the largest holdings.
+Shows a **Parqet portfolio** from its `sensor.*` entities: total value, gain, XIRR, dividends and the largest holdings.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/portfolio_glow.png"><img src="../img/gallery/portfolio_glow.png" alt="Portfolio, Glow style" loading="lazy" width="360" height="330" style="width: 288px"></a></figure>

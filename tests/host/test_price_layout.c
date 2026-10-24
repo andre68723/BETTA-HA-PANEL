@@ -12,13 +12,79 @@
 #include <string.h>
 
 static unsigned checks;
+static size_t dense_overflow_count;
 #define CHECK(c) do { checks++; if (!(c)) { fprintf(stderr, "Price layout %d: %s\n", __LINE__, #c); exit(1); } } while (0)
+
+static void dense_overflow(size_t capacity, const char *id)
+{
+    (void)capacity;
+    (void)id;
+    dense_overflow_count++;
+}
+
+static void test_dense_stock_layout(void)
+{
+    cJSON *layout = cJSON_CreateObject();
+    cJSON_AddNumberToObject(layout, "version", 1);
+    cJSON *pages = cJSON_AddArrayToObject(layout, "pages");
+    const int columns = APP_CONTENT_BOX_WIDTH / 240;
+    for (int p = 0; p < APP_MAX_PAGES; p++) {
+        char name[32];
+        cJSON *page = cJSON_CreateObject();
+        cJSON_AddItemToArray(pages, page);
+        snprintf(name, sizeof(name), "p%d", p);
+        cJSON_AddStringToObject(page, "id", name);
+        cJSON_AddStringToObject(page, "title", "P");
+        cJSON *widgets = cJSON_AddArrayToObject(page, "widgets");
+        for (int w = 0; w < 11; w++) {
+            const int first = (p * 11 + w) * 8;
+            cJSON *widget = cJSON_CreateObject();
+            cJSON_AddItemToArray(widgets, widget);
+            snprintf(name, sizeof(name), "w%d_%d", p, w);
+            cJSON_AddStringToObject(widget, "id", name);
+            cJSON_AddStringToObject(widget, "title", "S");
+            cJSON_AddStringToObject(widget, "type", "stock_quotes");
+            snprintf(name, sizeof(name), "sensor.s%d", first);
+            cJSON_AddStringToObject(widget, "entity_id", name);
+            cJSON *more = cJSON_AddArrayToObject(widget, "stock_entities");
+            for (int i = 1; i < 8; i++) {
+                snprintf(name, sizeof(name), "sensor.s%d", first + i);
+                cJSON_AddItemToArray(more, cJSON_CreateString(name));
+            }
+            cJSON *rect = cJSON_AddObjectToObject(widget, "rect");
+            cJSON_AddNumberToObject(rect, "x", (w % columns) * 240);
+            cJSON_AddNumberToObject(rect, "y", (w / columns) * 120);
+            cJSON_AddNumberToObject(rect, "w", 240);
+            cJSON_AddNumberToObject(rect, "h", 120);
+        }
+    }
+    char *json = cJSON_PrintUnformatted(layout);
+    CHECK(json != NULL && strlen(json) <= APP_LAYOUT_MAX_JSON_LEN);
+    layout_validation_result_t errors = {0};
+    CHECK(layout_validate_json(json, &errors));
+    char *ids = calloc(HA_LAYOUT_ENTITY_CAPACITY, APP_MAX_ENTITY_ID_LEN);
+    CHECK(ids != NULL);
+    ha_layout_entity_set_t set = {.ids = ids, .capacity = HA_LAYOUT_ENTITY_CAPACITY, .on_overflow = dense_overflow};
+    ha_layout_entities_collect(layout, &set);
+    const size_t expected = APP_MAX_PAGES * 11 * 8;
+    CHECK(set.count == expected && dense_overflow_count == 0);
+    char last[32];
+    snprintf(last, sizeof(last), "sensor.s%zu", expected - 1);
+    CHECK(ha_layout_entities_contains(ids, set.count, last));
+    memset(ids, 0, HA_LAYOUT_ENTITY_CAPACITY * APP_MAX_ENTITY_ID_LEN);
+    set.capacity = 16;
+    ha_layout_entities_collect(layout, &set);
+    CHECK(set.count == 16 && dense_overflow_count == expected - 16);
+    free(ids);
+    cJSON_free(json);
+    cJSON_Delete(layout);
+}
 
 static bool valid(const char *entity, int w, int h)
 {
     char json[1024];
     snprintf(json, sizeof(json), "{\"version\":1,\"pages\":[{\"id\":\"p\",\"title\":\"P\",\"widgets\":["
-        "{\"id\":\"w\",\"type\":\"price_forecast\",\"title\":\"Price\",\"entity_id\":\"%s\",\"rect\":{\"x\":0,\"y\":0,\"w\":%d,\"h\":%d}}]}]}",
+        "{\"id\":\"w\",\"type\":\"energy_price_forecast\",\"title\":\"Price\",\"entity_id\":\"%s\",\"rect\":{\"x\":0,\"y\":0,\"w\":%d,\"h\":%d}}]}]}",
         entity, w, h);
     layout_validation_result_t result = {0};
     return layout_validate_json(json, &result);
@@ -26,9 +92,9 @@ static bool valid(const char *entity, int w, int h)
 
 int main(void)
 {
-    CHECK(widget_type_known("price_forecast"));
-    CHECK(widget_type_supports_name("price_forecast"));
-    const widget_size_limits_t limits = widget_type_size_limits("price_forecast");
+    CHECK(widget_type_known("energy_price_forecast"));
+    CHECK(widget_type_supports_name("energy_price_forecast"));
+    const widget_size_limits_t limits = widget_type_size_limits("energy_price_forecast");
     CHECK(limits.min_w == 240 && limits.min_h == 150);
     CHECK(valid("sensor.epex_spot_data_market_price", 240, 150));
     CHECK(valid("sensor.da_price", 700, 300));
@@ -40,7 +106,7 @@ int main(void)
     /* the options of the price timeline card: day switch, cheap times and the average (a fixed value, or a sensor in secondary_entity_id) */
     char json[1024];
     const char *tail = "\"rect\":{\"x\":0,\"y\":0,\"w\":400,\"h\":200}}]}]}";
-    const char *head = "{\"version\":1,\"pages\":[{\"id\":\"p\",\"title\":\"P\",\"widgets\":[{\"id\":\"w\",\"type\":\"price_forecast\",\"title\":\"P\",\"entity_id\":\"sensor.p\",";
+    const char *head = "{\"version\":1,\"pages\":[{\"id\":\"p\",\"title\":\"P\",\"widgets\":[{\"id\":\"w\",\"type\":\"energy_price_forecast\",\"title\":\"P\",\"entity_id\":\"sensor.p\",";
     layout_validation_result_t result = {0};
     const char *good[] = {"\"price_day_switch\":true,", "\"price_cheap_times\":false,", "\"price_line\":true,", "\"price_average\":0.25,", "\"secondary_entity_id\":\"sensor.price_average\",", ""};
     const char *bad[] = {"\"price_day_switch\":\"yes\",", "\"price_cheap_times\":1,", "\"price_line\":\"line\",", "\"price_average\":-0.1,", "\"price_average\":9,", "\"price_average\":\"0.25\",",
@@ -55,7 +121,7 @@ int main(void)
     }
 
     const char *layout = "{\"version\":1,\"pages\":[{\"id\":\"p\",\"title\":\"P\",\"widgets\":["
-        "{\"id\":\"w\",\"type\":\"price_forecast\",\"title\":\"Price\",\"entity_id\":\"sensor.epex_spot_data_market_price\","
+        "{\"id\":\"w\",\"type\":\"energy_price_forecast\",\"title\":\"Price\",\"entity_id\":\"sensor.epex_spot_data_market_price\","
         "\"rect\":{\"x\":0,\"y\":0,\"w\":400,\"h\":200}}]}]}";
     cJSON *root = cJSON_Parse(layout);
     CHECK(root != NULL);
@@ -95,6 +161,7 @@ int main(void)
     CHECK(set.count == 5 && ha_layout_entities_contains(ids, set.count, "sensor.return") && ha_layout_entities_contains(ids, set.count, "sensor.value") && ha_layout_entities_contains(ids, set.count, "sensor.gain") &&
           ha_layout_entities_contains(ids, set.count, "sensor.xirr") && ha_layout_entities_contains(ids, set.count, "sensor.dividends"));
     cJSON_Delete(root);
+    test_dense_stock_layout();
     printf("Price layout: %u checks passed\n", checks);
     return 0;
 }

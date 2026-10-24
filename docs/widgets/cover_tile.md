@@ -2,7 +2,7 @@
 
 # Cover
 
-Shows the position of a `cover.*` entity such as a blind and operates it with up, stop and down.
+Shows the **position** of a `cover.*` entity such as a blind and operates it with up, stop and down.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/cover_glow.png"><img src="../img/gallery/cover_glow.png" alt="Cover, Glow style" loading="lazy" width="300" height="100" style="width: 240px"></a></figure>

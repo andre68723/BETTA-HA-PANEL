@@ -27,6 +27,7 @@
 #include "app_config.h"
 #include "ha/ha_auth_state.h"
 #include "ha/ha_client.h"
+#include "util/transfer_deadline.h"
 
 #define HISTORY_MAX_RESPONSE (512U * 1024U)
 #define HISTORY_CACHE_US (60LL * 1000000LL)
@@ -77,8 +78,10 @@ static void dispatch_on_lvgl(void *user)
 static esp_err_t fetch_once(const history_request_t *request, int hours, ha_history_snapshot_t *snapshot)
 {
     if (ha_auth_state_blocked()) return ESP_ERR_INVALID_STATE;
+    const int64_t gate_started = esp_timer_get_time() / 1000;
     while (ha_client_heavy_gate_is_busy()) {
         if (ha_auth_state_blocked()) return ESP_ERR_INVALID_STATE;
+        if (esp_timer_get_time() / 1000 - gate_started >= 20000) return ESP_ERR_TIMEOUT;
         vTaskDelay(pdMS_TO_TICKS(120));
     }
     ha_client_http_ctx_t ctx;
@@ -117,6 +120,8 @@ static esp_err_t fetch_once(const history_request_t *request, int hours, ha_hist
     int status = 0;
     size_t received = 0;
     const int64_t started_us = esp_timer_get_time();
+    transfer_deadline_t deadline;
+    transfer_deadline_init(&deadline, started_us / 1000, 15000, 30000);
     ha_client_set_aux_http_pressure(true, 2000);
     if (esp_http_client_open(cli, 0) != ESP_OK) goto done;
     int64_t content_len = esp_http_client_fetch_headers(cli);
@@ -130,6 +135,10 @@ static esp_err_t fetch_once(const history_request_t *request, int hours, ha_hist
     ha_history_reduce_init(&reducer, snapshot, request->numeric, (int64_t)start, (int64_t)end);
     char chunk[1024];
     for (;;) {
+        if (transfer_deadline_expired(&deadline, esp_timer_get_time() / 1000)) {
+            result = ESP_ERR_TIMEOUT;
+            break;
+        }
         int n = esp_http_client_read(cli, chunk, sizeof(chunk));
         if (n < 0) { result = ESP_FAIL; break; }
         if (n == 0) {
@@ -137,6 +146,7 @@ static esp_err_t fetch_once(const history_request_t *request, int hours, ha_hist
             break;
         }
         received += (size_t)n;
+        transfer_deadline_progress(&deadline, esp_timer_get_time() / 1000);
         if (received > HISTORY_MAX_RESPONSE || ha_auth_state_blocked()) {
             result = ESP_ERR_INVALID_SIZE;
             break;
@@ -233,8 +243,12 @@ esp_err_t ha_history_request(const char *entity_id, bool numeric, uint32_t gener
 #else
         created = xTaskCreatePinnedToCore(history_task, "ha_history", HISTORY_TASK_STACK, NULL, 4, &s_task, 1);
 #endif
-        if (created != pdPASS)
+        if (created != pdPASS) {
+            vQueueDelete(s_queue);
+            s_queue = NULL;
+            s_task = NULL;
             return ESP_ERR_NO_MEM;
+        }
     }
     history_request_t request = {.numeric = numeric, .generation = generation, .callback = callback};
     strlcpy(request.entity_id, entity_id, sizeof(request.entity_id));

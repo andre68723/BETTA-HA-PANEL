@@ -66,6 +66,11 @@ typed ID that Home Assistant does not list can be used as it is; it is marked as
 does not list it. Room
 entities stay a list (choosing a result adds it); the extra field uses an entity already assigned to the card.
 
+The Wallbox detects its bindings from the selected evcc loadpoint and instance. Its entity rows are read-only;
+with one loadpoint, a new blank widget selects it automatically. Enable missing entities in Home Assistant and
+press **Find loadpoints** again. Both optional headers need extra tile height; the inspector names the minimum
+when the selected header does not fit in the preview or on the panel.
+
 The widget list names each widget by its title (its kind and entity are in the tooltip); the search also finds
 the widget type and entity ID, such as `media_player`. Use the widget row's **⋯** menu to duplicate it or **Copy to page** / **Move to page**.
 Choose another normal page; all entity bindings and options are retained. The destination is selected

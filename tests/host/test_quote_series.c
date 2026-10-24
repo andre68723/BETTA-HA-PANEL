@@ -192,6 +192,14 @@ static void test_reduce(void)
         if (i > 0) CHECK(out[i].t > out[i - 1].t);
     }
     CHECK(dip && spike && gap);
+    CHECK(out[0].t == 0 && out[n - 1].t == 299);
+    /* A single absent sample inside a reduction interval must still break the line. */
+    for (int i = 0; i < 300; i++) s.point[i].v = 10.0f;
+    s.point[123].v = NAN;
+    const size_t short_n = ha_quote_series_reduce(&s, out, 60);
+    gap = false;
+    for (size_t i = 0; i < short_n; i++) gap |= isnan(out[i].v);
+    CHECK(gap && out[0].t == 0 && out[short_n - 1].t == 299);
     s.count = 20;
     CHECK(ha_quote_series_reduce(&s, out, 60) == 20);
 }

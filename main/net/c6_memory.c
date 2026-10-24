@@ -43,7 +43,10 @@ static void worker(void *arg)
             if (!ok) ESP_LOGW("c6_memory", "Could not retain C6 incident snapshot");
             last_save = now_ms();
             portENTER_CRITICAL(&s_lock);
-            if (revision == s_incident_revision) s_pending = s_urgent = false;
+            if (revision == s_incident_revision) {
+                if (ok) s_pending = false;
+                s_urgent = false; /* a failed write retries at the regular, bounded interval */
+            }
             if (ok) s_saved_revision = revision;
             portEXIT_CRITICAL(&s_lock);
         }

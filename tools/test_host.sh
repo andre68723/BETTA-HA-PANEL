@@ -201,6 +201,32 @@ cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -g -pthread \
   "${cjson_sources[@]}" "${cjson_libs[@]}" -lm -o "$out/test_history_week"
 "$out/test_history_week"
 
+# Real HTTP workers: bounded gate/slow transfers, auth rejection, cleanup and retry after task creation fails.
+for worker in recorder easy; do
+  worker_flags=()
+  worker_sources=(main/ha/ha_history_reduce.c main/util/iso_time.c)
+  if [ "$worker" = easy ]; then worker_flags=(-DTEST_EASY_STOCK=1); worker_sources=(); fi
+  cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -g \
+    -I tests/host/request_stubs -I tests/host/week_stubs -I main -I tests/host/stubs \
+    "${variant_flags[@]}" "${worker_flags[@]}" "${cjson_flags[@]}" \
+    tests/host/test_aux_history.c main/util/transfer_deadline.c "${worker_sources[@]}" \
+    "${cjson_sources[@]}" "${cjson_libs[@]}" -lm -o "$out/test_aux_$worker"
+  "$out/test_aux_$worker"
+done
+
+# Use the production scheduler, rather than the simulator's immediate Parqet reply stub.
+cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -g \
+  -I tests/host/request_stubs -I tests/host/week_stubs -I main -I tests/host/stubs \
+  "${variant_flags[@]}" "${cjson_flags[@]}" tests/host/test_parqet_request.c main/ha/parqet_performance.c \
+  "${cjson_sources[@]}" "${cjson_libs[@]}" -lm -o "$out/test_parqet_request"
+"$out/test_parqet_request"
+
+cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -g \
+  -I tests/host/request_stubs -I tests/host/week_stubs -I main -I tests/host/stubs \
+  "${variant_flags[@]}" "${cjson_flags[@]}" tests/host/test_quote_feed.c main/ha/ha_quote_series.c \
+  main/util/history_feed_policy.c "${cjson_sources[@]}" "${cjson_libs[@]}" -lm -o "$out/test_quote_feed"
+"$out/test_quote_feed"
+
 # The admin password store against a fake NVS with injected faults (finding 16: an unreadable credential closes the panel).
 cc -std=gnu11 -Wall -Wextra -Werror -g -I tests/host/auth_stubs -I main \
   tests/host/test_admin_auth.c -o "$out/test_admin_auth"

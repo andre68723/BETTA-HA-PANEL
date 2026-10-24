@@ -342,6 +342,16 @@ static void test_json_budget(void)
     CHECK(!ha_price_series_from_json("{\"pf\":{\"v\":2,\"s\":1,\"d\":3600,\"p\":[\"x\"]}}", &s));
     CHECK(!ha_price_series_from_json("{\"pf\":{\"v\":2,\"s\":1,\"d\":3600,\"p\":[]}}", &s));
     CHECK(!ha_price_series_from_json("{}", &s) && !ha_price_series_from_json("", &s) && !ha_price_series_from_json("{bad", &s));
+    const char *invalid[] = {
+        "{\"pf\":{\"v\":2,\"s\":1e300,\"d\":3600,\"p\":[1]}}",
+        "{\"pf\":{\"v\":2,\"s\":1.5,\"d\":3600,\"p\":[1]}}",
+        "{\"pf\":{\"v\":2.5,\"s\":1,\"d\":3600,\"p\":[1]}}",
+        "{\"pf\":{\"v\":2,\"s\":1,\"d\":3600.5,\"p\":[1]}}",
+        "{\"pf\":{\"v\":2,\"s\":1,\"d\":901,\"p\":[1]}}",
+        "{\"pf\":{\"v\":2,\"s\":1,\"d\":3600,\"p\":[1.5]}}",
+        "{\"pf\":{\"v\":2,\"s\":1,\"d\":3600,\"p\":[100000001]}}",
+    };
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) CHECK(!ha_price_series_from_json(invalid[i], &s));
     CHECK(ha_price_series_from_json("{\"unit_of_measurement\":\"EUR/kWh\",\"pf\":{\"v\":2,\"s\":1792188000,\"d\":3600,\"p\":[1,null,-3]}}", &s));
     CHECK(s.count == 3 && s.price[0] == 1 && s.price[1] == HA_PRICE_MISSING && s.price[2] == -2); /* steps: 1, then -3 from 1 */
 }

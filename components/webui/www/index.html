@@ -162,7 +162,7 @@
               <button id="addWeatherTileBtn" type="button">+ Weather</button>
               <button id="addWeather3DayBtn" type="button">+ Weather Forecast</button>
               <button id="addSolarForecastBtn" type="button">+ Solar Forecast</button>
-              <button id="addPriceForecastBtn" type="button">+ Price Forecast</button>
+              <button id="addPriceForecastBtn" type="button">+ Energy Price Forecast</button>
               <button id="addParqetPortfolioBtn" type="button">+ Parqet Portfolio</button>
               <button id="addStockQuotesBtn" type="button">+ Stocks &amp; ETFs</button>
               <button id="addTodoListBtn" type="button">+ Todo List</button>
@@ -1064,7 +1064,7 @@
                     <option value="weather_tile">weather_tile</option>
                     <option value="weather_3day">weather_3day</option>
                     <option value="solar_forecast">solar_forecast</option>
-                    <option value="price_forecast">price_forecast</option>
+                    <option value="energy_price_forecast">energy_price_forecast</option>
                     <option value="car_widget">car_widget</option>
                     <option value="wallbox_evcc">wallbox_evcc</option>
 <option value="bambu_printer">bambu_printer</option>
@@ -1251,10 +1251,10 @@
                         <option value="flow">Energy flow</option>
                       </select>
                     </label>
+                    <div class="meta warn no-shorten" id="evccHeaderHint" role="status"></div>
                     <label id="fEvccPowerMaxWrap"><span id="fEvccPowerMaxLabel">Maximum charging power (kW)</span>
                       <input id="fEvccPowerMax" type="number" min="1" max="50" step="0.1" placeholder="11" />
                     </label>
-                    <div class="meta" id="evccHeaderHint"></div>
                   </div>
                   <div id="evccFields" class="hidden">
                     <label><span id="fEvccLoadpointLabel">Loadpoint</span><select id="fEvccLoadpoint"></select></label>
@@ -1263,94 +1263,94 @@
                     <div id="evccSiteFields" class="hidden">
                       <label><span id="fEvccPvPowerLabel">PV power (sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccPvPower" type="text" list="evccsensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_pvpower">Search</button>
+                          <input id="fEvccPvPower" type="text" readonly list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_pvpower">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccBatteryPowerLabel">Battery power (sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccBatteryPower" type="text" list="evccsensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_batterypower">Search</button>
+                          <input id="fEvccBatteryPower" type="text" readonly list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_batterypower">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccGridPowerLabel">Grid power (sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccGridPower" type="text" list="evccsensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_gridpower">Search</button>
+                          <input id="fEvccGridPower" type="text" readonly list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_gridpower">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccHomePowerLabel">Home power (sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccHomePower" type="text" list="evccsensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_homepower">Search</button>
+                          <input id="fEvccHomePower" type="text" readonly list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_homepower">Search</button>
                         </div>
                       </label>
                     </div>
                     <details><summary id="evccDetailsSummary">Advanced entities</summary>
                       <label><span id="fEvccModeLabel">Mode (select)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccMode" type="text" list="evccselectOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_mode">Search</button>
+                          <input id="fEvccMode" type="text" readonly list="evccselectOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_mode">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccVehicleLabel">Vehicle (select)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccVehicle" type="text" list="evccselectOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_vehicle">Search</button>
+                          <input id="fEvccVehicle" type="text" readonly list="evccselectOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_vehicle">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccTargetLabel">Target (number,select)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccTarget" type="text" list="evccnumberOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_target">Search</button>
+                          <input id="fEvccTarget" type="text" readonly list="evccnumberOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_target">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccPowerLabel">Power (sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccPower" type="text" list="evccsensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_power">Search</button>
+                          <input id="fEvccPower" type="text" readonly list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_power">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccSocLabel">Soc (sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccSoc" type="text" list="evccsensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_soc">Search</button>
+                          <input id="fEvccSoc" type="text" readonly list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_soc">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccConnectedLabel">Connected (binary_sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccConnected" type="text" list="evccbinary_sensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_connected">Search</button>
+                          <input id="fEvccConnected" type="text" readonly list="evccbinary_sensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_connected">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccChargingLabel">Charging (binary_sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccCharging" type="text" list="evccbinary_sensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_charging">Search</button>
+                          <input id="fEvccCharging" type="text" readonly list="evccbinary_sensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_charging">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccDisabledLabel">Disabled (binary_sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccDisabled" type="text" list="evccbinary_sensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_disabled">Search</button>
+                          <input id="fEvccDisabled" type="text" readonly list="evccbinary_sensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_disabled">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccEffectiveLabel">Effective (sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccEffective" type="text" list="evccsensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_effective">Search</button>
+                          <input id="fEvccEffective" type="text" readonly list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_effective">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccEnergyLabel">Charged energy (sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccEnergy" type="text" list="evccsensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_energy">Search</button>
+                          <input id="fEvccEnergy" type="text" readonly list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_energy">Search</button>
                         </div>
                       </label>
                       <label><span id="fEvccRemainingLabel">Remaining duration (sensor)</span>
                         <div class="entity-input-row">
-                          <input id="fEvccRemaining" type="text" list="evccsensorOptions" />
-                          <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="evcc_remaining">Search</button>
+                          <input id="fEvccRemaining" type="text" readonly list="evccsensorOptions" />
+                          <button class="btn small entity-picker-btn" type="button" disabled data-inspector-entity-target="evcc_remaining">Search</button>
                         </div>
                       </label>
                     </details>
@@ -1932,7 +1932,7 @@
           <button class="btn small add-tile-type" type="button" data-add-target="addWeatherTileBtn">Weather</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addWeather3DayBtn">Weather Forecast</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addSolarForecastBtn">Solar Forecast</button>
-          <button class="btn small add-tile-type" type="button" data-add-target="addPriceForecastBtn">Price Forecast</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addPriceForecastBtn">Energy Price Forecast</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addEmptyTileBtn">Empty Tile</button>
         </div>
       </div>

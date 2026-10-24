@@ -300,19 +300,23 @@ size_t ha_quote_series_reduce(const ha_quote_series_t *series, ha_quote_point_t 
         memcpy(out, series->point, series->count * sizeof(*out));
         return series->count;
     }
-    /* intervals of the series, each giving its lowest and highest value in time order, or one gap */
-    const size_t intervals = max / 2;
+    /* Keep both endpoints and the extrema of each interior interval. If an interval contains a gap,
+     * keep a gap instead: joining extrema across missing records invents a continuous price history. */
+    const size_t intervals = (max - 2) / 2;
     size_t n = 0;
+    out[n++] = series->point[0];
     for (size_t k = 0; k < intervals; k++) {
-        const size_t from = k * series->count / intervals, to = (k + 1) * series->count / intervals;
+        const size_t from = 1 + k * (series->count - 2) / intervals;
+        const size_t to = 1 + (k + 1) * (series->count - 2) / intervals;
         size_t lo = to, hi = to;
+        bool gap = false;
         for (size_t i = from; i < to; i++) {
             const float v = series->point[i].v;
-            if (!isfinite(v)) continue;
+            if (!isfinite(v)) { gap = true; continue; }
             if (lo == to || v < series->point[lo].v) lo = i;
             if (hi == to || v > series->point[hi].v) hi = i;
         }
-        if (lo == to) {
+        if (gap || lo == to) {
             out[n++] = (ha_quote_point_t){.t = series->point[from].t, .v = NAN};
             continue;
         }
@@ -320,5 +324,6 @@ size_t ha_quote_series_reduce(const ha_quote_series_t *series, ha_quote_point_t 
         out[n++] = series->point[a];
         if (b != a) out[n++] = series->point[b];
     }
+    out[n++] = series->point[series->count - 1];
     return n;
 }

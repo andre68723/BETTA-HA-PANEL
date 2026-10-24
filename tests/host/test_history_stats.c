@@ -375,6 +375,51 @@ static void test_ranges(void)
     tzset();
 }
 
+static void test_numeric_bounds(void)
+{
+    ha_stats_window_t window;
+    CHECK(ha_stats_week_window(NOW, &window));
+    const char *bad_rows[] = {
+        "{\"start\":1e200,\"mean\":1}",
+        "{\"start\":-1e200,\"mean\":1}",
+        "{\"start\":1790784000000.5,\"mean\":1}",
+        "{\"start\":1790784000000,\"end\":1e200,\"mean\":1}",
+        "{\"start\":1790784000000,\"mean\":1e200}"
+    };
+    for (size_t i = 0; i < sizeof(bad_rows) / sizeof(bad_rows[0]); i++) {
+        char json[256];
+        snprintf(json, sizeof(json), "{\"sensor.p\":[%s]}", bad_rows[i]);
+        cJSON *root = cJSON_Parse(json);
+        ha_stats_series_t hourly;
+        CHECK(ha_stats_parse_hourly(root, "sensor.p", &window, HA_STATS_VALUE_MEAN, true, &hourly) == HA_STATS_OUTCOME_EMPTY);
+        CHECK(hourly.valid == 0 && hourly.rejected == 1);
+        cJSON_Delete(root);
+    }
+    cJSON *root = cJSON_Parse("{\"sensor.p\":[{\"start\":1790784000000,\"mean\":2,\"min\":-1e200,\"max\":1e200}]}");
+    ha_stats_series_t hourly;
+    CHECK(ha_stats_parse_hourly(root, "sensor.p", &window, HA_STATS_VALUE_MEAN, true, &hourly) == HA_STATS_OUTCOME_OK);
+    CHECK(hourly.flags[1] == HA_STATS_FLAG_VALUE && NEAR(hourly.value[1], 2));
+    cJSON_Delete(root);
+
+    CHECK(ha_stats_range_window(NOW, HA_RANGE_30_DAYS, &window, NULL));
+    char json[768];
+    const long long start = (long long)window.start_epoch * 1000;
+    snprintf(json, sizeof(json), "{\"sensor.p\":[{\"start\":1e200,\"mean\":1},{\"start\":-1e200,\"mean\":1},"
+             "{\"start\":%lld.5,\"mean\":1},{\"start\":%lld,\"mean\":1e200},"
+             "{\"start\":%lld,\"mean\":2,\"min\":-1e200,\"max\":1e200}]}", start, start, start);
+    root = cJSON_Parse(json);
+    ha_range_series_t range;
+    CHECK(ha_stats_parse_range(root, "sensor.p", &window, HA_RANGE_30_DAYS, &range) == HA_STATS_OUTCOME_OK);
+    CHECK(range.count == 1 && range.rejected == 4 && NEAR(range.point[0].mean, 2));
+    CHECK(!range.point[0].has_range && isfinite(range.point[0].min) && isfinite(range.point[0].max));
+    cJSON_Delete(root);
+
+    root = cJSON_Parse("[{\"statistic_id\":\"sensor.p\",\"mean_type\":1e200,\"has_mean\":true}]");
+    ha_stats_meta_t metadata;
+    CHECK(ha_stats_parse_metadata(root, "sensor.p", &metadata) && metadata.mean_type != 1);
+    cJSON_Delete(root);
+}
+
 int main(void)
 {
     test_counter_and_sources();
@@ -382,6 +427,7 @@ int main(void)
     test_week_window_and_rows();
     test_daily_sums();
     test_ranges();
+    test_numeric_bounds();
     printf("%s: %d checks, %d failed\n", failed == 0 ? "PASS statistics parser" : "FAIL statistics parser", checks, failed);
     return failed == 0 ? 0 : 1;
 }

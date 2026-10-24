@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "app_config.h"
+#include "ha/ha_layout_entities.h"
 
 #if defined(ESP_PLATFORM)
 #include "esp_heap_caps.h"
@@ -23,8 +24,8 @@ static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
 #define DP_CALLOC(n, size) calloc((n), (size))
 #endif
 
-/* Entities looked up and remembered; a layout rarely has more than a few dozen numeric ones. */
-#define DP_CAPACITY 256
+/* Registry lookups also determine quote providers: cover every entity the transport can subscribe to. */
+#define DP_CAPACITY HA_LAYOUT_ENTITY_CAPACITY
 /* Precision beyond this is noise on a panel (and keeps the output short). */
 #define DP_MAX_DIGITS 6
 
@@ -35,6 +36,7 @@ typedef enum { DP_PLATFORM_PENDING = 0, DP_PLATFORM_FAILED, DP_PLATFORM_OTHER, D
 static uint32_t *s_hash;
 static int8_t *s_digits;
 static uint8_t *s_platform;
+static uint8_t *s_keep; /* HA-task scratch for pruning; keep it off the task stack. */
 static size_t s_known;
 
 /* HA task only: the entities still to ask for and the request in flight. */
@@ -65,6 +67,7 @@ static bool dp_ensure_buffers(void)
     if (s_wanted == NULL) {
         s_wanted = DP_CALLOC(DP_CAPACITY, APP_MAX_ENTITY_ID_LEN);
     }
+    if (s_keep == NULL) s_keep = DP_CALLOC(DP_CAPACITY, sizeof(*s_keep));
     if (s_hash == NULL) {
         uint32_t *hash = DP_CALLOC(DP_CAPACITY, sizeof(*hash));
         int8_t *digits = DP_CALLOC(DP_CAPACITY, sizeof(*digits));
@@ -81,7 +84,7 @@ static bool dp_ensure_buffers(void)
         s_platform = platform;
         DP_UNLOCK();
     }
-    return s_wanted != NULL;
+    return s_wanted != NULL && s_keep != NULL;
 }
 
 /* Returns whether the stored precision or integration changed. A failed lookup keeps the precision known before. */
@@ -120,7 +123,7 @@ static int dp_entry_digits(const cJSON *entry)
     if (!cJSON_IsNumber(digits)) {
         digits = cJSON_GetObjectItemCaseSensitive(sensor, "suggested_display_precision");
     }
-    if (!cJSON_IsNumber(digits) || digits->valuedouble < 0) {
+    if (!cJSON_IsNumber(digits) || !isfinite(digits->valuedouble) || digits->valuedouble < 0) {
         return HA_DISPLAY_PRECISION_UNKNOWN;
     }
     return digits->valuedouble > DP_MAX_DIGITS ? DP_MAX_DIGITS : (int)digits->valuedouble;
@@ -147,14 +150,12 @@ static void dp_mark_failed(size_t first, size_t end, ha_display_precision_change
     }
 }
 
-void ha_display_precision_set_wanted(const char *entity_ids, size_t count)
+bool ha_display_precision_set_wanted(const char *entity_ids, size_t count)
 {
+    if (count > 0 && (entity_ids == NULL || !dp_ensure_buffers())) return false;
     s_wanted_count = 0;
     s_next = 0;
     s_inflight_id = 0;
-    if (entity_ids == NULL || !dp_ensure_buffers()) {
-        return;
-    }
     for (size_t i = 0; i < count && s_wanted_count < DP_CAPACITY; i++) {
         const char *id = entity_ids + i * APP_MAX_ENTITY_ID_LEN;
         if (dp_is_numeric_domain(id)) {
@@ -162,6 +163,25 @@ void ha_display_precision_set_wanted(const char *entity_ids, size_t count)
             s_wanted_count++;
         }
     }
+    /* Layout edits must not fill the cache with entities no longer used. Quote-provider lookups rely
+     * on this cache too: after 256 different entities a new quote otherwise stays pending until reboot.
+     * This function and dp_store() have the same HA-task owner, so only the final move needs the read lock. */
+    if (s_keep != NULL) memset(s_keep, 0, DP_CAPACITY * sizeof(*s_keep));
+    for (size_t i = 0; i < s_wanted_count; i++) {
+        const uint32_t h = dp_hash(s_wanted + i * APP_MAX_ENTITY_ID_LEN);
+        for (size_t j = 0; j < s_known; j++) if (s_hash[j] == h) s_keep[j] = true;
+    }
+    DP_LOCK();
+    size_t kept = 0;
+    for (size_t i = 0; i < s_known; i++) {
+        if (s_keep == NULL || !s_keep[i]) continue;
+        s_hash[kept] = s_hash[i];
+        s_digits[kept] = s_digits[i];
+        s_platform[kept++] = s_platform[i];
+    }
+    s_known = kept;
+    DP_UNLOCK();
+    return true;
 }
 
 bool ha_display_precision_is_due(int64_t now_ms)

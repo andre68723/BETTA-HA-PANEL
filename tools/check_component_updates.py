@@ -33,20 +33,14 @@ import urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REGISTRY = "https://components.espressif.com/api/components/{ns}/{name}"
 
-# variant -> (lock file, manifest). JC and Tab5 have dedicated lock files;
-# panel4 and panel10 resolve into the same root dependencies.lock, which reflects whichever of the two was BUILT LAST, not
-# necessarily the one named here (see lock_seems_stale below and docs/development/components.md's "dependencies.lock
-# (root) is shared" section). DEFAULT_VARIANTS below sticks to one representative of that
-# group (panel4) plus JC and Tab5 precisely to avoid defaulting to numbers that are only right by
-# accident; pass panel10 explicitly when you have actually built that one last.
+# Each manifest has its own lock; JC V1/V2 share one manifest and dependency set.
 VARIANTS = {
     "paneljc": ("dependencies.lock.paneljc", "main/idf_component.paneljc.yml"),
     "panel4": ("dependencies.lock", "main/idf_component.panel4.yml"),
-    "panel10": ("dependencies.lock", "main/idf_component.panel10.yml"),
+    "panel10": ("dependencies.lock.panel10", "main/idf_component.panel10.yml"),
     "tab5": ("dependencies.lock.tab5", "main/idf_component.tab5.yml"),
 }
-SHARED_LOCK_VARIANTS = ("panel4", "panel10")
-DEFAULT_VARIANTS = ["paneljc", "panel4", "tab5"]
+DEFAULT_VARIANTS = ["paneljc", "panel4", "panel10", "tab5"]
 
 # Components whose major version is followed on purpose (esp_hosted: the v2.x release line, and the ESP32-C6 firmware must match it):
 # newer majors are not offered for them.
@@ -243,15 +237,8 @@ def c6_firmware():
 
 
 def lock_seems_stale(variant):
-    """True if dependencies.lock does not look like it was last resolved for `variant`.
-
-    Only meaningful for SHARED_LOCK_VARIANTS: panel4 and panel10 each declare at
-    least one package the other does not (their own Waveshare BSP package), so if such a package is
-    missing from the shared lock entirely, it was resolved for a different variant that was built more recently.
-    """
+    """True if the variant lock misses a package requested by its manifest."""
     lock_rel, manifest_rel = VARIANTS[variant]
-    if lock_rel != "dependencies.lock":
-        return False
     lock = parse_lock(os.path.join(ROOT, lock_rel))
     manifest = parse_manifest(os.path.join(ROOT, manifest_rel))
     return any(pkg not in lock for pkg in manifest if pkg != "idf")
@@ -338,11 +325,9 @@ def main():
             ap.error("unknown variant %r (known: %s)" % (v, ", ".join(VARIANTS)))
 
     for v in variants:
-        if v in SHARED_LOCK_VARIANTS and lock_seems_stale(v):
-            print("warning: dependencies.lock does not look resolved for %r (it is shared by %s "
-                  "and reflects whichever was built last) -- rebuild %r first "
-                  "(tools/build.sh %s reconfigure build) for accurate numbers" %
-                  (v, "/".join(SHARED_LOCK_VARIANTS), v, v), file=sys.stderr)
+        if lock_seems_stale(v):
+            print("warning: %s does not match the %r manifest -- run tools/build.sh %s reconfigure build "
+                  "before comparing component versions" % (VARIANTS[v][0], v, v), file=sys.stderr)
 
     cache, result = {}, {"variants": {}}
     for v in variants:

@@ -2,7 +2,7 @@
 
 # Button
 
-Switches a `switch.*` entity or sends a `media_player.*` action from a compact touch button.
+Switches a `switch.*` entity or sends a `media_player.*` action from a **compact touch button**.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/button_glow.png"><img src="../img/gallery/button_glow.png" alt="Button, Glow style" loading="lazy" width="160" height="160" style="width: 128px"></a></figure>

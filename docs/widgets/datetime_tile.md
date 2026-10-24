@@ -2,7 +2,7 @@
 
 # Date/Time
 
-Shows and edits an `input_datetime.*`, `time.*`, `date.*` or `datetime.*` entity with a roller popup.
+Shows and edits an `input_datetime.*`, `time.*`, `date.*` or `datetime.*` entity with a **roller popup**.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/morning_routine_glow.png"><img src="../img/gallery/morning_routine_glow.png" alt="Morning routine, Glow style" loading="lazy" width="280" height="90" style="width: 224px"></a></figure>

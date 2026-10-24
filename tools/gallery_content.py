@@ -445,7 +445,7 @@ def bambu_pages(entities):
 
 
 def price_pages(entities):
-    price = entities.get("price_forecast")
+    price = entities.get("energy_price_forecast")
     if not price:
         return []
     caps = {"Domain": "sensor with a list attribute `data` (EPEX Spot, Day Ahead Optimizer, Tibber and Nord Pool template sensors)",
@@ -457,9 +457,9 @@ def price_pages(entities):
     return [{
         "page": "gallery_price",
         "tiles": [
-            dict(slot="price_forecast", type="price_forecast", title="Price forecast", rect=(10, 10, 680, 300),
+            dict(slot="energy_price_forecast", type="energy_price_forecast", title="Energy price forecast", rect=(10, 10, 680, 300),
                  fields={"entity_id": price, "price_day_switch": True, "price_cheap_times": True}, caps=caps),
-            dict(slot="price_forecast", type="price_forecast", title="Price forecast (small)", rect=(10, 330, 260, 170),
+            dict(slot="energy_price_forecast", type="energy_price_forecast", title="Energy price forecast (small)", rect=(10, 330, 260, 170),
                  fields={"entity_id": price, "price_day_switch": True, "price_line": True}, caps=caps),
         ],
     }]
@@ -625,7 +625,7 @@ def collect_images(img_dir, spec, styles=STYLES):
     ids += [page_id for page_id, *_ in SPECIAL_PAGES] + ["gallery_doorbell", "gallery_notification", "gallery_notification_bold", "gallery_select_detail"]
     ids += [f"gallery_name_off_{key}" for key, _ in NAME_VISIBILITY_EXAMPLES]
     ids += ["gallery_history_sensor_en", "gallery_history_sensor_week_en", "gallery_history_sensor_week_de", "gallery_history_contact_de", "gallery_history_lock_en"]
-    ids += ["gallery_bambu_detail", "gallery_vacuum_history", "gallery_wallbox_disconnected", "gallery_wallbox_sessions"]
+    ids += ["gallery_bambu_detail", "gallery_vacuum_history", "gallery_wallbox_disconnected", "gallery_wallbox_sessions", "gallery_wallbox_power", "gallery_wallbox_flow"]
     images = {}
     for style in styles:
         for gallery_id in ids:
@@ -643,7 +643,7 @@ WIDGET_GROUPS = [
      ["button", "slider", "light_tile", "heating_tile", "climate_tile", "cover_tile", "fan_tile", "lock_tile", "alarm_tile", "select_tile", "datetime_tile", "scene_tile"]),
     ("Rooms", "Everything about one room in a single card.", ["room_tile"]),
     ("Weather and energy", "Forecasts, solar production and the energy balance.",
-     ["weather_tile", "weather_3day", "solar_forecast", "price_forecast", "energy_timeline"]),
+     ["weather_tile", "weather_3day", "solar_forecast", "energy_price_forecast", "energy_timeline"]),
     ("Media and tasks", "Playback, favourites and shopping lists.", ["media_player", "sonos_favorites", "todo_list"]),
     ("Devices", "Vacuum, camera, car, wallbox and 3D printer.", ["vacuum_tile", "camera_tile", "car_widget", "bambu_printer", "wallbox_evcc"]),
     ("Layout", "Space for the design itself.", ["empty_tile"]),
@@ -653,7 +653,7 @@ WIDGET_GROUPS = [
 # title ("Vertical", "Horizontal"), which said nothing about which widget it even was.
 ROW_DISPLAY_NAME = {
     "sensor": "Sensor", "gauge": "Gauge", "car_widget": "Car", "bambu_printer": "Bambu printer", "wallbox_evcc": "Wallbox", "graph": "Graph",
-    "solar_forecast": "Solar forecast", "price_forecast": "Price forecast", "parqet_portfolio": "Parqet portfolio", "stock_quotes": "Stocks & ETFs", "weather_tile": "Weather (now)", "weather_3day": "Weather forecast",
+    "solar_forecast": "Solar forecast", "energy_price_forecast": "Energy price forecast", "parqet_portfolio": "Parqet portfolio", "stock_quotes": "Stocks & ETFs", "weather_tile": "Weather (now)", "weather_3day": "Weather forecast",
     "button": "Button", "scene_tile": "Scene", "select_tile": "Select", "lock_tile": "Lock", "alarm_tile": "Alarm", "datetime_tile": "Date/Time", "slider": "Slider", "cover_tile": "Cover",
     "light_tile": "Light", "fan_tile": "Fan", "climate_tile": "Climate", "heating_tile": "Heating",
     "media_player": "Media player", "sonos_favorites": "Sonos favorites", "contact_tile": "Contact",

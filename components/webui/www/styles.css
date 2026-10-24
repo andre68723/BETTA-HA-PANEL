@@ -2073,7 +2073,7 @@ aside.actions-panel section {
 .tp-day small { color: #8aa0b3; }
 .tp-media .tp-cover { align-self: center; width: 42%; aspect-ratio: 1; max-height: 42%; border-radius: 8px; background: linear-gradient(135deg, #3b5a78, #1e3247); }
 .tp-media .tp-track { text-align: center; display: flex; flex-direction: column; }
-/* price_forecast preview: the day's bars, the price now and the day buttons (like w_price_forecast.c) */
+/* energy_price_forecast preview: the day's bars, the price now and the day buttons (like w_energy_price_forecast.c) */
 .tp-price { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; }
 .tp-price .tp-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
 .tp-price-head { display: flex; align-items: baseline; gap: 6px; }

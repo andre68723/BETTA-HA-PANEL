@@ -86,7 +86,7 @@ function initInspectorLayout() {
     const button = make("button", "inspector-entity-row"); button.type = "button";
     button.append(make("span", "inspector-entity-name"), make("span", "inspector-entity-chevron"));
     button.lastChild.setAttribute("aria-hidden", "true");
-    button.onclick = open;
+    button.onclick = () => { if (!input.readOnly) open(); };
     // The row shows the role before any parenthesis; "(optional)" and similar notes move to its tooltip.
     const caption = field.querySelector("span"), role = make("span", "inspector-entity-role");
     caption.hidden = true; field.prepend(role);
@@ -216,11 +216,11 @@ function refreshInspectorEntityRows() {
     const name = (index >= 0 ? shortNames[index] : inspectorEntityRowNames([id])[0]).replace(/\s+/g, " ").trim();
     const known = !id || editor.entities.some(item => item?.id === id) || editor.states?.has(id) || !entityMissingFromSearch(id);
     row.button.querySelector(".inspector-entity-name").textContent = !id ? t("layout.inspector.entity_unset") : name || id;
-    row.button.querySelector(".inspector-entity-chevron").textContent = id ? "\u203A" : "+";
+    row.button.querySelector(".inspector-entity-chevron").textContent = row.input.readOnly ? "" : id ? "\u203A" : "+";
     row.button.classList.toggle("is-empty", !id);
     row.button.classList.toggle("is-missing", !known);
     row.button.title = !id ? "" : known ? id : `${id} \u00B7 ${t("layout.inspector.entity_missing")}`;
-    row.button.disabled = row.input.disabled;
+    row.button.disabled = row.input.disabled || row.input.readOnly;
     const caption = row.caption.textContent.trim() || t("layout.inspector.entity");
     row.role.textContent = caption.replace(/\s*\(.*$/, "");
     row.role.title = row.role.textContent === caption ? "" : caption;
