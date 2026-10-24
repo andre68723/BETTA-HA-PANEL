@@ -6,10 +6,21 @@ name: check
 on:
   push:
   pull_request:
+permissions:
+  contents: read
+
+# Only PR checks share a key; pushes have a unique run key and are never canceled.
+concurrency:
+  group: checks-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   fast:
     name: fast (${{ matrix.group }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CHECK_GROUP: ${{ matrix.group }}
     strategy:
       fail-fast: false
       matrix:
@@ -17,14 +28,16 @@ jobs:
         # steps of one variant each, then the host tests and the web checks.
         group: [web, host, sim-panel4, sim-paneljc, sim-tab5]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: 22
       - run: sudo apt-get update && sudo apt-get install -y libcjson-dev pkg-config cmake libsdl2-dev python3-pil
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4  # v10.1.0
         with:
           version: '0.12.21'
           python-version: '3.13'
           enable-cache: false
-      - run: uv run --locked --only-group checks tools/check.sh --group ${{ matrix.group }}
+      - run: uv run --locked --only-group checks tools/check.sh --group "$CHECK_GROUP"

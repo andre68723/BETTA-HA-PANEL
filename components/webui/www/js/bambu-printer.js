@@ -177,15 +177,19 @@ const BAMBU_PREVIEW_SVG = `<svg class="bambu-preview-art" viewBox="0 0 1000 800"
 </svg>`;
 
 function bambuPreviewMarkup(widget) {
-  const status = String(editor.states.get(widget.entity_id) ?? "running");
-  const [statusKey, statusFallback] = BAMBU_PREVIEW_STATES[status] || BAMBU_PREVIEW_STATES.running;
+  const status = String(editor.states.get(widget.entity_id) ?? "");
+  const [statusKey, statusFallback] = BAMBU_PREVIEW_STATES[status] || (status === ""
+    ? ["layout.preview.bambu_no_data", "No data"] : ["unknown", "unavailable"].includes(status)
+      ? ["layout.preview.bambu_unavailable", "Unavailable"] : ["layout.preview.bambu_unknown", "Unknown"]);
   const nozzle = bambuPreviewNumber(widget.nozzle_temp_entity_id);
   const bed = bambuPreviewNumber(widget.bed_temp_entity_id);
   const progress = bambuPreviewNumber(widget.progress_entity_id);
   const percent = progress === null ? 46 : clamp(Math.round(progress), 0, 100);
   const remaining = bambuPreviewNumber(widget.remaining_time_entity_id);
   const temp = (value, fallback) => `${value === null ? fallback : Math.round(value)} °C`;
-  const canPause = Boolean(widget.pause_entity_id || widget.resume_entity_id);
+  const known = ["running", "pause"].includes(status);
+  const usable = (id) => previewControlAvailable(id, true);
+  const canPause = known && usable(status === "pause" ? widget.resume_entity_id : widget.pause_entity_id);
   // A paused job offers Resume in the first button (primary_resume in w_bambu_printer.c).
   return `
     <div class="bambu-preview">
@@ -204,9 +208,9 @@ function bambuPreviewMarkup(widget) {
       <div class="bambu-preview-readings"><b>${percent}%</b><span>${remaining === null ? 22 : Math.round(remaining)} ${escapeHtml(t("layout.preview.bambu_min", {}, "min"))}</span></div>
       <div class="bambu-preview-bar"><i style="width:${percent}%"></i></div>
       <div class="bambu-preview-buttons">
-        <span class="${canPause ? "" : "off"}">${escapeHtml(status === "pause" ? t("layout.preview.bambu_resume", {}, "Resume") : t("layout.preview.bambu_pause", {}, "Pause"))}</span>
+        <span class="${previewControlClass(status === "running", canPause)}">${escapeHtml(status === "pause" ? t("layout.preview.bambu_resume", {}, "Resume") : t("layout.preview.bambu_pause", {}, "Pause"))}</span>
         <span>${escapeHtml(t("layout.preview.bambu_status", {}, "Status"))}</span>
-        <span class="${widget.stop_entity_id ? "" : "off"}">${escapeHtml(t("layout.preview.bambu_stop", {}, "Stop"))}</span>
+        <span class="${previewControlClass(false, known && usable(widget.stop_entity_id), true)}">${escapeHtml(t("layout.preview.bambu_stop", {}, "Abort"))}</span>
       </div>
     </div>
     <div class="resize-handle"></div>

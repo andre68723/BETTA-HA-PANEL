@@ -180,14 +180,6 @@ function initInspectorLayout() {
   refreshInspectorLayout();
 }
 
-// Kept for callers of the former Properties / Position tabs: Placement is now a collapsed section.
-function selectInspectorTab(name) {
-  if (!inspectorLayout) return;
-  inspectorLayout.placementChoice = name === "position";
-  inspectorLayout.position.open = inspectorLayout.placementChoice;
-  scheduleInspectorReflow();
-}
-
 function scheduleInspectorReflow() {
   if (!inspectorLayout || inspectorLayout.frame !== null) return;
   inspectorLayout.frame = requestAnimationFrame(() => {

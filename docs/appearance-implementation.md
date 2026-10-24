@@ -38,7 +38,47 @@ active. Only the surrounding surface -- the track background, its border, whethe
 inset look -- follows the per-style rules below. A widget that puts a decorative (non-value) gradient on a plain
 button or card background is not covered by this exception and should follow Flat's "no gradients" rule instead.
 
-## Type and icons: the same in every style
+## Control semantics
+
+Interactive controls use `ui_style_control_color()` and `ui_style_action_button()` in
+`main/ui/theme/ui_style.{h,c}`. The low-level `ui_style_button()` renders surfaces; widgets must
+not use it to invent another meaning for accent colours. The editor mirrors these roles with
+`previewControlClass()` and the shared control rules in `css/preview-roles.css`.
+
+| Role | Meaning | Examples |
+| --- | --- | --- |
+| `UI_CONTROL_ACTION` | Neutral action or picker opener | Next, volume +/−, scene, cleaning-mode list |
+| `UI_CONTROL_ACTIVE` | Function on or process running | Playback, vacuum cleaning/returning, printer running, preconditioning |
+| `UI_CONTROL_SELECTED` | Current choice, including an Off option | Charging mode, chart interval, list option |
+| `UI_CONTROL_DANGER` | Destructive action | Abort print, separate from Pause/Resume |
+
+Active and selected use the theme's `state_on` accent mixed with the active control surface,
+including in Matte. Disabled controls use the neutral surface and muted text; they cannot invoke
+services. Custom accents may replace the active hue, never the condition for activation.
+The shared helper derives foreground contrast and press feedback from the surface.
+
+Primary describes the control's position and size, not a permanent colour: Play/Pause,
+Start/Pause/Resume and On/Off keep one stable position and change their symbol or label.
+Pause/Resume is reversible; destructive abort stays separate. The vacuum primary also pauses
+return movement, so it stays active during return. Stop and Dock are secondary actions.
+Do not highlight Dock merely because a vacuum is docked.
+
+Picker openers and one-shot scene, script or favorite triggers remain neutral. A pressed control
+gets surface feedback without implying a persistent state. Selected charging mode and actual charging
+activity are separate: Off can be selected while charging telemetry still reports power.
+Pending commands follow their existing state policy; a colour update must not invent confirmation.
+Alert/error states and value-coded RGB, temperature, energy and level colours retain their meaning.
+An unknown timestamp is valid for scene and button triggers; a missing entity is unavailable. Stateful controls
+do not treat unknown as active. Unavailable entities dismiss open action pickers and cancel queued changes.
+The price tile's Today/Tomorrow controls, chart periods and shared PIN-pad confirmation follow the same roles;
+entering or confirming a code is a neutral action, not an active state.
+
+When adding a control, specify its role, active/selected condition and availability; use the shared
+helper, match the editor preview, and test idle/active/paused or selected/unselected transitions.
+The controls regression checks roles across all built-in themes and appearances, plus real media and
+vacuum state transitions. Printer and wallbox regressions retain command and confirmation checks.
+
+## Shared typography
 
 The four looks differ in surfaces, shapes and effects, never in typeface or icon family: all text is Poppins and all
 icons and symbols are Material Design Icons in every style. That is an architecture decision, recorded with its
@@ -198,5 +238,4 @@ separate concern from the rendering styles above and is kept in its own document
 pair, the percentage of widget pixels (content area, top bar and navigation excluded) whose colour differs by
 more than 8 levels: median, mean and the least different pages. Use it before adding a style and before deciding
 to retire one; a pair whose median stays near zero looks alike on almost every tile. It skips the special pages
-(Energy, House). On 2026-09-29: Flat/Glow median 0.7 % (0 % on several tiles), Flat/Glass 53 %, Flat/Matte 98 %,
-Glass/Matte 92 %.
+(Energy, House). Dated results are in [Working practices](development/learnings.md#style-comparison).

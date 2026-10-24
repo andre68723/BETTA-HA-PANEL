@@ -10,6 +10,14 @@
 #include <time.h>
 #include <unistd.h>
 
+/* Only this executable's calendar is fixed; monotonic deadlines remain real. */
+time_t host_test_time(time_t *out)
+{
+    const time_t now = 1792058400; /* Thursday 2026-10-15 */
+    if (out != NULL) *out = now;
+    return now;
+}
+
 #include "app_config.h"
 #include "cJSON.h"
 #include "ha/ha_attrs_compact.h"
@@ -857,6 +865,8 @@ static void test_ha_attr_serializers(void)
     cJSON *compact_report = cJSON_Parse(out);
     CHECK(cJSON_IsString(cJSON_GetObjectItemCaseSensitive(compact_report, "s")));
     CHECK(cJSON_IsObject(cJSON_GetObjectItemCaseSensitive(compact_report, "d")));
+    CHECK(strcmp(cJSON_GetObjectItemCaseSensitive(cJSON_GetObjectItemCaseSensitive(compact_report, "d"), "4")->valuestring,
+                 "Heute scheint die Sonne.") == 0);
     cJSON_Delete(compact_report);
     cJSON_Delete(report_attrs);
 }

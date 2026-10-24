@@ -642,10 +642,8 @@ static void style_range_button(history_popup_t *popup)
     for (int i = 0; i < 2; i++) {
         if (buttons[i] == NULL) continue;
         const bool active = (i == 1) == popup->week_active;
-        lv_obj_set_style_bg_color(buttons[i], lv_color_hex(active ? APP_UI_COLOR_STATE_ON : APP_UI_COLOR_NAV_BTN_BG_IDLE),
-                                  LV_PART_MAIN);
-        lv_obj_set_style_text_color(buttons[i], lv_color_hex(active ? APP_UI_COLOR_CONTENT_BG : APP_UI_COLOR_TEXT_PRIMARY),
-                                    LV_PART_MAIN);
+        const ui_control_role_t role = active ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION;
+        ui_style_action_button(buttons[i], lv_obj_get_child(buttons[i], 0), role, true);
     }
 }
 
@@ -1067,10 +1065,8 @@ static void quote_style_buttons(history_popup_t *popup)
     for (int p = 0; p < HA_QUOTE_PERIOD_COUNT; p++) {
         if (popup->period_btn[p] == NULL) continue;
         const bool active = p == (int)popup->period;
-        lv_obj_set_style_bg_color(popup->period_btn[p], lv_color_hex(active ? APP_UI_COLOR_STATE_ON : APP_UI_COLOR_NAV_BTN_BG_IDLE),
-                                  LV_PART_MAIN);
-        lv_obj_set_style_text_color(popup->period_btn[p], lv_color_hex(active ? APP_UI_COLOR_CONTENT_BG : APP_UI_COLOR_TEXT_PRIMARY),
-                                    LV_PART_MAIN);
+        const ui_control_role_t role = active ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION;
+        ui_style_action_button(popup->period_btn[p], lv_obj_get_child(popup->period_btn[p], 0), role, true);
     }
 }
 

@@ -1,56 +1,46 @@
 <!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md -->
 # Scripts in tools/
 
-Prefixes: `check_*` verify, `generate_*` write committed output. Usage is in each script's header, a longer
-description of every script in [tools/README.md](https://github.com/andre68723/BETTA-HA-PANEL/blob/main/tools/README.md).
+[tools/README.md](https://github.com/andre68723/BETTA-HA-PANEL/blob/main/tools/README.md) is the script inventory.
+The [simulator](../simulator.md#test-pages), [test layouts](testing.md#test-layouts) and [build guide](build.md) cover
+their task-specific commands. There is no additional dispatcher.
 
-## Run levels
+## Checks
 
-| Level | Rule | Runs |
-| --- | --- | --- |
-| **Every check** | Seconds, and any change can break it | JavaScript syntax, editor tests, HTML and translations, file sizes |
-| **Every check, skipped when unchanged** | Slow, but fully decided by its input files | Simulator regressions, widget layout at the standard text step, host tests |
-| **`--full`, always in CI** | Slow and a rare cause of a first failure | Widget layout at the Larger and Largest text steps |
-| **Before a flash or release** | Needs the toolchain or a device | `check.sh --build`, packaging, OTA flash, device tests |
-| **On demand** | Needs judgement, a browser or a panel | Generators, `compare_editor_previews.py`, `style_diff.py`, `calibrate_text_caps.py`, `stress_test.py` |
+The daily command is:
 
-`check.sh` prints one line per step and keeps each step's output in `${TMPDIR:-/tmp}/betta-check/<step>.log`; only a
-failing step prints its failure lines. A passing slow step stores a fingerprint of its command and input files in
-`build/check-stamps/` and is skipped while nothing changed (`--force` ignores the stamps, `--verbose` streams output).
-A cold run takes about five minutes, a repeat of an unchanged tree three seconds. Add a new check by the rule in the
-table: a step with inputs goes through `step "<name>" "<inputs>" <command>` in `tools/check.sh`.
+```bash
+uv run --locked --only-group checks tools/check.sh --changed
+```
 
-| Script | Job | Runs |
-| --- | --- | --- |
-| **Automatic** | | |
-| `apply_component_patches.py` | Edits to fetched components ([patches](components.md#patches-to-fetched-components)) | every CMake configure |
-| `generate_component_versions.py` | Component versions for `GET /api/version` from `dependencies.lock` | every CMake configure |
-| **Checks** | | |
-| `check.sh` | All checks without a device ([Checks](testing.md)) | by hand before a commit; CI with `--full` |
-| `check_web.py`<br>`check_source_sizes.py`<br>`check_docs_size.py`<br>`check_simulator_fields.py`<br>`check_gallery_fresh.py`<br>`check_widget_layout.py`<br>`test_host.sh` | Single checks | every check (the slow ones skipped when unchanged) |
-| `generate_widget_fonts.py` | Font subsets; `--check` runs in `check.sh` | every check, skipped when unchanged; regenerate when a font changes |
-| `check_component_updates.py` | Outdated components ([components](components.md#keeping-components-current)) | on demand, before touching lock files |
-| **Build and flash** | | |
-| `build.sh` | The one way to call `idf.py` ([why](build.md#rules-for-builds-and-flashing)) | before a flash |
-| `clean.sh` | Build directories; `--release` old folders in `release/out/` | by hand |
-| `ota_flash.sh` | Flash one running panel over Wi-Fi; refuses an image older than the sources | before a flash |
-| `package_release.sh` | Factory and OTA files of a finished build ([Releases](release.md)) | by hand |
-| `auto_update_device_test.sh` | Automatic update on a test build | on demand |
-| `lfs_repack.py` | Carry a panel's files over a partition change | on demand |
-| `vendor_cam_sensor.py` | Re-vendor the camera driver | on demand |
-| **Inspect** | | |
-| `simulator.sh` | LVGL widgets on the desktop ([simulator](../simulator.md)) | on demand |
-| `screenshot.sh`<br>`capture_device_pages.py` | Screen of a real panel | on demand |
-| `test_pages.sh`<br>`test_layouts.py` | Test pages of every widget and variant, by topic and panel size, in the simulator or on a panel ([test layouts](testing.md#test-layouts)) | on demand |
-| `stress_test.py` | Page switches, discovery and editor load on a panel | on demand |
-| `compare_editor_previews.py`<br>`style_diff.py` | Review aids, gate nothing ([editor preview](../editor-source.md#layout-preview), [styles](../appearance-implementation.md)) | on demand |
-| `calibrate_text_caps.py` | Text size caps ([conventions](conventions.md#text-and-fonts)) | on demand, after a layout change |
-| **Docs and gallery** | | |
-| `generate_simulator_gallery.py` | Gallery images and `gallery.md` | when a widget's look changes |
-| `generate_widget_docs.py` | Widget guides | when widget metadata changes |
-| `generate_docs_examples.py` | Dashboard, editor and top bar example images | when those change |
-| `generate_check_diagram.py` | Diagram in [Checks](testing.md) | when `check.sh` changes |
-| `import_device_captures.py` | Real panel captures into the docs | after `capture_device_pages.py` |
-| `generate_gallery.py` | Gallery from a real panel | on demand |
-| **Libraries** | | |
-| `gallery_content.py`<br>`gallery_freshness.py`<br>`ui_styles.py` | Shared code, no commands | imported |
+Use `--list` when the selection needs explanation, `--quick` for the fast stage and `--full --force` for the complete gate.
+
+| Level | Coverage |
+| --- | --- |
+| `--quick` | Syntax, Node and Python tooling tests, HTML/translations, sizes and catalog/metadata checks; no SDL or C compilation |
+| Standard | Quick responsibilities plus host tests for panel4/paneljc and simulator regressions/layout at text step 0 on all three sizes |
+| `--full` | Standard plus Larger/Largest layout checks; CI always forces the full coverage of its selected group |
+| Explicit `--build` | All five firmware variants; for one board use `tools/build.sh <variant> build` |
+
+`--changed` selects from each step's stamp inputs, including common runner/lock/tool metadata. There is no second
+path-to-check table. It includes staged, unstaged, deleted, moved and non-ignored untracked paths relative to HEAD.
+An unmapped path forces the selected level without cached passes. `--list` prints the actual selected steps and
+inputs without executing checks. An empty diff selects none; existing uncommitted work still counts.
+Standard `--changed` runs the strict docs build when its inputs match. `--group docs` checks that responsibility
+explicitly. `--quick` deliberately omits that build. Local quick/changed modes are rejected under CI.
+
+Successful checks print one summary with exit code, duration, passed/cached/unavailable/warning counts and log path.
+Unavailable prerequisites are distinct from cached passes and fail under CI. The first failure stops by default,
+prints its log path and rerun command; `--keep-going` collects later results. `--verbose` prints full per-step output.
+`--help` exits successfully; invalid combinations exit 2. There is no `--json` interface without an actual consumer.
+
+Each run gets a log directory under `${TMPDIR:-/tmp}/betta-check.*`; `BETTA_CHECK_LOG_DIR` overrides it. Passing steps
+retain stamps in `build/check-stamps/`. Commands, input contents, locked metadata and tool versions decide reuse;
+`tool-versions.log` records tool versions and the effective shared simulator clock. `--force` reruns everything. CI never reuses local stamps.
+
+## Tool versions
+
+[pyproject.toml](https://github.com/andre68723/BETTA-HA-PANEL/blob/main/pyproject.toml) pins Python packages and declares
+CI targets under `tool.betta.ci`. `check_web.py` checks workflow bootstrap values against them. Node is a separate
+executable; newer local Node versions can run the same tests. ESP-IDF owns its own Python environment, separate
+from the uv tooling environment. Do not install another SDK environment just to run these checks.

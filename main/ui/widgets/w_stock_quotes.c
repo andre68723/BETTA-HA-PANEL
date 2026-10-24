@@ -444,9 +444,9 @@ static void qs_layout(w_qs_ctx_t *ctx)
             const bool on = p == (int)ctx->period;
             qs_set_text(ctx->chip[p], ui_i18n_get(QS_PERIOD_KEY[p], QS_PERIOD_TEXT[p]));
             qs_place(ctx->chip[p], QS_PAD + p * (chip_w + 6), y, chip_w, chip_h);
-            lv_obj_set_style_bg_opa(ctx->chip[p], on ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
-            lv_obj_set_style_bg_color(ctx->chip[p], lv_color_hex(APP_UI_COLOR_STATE_ON), LV_PART_MAIN);
-            lv_obj_set_style_text_color(ctx->chip[p], lv_color_hex(on ? APP_UI_COLOR_CONTENT_BG : APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
+            const lv_color_t bg = ui_style_control_color(on ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION, true);
+            ui_style_action_button(ctx->chip[p], NULL, on ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION, true);
+            lv_obj_set_style_text_color(ctx->chip[p], ui_style_button_icon_color(bg), LV_PART_MAIN);
         }
         y += chip_h + 6;
     }

@@ -65,7 +65,8 @@ boundaries; `tools/check_web.py` checks order, syntax, fingerprinted names and g
    order; style files come after `styles.css`).
 3. `tools/check.sh` fails when the lists, tags and `www/js/` disagree or the bundle breaks, and runs the editor tests
    (`node --test tests/webui/*.test.mjs`). `load_editor.mjs` loads the scripts into a Node `vm` context with a small DOM
-   stub; add the script there if new logic needs it. Handwritten sources warn above 800 lines and fail above 2,999.
+   stub and derives production order from `index.html`, excluding only the browser bootstrap `main.js`.
+   Handwritten sources warn above 800 lines and fail above 2,999.
 
 ## Local test server
 
@@ -123,9 +124,8 @@ Home Assistant and back without saving. Check for console errors and the generat
   not need trips between distant regions. Review Device and Layout at that size when adding controls; group or fold long,
   rare options.
 - **Texts:** keys in the `en` and `de` tables of `WEB_I18N_BUILTIN` (`js/i18n.js`, `js/i18n-de.js`). Keys and interpolation variables must match; an empty string is allowed only
-  for the hidden disabled-update state. Dynamic colour-editor, time-zone and entity-picker labels use the same tables. A new widget type also goes into
-  `ENTITY_PICKER_CONFIGS` (`js/config.js`), the Add menu, the size tables and `tilePreviewMarkup`
-  (`js/tile-previews.js`).
+  for the hidden disabled-update state. Dynamic colour-editor, time-zone and entity-picker labels use the same tables.
+  Widget registration: [New widget types](development/conventions.md#new-widget-types).
 - **Text size** (`settingsUiTextStep`, beside the save controls) applies live and refreshes the preview and role-size
   hint; resetting Appearance keeps it.
 - **Widget names:** the **Show name** checkbox sits beside Name for every type; `widgetShowsName()` is shared by the
@@ -139,12 +139,13 @@ Home Assistant and back without saving. Check for console errors and the generat
   domain and Room candidate filters; picking a result dispatches the same change event as manual entry.
 - **Inspector presentation** retains the original fields and event handlers. Wrapping entity editors forward
   editing events to those fields; picker assignments mirror back into the visible editor. Position and size
-  use a separate tab. Appearance opens when it fits, unless the user toggled it for that widget.
+  live in Placement, folded initially; Entities, Display and Controls precede it. Empty sections are hidden.
   The right column stays reserved and has no collapse button. Widget and special-page titles have
   an info icon with a short description and a documentation link. Extended help uses a label and an info icon opening the full explanation in a popup. Modal keyboard
   events do not reach editor shortcuts. Help uses `**Section heading**`, a blank line and its explanation; standalone
   bold headings render as headings, with separate body paragraphs. Do not join a heading and body with a colon.
-  Hidden optional groups contribute no help; warnings stay visible beside their controls.
+  Hidden optional groups contribute no help; warnings/status remain visible beside their controls (`warn`/`no-shorten`).
+  Settings retain sentence summaries. `autoGaugeName` in `js/layout-model.js` hides a gauge name when too narrow.
   The local spike shares help popups and keeps its own presentation adapter.
 - **Energy timeline and room extra field** live in `js/canvas.js`, validated in `js/layout-model.js` like
   `layout_validate.c` (an extra entity must be one of the card's own and fit the mode's domain).

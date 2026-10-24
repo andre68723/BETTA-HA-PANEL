@@ -15,6 +15,7 @@
 
 time_t sim_time(time_t *out);
 bool sim_clock_fixed(void);
+void sim_clock_set(time_t now); /* test scenarios: 0 restores the real clock; elapsed ticks stay monotonic */
 uint32_t sim_virtual_tick(void);
 void sim_virtual_delay(uint32_t ms);
 int64_t sim_monotonic_us(void);

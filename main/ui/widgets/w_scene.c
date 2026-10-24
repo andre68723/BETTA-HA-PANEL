@@ -35,7 +35,7 @@ typedef struct {
 static void scene_flash_exec(void *var, int32_t v)
 {
     lv_obj_t *card = (lv_obj_t *)var;
-    lv_obj_set_style_bg_color(card, lv_color_mix(lv_color_hex(APP_UI_COLOR_STATE_ON), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), (uint8_t)v), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(card, lv_color_mix(lv_color_lighten(lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), 24), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), (uint8_t)v), LV_PART_MAIN);
 }
 
 static void scene_clicked_cb(lv_event_t *event)
@@ -123,6 +123,7 @@ esp_err_t w_scene_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
 
     lv_obj_t *card = lv_obj_create(parent);
     ctx->card = card;
+    ctx->unavailable = true;
     out_instance->obj = card;
     out_instance->ctx = ctx;
     out_instance->visible = true;
@@ -147,7 +148,7 @@ esp_err_t w_scene_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     lv_obj_set_scrollable(ctx->circle, false);
     lv_obj_set_clickable(ctx->circle, false);
     lv_obj_set_style_radius(ctx->circle, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    const lv_color_t circle_bg = lv_color_hex(APP_UI_COLOR_STATE_ON);
+    const lv_color_t circle_bg = ui_style_control_color(UI_CONTROL_ACTION, !ctx->unavailable);
     ui_style_button_auto(ctx->circle, circle_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
     ctx->glyph = lv_label_create(ctx->circle);
     lv_label_set_text(ctx->glyph, APP_SYMBOL_PLAY);
@@ -180,17 +181,8 @@ void w_scene_apply_state(ui_widget_instance_t *instance, const ha_state_t *state
     if (strncmp(state->entity_id, ctx->entity_id, APP_MAX_ENTITY_ID_LEN) != 0) {
         return;
     }
-    ctx->unavailable = strcmp(state->state, "unavailable") == 0;
-    if (ctx->unavailable) {
-        lv_obj_set_style_bg_opa(ctx->circle, LV_OPA_40, LV_PART_MAIN);
-    } else {
-        /* Re-apply rather than force LV_OPA_COVER: glass's own opacity (ui_style_inset_track()
-         * and every other glass surface in the app is intentionally translucent, not opaque)
-         * would otherwise be clobbered back to fully opaque every time the state changes. */
-        const lv_color_t circle_bg = lv_color_hex(APP_UI_COLOR_STATE_ON);
-        ui_style_button_auto(ctx->circle, circle_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
-        lv_obj_set_style_text_color(ctx->glyph, ui_style_button_icon_color(circle_bg), LV_PART_MAIN);
-    }
+    ctx->unavailable = state->state[0] == '\0' || strcmp(state->state, "unavailable") == 0;
+    ui_style_action_button(ctx->circle, ctx->glyph, UI_CONTROL_ACTION, !ctx->unavailable);
 }
 
 void w_scene_mark_unavailable(ui_widget_instance_t *instance)
@@ -200,5 +192,5 @@ void w_scene_mark_unavailable(ui_widget_instance_t *instance)
     }
     w_scene_ctx_t *ctx = (w_scene_ctx_t *)instance->ctx;
     ctx->unavailable = true;
-    lv_obj_set_style_bg_opa(ctx->circle, LV_OPA_40, LV_PART_MAIN);
+    ui_style_action_button(ctx->circle, ctx->glyph, UI_CONTROL_ACTION, false);
 }

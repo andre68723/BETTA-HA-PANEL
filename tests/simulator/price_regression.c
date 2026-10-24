@@ -25,7 +25,7 @@ static const double TODAY[24] = {0.20038, 0.18343, 0.16618, 0.1524, 0.14999, 0.1
 static const double TOMORROW[24] = {0.149, 0.14663, 0.14779, 0.14263, 0.14735, 0.15199, 0.14114, 0.15642, 0.18276, 0.20084, 0.19449, 0.1901,
                                     0.18337, 0.16312, 0.16192, 0.16977, 0.19086, 0.21263, 0.22627, 0.2206, 0.19828, 0.17955, 0.17661, 0.17101};
 
-static void advance(unsigned ms) { (void)ms; lv_timer_handler(); lv_timer_handler(); }
+static void advance(unsigned ms) { (void)ms; lv_obj_update_layout(lv_screen_active()); lv_timer_handler(); lv_timer_handler(); }
 
 /* The first label under root whose text starts with prefix. */
 static lv_obj_t *find_prefix(lv_obj_t *root, const char *prefix)
@@ -66,19 +66,23 @@ static void apply_attrs(ui_widget_instance_t *widget, const char *entity, const 
     advance(50);
 }
 
-static cJSON *list_attrs(int days)
+static time_t day_start(time_t now, int offset)
 {
-    time_t now = time(NULL);
     struct tm tm;
     localtime_r(&now, &tm);
     tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
+    tm.tm_mday += offset;
     tm.tm_isdst = -1;
-    const time_t midnight = mktime(&tm);
+    return mktime(&tm);
+}
+
+static cJSON *list_attrs(int days)
+{
+    const time_t midnight = day_start(time(NULL), 0), tomorrow = day_start(midnight, 1), end = day_start(midnight, days);
     cJSON *attrs = cJSON_CreateObject();
     cJSON_AddStringToObject(attrs, "unit_of_measurement", "EUR/kWh");
     cJSON *data = cJSON_AddArrayToObject(attrs, "data");
-    for (int i = 0; i < 24 * days; i++) {
-        const time_t start = midnight + (time_t)i * 3600;
+    for (time_t start = midnight; start < end; start += 3600) {
         struct tm lt;
         localtime_r(&start, &lt);
         char text[40];
@@ -87,7 +91,8 @@ static cJSON *list_attrs(int days)
         snprintf(text + n, sizeof(text) - n, "%c%02ld:%02ld", off < 0 ? '-' : '+', labs(off) / 3600, (labs(off) % 3600) / 60);
         cJSON *item = cJSON_CreateObject();
         cJSON_AddStringToObject(item, "start_time", text);
-        cJSON_AddNumberToObject(item, "price_per_kwh", i < 24 ? TODAY[i] : TOMORROW[i - 24]);
+        const int hour = (int)((start - (start < tomorrow ? midnight : tomorrow)) / 3600);
+        cJSON_AddNumberToObject(item, "price_per_kwh", (start < tomorrow ? TODAY : TOMORROW)[hour % 24]);
         cJSON_AddItemToArray(data, item);
     }
     return attrs;
@@ -101,9 +106,57 @@ static void fresh_screen(void)
     advance(20);
 }
 
+static void calendar_cases(void)
+{
+    /* Independent Berlin epochs/prices: normal day, spring jump, both autumn 02 hours and after the rollback. */
+    static const struct {
+        time_t now, midnight, tomorrow;
+        int hours;
+        const char *price, *slot, *tomorrow_iso;
+    } cases[] = {
+        {1792058400, 1792015200, 1792101600, 24, "12,6", "12:00-13:00", "2026-10-16T00:00:00+02:00"},
+        {1774747800, 1774738800, 1774821600, 23, "16,6", "03:00-04:00", "2026-03-30T00:00:00+02:00"},
+        {1792888200, 1792879200, 1792969200, 25, "16,6", "02:00-02:00", "2026-10-26T00:00:00+01:00"},
+        {1792891800, 1792879200, 1792969200, 25, "15,2", "02:00-03:00", "2026-10-26T00:00:00+01:00"},
+        {1792899000, 1792879200, 1792969200, 25, "15,3", "04:00-05:00", "2026-10-26T00:00:00+01:00"},
+    };
+    const time_t saved = sim_clock_fixed() ? time(NULL) : 0;
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        sim_clock_set(cases[i].now);
+        CHECK(day_start(time(NULL), 0) == cases[i].midnight && day_start(time(NULL), 1) == cases[i].tomorrow);
+        fresh_screen();
+        ui_widget_def_t def = {.w = 700, .h = 400, .price_day_switch = true, .price_cheap_times = true};
+        strcpy(def.type, "energy_price_forecast");
+        strcpy(def.entity_id, "sensor.price");
+        strcpy(def.title, "Price");
+        ui_widget_instance_t widget = {0};
+        CHECK(ui_widget_factory_create(&def, lv_screen_active(), &widget) == ESP_OK);
+        lv_obj_update_layout(widget.obj); /* fixed virtual time does not wait for a display refresh */
+        cJSON *attrs = list_attrs(2);
+        cJSON *data = cJSON_GetObjectItemCaseSensitive(attrs, "data");
+        CHECK(cJSON_GetArraySize(data) == cases[i].hours + 24);
+        CHECK(strcmp(cJSON_GetObjectItemCaseSensitive(cJSON_GetArrayItem(data, cases[i].hours), "start_time")->valuestring,
+                     cases[i].tomorrow_iso) == 0);
+        apply_attrs(&widget, "sensor.price", "0.2", attrs);
+        CHECK(find_prefix(widget.obj, cases[i].price) != NULL && find_prefix(widget.obj, cases[i].slot) != NULL);
+        CHECK(find_prefix(widget.obj, "min 12,0  max 23,5") != NULL);
+        lv_obj_send_event(find_prefix(widget.obj, "Tomorrow"), LV_EVENT_CLICKED, NULL);
+        advance(50);
+        CHECK(find_prefix(widget.obj, "00:00-01:00") != NULL && find_prefix(widget.obj, "14,9") != NULL);
+        CHECK(find_prefix(widget.obj, "min 14,1  max 22,6") != NULL);
+        cJSON_Delete(attrs);
+        lv_obj_delete(widget.obj);
+    }
+    sim_clock_set(saved);
+    fresh_screen();
+}
+
 int sim_price_regression(void)
 {
     sim_host_set_online(true);
+    setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
+    tzset();
+    calendar_cases();
     ui_widget_def_t def = {.w = 700, .h = 400, .price_day_switch = true, .price_cheap_times = true};
     strcpy(def.type, "energy_price_forecast");
     strcpy(def.entity_id, "sensor.price");
@@ -123,22 +176,31 @@ int sim_price_regression(void)
     struct tm tm;
     localtime_r(&now, &tm);
     char want[16];
-    snprintf(want, sizeof(want), "%.1f", TODAY[tm.tm_hour] * 100.0);
+    const int elapsed_hour = (int)((now - day_start(now, 0)) / 3600);
+    snprintf(want, sizeof(want), "%.1f", TODAY[elapsed_hour % 24] * 100.0);
     for (char *p = want; *p; p++) if (*p == '.') *p = ',';
     lv_obj_t *price = find_prefix(widget.obj, want);
     CHECK(price != NULL);
     char slot[16];
-    snprintf(slot, sizeof(slot), "%02d:00-%02d:00", tm.tm_hour, (tm.tm_hour + 1) % 24);
+    time_t next_hour = now + 3600;
+    struct tm end_tm;
+    localtime_r(&next_hour, &end_tm);
+    snprintf(slot, sizeof(slot), "%02d:00-%02d:00", tm.tm_hour, end_tm.tm_hour);
     CHECK(find_prefix(widget.obj, slot) != NULL);
     CHECK(find_prefix(widget.obj, "min 12,0") != NULL);
     lv_obj_t *tomorrow = find_prefix(widget.obj, "Tomorrow");
     lv_obj_t *today = find_prefix(widget.obj, "Today");
     CHECK(tomorrow != NULL && today != NULL);
+    const lv_color_t selected_day = lv_obj_get_style_bg_color(today, LV_PART_MAIN);
+    const lv_color_t other_day = lv_obj_get_style_bg_color(tomorrow, LV_PART_MAIN);
+    CHECK(selected_day.red != other_day.red || selected_day.green != other_day.green || selected_day.blue != other_day.blue);
     CHECK(find_prefix(widget.obj, "Cheap") != NULL || find_prefix(widget.obj, "No cheap window left") != NULL);
 
     /* tomorrow: like the card, the header names the day's first interval (no running one), the range is tomorrow's */
     lv_obj_send_event(tomorrow, LV_EVENT_CLICKED, NULL);
     advance(50);
+    const lv_color_t selected_tomorrow = lv_obj_get_style_bg_color(tomorrow, LV_PART_MAIN);
+    CHECK(selected_tomorrow.red == selected_day.red && selected_tomorrow.green == selected_day.green && selected_tomorrow.blue == selected_day.blue);
     CHECK(find_prefix(widget.obj, "00:00-01:00") != NULL && find_prefix(widget.obj, "14,9") != NULL); /* 0.149 */
     CHECK(find_prefix(widget.obj, "min 14,1") != NULL); /* 0.14114 */
     lv_obj_send_event(find_prefix(widget.obj, "Today"), LV_EVENT_CLICKED, NULL);
@@ -207,9 +269,11 @@ int sim_price_regression(void)
     CHECK(find_prefix(plain.obj, "Cheap") == NULL && find_prefix(plain.obj, "No cheap window left") == NULL);
     /* without the day buttons the view is the 24 hours around now: the intervals from 11 hours before to 12 hours after the running one */
     double lo = 1e9, hi = -1e9;
-    for (int idx = tm.tm_hour - 11; idx <= tm.tm_hour + 12; idx++) {
-        if (idx < 0 || idx >= 48) continue;
-        const double v = idx < 24 ? TODAY[idx] : TOMORROW[idx - 24];
+    const int today_hours = (int)((day_start(now, 1) - day_start(now, 0)) / 3600);
+    const int total_hours = (int)((day_start(now, 2) - day_start(now, 0)) / 3600);
+    for (int idx = elapsed_hour - 11; idx <= elapsed_hour + 12; idx++) {
+        if (idx < 0 || idx >= total_hours) continue;
+        const double v = idx < today_hours ? TODAY[idx % 24] : TOMORROW[(idx - today_hours) % 24];
         if (v < lo) lo = v;
         if (v > hi) hi = v;
     }

@@ -280,15 +280,11 @@ void room_controls_refresh(room_controls_t *c)
             const char *down_sym = g->down == ROOM_ACTION_COVER_STOP ? APP_SYMBOL_STOP : APP_SYMBOL_ARROW_DOWN;
             lv_label_set_text(g->up_icon, up_sym);
             lv_label_set_text(g->down_icon, down_sym);
-            lv_obj_set_style_opa(g->up_btn, g->up != ROOM_ACTION_NONE ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
-            lv_obj_set_style_opa(g->down_btn, g->down != ROOM_ACTION_NONE ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
+            ui_style_action_button(g->up_btn, g->up_icon, g->up == ROOM_ACTION_COVER_STOP ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, g->up != ROOM_ACTION_NONE);
+            ui_style_action_button(g->down_btn, g->down_icon, g->down == ROOM_ACTION_COVER_STOP ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, g->down != ROOM_ACTION_NONE);
         } else {
             const bool on = room_group_is_on(g->usable, g->on);
-            lv_obj_set_style_opa(g->box, g->usable > 0 ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
-            lv_obj_set_style_border_color(g->box, lv_color_hex(on ? APP_UI_COLOR_LIGHT_ICON_ON : APP_UI_COLOR_TOPBAR_CHIP_BORDER),
-                                          LV_PART_MAIN);
-            lv_obj_set_style_text_color(g->label, lv_color_hex(on ? APP_UI_COLOR_LIGHT_ICON_ON : APP_UI_COLOR_TEXT_PRIMARY),
-                                        LV_PART_MAIN);
+            ui_style_action_button(g->box, g->label, on ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, g->usable > 0);
         }
     }
     free(st);

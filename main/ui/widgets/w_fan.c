@@ -176,15 +176,9 @@ static lv_obj_t *fan_make_chip(lv_obj_t *parent, lv_event_cb_t cb, w_fan_ctx_t *
     return btn;
 }
 
-static void fan_style_button(lv_obj_t *btn, bool active)
+static void fan_style_button(lv_obj_t *btn, bool active, bool enabled)
 {
-    const lv_color_t base = active ? lv_color_mix(lv_color_hex(APP_UI_COLOR_STATE_ON), lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 180)
-                                   : lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE);
-    ui_style_button_auto(btn, base, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
-    lv_obj_t *label = lv_obj_get_child(btn, 0);
-    if (label != NULL) {
-        lv_obj_set_style_text_color(label, lv_color_hex(active ? 0x1B1300 : APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
-    }
+    ui_style_action_button(btn, lv_obj_get_child(btn, 0), active ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, enabled);
 }
 
 static void fan_show(lv_obj_t *obj, bool show)
@@ -399,9 +393,9 @@ static void fan_render(w_fan_ctx_t *ctx)
     const bool show_bar = ctx->on && ctx->percentage >= 0 && !ctx->unavailable;
     lv_obj_set_style_opa(ctx->bar, show_bar ? LV_OPA_COVER : LV_OPA_30, LV_PART_MAIN);
     lv_obj_set_style_opa(ctx->bar, show_bar ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_INDICATOR);
-    fan_style_button(ctx->btn_minus, false);
-    fan_style_button(ctx->btn_power, ctx->on);
-    fan_style_button(ctx->btn_plus, false);
+    fan_style_button(ctx->btn_minus, false, !ctx->unavailable);
+    fan_style_button(ctx->btn_power, ctx->on, !ctx->unavailable);
+    fan_style_button(ctx->btn_plus, false, !ctx->unavailable);
     const lv_opa_t opa = ctx->unavailable ? LV_OPA_40 : LV_OPA_COVER;
     lv_obj_set_style_opa(ctx->btn_minus, opa, LV_PART_MAIN);
     lv_obj_set_style_opa(ctx->btn_power, opa, LV_PART_MAIN);
@@ -421,15 +415,16 @@ static void fan_render(w_fan_ctx_t *ctx)
         char num[8];
         snprintf(num, sizeof(num), "%d", i + 1);
         lv_label_set_text(lv_obj_get_child(ctx->step_btn[i], 0), num);
-        fan_style_button(ctx->step_btn[i], running && cur == i + 1);
+        ui_style_action_button(ctx->step_btn[i], lv_obj_get_child(ctx->step_btn[i], 0), cur == i + 1 ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION, !ctx->unavailable);
         lv_obj_set_style_opa(ctx->step_btn[i], opa, LV_PART_MAIN);
     }
     lv_label_set_text(lv_obj_get_child(ctx->osc_btn, 0), ui_i18n_get("fan.oscillate", "Oscillate"));
-    fan_style_button(ctx->osc_btn, running && ctx->oscillating);
+    fan_style_button(ctx->osc_btn, ctx->oscillating, !ctx->unavailable);
     lv_obj_set_style_opa(ctx->osc_btn, opa, LV_PART_MAIN);
     for (int i = 0; i < FAN_MAX_PRESETS; i++) {
         lv_label_set_text(lv_obj_get_child(ctx->preset_btn[i], 0), i < ctx->preset_count ? ctx->presets[i] : "");
-        fan_style_button(ctx->preset_btn[i], running && i < ctx->preset_count && strcmp(ctx->preset_mode, ctx->presets[i]) == 0);
+        ui_style_action_button(ctx->preset_btn[i], lv_obj_get_child(ctx->preset_btn[i], 0),
+            i < ctx->preset_count && strcmp(ctx->preset_mode, ctx->presets[i]) == 0 ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION, !ctx->unavailable);
         lv_obj_set_style_opa(ctx->preset_btn[i], opa, LV_PART_MAIN);
     }
     fan_layout(ctx);

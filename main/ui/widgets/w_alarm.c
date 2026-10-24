@@ -59,6 +59,7 @@ typedef struct {
 
 static void alarm_call(w_alarm_ctx_t *ctx, ha_alarm_action_t action, const char *code)
 {
+    if (ctx == NULL || ctx->unavailable || !ha_client_is_connected()) return;
     char payload[APP_MAX_ENTITY_ID_LEN + 48];
     if (code != NULL) {
         snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\",\"code\":\"%s\"}", ctx->entity_id, code);
@@ -173,16 +174,22 @@ static void alarm_layout(w_alarm_ctx_t *ctx)
 
 static void alarm_render(w_alarm_ctx_t *ctx)
 {
+    if (ctx->unavailable) {
+        if (ctx->picker != NULL) ui_option_picker_close(ctx->picker);
+        if (ctx->pad != NULL) ui_pin_pad_close(ctx->pad);
+    }
     const ha_alarm_state_t state = ctx->unavailable ? HA_ALARM_UNKNOWN : ctx->state;
     const bool armed = ha_alarm_state_armed(state);
     const bool alert = ha_alarm_state_alert(state);
     lv_label_set_text(ctx->glyph, alert ? APP_SYMBOL_LOCK_ALERT
                                   : (armed || state == HA_ALARM_ARMING) ? APP_SYMBOL_LOCK : APP_SYMBOL_LOCK_OPEN);
-    const lv_color_t circle_bg = lv_color_hex(alert ? APP_UI_COLOR_ERROR
-                                              : armed ? APP_UI_COLOR_STATE_ON : APP_UI_COLOR_NAV_BTN_BG_IDLE);
-    ui_style_button_auto(ctx->circle, circle_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
-    lv_obj_set_style_bg_opa(ctx->circle, ctx->unavailable ? LV_OPA_40 : LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_text_color(ctx->glyph, ui_style_button_icon_color(circle_bg), LV_PART_MAIN);
+    const lv_color_t circle_bg = alert && !ctx->unavailable ? lv_color_hex(APP_UI_COLOR_ERROR)
+        : ui_style_control_color(armed ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, !ctx->unavailable);
+    ui_style_action_button(ctx->circle, ctx->glyph, armed ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, !ctx->unavailable);
+    if (alert && !ctx->unavailable) {
+        ui_style_button_auto(ctx->circle, circle_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
+        lv_obj_set_style_text_color(ctx->glyph, ui_style_button_icon_color(circle_bg), LV_PART_MAIN);
+    }
 
     lv_label_set_text(ctx->state_label, ctx->unavailable ? ui_i18n_get("common.unavailable", "unavailable")
                                                          : ui_i18n_get(ha_alarm_state_key(state), ctx->raw_state));
@@ -291,7 +298,7 @@ void w_alarm_apply_state(ui_widget_instance_t *instance, const ha_state_t *state
     ctx->state = ha_alarm_state_parse(state->state);
     strlcpy(ctx->raw_state, state->state, sizeof(ctx->raw_state));
     strlcpy(ctx->attributes, state->attributes_json, sizeof(ctx->attributes));
-    ctx->unavailable = strcmp(state->state, "unavailable") == 0;
+    ctx->unavailable = state->state[0] == '\0' || strcmp(state->state, "unavailable") == 0 || strcmp(state->state, "unknown") == 0;
     alarm_render(ctx);
 }
 

@@ -99,17 +99,9 @@ static const char *cover_state_text(const w_cover_ctx_t *ctx)
     return ui_i18n_get("common.unknown", "unknown");
 }
 
-static void cover_style_button(lv_obj_t *btn, bool active)
+static void cover_style_button(lv_obj_t *btn, bool active, bool enabled)
 {
-    const lv_color_t base = active
-        ? ui_style_control_on(lv_color_mix(lv_color_hex(APP_UI_COLOR_STATE_ON), lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 180))
-        : ui_style_control_bg(lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE));
-    ui_style_button_auto(btn, base, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
-    lv_obj_t *label = lv_obj_get_child(btn, 0);
-    if (label != NULL) {
-        lv_obj_set_style_text_color(label, ui_style_traits()->adaptive_control_icons ? ui_style_button_icon_color(base)
-                                      : lv_color_hex(active ? 0x1B1300 : APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
-    }
+    ui_style_action_button(btn, lv_obj_get_child(btn, 0), active ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, enabled);
 }
 
 static void cover_layout(w_cover_ctx_t *ctx)
@@ -193,9 +185,9 @@ static void cover_render(w_cover_ctx_t *ctx)
     lv_bar_set_value(ctx->bar, ctx->position >= 0 ? ctx->position : 0, LV_ANIM_OFF);
     lv_obj_set_style_opa(ctx->bar, ctx->position >= 0 && !ctx->unavailable ? LV_OPA_COVER : LV_OPA_30, LV_PART_MAIN);
     lv_obj_set_style_opa(ctx->bar, ctx->position >= 0 && !ctx->unavailable ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_INDICATOR);
-    cover_style_button(ctx->btn_up, strcmp(ctx->state_raw, "opening") == 0);
-    cover_style_button(ctx->btn_stop, false);
-    cover_style_button(ctx->btn_down, strcmp(ctx->state_raw, "closing") == 0);
+    cover_style_button(ctx->btn_up, strcmp(ctx->state_raw, "opening") == 0, !ctx->unavailable);
+    cover_style_button(ctx->btn_stop, false, !ctx->unavailable);
+    cover_style_button(ctx->btn_down, strcmp(ctx->state_raw, "closing") == 0, !ctx->unavailable);
     const lv_opa_t opa = ctx->unavailable ? LV_OPA_40 : LV_OPA_COVER;
     lv_obj_set_style_opa(ctx->btn_up, opa, LV_PART_MAIN);
     lv_obj_set_style_opa(ctx->btn_stop, opa, LV_PART_MAIN);

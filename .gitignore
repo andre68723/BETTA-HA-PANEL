@@ -25,6 +25,7 @@ tools/*
 !tools/check_component_updates.py
 !tools/screenshot.sh
 !tools/simulator.sh
+!tools/widget_cases.py
 !tools/build.sh
 !tools/clean.sh
 !tools/check.sh
@@ -34,7 +35,6 @@ tools/*
 !tools/editor_local/
 !tools/editor_local/**
 !tools/check_source_sizes.py
-!tools/check_docs_size.py
 !tools/check_simulator_fields.py
 !tools/test_layouts.py
 !tools/test_pages.sh
@@ -54,7 +54,6 @@ tools/*
 !tools/capture_device_pages.py
 !tools/style_diff.py
 !tools/gallery_freshness.py
-!tools/check_gallery_fresh.py
 !tools/import_device_captures.py
 !tools/ui_styles.py
 !tools/generate_docs_examples.py

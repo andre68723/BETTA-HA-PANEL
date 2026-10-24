@@ -24,6 +24,12 @@
 #include "freertos/task.h"
 
 static int g_checks, g_failed;
+time_t history_test_time(time_t *out)
+{
+    const time_t now = 1792058400;
+    if (out != NULL) *out = now;
+    return now;
+}
 #define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #cond); } } while (0)
 
 /* ---------- FreeRTOS on pthreads ---------- */

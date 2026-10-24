@@ -20,7 +20,7 @@ WIDGETS = {
                   "A tap opens the action list; a PIN pad follows when the entity needs a code."],
     },
     "bambu_printer": {
-        "summary": "Shows a **Bambu Lab printer's status**, temperatures, progress and remaining time from its `sensor.*` entities, with Pause/Resume and Stop buttons.",
+        "summary": "Shows a **Bambu Lab printer's status**, temperatures, progress and remaining time from its `sensor.*` entities, with one Pause/Resume control and a separate print-abort button.",
         "entities": [("Print status", "`sensor.*`", True), ("Nozzle and bed temperature", "`sensor.*`", True),
                      ("Progress, remaining time", "`sensor.*`", True), ("Current step, job name", "`sensor.*`", False),
                      ("Pause, Resume and Stop buttons", "`button.*`", False), ("Live camera", "`camera.*` (MJPEG)", False)],
@@ -31,7 +31,7 @@ WIDGETS = {
         "panel": ["Status in the header, with the current step below it on a tall card.",
                   "A drawing of the printer with nozzle and bed temperature; both take a warm colour while hot.",
                   "Progress bar and remaining time of a running or paused job; a finished or failed job is marked **Last job**.",
-                  "**Pause** or **Resume** (one button), **Status** and **Stop**."],
+                  "**Pause** or **Resume** (one button), **Status** and **Abort**. The primary control is accented while printing; Abort asks for confirmation and ends the job."],
     },
     "binary_tile": {
         "summary": "Shows the **state** of a `binary_sensor.*` or `event.*` entity, with optional history on tap.",

@@ -194,7 +194,7 @@ lv_obj_t *ui_pin_pad_open(const ui_pin_pad_cfg_t *cfg)
     for (int i = 0; i < 12; i++) {
         const int key = keys[i];
         const bool ok = key == KEY_OK;
-        const lv_color_t bg = ok ? lv_color_hex(APP_UI_COLOR_STATE_ON) : lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE);
+        const lv_color_t bg = ui_style_control_color(UI_CONTROL_ACTION, true);
         lv_obj_t *btn = lv_btn_create(card);
         lv_obj_set_size(btn, key_w, row_h);
         lv_obj_set_pos(btn, (i % 3) * (key_w + gap), grid_top + (i / 3) * (row_h + gap));

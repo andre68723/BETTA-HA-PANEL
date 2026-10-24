@@ -37,7 +37,7 @@ test("the car preview places the ring like car_layout(): the card minus 24 px, l
   assert.match(markup({ rect: { w: 400, h: 360 }, lock_entity_id: "lock.car" }), /width:299px/);
   const full = markup({ rect: { w: 400, h: 360 }, lock_entity_id: "lock.car", interior_temp_entity_id: "sensor.t", precond_entity_id: "climate.c" });
   assert.match(full, /width:249px/);
-  assert.match(full, /car-x-status"><span class="car-x-ok">[^<]+<\/span><span>21.5°C<\/span><\/div><span class="car-x-btn">/);
+  assert.match(full, /car-x-status"><span class="car-x-ok">[^<]+<\/span><span>21.5°C<\/span><\/div><span class="car-x-btn control-disabled">/);
 });
 
 test("overlapping tiles are found, tiles that only touch are not", () => {

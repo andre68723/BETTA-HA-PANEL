@@ -187,9 +187,9 @@ static lv_coord_t pf_text_w(const char *text, const lv_font_t *font)
 
 static void pf_button_style(lv_obj_t *btn, bool active)
 {
-    lv_obj_set_style_text_color(btn, lv_color_hex(active ? APP_UI_COLOR_TEXT_PRIMARY : APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(btn, active ? LV_OPA_30 : LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(btn, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
+    const ui_control_role_t role = active ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION;
+    ui_style_action_button(btn, NULL, role, true);
+    lv_obj_set_style_text_color(btn, ui_style_button_icon_color(ui_style_control_color(role, true)), LV_PART_MAIN);
 }
 
 /* The cheap window to name: the first not yet over that touches the shown day, else the first one ahead on any day. */

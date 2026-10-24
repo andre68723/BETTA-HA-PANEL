@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md -->
 # Working practices
 
-Lessons from real devices.
+Lessons from real devices. The retired `panels3` profile had no test hardware; its 480 px screen could not
+hold the newer widgets. Current variants are in [Display devices](../choose-display.md).
 
 ## Devices and flashing
 
@@ -24,7 +25,7 @@ Lessons from real devices.
 
 Host tests cover pure logic only; check UI and hardware on the device.
 
-- `GET /api/screenshot.bmp` (`tools/screenshot.sh`) returns the framebuffer, popups included.
+- `GET /api/screenshot.bmp` (`tools/screenshot.sh`) returns the LVGL snapshot, popups included; it is not a physical framebuffer readback.
 - `POST /api/navigate {"page":"<id>"}` switches the page without touch.
 - `POST /api/ui/tap {"widget":"<id>"}` or `{"close":true}` opens and closes a read-only popup (weather, energy
   timeline, room, solar, car, graph; sensor, binary and contact with history). It needs the admin login and cannot
@@ -33,7 +34,10 @@ Host tests cover pure logic only; check UI and hardware on the device.
 
 - Page-switch timings are logged (`page <id> shown, refresh <n> ms`, `... frame done <n> ms after the switch`); compare
   them before and after a UI performance change.
-- The editor autosaves to the connected panel. Back up `GET /api/layout` before an experiment and `PUT` it back.
+- The editor autosaves to the connected panel. Before a risky layout test, back up `GET /api/layout` to ignored
+  `.claude/layout-backups/` and restore with `PUT` only when authorized. `tools/capture_device_pages.py` captures pages.
+  Recovery for an unresponsive 16 MB paneljc: `esptool --port <port> flash-id` reads the ID then resets without flashing;
+  this is a reset, requires authorization and can erase volatile evidence. Collect HTTP evidence first when possible.
 - macOS has no `timeout`; scripts talking to a device need their own.
 
 ## Admin password
@@ -73,7 +77,7 @@ Internal RAM is scarce (Wi-Fi/SDIO buffers, TLS, task stacks); keep large buffer
   only covers what ran since boot. IDF-created tasks report `stack_size` 0.
 - **Stacks that live in PSRAM** (`xTaskCreateWithCaps`, must end with `vTaskDeleteWithCaps(NULL)`): `ha_cover`,
   `ha_energy_tl`, `ha_history` (10 KB: a 5,000-value day left only 2 KB at 8 KB) and the MQTT client
-  (`CONFIG_MQTT_TASK_STACK_ON_EXTERNAL_MEMORY`). Current sizes: `ui_runtime` 16 KB, `taskLVGL` 20 KB,
+  (`CONFIG_MQTT_TASK_STACK_ON_EXTERNAL_MEMORY`). Current sizes: `ui_runtime` 16 KB, `lvgl` 20 KB (`taskLVGL` in older images),
   `websocket_task` 8 KB (TLS margin), `httpd` 14 KB; `GET /api/screenshot.bmp` with a popup open needs 11 KB of it.
   The websocket client has no PSRAM stack option.
 - **Hidden pages stay built** and receive every entity update. Work that only matters on screen belongs in the
@@ -92,24 +96,19 @@ Internal RAM is scarce (Wi-Fi/SDIO buffers, TLS, task stacks); keep large buffer
 
 ## Before building a feature
 
-- **Budget first.** Name the resources the feature uses (largest free internal block, task stack, heavy-request gate,
-  display lock, time per UI cycle) and read the free amount from the device, not from the documentation.
-- **Measure in the running state.** Boot values are optimistic: the largest internal block drops to about 32-36 KB
-  after hours with the camera, discovery and popups. Use `int_free`, `int_largest`, `int_min` and
-  `GET /api/version?tasks=1` after exercising the panel.
-- **Put the riskiest assumption on hardware first.** If the risk is memory, timing or the display lock, a thin
-  throwaway slice on the device comes before a long specification.
-- **No unbounded wait under a lock.** Every new wait gets a deadline and a cancel path (see the PPA hang below).
-- **Stacks from measurements,** in PSRAM where the task never touches flash. mbedTLS allocates from PSRAM
-  (`CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC`), so a TLS client costs little internal RAM, but its cost per session is not measured.
-- **Check the existing convention** before leaving it, for example "hidden pages stay built" below.
+Budget internal blocks, stacks, heavy-request gate, display lock and UI-cycle time before implementing.
+Read free resources after exercising the device; boot values are optimistic (largest internal block about
+32–36 KB after hours with camera/discovery/popups). A low-water mark only covers work actually run.
+Put memory/timing/display-lock risks on hardware first when authorized. Every wait gets a deadline/cancel path;
+keep stacks in PSRAM only for tasks that never touch flash. mbedTLS uses PSRAM
+(`CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC`); per-session cost is not measured. Follow existing visibility conventions.
 
 ## Watchdogs and crash evidence
 
 - **Network watchdog** (`util/net_watchdog.c`): a task polls every 30 s and pings the gateway every 60 s. The pure
   decision function restarts after `NET_WD_LINK_DOWN_S` without link or `NET_WD_PING_DEAD_S` of silent gateway (only if
   it answered once and Home Assistant is not connected), never within `NET_WD_BOOT_GRACE_S` of boot, at most
-  `NET_WD_MAX_RESTARTS` in a row (RTC counter, cleared after 10 minutes of working network). The restart shows as
+  `NET_WD_MAX_RESTARTS` (three) in a row (RTC counter, cleared after 10 minutes of working network). The restart shows as
   `net_watchdog` in the reboot history.
 - **Reboot history** (`util/reboot_log.c`): after an unexplained restart read `GET /api/reboot-log` (or `last_reboot`
   in `/api/version`) before touching USB: it says whether the previous run ended in a panic, a watchdog, a power cut or a
@@ -213,9 +212,9 @@ config entry), so the 2026.8 split produced no duplicates in the editor's device
 The 10-inch paneljc shows short white/cyan flashes without touch, every few minutes, sometimes three in a row (open, no underrun message captured).
 A flash write disables the cache, and the DSI refresh interrupt is not cache-safe (`CONFIG_LCD_DSI_ISR_CACHE_SAFE` is off); HomeTiles traced blue flashes on the
 same panel to exactly that. Every flash write logs `flash_trace: flash write: <what> <bytes> B, <ms> ms` (`util/flash_trace.h`: settings, layout, theme, translations, graph
-history, Wi-Fi diagnostics). Match the wall-clock time of a visible flash against `GET /api/log`; keep the trace until the cause is known. The cache-safe option does not
-work as is: the DSI driver then requires IRAM callbacks and an internal-RAM context, and `esp_lvgl_port` registers flash-resident callbacks that touch a PSRAM
-display object, so `display_init()` fails on the first boot (tried 2026-10-07, rolled back).
+history, Wi-Fi diagnostics). Match the wall-clock time of a visible flash against `GET /api/log`; keep the trace until the cause is known. The 2026-10-07 experiment with the then-active esp_lvgl_port failed: the DSI driver then requires IRAM callbacks and an internal-RAM context, and `esp_lvgl_port` registers flash-resident callbacks that touch a PSRAM
+display object, so `display_init()` failed on the first boot and was rolled back. This historical result
+does not establish cache safety of the current esp_lvgl_adapter path in `drivers/display_port.c`.
 
 ## Touch contacts
 
@@ -240,3 +239,10 @@ ESPHome `mipi_dsi/models/guition.py` (init tables and timing), the `gsl3670` com
 `esphome-libs/gsl3670-firmware` blob (touch), `jtenniswood/espcontrol` (V2 tables, V3 notes) and the BETTA-kruzio fork
 (OV02C10 camera, `esp_cam_sensor`). "V3" means ESP32-P4 v3.x silicon, not another panel. Credit what you use in the file
 header and `LICENSE` section 12.
+
+## Style comparison
+
+The SDL style comparison on 2026-09-29 (gallery/readability/Matte fixtures; Energy/House excluded)
+reported median changed pixels: Flat/Glow 0.7% (several tiles 0%), Flat/Glass 53%, Flat/Matte 98%,
+Glass/Matte 92%, using an 8-level color threshold. These are dated render measurements, not a current
+hardware comparison. The repeatable method is in [Appearance implementation](../appearance-implementation.md#style-differences).

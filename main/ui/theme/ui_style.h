@@ -7,7 +7,7 @@
  *    buttons use opaque fills with no depth effects.
  *  - Tracks follow each look's radius and surface; the fill carries the accent.
  *
- * Header-only on purpose: these are small style setters.
+ * Surface and semantic-role implementation lives in ui_style.c.
  */
 #pragma once
 
@@ -84,6 +84,19 @@ void ui_style_apply_card(lv_obj_t *card);
  * with a light edge, Flat and Matte opaque without depth. `bg` is the base colour, `border` the
  * outline (Flat and Glow). Sets the default and pressed states. */
 void ui_style_button(lv_obj_t *btn, lv_color_t bg, lv_color_t border, lv_color_t pressed_bg);
+
+/* Semantic controls (docs/appearance-implementation.md): primary is layout, not a colour.
+ * Only a running/on control or the selected option carries the active accent.
+ * Openers, one-shot actions and value +/- stay neutral; abort uses danger. */
+typedef enum {
+    UI_CONTROL_ACTION,
+    UI_CONTROL_ACTIVE,
+    UI_CONTROL_SELECTED,
+    UI_CONTROL_DANGER,
+} ui_control_role_t;
+lv_color_t ui_style_control_fill(ui_control_role_t role, bool enabled, lv_color_t accent);
+lv_color_t ui_style_control_color(ui_control_role_t role, bool enabled);
+void ui_style_action_button(lv_obj_t *btn, lv_obj_t *label, ui_control_role_t role, bool enabled);
 
 /* Same, with the pressed color derived from the base. */
 static inline void ui_style_button_auto(lv_obj_t *btn, lv_color_t bg, lv_color_t border)

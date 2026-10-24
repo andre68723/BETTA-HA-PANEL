@@ -11,6 +11,12 @@ static int s_fixed = -1;
 static time_t s_now;
 static uint32_t s_virtual_ms;
 
+void sim_clock_set(time_t now)
+{
+    s_fixed = now > 0;
+    s_now = now;
+}
+
 bool sim_clock_fixed(void)
 {
     if (s_fixed < 0) {

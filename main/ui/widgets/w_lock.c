@@ -55,6 +55,7 @@ typedef struct {
 
 static void lock_call(w_lock_ctx_t *ctx, const char *service)
 {
+    if (ctx == NULL || ctx->unavailable || !ha_client_is_connected()) return;
     char payload[APP_MAX_ENTITY_ID_LEN + 24];
     snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\"}", ctx->entity_id);
     esp_err_t err = ha_client_call_service("lock", service, payload);
@@ -170,23 +171,26 @@ static void lock_layout(w_lock_ctx_t *ctx)
 
 static void lock_render(w_lock_ctx_t *ctx)
 {
+    if (ctx->unavailable && ctx->picker != NULL) ui_option_picker_close(ctx->picker);
     const ha_lock_state_t state = ctx->unavailable ? HA_LOCK_UNKNOWN : ctx->state;
     const bool unsecured = ha_lock_state_unsecured(state);
     const bool jammed = state == HA_LOCK_JAMMED;
     lv_label_set_text(ctx->glyph, jammed ? APP_SYMBOL_LOCK_ALERT
                                   : (state == HA_LOCK_OPEN || state == HA_LOCK_OPENING) ? APP_SYMBOL_DOOR_OPEN
                                   : unsecured ? APP_SYMBOL_LOCK_OPEN : APP_SYMBOL_LOCK);
-    const lv_color_t circle_bg = lv_color_hex(jammed ? APP_UI_COLOR_ERROR
-                                              : unsecured ? APP_UI_COLOR_STATE_ON : APP_UI_COLOR_NAV_BTN_BG_IDLE);
-    ui_style_button_auto(ctx->circle, circle_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
-    lv_obj_set_style_bg_opa(ctx->circle, ctx->unavailable ? LV_OPA_40 : LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_text_color(ctx->glyph, ui_style_button_icon_color(circle_bg), LV_PART_MAIN);
+    const lv_color_t circle_bg = jammed && !ctx->unavailable ? lv_color_hex(APP_UI_COLOR_ERROR)
+        : ui_style_control_color(unsecured ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, !ctx->unavailable);
+    ui_style_action_button(ctx->circle, ctx->glyph, unsecured ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, !ctx->unavailable);
+    if (jammed && !ctx->unavailable) {
+        ui_style_button_auto(ctx->circle, circle_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
+        lv_obj_set_style_text_color(ctx->glyph, ui_style_button_icon_color(circle_bg), LV_PART_MAIN);
+    }
 
     lv_label_set_text(ctx->state_label, ctx->unavailable ? ui_i18n_get("common.unavailable", "unavailable")
                                                          : ui_i18n_get(ha_lock_state_key(state), ctx->raw_state));
     lv_obj_set_style_text_color(ctx->state_label, lv_color_hex(jammed ? APP_UI_COLOR_ERROR
                                                                : APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
-    lv_obj_set_style_opa(ctx->open_btn, ctx->unavailable ? LV_OPA_40 : LV_OPA_COVER, LV_PART_MAIN);
+    ui_style_action_button(ctx->open_btn, ctx->open_label, UI_CONTROL_ACTION, !ctx->unavailable && ctx->supports_open);
     ui_style_card_set_active(ctx->card, unsecured && !ctx->unavailable);
 }
 
@@ -307,7 +311,7 @@ void w_lock_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
     }
     ctx->state = ha_lock_state_parse(state->state);
     strlcpy(ctx->raw_state, state->state, sizeof(ctx->raw_state));
-    ctx->unavailable = strcmp(state->state, "unavailable") == 0;
+    ctx->unavailable = state->state[0] == '\0' || strcmp(state->state, "unavailable") == 0 || strcmp(state->state, "unknown") == 0;
     const bool supports_open = ha_lock_supports_open(state->attributes_json);
     if (supports_open != ctx->supports_open) {
         ctx->supports_open = supports_open;

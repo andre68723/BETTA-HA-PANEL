@@ -2696,10 +2696,6 @@ function fillSensorChoice(select, wrap, labelEl, choices, kind, saved, unit) {
   select.value = choices.values.includes(saved || "") ? (saved || "") : choices.values[0];
 }
 
-function sensorTimeFormatShown(widget, entityId) {
-  return sensorFormatChoices(widget, entityId) === SENSOR_FORMAT_CLASSES.timestamp;
-}
-
 function updateSensorEntityInfo(widget = selectedWidget()) {
   const type = el.fType?.value || widget?.type;
   const sensor = type === "sensor";

@@ -101,9 +101,8 @@ static void w_sonos_style_card(lv_obj_t *card)
 static void w_sonos_style_station_button(lv_obj_t *button)
 {
     lv_obj_set_style_radius(button, ui_style_radius(16), LV_PART_MAIN);
-    const lv_color_t btn_bg = lv_color_hex(APP_UI_COLOR_CARD_BG_ON);
-    ui_style_button(button, btn_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER),
-                            lv_color_hex(APP_UI_COLOR_STATE_ON));
+    const lv_color_t btn_bg = ui_style_control_color(UI_CONTROL_ACTION, true);
+    ui_style_action_button(button, NULL, UI_CONTROL_ACTION, true);
     if (ui_style_is_flat()) {
         lv_obj_set_style_border_width(button, 2, LV_PART_MAIN);
     }

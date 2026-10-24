@@ -60,6 +60,9 @@ const THEME_CANVAS_VARS = {
   "--pv-muted": "text_muted",
   "--pv-accent": "nav_tab_active",
   "--pv-nav-active": "nav_btn_bg_active",
+  "--pv-control-idle": "nav_btn_bg_idle",
+  "--pv-control-state": "state_on",
+  "--pv-control-danger": "error",
   "--pv-light-fill": "light_ind_on",
 };
 
@@ -76,6 +79,30 @@ function themeApplyCanvasPalette(theme) {
   canvas.style.setProperty("--pv-matte-on", colors.matte_card_on || colors.card_bg_on);
   canvas.style.setProperty("--pv-matte-track", colors.matte_track || colors.card_bg_off);
   canvas.style.setProperty("--pv-matte-accent", colors.matte_accent || colors.light_ind_on);
+  const mix = (a, b, weight) => {
+    const rgb = (hex) => /^#[0-9a-f]{6}$/i.test(hex || "") ? hex.slice(1).match(/../g).map(v => parseInt(v, 16)) : [32, 32, 32];
+    const x = rgb(a), y = rgb(b);
+    return "#" + x.map((v, i) => Math.round(v * weight + y[i] * (1 - weight)).toString(16).padStart(2, "0")).join("");
+  };
+  const contrast = (hex) => {
+    const rgb = hex.slice(1).match(/../g).map(v => parseInt(v, 16));
+    return (rgb[0] * 3 + rgb[1] * 4 + rgb[2]) / 8 > 150 ? "#101418" : "#ffffff";
+  };
+  const idle = colors.nav_btn_bg_idle;
+  const active = mix(colors.state_on, colors.nav_btn_bg_active, 180 / 255);
+  const danger = mix(colors.error, idle, 70 / 255);
+  canvas.style.setProperty("--pv-control-error-fg", contrast(colors.error || "#db4437"));
+  const matteIdle = colors.matte_track || idle || "#202020";
+  const matteDanger = mix(colors.error, matteIdle, 70 / 255);
+  canvas.style.setProperty("--pv-control-matte-fg", contrast(matteIdle));
+  canvas.style.setProperty("--pv-control-matte-danger-bg", matteDanger);
+  canvas.style.setProperty("--pv-control-matte-danger-fg", contrast(matteDanger));
+  canvas.style.setProperty("--pv-control-bg", idle || colors.card_bg_off);
+  canvas.style.setProperty("--pv-control-active-bg", active);
+  canvas.style.setProperty("--pv-control-danger-bg", danger);
+  canvas.style.setProperty("--pv-control-fg", contrast(idle || "#202020"));
+  canvas.style.setProperty("--pv-control-active-fg", contrast(active));
+  canvas.style.setProperty("--pv-control-danger-fg", contrast(danger));
   /* The tile previews use the editor's text tokens; inside the canvas they follow the panel. */
   canvas.style.setProperty("--text", "var(--pv-text)");
   canvas.style.setProperty("--text-2", "var(--pv-soft)");

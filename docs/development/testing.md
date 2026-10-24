@@ -3,87 +3,49 @@
 
 ## Checks without a device
 
-Firmware and the SDL2 simulator share the LVGL widget sources; the editor has its own checks. Run the local checks
-first, then review on hardware.
+The daily command is `uv run --locked --only-group checks tools/check.sh --changed`.
+Add `--list` to explain its selection, `--quick` for the fast stage, or use `--full --force` for the complete gate.
+The [run levels](tools.md#checks) explain the existing stamp inputs, logs and cache. There is no separate path map.
 
 ![Sources go through tools/check.sh; its result feeds the firmware builds, CI and the device checks](../img/development/checks.svg)
 
-- `uv run --locked --only-group checks tools/check.sh` reproduces CI with pinned FontTools, Brotli and Pillow.
-- `tools/check.sh` runs editor JavaScript syntax, editor tests (`tests/webui/*.test.mjs`), HTML balance, `en`/`de`
-  tables with identical keys and interpolation variables, non-empty values, duplicate-free firmware JSON, matching
-  printf formats and an ASCII English firmware table (German may use umlauts and `ß`), the source and
-  documentation size checks, that the simulator reads every widget field the firmware reads
-  (`check_simulator_fields.py`), that the [test pages](#test-layouts) cover every widget type and option and fit every
-  board (`test_layouts.py check`) and, with cmake and SDL2, the simulator regressions, the widget layout check and the host
-  tests. `--build` also builds all five variants (`panel4`, `panel10`, `paneljc`, `paneljc-v2`, `tab5`) with the full
-  define set and checks the flash size in `flash_args`. Run it before committing editor or translation changes.
-  `.github/workflows/check.yml` runs the checks with `--full`; `.github/workflows/build.yml` builds and packages every
-  variant in the ESP-IDF 6.1 image on a version tag, a push to `main` or by hand, and only uploads artifacts.
-- Output is one line per step; the full output is in `${TMPDIR:-/tmp}/betta-check/<step>.log` (`BETTA_CHECK_LOG_DIR` overrides). A slow step whose command and
-  input files are unchanged since its last pass is skipped (`build/check-stamps/`, `--force` runs it anyway). The widget
-  layout runs at the standard text step on every check and at the Larger and Largest steps with `--full` and in CI.
-  [Run levels](tools.md#run-levels) say which tool runs when.
-- `tests/host/test_i18n_builtin.c` loads both built-in translation tables as strict JSON (trailing data fails), requires
-  `lvgl` as the only root key and equal keys in `de` and `en`, and checks real `ui_i18n_get()` lookups in both languages.
-- `tests/host/test_history_stats.c` covers the Recorder statistics parser with reply shapes from a real Home Assistant:
-  metadata and eligibility (measurement versus counter, unit class, state class), the 168-hour window, gaps, duplicates,
-  off-hour and out-of-window rows, and hourly changes summed into local days across both daylight-saving changes.
-- The statistics parser test also covers a cumulative counter classified from its metadata alone, summing several
-  sources and marking an hour or a whole source as missing. `tools/check_web.py` fails when a `ui_i18n_get` key in
-  `main/` has no entry in the built-in tables.
-- `tests/host/test_admin_auth.c` includes `main/settings/admin_auth.c` with a fake NVS (`tests/host/auth_stubs/`) and injects faults:
-  open and read errors, damaged or foreign-version records, half a legacy salt/hash pair, failing writes. It checks that "never set"
-  stays open, "unreadable" answers closed and heals when the storage does, and that a legacy pair migrates.
-- `tests/host/test_history_week.c` runs the real 7-day worker (`main/ha/ha_history_week.c`) on the host with pthread-backed
-  FreeRTOS stubs (`tests/host/week_stubs/`), a counting heap and a scriptable WebSocket: a busy heavy-request gate with bounded
-  retries, a reply that never comes (and the cancel), a reply that arrives after the timeout, failing and wrongly shaped replies,
-  a failing or partial source, other units and unit classes, queue overflow, and no allocation left behind after a thousand
-  requests. The waits are compile-time overrides (`WEEK_*_MS`) so the test needs seconds, not minutes.
-- The history and energy regressions end with a memory loop: 300 popup or page cycles are judged against a baseline cycle (a lock popup,
-  a page built and deleted without taps), because LVGL keeps some bytes per cycle on its own; the range switching and the node
-  taps may add at most 512 bytes per cycle.
-- `tests/host/test_alarm_state.c` covers the alarm state names, the arm and disarm actions an entity offers from its
-  `supported_features`, the `code_format` and `code_arm_required` rules and the per-tile `alarm_actions` mask.
-- `tests/host/test_price_series.c` covers the electricity price lists: the EPEX Spot and Day Ahead Optimizer shapes with the real hourly market
-  prices of 2026-10-17, the regular grid (gaps, unsorted input, off-grid starts, conflicting duplicates, too many items), the model's attribute
-  JSON and its size budget, day statistics, the cheap windows across local days (negative and equal prices, the 23 and 25 hour clock-change days)
-  and the serializer. Regression cases cover EUR/cent unit conversion and rejection, sparse lists with explicit ends, and more than eight cheap windows.
-  `tests/host/test_price_layout.c` checks the widget's domain, size limits and subscription. `--regression price` taps the
-  real Today/Tomorrow buttons (both on a wide tile, one toggle on a narrow one) and the no-data states. It also feeds a sparse Recorder month into
-  the stock popup and checks the real chart's elapsed-time coordinates and missing points; parser tests cover daily/weekly gaps across both clock changes.
-- Host tests need cJSON (`libcjson-dev`, `brew install cjson`, or fetched sources); `tools/test_host.sh` exits with 2
-  when neither exists.
-- `test_aux_history.c` runs the real Recorder and Easy Stock HTTP workers with scripted replies and a virtual clock:
-  a permanently busy gate, a slow response that keeps making progress, oversized bodies, rejected tokens, cleanup and
-  a failed task creation followed by retry. `test_parqet_request.c` runs the production request scheduler with timer
-  allocation failures, gate/reply timeouts, late replies, shared requests, cache hits and cancellation.
-- `test_quote_feed.c` tests the production history distributor with 80 registrations, allocation failure during growth,
-  visibility, popup priority, deleting all slots, late replies and registration after cleanup.
-- `tests/host/test_coredump_store.c` checks two-report retention, failed imports, duplicate imports,
-  raw downloads, metadata/diagnostic round-trips, corrupted payloads and stable-ID deletion.
-  `tests/webui/coredump_reports.test.mjs` exercises individual erase clicks, confirmation,
-  status refresh, errors, banner identity and compatibility with single-report firmware.
-- `tests/host/test_ha_controls.c` covers parent-area inheritance, missing/cyclic parents,
-  empty/custom names, bounded effect and suction lists, overflow preservation and escaped service values.
-  The SDL `--regression controls` test taps the real Light/Vacuum controls, checks service payloads,
-  failed sends, unavailable devices and popup cleanup during state changes, hiding and deletion.
-  Control choices retain at most 24 complete values shorter than 96 bytes; compaction drops
-  trailing choices to fit the existing attribute buffer without losing brightness or vacuum capabilities.
-- `--regression fonts` (font manager failure acceptance, `tests/simulator/font_budget_regression.c`) requests every integer size and every icon font
-  with `UI_FONTS_TEST_HOOKS` compiled in: a failed creation and the 64-instance budget never give a caller a NULL font, instances stay bounded and a
-  key created before keeps its instance. `GET /api/version` reports the same counters under `fonts` on a panel.
-- With SDL2, `check.sh` runs the regressions `controls`, `wallbox`, `bambu`, `history`, `energy`, `fonts`,
-  `notification` and `price` through `tools/simulator.sh <variant> --regression <name>` for panel4, paneljc and tab5.
-  `--regression bambu` exercises the real widget buttons, mocked service targets, pending commands, timeout/disconnect and popup
-  ownership during hide, resize and deletion. It sends no Home Assistant commands. `--regression history` runs
-  alongside it and drives the history popup's real 24 h / 7 days buttons, quick switching, close and reopen, and
-  the entities that get no selector. `--regression energy` taps the real Gas, Water
-  and Solar circles of the Energy page: popup versus right-hand panel (only where it fits), nodes without a source,
-  a new selection replacing the old one and the page being deleted with a popup or selection open.
-- `check.sh` lists checks it could not run (no Node, no cmake/SDL2) under "not run". With `CI` set, a missing
-  prerequisite fails the run. Pass the editor tests as files: Node 22 (CI) treats a directory as a module.
+- **Host C:** real policies, parsers, stores and workers with injected failures and strict compiler warnings.
+  Both panel4/paneljc suites remain complete, including the fixed Tab5 orientation case; hardware APIs are stubbed.
+- **Node editor:** functions and event → model → JSON/reload contracts, translations, firmware parity and controls.
+  VM DOM/canvas stubs do not establish browser layout.
+- **Python tooling:** local HTTP isolation, persistence/preview expiry, catalog projection and checker/cache failures.
+  No device or Home Assistant access.
+- **Metadata:** HTML/i18n, bundles/gzip roundtrip, links, ceilings, fonts, cases and simulator field names.
+  Field-name parity does not prove matching parsing semantics.
+- **SDL:** real LVGL controls, popups, service payloads and lifecycle/memory regressions on three geometries.
+  No real HA calls or asynchronous network asset pipeline.
+- **Layout/test pages:** overlaps, bounds, clipping/readability and selected expected content. Failed checkers fail
+  the overview; rectangles alone cannot establish completeness or text placement on an arc.
+- **Docs:** strict build validation; HTTP/file browser checks establish image loading, zoom and overflow separately.
 
-Storage regressions use the actual settings/layout stores and automatic-update worker with injected NVS, file, lock and allocation failures. They cover credential generations and migration, rollback-version retention, queue saturation, atomic history replacement, graph quotas and orphan cleanup. Transfer deadlines cover silence and continuous slow progress.
+The runner executes SDL groups `controls`, `wallbox`, `bambu`, `history`, `energy`, `fonts`, `notification`, `price`
+and `parqet`. Camera lifecycle checks run within controls. The history/energy memory tests compare300 popup/page
+cycles with their baseline lifecycle; extra retained memory must stay within the tested allowance.
+`test_cover_request_lifetime.c` covers request ownership separately from the synchronous simulator cover adapter.
+
+Host tests need system libcjson development files or fetched cJSON sources; missing cJSON exits2. Missing Node/SDL
+prerequisites are reported as unavailable and fail in CI. Node22 requires test files, not a directory argument.
+Firmware builds and SDL/host results never establish physical touch, display rotation/colors or optical backlight behavior.
+Device tests remain deliberate, separately authorized actions; they are not triggered by a changed source path.
+
+## Test clocks
+
+Routine SDL checks and Gallery/test-page renders share the Gallery's fixed Berlin clock,2026-10-15 12:00.
+The runner fingerprints the effective clock; standalone layout checks accept `--now`, and `BETTA_SIM_NOW=real`
+selects the real clock for a diagnostic run (use `--force` in the runner). Real/fixed passes have different stamps.
+Simulator virtual time also changes delay duration: compare timing measurements only at the same clock setting.
+
+The price regression independently checks normal/spring/autumn calendar boundaries, both repeated02 hours and
+post-rollback selection, preserving wide/narrow controls, no-data, average and history-popup assertions. Test data
+uses local calendar days, not24 elapsed hours per day. The known repeated-hour label remains unchanged.
+Host weather and history-worker calendar fixtures are fixed separately; real pthread deadlines and late replies
+remain real. Node solar/crash scenarios inject a date only into their own VM; supplied timestamp parsing is retained.
+Auxiliary HTTP-worker and EVCC tests keep their existing virtual clocks. These are not live HA or panel tests.
 
 ## Widget layout check
 
@@ -98,8 +60,8 @@ names may end in dots.
 
 - Rectangles cannot see a ring's shape, and a widget that leaves content out passes: look at the images for text on
   arcs and knobs and for whether a tile still shows what it is for.
-- A new or changed widget layout needs a tile in the gallery fixture (`tests/simulator/gallery_data.json`,
-  `build_spec()` in `tools/gallery_content.py`) and its minimum size and variants in `layout_cases.json`.
+- A new or changed widget layout needs a tile in the gallery fixture (a `gallery` tag in `tools/test_layout_cases.json`,
+  projected by `build_spec()` in `tools/gallery_content.py`) and its minimum size and variants in `layout_cases.json`.
 - Two LVGL traps behind most findings: an object placed with `lv_obj_align()` keeps that anchor, so a later
   `lv_obj_set_pos()` offsets from it (use `lv_obj_align(obj, LV_ALIGN_TOP_LEFT, x, y)`); sizes read right after creation
   are 0 until `lv_obj_update_layout()` runs.
@@ -124,17 +86,27 @@ truncates it silently.
 
 ## Test layouts
 
+`tools/test_layout_cases.json` is the shared widget catalog. A case's `gallery` metadata selects its preview title,
+size and order; `gallery_caps` holds descriptions shared by preview variants. Cases needed only for a gallery image
+live in `gallery_only`: they never enter topic packs, generated edge/state cases or test coverage counts.
+Cases define a topic, 10-inch size and `{role}` entities, optional `expect` texts and simulator-only `sim` fields.
+
 `tools/test_layouts.py` builds test pages for every widget and variant from `tools/test_layout_cases.json`, grouped by
 topic (energy, climate, controls, status, devices, finance) and placed for each board: `paneljc` (1280 x 680), `tab5`
 (1280 x 600) and `panel4` (720 x 600). Cases keep their 10-inch size, tallest first; a topic that exceeds the board's
 pages or 32 KB is split. Two generated topics add every type at its minimum size with a long name, without its name and
-with a missing entity (`grenzen`), and at its maximum size (`maximal`).
+with a missing entity (`grenzen`), and at its maximum size (`maximal`). The generated `zustaende` topic adds
+idle, running, paused, returning, selected Off, alert and unavailable control states, including the legacy Roborock name.
 
 **Simulator**
 
-`tools/test_pages.sh [board ...]` (`test_layouts.py view`) renders every page with the demo entities and opens an
+`tools/test_pages.sh panel4 tab5 paneljc` (`test_layouts.py view`) renders every page with the demo entities and opens an
 overview with board, style, text step and language buttons. `--styles`, `--text-steps` and `--languages` choose the
-renders (default: four styles, step 0, German, about two minutes; all three steps about six). The overview is a static
+renders (default: four styles, step 0, German). The launcher builds each requested size, writes
+`${TMPDIR:-/tmp}/betta-test-pages/simulator.log`, then opens the browser; `--no-open` skips opening.
+Run it by its path from any working directory. Topic links remain below the fixed size/style bar;
+States & controls, Small tiles & edge cases and Large tiles identify their respective coverage.
+Part numbers split topics to fit the board page/layout limits. The overview is a static
 page that each run rewrites; reload it after a run. `simulate <board> [--suite NAME]` prints the same in the terminal.
 
 The renders use a fixed clock (Thursday 15 October 2026, 12:00 Berlin; `--now` changes it, `--now real` uses the
@@ -150,7 +122,11 @@ host clock), so two runs give identical images. Per text step the run reports:
 A case is a widget definition with `w`, `h` and `{role}` entities. The roles come from
 `tools/test_layout_entities_demo.json` (its `_states` add demo states the gallery data lacks). `expect` lists texts that
 must be drawn, `sim` holds fields only the simulator fixture gets (for example to-do `items`); neither reaches a panel
-layout. A new widget type or enumerated field value needs a case, or the run names it.
+layout. `tools/widget_cases.py` adds control-state cases with `sim_state` overrides: each overridden binding
+gets its own synthetic entity and retains its original attributes. Shared demo readings and generated device layouts
+stay unchanged. Room bindings retain membership in their room's entity list. These fixture rules have unit tests in
+`tests/tools/test_simulator_state_cases.py`.
+A new widget type or enumerated field value needs a case, or the run names it.
 
 **Panel**
 
@@ -193,7 +169,7 @@ from its `energy` sensors, the doorbell popup from its `doorbell` notification w
 - Never hand-edit the generated files or `docs/img/gallery/*.png`. Image names are stable
   (`<slug of the title>_<style>.png`), so a commit touching one widget changes only its images. A run prunes unreferenced
   images and writes `docs/img/gallery/sources.json`, a hash stamp of every rendering input. `check.sh` runs
-  `tools/check_gallery_fresh.py`, which warns (never fails; `--strict` fails) when sources changed since the stamp.
+  `tools/gallery_freshness.py`, which warns (never fails; `--strict` fails) when sources changed since the stamp.
   Regenerate only on that warning and commit the images separately as `docs(gallery): ...`. After a refactor that did
   not change rendering, `generate_simulator_gallery.py --stamp-only` refreshes the stamp.
 - The published gallery contains demo-data widgets and special pages from the simulator. Real household pages captured

@@ -42,20 +42,15 @@ SDL_VIDEODRIVER=dummy tools/simulator.sh panel4 --fixture <file> --page <id> --s
 - `--screenshot f.bmp` writes a BMP and exits after 250 ms, or after `--exit-after-ms`.
 - `--dump-layout f.jsonl` writes one line per visible object (rectangle, label text and its drawn rectangle); it is
   the input of `tools/check_widget_layout.py`.
-- `BETTA_SIM_NOW=<Unix seconds>` in the environment fixes the clock: the firmware's `time()` returns it, and LVGL's
+- Direct previews use real time by default. `BETTA_SIM_NOW=<Unix seconds>` fixes the clock: the firmware's `time()` returns it, and LVGL's
   tick and `esp_timer_get_time()` advance only by the simulator's own delays, so dates, ages, forecast days and
   animations render the same on every run. Set `TZ` for the local time.
 
 ## Test pages
 
-```bash
-tools/test_pages.sh                      # all sizes, four styles, text step 0, German
-tools/test_pages.sh tab5 --text-steps 0,1,2 --languages de,en
-```
-
-Renders every widget and variant on topic pages for the 10-inch, Tab5 and 4-inch sizes, checks layout and content and
-opens an overview (`/private/tmp/betta-testenv/view/index.html`, rewritten by each run). See
-[Test layouts](development/testing.md#test-layouts).
+`tools/test_pages.sh panel4 tab5 paneljc` builds all three sizes, checks and renders the catalog,
+logs the run and opens the overview. Options, topic coverage, clock and device-loading limits have
+one reference: [Test layouts](development/testing.md#test-layouts).
 
 ## Fixture
 
@@ -85,8 +80,8 @@ edge cases; `check_widget_layout.py --fixture` checks it) and `dutch-characters.
 
 ## Gallery
 
-`python3 tools/generate_simulator_gallery.py` renders the [gallery](gallery.md) from `tests/simulator/gallery_data.json`
-in all four styles on the fixed clock (15 October 2026, 12:00 Berlin; `--now real` for the host clock), so a new run
+`python3 tools/generate_simulator_gallery.py` renders the [gallery](gallery.md) from gallery-tagged cases in
+`tools/test_layout_cases.json` and the synthetic states in `tests/simulator/gallery_data.json`, in all four styles on the fixed clock (15 October 2026, 12:00 Berlin; `--now real` for the host clock), so a new run
 changes only images whose widget changed; `--variant paneljc|tab5` renders the house and energy pages at that size
 ([10-inch](gallery-sim-paneljc.md), [5-inch](gallery-sim-tab5.md)). It needs Pillow and no panel; see
 [Gallery](development/testing.md#gallery).

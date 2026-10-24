@@ -1,4 +1,0 @@
-# Same as sdkconfig.defaults.lvgl_stats, and every LVGL allocation tries PSRAM first (internal RAM as fallback).
-# CONFIG_LV_USE_CLIB_MALLOC is not set
-CONFIG_LV_USE_CUSTOM_MALLOC=y
-CONFIG_APP_LVGL_ALLOC_PSRAM_FIRST=y

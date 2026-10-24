@@ -9,6 +9,7 @@
 #include "ha/ha_evcc_sessions.h"
 #include "ui/ui_evcc_sessions_view.h"
 #include "ui/ui_widget_factory.h"
+#include "ui/theme/ui_style.h"
 esp_err_t w_wallbox_evcc_create(const ui_widget_def_t *,lv_obj_t *,ui_widget_instance_t *);
 void w_wallbox_evcc_apply_state(ui_widget_instance_t *,const ha_state_t *);
 void w_wallbox_evcc_set_visible(ui_widget_instance_t *,bool);
@@ -82,6 +83,9 @@ int sim_wallbox_regression(void)
      * leaves actual Charging visible until the charging sensor changes. */
     click(widget.obj,"Fast"); CHECK(sim_host_service_calls()->count==1);
     apply(&widget,"select.mode","off",modes); CHECK(find(widget.obj,"Charging",NULL));
+    lv_color_t off_bg = lv_obj_get_style_bg_color(lv_obj_get_parent(find(widget.obj,"Off",NULL)), LV_PART_MAIN);
+    lv_color_t smart_bg = lv_obj_get_style_bg_color(lv_obj_get_parent(find(widget.obj,"Smart",NULL)), LV_PART_MAIN);
+    CHECK(off_bg.red != smart_bg.red || off_bg.green != smart_bg.green || off_bg.blue != smart_bg.blue);
     sim_host_service_reset(ESP_OK); click(widget.obj,"Smart"); sent("select","select_option","select.mode","smart",0); apply(&widget,"select.mode","smart",modes);
     sim_host_service_reset(ESP_OK); click(widget.obj,"Fast"); sent("select","select_option","select.mode","now",0); advance(10100); CHECK(find(widget.obj,"Not confirmed",NULL));
     advance(6100); CHECK(!find(widget.obj,"Not confirmed",NULL)); CHECK(find(widget.obj,"Charging",NULL));

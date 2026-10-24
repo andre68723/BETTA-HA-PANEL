@@ -8,6 +8,7 @@
 #include "cJSON.h"
 #include "host_adapters.h"
 #include "ui/ui_widget_factory.h"
+#include "ui/theme/ui_style.h"
 
 esp_err_t w_bambu_printer_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_bambu_printer_apply_state(ui_widget_instance_t *, const ha_state_t *);
@@ -137,6 +138,7 @@ int sim_bambu_regression(void)
     lv_tick_set_cb(tick);
     sim_host_service_reset(ESP_OK);
     ui_widget_instance_t w = create();
+    lv_color_t running_bg = lv_obj_get_style_bg_color(lv_obj_get_parent(label(w.obj, "Pause")), LV_PART_MAIN);
     temperature_layout(&w);
     /* Hidden pages still receive state events; showing one needs no replay of
      * every printer binding just to recover its latest reading. */
@@ -165,7 +167,7 @@ int sim_bambu_regression(void)
     w_bambu_printer_set_visible(&w, false);
     CHECK(lv_obj_get_child_count(lv_layer_top()) == 0);
     CHECK(sim_camera_active() == 0);
-    click(w.obj, "Stop");
+    click(w.obj, "Abort");
     click(lv_layer_top(), "Cancel");
     advance(1);
     sent(0, NULL);
@@ -174,17 +176,19 @@ int sim_bambu_regression(void)
     click(w.obj, "Pause");
     sent(1, "button.test_pause");
     click(w.obj, "Pause");
-    click(w.obj, "Stop");
+    click(w.obj, "Abort");
     sent(1, NULL);
     CHECK(lv_obj_get_child_count(lv_layer_top()) == 0);
     state(&w, "sensor.test_printer", "pause");
     CHECK(label(w.obj, "Resume") != NULL);
+    lv_color_t paused_bg = lv_obj_get_style_bg_color(lv_obj_get_parent(label(w.obj, "Resume")), LV_PART_MAIN);
+    CHECK(running_bg.red != paused_bg.red || running_bg.green != paused_bg.green || running_bg.blue != paused_bg.blue);
     click(w.obj, "Resume");
     sent(2, "button.test_resume");
     state(&w, "sensor.test_printer", "running");
-    click(w.obj, "Stop");
-    click(lv_layer_top(), "Stop");
-    click(lv_layer_top(), "Stop"); /* second click before deferred deletion */
+    click(w.obj, "Abort");
+    click(lv_layer_top(), "Abort print");
+    click(lv_layer_top(), "Abort print"); /* second click before deferred deletion */
     sent(3, "button.test_stop");
     advance(1);
     state(&w, "sensor.test_printer", "idle");
@@ -213,15 +217,15 @@ int sim_bambu_regression(void)
     sim_host_service_reset(ESP_OK);
 
     /* Confirmation must recheck current model/connection, even without a UI update. */
-    click(w.obj, "Stop");
+    click(w.obj, "Abort");
     state(NULL, "sensor.test_printer", "idle");
-    click(lv_layer_top(), "Stop");
+    click(lv_layer_top(), "Abort print");
     advance(1);
     sent(0, NULL);
     state(&w, "sensor.test_printer", "running");
-    click(w.obj, "Stop");
+    click(w.obj, "Abort");
     sim_host_set_online(false);
-    click(lv_layer_top(), "Stop");
+    click(lv_layer_top(), "Abort print");
     advance(1);
     sent(0, NULL);
     sim_host_set_online(true);
@@ -235,7 +239,7 @@ int sim_bambu_regression(void)
     /* Popup ownership survives resize/rebuild, queued backdrop close, page hide. */
     for (int i = 0; i < 12; i++) {
         w = create();
-        click(w.obj, i % 2 ? "Stop" : "Status");
+        click(w.obj, i % 2 ? "Abort" : "Status");
         lv_obj_set_size(w.obj, 480, 420);
         lv_obj_update_layout(w.obj);
         CHECK(lv_obj_get_child_count(lv_layer_top()) == 1);

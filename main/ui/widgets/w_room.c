@@ -360,19 +360,14 @@ static void room_render_extra(w_room_ctx_t *ctx)
         const char *down_sym = room_action_symbol(down);
         lv_label_set_text(ctx->extra_icon, up_sym != NULL ? up_sym : APP_SYMBOL_ARROW_UP);
         lv_label_set_text(ctx->extra_icon2, down_sym != NULL ? down_sym : APP_SYMBOL_ARROW_DOWN);
-        lv_obj_set_style_opa(ctx->extra_btn, up != ROOM_ACTION_NONE ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
-        lv_obj_set_style_opa(ctx->extra_btn2, down != ROOM_ACTION_NONE ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
-        lv_obj_set_style_text_color(ctx->extra_icon,
-            lv_color_hex(up != ROOM_ACTION_NONE ? APP_UI_COLOR_TEXT_PRIMARY : ROOM_MUTED_COLOR), LV_PART_MAIN);
-        lv_obj_set_style_text_color(ctx->extra_icon2,
-            lv_color_hex(down != ROOM_ACTION_NONE ? APP_UI_COLOR_TEXT_PRIMARY : ROOM_MUTED_COLOR), LV_PART_MAIN);
+        ui_style_action_button(ctx->extra_btn, ctx->extra_icon, up == ROOM_ACTION_COVER_STOP ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, up != ROOM_ACTION_NONE);
+        ui_style_action_button(ctx->extra_btn2, ctx->extra_icon2, down == ROOM_ACTION_COVER_STOP ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, down != ROOM_ACTION_NONE);
         return;
     }
     lv_label_set_text(ctx->extra_icon, room_extra_symbol(ctx));
     const bool enabled = ctx->extra_action != ROOM_ACTION_NONE;
-    lv_obj_set_style_opa(ctx->extra_btn, enabled ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
-    lv_obj_set_style_text_color(ctx->extra_icon,
-        lv_color_hex(enabled ? APP_UI_COLOR_TEXT_PRIMARY : ROOM_MUTED_COLOR), LV_PART_MAIN);
+    const bool active = ctx->extra_action == ROOM_ACTION_MEDIA_PAUSE || ctx->extra_action == ROOM_ACTION_COVER_STOP;
+    ui_style_action_button(ctx->extra_btn, ctx->extra_icon, active ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, enabled);
 }
 
 static void room_render(w_room_ctx_t *ctx)

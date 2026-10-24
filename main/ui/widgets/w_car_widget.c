@@ -336,15 +336,19 @@ static void car_render_extras(w_car_widget_ctx_t *ctx)
 
     /* Pre-conditioning button: a select shows its option, everything else a fixed word. */
     const bool is_select = strncmp(ctx->precond_entity_id, "select.", 7) == 0;
-    const bool active = ctx->has_precond && !car_state_is_off(ctx->precond_state) &&
-                        strncmp(ctx->precond_entity_id, "button.", 7) != 0 &&
-                        strncmp(ctx->precond_entity_id, "input_button.", 13) != 0;
+    const bool is_toggle = strncmp(ctx->precond_entity_id, "switch.", 7) == 0 ||
+                           strncmp(ctx->precond_entity_id, "input_boolean.", 14) == 0;
+    const bool is_climate = strncmp(ctx->precond_entity_id, "climate.", 8) == 0;
+    const bool climate_on = strcmp(ctx->precond_state, "heat") == 0 || strcmp(ctx->precond_state, "cool") == 0 ||
+        strcmp(ctx->precond_state, "heat_cool") == 0 || strcmp(ctx->precond_state, "auto") == 0 ||
+        strcmp(ctx->precond_state, "dry") == 0 || strcmp(ctx->precond_state, "fan_only") == 0;
+    const bool active = ctx->has_precond && ((is_toggle && strcmp(ctx->precond_state, "on") == 0) || (is_climate && climate_on));
     lv_label_set_text(ctx->precond_label,
         is_select && ctx->has_precond ? ctx->precond_state : ui_i18n_get("car.precond", "Precondition"));
-    const lv_color_t base = active ? lv_color_mix(lv_color_hex(APP_UI_COLOR_STATE_ON), lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 180)
-                                   : lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE);
-    ui_style_button_auto(ctx->precond_btn, base, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
-    lv_obj_set_style_text_color(ctx->precond_label, lv_color_hex(active ? 0x1B1300 : APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
+    const bool available = ctx->has_precond && strcmp(ctx->precond_state, "unavailable") != 0 &&
+                           (strncmp(ctx->precond_entity_id, "button.", 7) == 0 ||
+                            strncmp(ctx->precond_entity_id, "input_button.", 13) == 0 || strcmp(ctx->precond_state, "unknown") != 0);
+    ui_style_action_button(ctx->precond_btn, ctx->precond_label, active ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, available);
 }
 
 static void car_precond_cb(lv_event_t *event)

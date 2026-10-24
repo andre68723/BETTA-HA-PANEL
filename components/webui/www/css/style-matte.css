@@ -21,9 +21,6 @@ body[data-ui-style="matte"] #canvas :is(.tp-day, .tp-todo .tp-row, .tp-cover, .t
 body[data-ui-style="matte"] #canvas :is(.tp-btns span, .tp-vol span, .tp-clim-mid span) {
   border: 0; background: var(--pv-card-on); box-shadow: none;
 }
-body[data-ui-style="matte"] #canvas .tp-btns .tp-primary {
-  background: var(--pv-accent);
-}
 body[data-ui-style="matte"] #canvas :is(.tp-bar, .tp-vbar, .solar-preview-hbar, .solar-preview-vbar) {
   border: 0; border-radius: 8px;
   background: var(--pv-matte-track, #1c222a);
@@ -69,3 +66,11 @@ body[data-ui-style="matte"] #canvas .widget-box.matte-wide .tp-clim-chips { posi
 
 /* Center the state when the wide slider has no name above it. */
 body[data-ui-style="matte"] #canvas .widget-box.matte-wide.name-hidden .tp-slider:not(.tp-slider-vertical) .tp-light-top { top: 45%; }
+
+/* Role colours follow style changes immediately, without reloading the active theme. */
+body[data-ui-style="matte"] #canvas .widget-box {
+  --pv-control-bg: var(--pv-matte-track, var(--pv-card));
+  --pv-control-fg: var(--pv-control-matte-fg, #fff);
+  --pv-control-danger-bg: var(--pv-control-matte-danger-bg, #763c3c);
+  --pv-control-danger-fg: var(--pv-control-matte-danger-fg, #fff);
+}

@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static ha_state_t s_states[APP_MAX_WIDGETS_TOTAL];
+static ha_state_t s_states[APP_HA_MAX_STATES];
 static size_t s_state_count;
 
 /* Host persistence has no shared flash mapping or OTA verification window. */
@@ -29,7 +29,7 @@ void sim_host_state_add(const ha_state_t *state)
             return;
         }
     }
-    if (s_state_count < APP_MAX_WIDGETS_TOTAL) s_states[s_state_count++] = *state;
+    if (s_state_count < APP_HA_MAX_STATES) s_states[s_state_count++] = *state;
 }
 
 bool ha_model_get_state(const char *entity_id, ha_state_t *out_state)

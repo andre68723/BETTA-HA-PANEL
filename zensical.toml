@@ -16,7 +16,7 @@ extra_css = ["stylesheets/extra.css"]
 extra_javascript = ["javascripts/image-viewer.js"]
 copyright = "Copyright &copy; 2026 Cpt_Kirk and andre68723 · LicenseRef-FNCL-1.1"
 nav = [
-  { "Home" = "README.md" },
+  { "BETTA HA Panel" = "README.md" },
   { "Get started" = [
     { "Install and set up" = "getting-started.md" },
     { "Choose your display" = "choose-display.md" },
@@ -35,7 +35,7 @@ nav = [
       { "Top bar" = "top-bar.md" },
     ] },
     { "Widgets" = [
-      { "Overview" = "widgets/README.md" },
+      { "Widget library" = "widgets/README.md" },
       { "Alarm" = "widgets/alarm_tile.md" },
       { "Bambu printer" = "widgets/bambu_printer.md" },
       { "Binary sensor" = "widgets/binary_tile.md" },
@@ -64,6 +64,7 @@ nav = [
       { "Solar forecast" = "widgets/solar_forecast.md" },
       { "Energy price forecast" = "widgets/energy_price_forecast.md" },
       { "Parqet portfolio" = "widgets/parqet_portfolio.md" },
+      { "Stocks & ETFs" = "widgets/stock_quotes.md" },
       { "Sonos favorites" = "widgets/sonos_favorites.md" },
       { "Todo list" = "widgets/todo_list.md" },
       { "Vacuum" = "widgets/vacuum_tile.md" },
@@ -82,7 +83,7 @@ nav = [
     ] },
   ] },
   { "Development" = [
-    { "Overview" = "development.md" },
+    { "Development" = "development.md" },
     { "Build and release" = [
       { "Build and flash" = "development/build.md" },
       { "Releases, OTA and rollback" = "development/release.md" },
@@ -115,8 +116,8 @@ nav = [
     ] },
     { "Visual comparisons" = [
       { "Gallery" = "gallery.md" },
-      { '5" M5Stack Tab5 (simulator)' = "gallery-sim-tab5.md" },
-      { '10.1" Guition (simulator)' = "gallery-sim-paneljc.md" },
+      { '5" M5Stack Tab5: simulator gallery' = "gallery-sim-tab5.md" },
+      { '10.1" Guition: simulator gallery' = "gallery-sim-paneljc.md" },
     ] },
     { "Documentation site" = "documentation.md" },
   ] },
@@ -162,4 +163,4 @@ toggle.name = "Switch to light mode"
 # Working notes and capture metadata are not public documentation. Local plans
 # and skills live outside docs/ in .local/. Zensical renders the Markdown galleries.
 [project.plugins.exclude]
-glob = ["**/sources.json", "**/manifest.json", "img/hardware/README.md"]
+glob = ["**/sources.json", "**/manifest.json", "img/hardware/README.md", "javascripts/vendor/README.md"]

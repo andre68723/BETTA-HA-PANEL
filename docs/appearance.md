@@ -46,6 +46,18 @@ style.
 Fill colours on gauges, solar forecasts and car rings can represent a value or
 level. Those gradients stay meaningful in every style, including Flat and Matte.
 
+## Button colours
+
+The active theme colour (gold in Classic) marks an **active function or selected option**.
+A selected charging mode stays highlighted even when it is **Off** or the car is not charging.
+Play/Pause, vacuum Start/Pause and printer Pause/Resume are highlighted while the process runs;
+they become neutral when paused or stopped. Car preconditioning is highlighted while switched on.
+
+Buttons that open a list, adjust a value or trigger a scene stay neutral. Inside a list, the
+selected option is highlighted. A primary action keeps its prominent position without a permanent
+highlight. Unavailable controls are dimmed. The printer's **Abort** action is separate from
+Pause/Resume, uses the danger colour and asks for confirmation before ending the print.
+
 ## Optional widget names
 
 Most widget inspectors offer **Show name**. Disable it to give the reading and

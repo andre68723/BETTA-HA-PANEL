@@ -37,7 +37,7 @@ def main():
     sim_parse = function_body(simulator, "static void parse_widget_def(")
     # Field names the firmware compares against (types, modes) are values, not keys; only keys read from the widget count.
     keys = {name for name in fields(firmware) if re.search(rf'widget_json,\s*"{name}"', firmware)}
-    missing = sorted(name for name in keys if f'"{name}"' not in simulator)
+    missing = sorted(name for name in keys if f'"{name}"' not in sim_parse)
     if missing:
         print("simulator does not read: " + ", ".join(missing))
         return 1

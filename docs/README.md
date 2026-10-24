@@ -39,4 +39,6 @@ The optional HTTP notification route needs YAML.
     upstream v0.8.2: release v0.9.0 and the development version v0.9.1-rc1. Hardware validation is listed in
     [Choose your display](choose-display.md).
 
+The [Widget library](widgets/README.md) has focused setup guides for each tile.
+
 For firmware development, builds and technical references, see [Development](development.md).

@@ -118,7 +118,7 @@ function stockPreviewMarkup(widget, name, height) {
   const amountOf = q => q.price * q.change / 100;
   if (widget.stock_view === "chart") {
     const period = STOCK_PERIODS.includes(widget.stock_period) ? widget.stock_period : "30d";
-    const chips = STOCK_PERIODS.map(code => `<em class="${code === period ? "on" : ""}">${escapeHtml(t(`layout.option.stock_period_short.${code}`))}</em>`).join("");
+    const chips = STOCK_PERIODS.map(code => `<em class="${previewControlClass(code === period)}">${escapeHtml(t(`layout.option.stock_period_short.${code}`))}</em>`).join("");
     const sections = quotes.map((q, i) => {
       const change = delta === "absolute" ? `${number(amountOf(q), 2, true)} ${q.currency}` : delta === "both"
         ? `${number(amountOf(q), 2, true)} ${q.currency}  ${number(q.change, 2, true)} %` : `${number(q.change, 2, true)} %`;

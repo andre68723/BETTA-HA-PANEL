@@ -1121,12 +1121,21 @@ async function refreshStates() {
       editor.states.set(item.entity_id, item.state);
       try {
         const attrs = JSON.parse(item.attributes_json || "{}");
-        if (attrs.device_class || attrs.unit_of_measurement || attrs.vehicle?.name || typeof attrs.current_temperature === "number") {
+        if (attrs.device_class || attrs.unit_of_measurement || attrs.vehicle?.name || typeof attrs.current_temperature === "number" || /^(fan|media_player|cover|select|vacuum|climate)\./.test(item.entity_id)) {
           editor.stateMeta.set(item.entity_id, {
             device_class: attrs.device_class || "",
             unit: attrs.unit_of_measurement || "",
             vehicle_name: typeof attrs.vehicle?.name === "string" ? attrs.vehicle.name : "",
             current_temperature: typeof attrs.current_temperature === "number" ? attrs.current_temperature : null,
+            percentage: typeof attrs.percentage === "number" ? attrs.percentage : null,
+            percentage_step: typeof attrs.percentage_step === "number" ? attrs.percentage_step : null,
+            preset_mode: typeof attrs.preset_mode === "string" ? attrs.preset_mode : "",
+            preset_modes: Array.isArray(attrs.preset_modes) ? attrs.preset_modes.filter(v => typeof v === "string").slice(0, 3) : [],
+            supported_features: typeof attrs.supported_features === "number" ? attrs.supported_features : null,
+            current_position: typeof attrs.current_position === "number" ? attrs.current_position : null,
+            options: Array.isArray(attrs.options) ? attrs.options.filter(v => typeof v === "string").slice(0, 32) : null,
+            shuffle: attrs.shuffle === true,
+            repeat: typeof attrs.repeat === "string" ? attrs.repeat : "off",
           });
         }
       } catch (_) { /* attributes cut off by the size limit: no meta */ }

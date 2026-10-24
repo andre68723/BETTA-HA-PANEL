@@ -14,3 +14,11 @@ screenshots = ["pillow==12.3.0", "playwright==1.63.0"]
 
 [tool.uv]
 package = false
+
+# Canonical CI targets; bootstrap literals in workflows are checked by check_web.py.
+# ESP-IDF maintains its own Python environment; local Node >=22 is also supported.
+[tool.betta.ci]
+python = "3.13"
+node = "22"
+uv = "0.12.21"
+idf = "6.1"

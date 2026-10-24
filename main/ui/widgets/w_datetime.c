@@ -134,6 +134,7 @@ static void numeric_options(char *out, size_t len, int first, int last, bool pad
 static void popup_save(lv_event_t *event)
 {
     w_datetime_ctx_t *ctx = (w_datetime_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL || ctx->unavailable || !ha_client_is_connected()) return;
     ha_datetime_value_t edited = ctx->value;
     if (edited.has_date) {
         edited.year = ctx->first_year + (int)lv_roller_get_selected(ctx->year_roller);
@@ -255,12 +256,13 @@ static void popup_open(w_datetime_ctx_t *ctx)
     lv_obj_t *save = lv_btn_create(card);
     lv_obj_set_size(save, DT_BUTTON_W, DT_BUTTON_H);
     lv_obj_align(save, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
-    ui_style_button_auto(save, lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), lv_color_hex(APP_UI_COLOR_CONTENT_BORDER));
+    ui_style_action_button(save, NULL, UI_CONTROL_ACTION, true);
     lv_obj_add_event_cb(save, popup_save, LV_EVENT_CLICKED, ctx);
     lv_obj_t *save_label = lv_label_create(save);
     lv_label_set_text(save_label, ui_i18n_get("datetime.save", "Save"));
     lv_obj_set_style_text_font(save_label, ui_font_role(UI_TEXT_VALUE), LV_PART_MAIN);
     lv_obj_center(save_label);
+    ui_style_action_button(save, save_label, UI_CONTROL_ACTION, true);
     lv_obj_t *cancel = lv_btn_create(card);
     lv_obj_set_size(cancel, DT_BUTTON_W, DT_BUTTON_H);
     lv_obj_align(cancel, LV_ALIGN_BOTTOM_RIGHT, -(DT_BUTTON_W + 10), 0);
@@ -270,6 +272,7 @@ static void popup_open(w_datetime_ctx_t *ctx)
     lv_label_set_text(cancel_label, ui_i18n_get("datetime.cancel", "Cancel"));
     lv_obj_set_style_text_font(cancel_label, ui_font_role(UI_TEXT_VALUE), LV_PART_MAIN);
     lv_obj_center(cancel_label);
+    ui_style_action_button(cancel, cancel_label, UI_CONTROL_ACTION, true);
 }
 
 static void card_clicked(lv_event_t *event)
@@ -334,6 +337,7 @@ void w_datetime_apply_state(ui_widget_instance_t *instance, const ha_state_t *st
     ha_datetime_value_t parsed;
     ctx->unavailable = !ha_datetime_parse(ctx->entity_id, state->state, state->attributes_json, &parsed);
     if (!ctx->unavailable) ctx->value = parsed;
+    else if (ctx->popup != NULL) lv_obj_delete(ctx->popup);
     datetime_render(ctx);
 }
 
@@ -342,5 +346,6 @@ void w_datetime_mark_unavailable(ui_widget_instance_t *instance)
     if (instance == NULL || instance->ctx == NULL) return;
     w_datetime_ctx_t *ctx = (w_datetime_ctx_t *)instance->ctx;
     ctx->unavailable = true;
+    if (ctx->popup != NULL) lv_obj_delete(ctx->popup);
     datetime_render(ctx);
 }

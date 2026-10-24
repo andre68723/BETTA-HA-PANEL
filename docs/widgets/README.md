@@ -244,7 +244,7 @@ Vacuum, camera, car, wallbox and 3D printer.
 
     **[Bambu printer](bambu_printer.md)**
 
-    Shows a **Bambu Lab printer's status**, temperatures, progress and remaining time from its `sensor.*` entities, with Pause/Resume and Stop buttons.
+    Shows a **Bambu Lab printer's status**, temperatures, progress and remaining time from its `sensor.*` entities, with one Pause/Resume control and a separate print-abort button.
 
 -   [![Wallbox](../img/gallery/wallbox_glow.png)](wallbox.md)
 

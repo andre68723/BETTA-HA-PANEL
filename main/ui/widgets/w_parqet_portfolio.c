@@ -146,9 +146,9 @@ static lv_coord_t pq_text_w(const char *text, const lv_font_t *font)
 
 static void pq_chip_style(lv_obj_t *chip, bool active)
 {
-    lv_obj_set_style_text_color(chip, lv_color_hex(active ? APP_UI_COLOR_TEXT_PRIMARY : APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(chip, active ? LV_OPA_30 : LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(chip, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
+    const ui_control_role_t role = active ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION;
+    ui_style_action_button(chip, NULL, role, true);
+    lv_obj_set_style_text_color(chip, ui_style_button_icon_color(ui_style_control_color(role, true)), LV_PART_MAIN);
 }
 
 /* The figures come from the integration's WebSocket command when another interval than the sensors' (Max) is shown. */

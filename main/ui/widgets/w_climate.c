@@ -78,7 +78,7 @@ static void climate_render(w_climate_ctx_t *ctx);
 
 static void climate_send_target(w_climate_ctx_t *ctx)
 {
-    if (ctx == NULL || !ctx->has_target) {
+    if (ctx == NULL || ctx->unavailable || !ctx->has_target) {
         return;
     }
     char payload[APP_MAX_ENTITY_ID_LEN + 48];
@@ -174,6 +174,7 @@ static void climate_option_cb(lv_event_t *e)
     if (ctx == NULL) {
         return;
     }
+    if (ctx->unavailable) return;
     const unsigned kind = (unsigned)((tag >> 8) & 0x3U);
     const int idx = (int)(tag & 0xFFU);
     const char *value = NULL;
@@ -315,14 +316,12 @@ static void climate_show_popup(w_climate_ctx_t *ctx, unsigned kind)
         lv_obj_set_user_data(btn, (void *)(uintptr_t)((kind << 8) | (unsigned)i));
         lv_obj_add_event_cb(btn, climate_option_cb, LV_EVENT_CLICKED, ctx);
         lv_obj_set_style_radius(btn, ui_style_radius(12), LV_PART_MAIN);
-        lv_color_t bg = active ? lv_color_mix(lv_color_hex(APP_UI_COLOR_STATE_ON), lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 176)
-                               : lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE);
-        ui_style_button_auto(btn, bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
+        ui_style_action_button(btn, NULL, active ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION, true);
         lv_obj_t *label = lv_label_create(btn);
         char raw[CLIMATE_OPTION_LEN + 4];
         lv_label_set_text(label, climate_mode_text(value, raw, sizeof(raw)));
         lv_obj_set_style_text_font(label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
-        lv_obj_set_style_text_color(label, lv_color_hex(active ? 0x1B1300 : APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
+        ui_style_action_button(btn, label, active ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION, true);
         lv_obj_align(label, LV_ALIGN_LEFT_MID, 8, 0);
     }
 }
@@ -352,7 +351,7 @@ static lv_obj_t *climate_round_button(lv_obj_t *parent, const char *symbol, lv_e
     lv_obj_set_style_radius(btn, LV_RADIUS_CIRCLE, LV_PART_MAIN);
     lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, ctx);
-    const lv_color_t btn_bg = ui_style_control_bg(lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE));
+    const lv_color_t btn_bg = ui_style_control_color(UI_CONTROL_ACTION, true);
     ui_style_button_auto(btn, btn_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, symbol);
@@ -370,7 +369,7 @@ static lv_obj_t *climate_chip(lv_obj_t *parent, lv_obj_t **out_label, lv_event_c
     lv_obj_set_style_radius(btn, ui_style_radius(18), LV_PART_MAIN);
     lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, ctx);
-    const lv_color_t chip_bg = ui_style_control_bg(lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE));
+    const lv_color_t chip_bg = ui_style_control_color(UI_CONTROL_ACTION, true);
     ui_style_button_auto(btn, chip_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
     lv_obj_t *label = lv_label_create(btn);
     lv_obj_set_style_text_font(label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
@@ -578,12 +577,16 @@ static void climate_render(w_climate_ctx_t *ctx)
         snprintf(ctx->swing_full, sizeof(ctx->swing_full), "%s: %s", ui_i18n_get("climate.swing_short", "Swing"), ctx->swing_bare);
         lv_label_set_text(ctx->swing_label, ctx->swing_full);
     }
-    const lv_opa_t opa = ctx->unavailable ? LV_OPA_40 : LV_OPA_COVER;
-    lv_obj_set_style_opa(ctx->btn_minus, opa, LV_PART_MAIN);
-    lv_obj_set_style_opa(ctx->btn_plus, opa, LV_PART_MAIN);
-    lv_obj_set_style_opa(ctx->mode_btn, opa, LV_PART_MAIN);
-    lv_obj_set_style_opa(ctx->fan_btn, opa, LV_PART_MAIN);
-    lv_obj_set_style_opa(ctx->swing_btn, opa, LV_PART_MAIN);
+    if (ctx->unavailable) {
+        climate_popup_close(ctx);
+        ctx->pending_send = false;
+        if (ctx->send_timer != NULL) lv_timer_pause(ctx->send_timer);
+    }
+    ui_style_action_button(ctx->btn_minus, lv_obj_get_child(ctx->btn_minus, 0), UI_CONTROL_ACTION, !ctx->unavailable && ctx->has_target);
+    ui_style_action_button(ctx->btn_plus, lv_obj_get_child(ctx->btn_plus, 0), UI_CONTROL_ACTION, !ctx->unavailable && ctx->has_target);
+    ui_style_action_button(ctx->mode_btn, ctx->mode_label, UI_CONTROL_ACTION, !ctx->unavailable && ctx->hvac_mode_count > 0);
+    ui_style_action_button(ctx->fan_btn, ctx->fan_label, UI_CONTROL_ACTION, !ctx->unavailable && ctx->fan_mode_count > 0);
+    ui_style_action_button(ctx->swing_btn, ctx->swing_label, UI_CONTROL_ACTION, !ctx->unavailable && ctx->swing_mode_count > 0);
     const bool active = !ctx->unavailable && strcmp(ctx->hvac_mode, "off") != 0;
     ui_style_card_set_active(ctx->card, active);
     lv_obj_set_style_text_color(ctx->target_label, lv_color_hex(active ? APP_UI_COLOR_TEXT_PRIMARY : APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);

@@ -2,10 +2,10 @@
 
 # Security implementation
 
-How the HTTP layer, authentication and update paths work and where they stop, as of the v0.9.0 fork source. Based on a
+How the HTTP layer, authentication and update paths work and where they stop, in the current fork source. Based on a
 source review, host tests of the pure policies (admin authentication, request validation, URL and PNG guards) and checks
 on a `paneljc`; not a penetration test, and not every board was verified on hardware. Operating advice is on the
-[Security](SECURITY.md) page, changes against v0.8.2 are in [Security fixes](security-fixes.md).
+[Security](SECURITY.md) page, the historical comparison against v0.8.2 is linked from the [release notes](release-notes.md#v090).
 
 ## Exposure
 

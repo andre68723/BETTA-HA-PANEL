@@ -1,6 +1,33 @@
 <!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md -->
 # Components and patches
 
+## Module ownership
+
+[Development](../development.md#architecture) maps boot, configuration, networking, API, display and editor.
+Home Assistant/MQTT/Wi-Fi feed the model/event queue and `ui_runtime.c`; API layout saves rebuild the UI.
+
+| Responsibility | Source under main/ |
+| --- | --- |
+| HA transport/task, layout/settings loading and overflow logs | `ha/ha_client.c` |
+| Domain attribute compaction and forecast extraction | `ha/ha_attr_serialize.c` (host-tested) |
+| Layout-driven subscriptions | `ha/ha_layout_entities.c` |
+| Area/floor registry and display precision | `ha/ha_room_registry.c`, `ha/ha_display_precision.c` |
+| Editor discovery domains (one table entry per new domain) | `ha/ha_discovery_domains.c` |
+| Fallback names and parent-device areas | `ha/ha_registry_discovery.c` (host-tested) |
+| Bounded effect/fan options and escaped service values | `ha/ha_control_options.c` (host-tested) |
+| Seven-day history and Energy Gas/Water/Solar statistics | `ha/ha_history_stats.c` (pure, host-tested), `ha/ha_history_week.c` (serialized WebSocket worker) |
+| Daily bars in popups and Energy details | `ui/ui_days_view.c` |
+| Weather parsing | `ui/widgets/weather_value_parse.c` |
+| Weather rendering entry points and private modules | `ui/widgets/w_weather_tile.c`, `weather_tile_{lottie,text,icon,values,forecast,layout,popup,render}.c`, `weather_tile_internal.h` |
+| Shared firmware/simulator House and Energy configuration | `ui/ui_house_page.c`, `ui_energy_page_config_from_json()` |
+| Brightness/wake/inactivity, pure policy | `drivers/display_brightness.c`, `drivers/display_policy.c` |
+
+Statistics timestamps are UTC; day boundaries follow the panel's local zone. Measured reply shapes are in
+[Recorder statistics](learnings.md#recorder-statistics). Rendering refactors need before/after SDL hashes
+(`SDL_VIDEODRIVER=dummy`, simulator `--screenshot`), including the weather modules.
+The WebUI build bundles/fingerprints ordered JS and CSS, gzips and embeds three assets; see
+[Web editor source](../editor-source.md). Build-only bundles are not maintained source modules.
+
 ## Vendored camera component and the P4 silicon cap
 
 `components/esp_cam_sensor` is Espressif's core plus the OV02C10 driver (JC8012P4A1) and the SC202CS/SC2356 drivers
@@ -108,3 +135,11 @@ commit the matching lock when changing a manifest; use a disposable checkout for
 
 `python3 tools/check_component_updates.py` lists each managed component with locked version, constraint and newest
 registry version (see `tools/README.md`). Run it before touching `dependencies.lock*` or the manifests.
+
+## Dependency pins
+
+Variant manifests and lock files are authoritative. JC/Tab5 select `esp_sccb_intf` 1.0.0 and
+`libpng` 1.6.59; Panel10 has its own lock at 1.6.59, while Panel4 retains 1.6.58~2.
+The Waveshare BSP's split ESP-IDF driver dependencies are supplied during the first configure;
+a second configure is not required to discover missing driver components. Shared build/CI scripts
+may still reconfigure deliberately for their other responsibilities.

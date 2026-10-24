@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  *
- * Where LVGL's allocations land. With CONFIG_LV_USE_CUSTOM_MALLOC (config/sdkconfig.defaults.lvgl_stats) LVGL allocates through
+ * Where LVGL's allocations land. With CONFIG_LV_USE_CUSTOM_MALLOC (config/sdkconfig.defaults) LVGL allocates through
  * ui/lvgl_alloc.c, which counts live bytes per pool (internal RAM versus PSRAM) and can prefer PSRAM
  * (CONFIG_APP_LVGL_ALLOC_PSRAM_FIRST). Without it the counters stay zero and `active` is false.
  */

@@ -3604,12 +3604,14 @@ static bool ha_client_format_energy_period_iso(char *start_buf, size_t start_siz
     local_start.tm_hour = 0;
     local_start.tm_min = 0;
     local_start.tm_sec = 0;
+    local_start.tm_isdst = -1;
     time_t start = mktime(&local_start);
 
     struct tm local_end = local_start;
     local_end.tm_hour = 23;
     local_end.tm_min = 59;
     local_end.tm_sec = 59;
+    local_end.tm_isdst = -1;
     time_t end = mktime(&local_end);
     if (start <= 0 || end <= start) {
         return false;

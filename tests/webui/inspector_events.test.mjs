@@ -270,6 +270,27 @@ for (const [input, type, entity, property, firstChecked, firstValue, secondValue
   });
 }
 
+for (const [input, type, entity, property, value, reset, savedDefault] of [
+  ["fGraphPointCount", "graph", "sensor.temperature", "graph_point_count", 32, "", undefined],
+  ["fGraphBarBucketMin", "graph", "sensor.temperature", "graph_bar_bucket_min", 30, "15", 15],
+  ["fGaugeSegmentCount", "gauge", "sensor.temperature", "gauge_segment_count", 16, "10", undefined],
+  ["fSliderDirection", "slider", "cover.blind", "slider_direction", "bottom_to_top", "auto", "auto"],
+]) {
+  test(`${input}: real event, saved JSON, reload and default`, async () => {
+    const run = setupInspector(type, entity);
+    run('renderEntityOptions=()=>{}; el.fGraphDisplayMode.value="bars"; el.fGaugeStyle.value="linear"; el.fGaugeBarStyle.value="segmented"');
+    run(`el.${input}.value=${JSON.stringify(String(value))}; el.${input}.dispatch('change')`);
+    assert.equal(run(`selectedWidget().${property}`), value);
+    await run("el.saveBtn.onclick()");
+    assert.equal(run(`savedLayout.pages[0].widgets[0].${property}`), value);
+    run("editor.layout=savedLayout; normalizeLayoutWidgets(editor.layout); renderInspector()");
+    assert.equal(run(`selectedWidget().${property}`), value);
+    run(`el.${input}.value=${JSON.stringify(reset)}; el.${input}.dispatch('change')`);
+    await run("el.saveBtn.onclick()");
+    assert.equal(run(`savedLayout.pages[0].widgets[0].${property}`), savedDefault);
+  });
+}
+
 test("portfolio view and interval: choose, save, reload and return to the defaults through Inspector events", async () => {
   const run = setupInspector("parqet_portfolio", "sensor.portfolio_value");
   run("renderEntityOptions = () => {}");
@@ -334,7 +355,7 @@ test("sensor format and unit: offered by device class, saved, kept while hidden 
     { id: "sensor.power", device_class: "power", unit: "W" },
     { id: "sensor.cost", device_class: "monetary", unit: "EUR" },
     { id: "sensor.mode", device_class: "enum", unit: "" }]; renderInspector()`);
-  assert.equal(run("sensorTimeFormatShown(selectedWidget(), el.fEntity.value)"), true);
+  assert.equal(run("el.fSensorFormatWrap.classList.contains('hidden')"), false);
   assert.equal(run("el.fEntityClass.dataset.text"), "Timestamp");
   assert.equal(run("el.fSensorFormatLabel.textContent"), "Time format");
   assert.equal(run("sensorUnitChoices(selectedWidget(), el.fEntity.value)"), null);
@@ -601,6 +622,11 @@ for (const [project, camera, rotation] of [
     assert.equal(run("el.settingsHardwareNightEnabled.checked"), true);
     assert.equal(run("el.settingsHardwareNightStart.value"), "22:00");
     assert.equal(run("el.settingsHardwareNightEnd.value"), "06:00");
+    const source = fs.readFileSync(new URL("../../main/settings/runtime_settings.c", import.meta.url), "utf8");
+    const defaults = source.slice(source.indexOf("out->sound_enabled = false;"));
+    assert.equal(run("el.settingsHardwareNightEnabled.checked"), defaults.match(/out->hardware_night_enabled = (true|false);/)[1] === "true");
+    assert.equal(run("Number(el.settingsHardwarePresenceSensitivity.value)"), Number(defaults.match(/out->hardware_presence_sensitivity = (\d+);/)[1]));
+    assert.equal(run("el.settingsHardwareNightPresenceWake.checked"), defaults.match(/out->hardware_night_presence_wake = (true|false);/)[1] === "true");
     assert.equal(run("el.settingsHardwareAutoBrightness.checked"), camera);
     assert.equal(run("el.settingsHardwarePresenceWake.checked"), camera);
     assert.equal(run("el.settingsHardwareAutoRotation.checked"), rotation);

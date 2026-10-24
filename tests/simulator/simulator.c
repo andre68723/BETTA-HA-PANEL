@@ -826,10 +826,10 @@ static bool dump_layout(const char *path, const sim_widget_t *widgets, int count
         dump_object(out, &widgets[i].def, card, 1, NULL);
     }
     if (energy_page != NULL) {
-        /* The energy page is checked like one large widget (the 16-byte type field keeps "energy_dashboar"). */
+        /* The energy page is checked like one large widget. */
         ui_widget_def_t def = {0};
         snprintf(def.id, sizeof(def.id), "%s", "energy_page");
-        memcpy(def.type, "energy_dashboard", sizeof(def.type) - 1);
+        snprintf(def.type, sizeof(def.type), "%s", "energy_dashboard");
         lv_area_t a;
         lv_obj_get_coords(energy_page, &a);
         fprintf(out, "{\"widget\":\"energy_page\",\"type\":\"energy_dashboard\",\"depth\":0,\"kind\":\"card\",\"x1\":%d,\"y1\":%d,\"x2\":%d,\"y2\":%d}\n",

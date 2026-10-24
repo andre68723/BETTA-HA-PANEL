@@ -523,8 +523,9 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
         if (ctx->action_icon != NULL) {
             lv_obj_set_hidden(ctx->action_icon, false);
             lv_label_set_text(ctx->action_icon, button_icon_symbol(ctx->mode, is_on && !unavailable));
-            lv_obj_set_style_text_color(ctx->action_icon, unavailable ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED) : ctx->accent_color,
-                LV_PART_MAIN);
+            const bool active = ctx->mode == W_BUTTON_MODE_PLAY_PAUSE && is_on;
+            lv_obj_set_style_text_color(ctx->action_icon, unavailable ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED)
+                : active ? ctx->accent_color : lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
             button_layout_icon(card, ctx);
         }
     }
@@ -702,7 +703,7 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     ctx->state_label = state_label;
     ctx->action_switch = action_switch;
     ctx->action_icon = action_icon;
-    ctx->accent_color = ui_style_accent(lv_color_hex(W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX));
+    ctx->accent_color = lv_color_hex(APP_UI_COLOR_STATE_ON);
     ctx->mode = button_mode_from_text(def->button_mode);
     ctx->show_title = !def->hide_name && title_text[0] != '\0';
     ctx->show_status = !is_media_player;

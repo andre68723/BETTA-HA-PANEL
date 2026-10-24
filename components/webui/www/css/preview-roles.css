@@ -6,7 +6,7 @@
 #canvas .widget-box { --meta: var(--r-meta, 20px); --label: var(--r-label, 24px); --value: var(--r-value, 28px); --key: var(--r-key, 36px); }
 #canvas .tp { line-height: 1.3; }
 #canvas .tp b, #canvas .tp strong { font-weight: 500; }
-#canvas .tp small, #canvas .tp .tp-name, #canvas .tp .tp-chip, #canvas .tp .tp-badge { font-size: var(--meta); }
+#canvas .tp small, #canvas .tp .tp-name, #canvas .tp .tp-badge { font-size: var(--meta); }
 #canvas .tp .tp-name { color: var(--pv-text); }
 
 /* sensor: name LABEL (muted), value KEY fitted to the tile, age META */
@@ -125,7 +125,7 @@
 #canvas .tp-media .tp-bar i { background: var(--pv-accent); }
 #canvas .tp.tp-media .tp-btns { gap: 6px; align-items: center; }
 #canvas .tp.tp-media .tp-btns span { width: 52px; height: 52px; font-size: var(--meta); }
-#canvas .tp.tp-media .tp-btns span.tp-primary { width: 64px; height: 64px; background: var(--pv-accent); color: #10202e; border-color: var(--pv-accent); }
+#canvas .tp.tp-media .tp-btns span.tp-primary { width: 64px; height: 64px; }
 #canvas .tp-media .tp-vol { gap: 10px; }
 #canvas .tp-media .tp-vol > i { font-size: var(--meta); opacity: 0.7; }
 #canvas .tp-media .tp-vol .tp-bar { height: 22px; }
@@ -138,7 +138,7 @@
 #canvas .tp-vac-chips { display: flex; gap: 8px; width: 100%; }
 #canvas .tp-vac-select { flex: 1; min-width: 0; height: 40px; padding: 0 8px; display: flex; align-items: center; border-radius: 6px; background: #22445a;
   font-size: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#canvas .tp-vac-select:first-child:not(:last-child) { background: var(--pv-accent); color: #10202e; }
+
 /* w_vacuum.c beside_chip: name and state left-aligned, as wide as the card minus the charge chip */
 #canvas .tp-vac-beside .tp-vac-body { align-items: flex-start; justify-content: flex-start; text-align: left; }
 #canvas .tp-vac-beside .tp-vac-body > :is(.tp-name, small) { max-width: calc(100% - 4.5em); }
@@ -391,3 +391,39 @@ body:is([data-ui-style="glow"], [data-ui-style="glass"]) #canvas .tp-media .tp-v
 #canvas .evcc-flow-brackets svg { position: absolute; top: 0; width: 26px; height: 25px; fill: currentColor; }
 /* the wallbox draws from 12 px inside its card like w_wallbox_evcc.c, without the preview box's own padding */
 #canvas .widget-box:has(> .evcc-preview) { padding: 0; }
+
+/* Control meaning is shared with ui_style_action_button(), independent of size and appearance. */
+body[data-ui-style] #canvas .widget-box :is(.tp-btns span, .tp-vol span, .tp-vac-select, .tp-vac-btns span,
+  .tp-semi-btn, .tp-clim-mid span, .tp-clim-chips i, .tp-chips i, .tp-room-btn, .tp-icon-circle,
+  .car-x-btn, .bambu-preview-buttons span, .evcc-modes span, .evcc-control,
+  .control-action, .control-active, .control-danger, .control-disabled, .control-alert) {
+  background: var(--control-fill, var(--pv-control-bg, #202830)); color: var(--control-text, var(--pv-control-fg, #fff));
+  border-color: var(--pv-border); background-image: none;
+}
+body[data-ui-style] #canvas .widget-box :is(.control-active, .tp-chips i.on) {
+  --control-fill: var(--pv-control-active-bg, #b7cbd8); --control-text: var(--pv-control-active-fg, #101418);
+  border-color: var(--pv-border); background-image: none;
+}
+body[data-ui-style] #canvas .widget-box .control-danger {
+  --control-fill: var(--pv-control-danger-bg, #763c3c); --control-text: var(--pv-control-danger-fg, #fff);
+  background-image: none;
+}
+body[data-ui-style] #canvas .widget-box .control-disabled {
+  --control-fill: var(--pv-control-bg, #202830); --control-text: var(--pv-muted); opacity: .4;
+}
+body[data-ui-style] #canvas .widget-box .tp-button-icon > i { background: transparent; color: var(--pv-text); }
+body[data-ui-style] #canvas .widget-box .tp-button-icon > i.control-active { color: var(--pv-control-state, var(--pv-accent)); }
+body[data-ui-style] #canvas .widget-box .tp-button-icon > i.control-disabled { color: var(--pv-muted); }
+
+body[data-ui-style] #canvas .widget-box .control-selected-icon { --control-text: var(--pv-control-state, var(--pv-accent)); }
+
+#canvas .tp-fanbig.fan-off :is(.tp-fan-blades path, .tp-fan-hub) { fill: var(--pv-muted); }
+
+#canvas .tp-switch-big.off i { margin-left: 0; }
+#canvas .tp-switch-big.control-active { --control-fill: var(--pv-control-state, var(--pv-accent)); }
+#canvas .tp-climate > .tp-name, #canvas .tp-climate > small { flex-shrink: 0; }
+#canvas .tp-pq-interval:not(:empty) ~ .tp-name { max-width: calc(100% - 52px); }
+
+#canvas .tp-price-days em.control-active { opacity: 1; }
+
+body[data-ui-style] #canvas .widget-box .control-alert { --control-fill: var(--pv-control-danger, #db4437); --control-text: var(--pv-control-error-fg, #fff); }

@@ -2,7 +2,7 @@
 
 # Bambu printer
 
-Shows a **Bambu Lab printer's status**, temperatures, progress and remaining time from its `sensor.*` entities, with Pause/Resume and Stop buttons.
+Shows a **Bambu Lab printer's status**, temperatures, progress and remaining time from its `sensor.*` entities, with one Pause/Resume control and a separate print-abort button.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/bambu_a1_glow.png"><img src="../img/gallery/bambu_a1_glow.png" alt="Bambu A1, Glow style" loading="lazy" width="354" height="420" style="width: 283.2px"></a></figure>
@@ -46,7 +46,7 @@ The editor asks Home Assistant for your Bambu Lab printers; with a single printe
 - Status in the header, with the current step below it on a tall card.
 - A drawing of the printer with nozzle and bed temperature; both take a warm colour while hot.
 - Progress bar and remaining time of a running or paused job; a finished or failed job is marked **Last job**.
-- **Pause** or **Resume** (one button), **Status** and **Stop**.
+- **Pause** or **Resume** (one button), **Status** and **Abort**. The primary control is accented while printing; Abort asks for confirmation and ends the job.
 
 ### Controls
 

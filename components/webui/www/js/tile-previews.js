@@ -5,6 +5,64 @@
 // house page's grid, laid out like ui_house_page.c. Moved out of canvas.js; classic script, loaded before it.
 // tools/compare_editor_previews.py puts them next to the simulator's renderings.
 
+// Mirrors ui_style_action_button(): selected/active use accent, availability alone never does.
+function previewControlClass(active = false, enabled = true, danger = false) {
+  return !enabled ? "control-disabled" : danger ? "control-danger" : active ? "control-active" : "control-action";
+}
+
+function previewControlAccentStyle(widget) {
+  const accent = [widget.button_accent_color, widget.slider_accent_color].find(v => /^#[0-9a-f]{6}$/i.test(v || ""));
+  if (!accent) return "";
+  const nav = document.getElementById("canvas")?.style?.getPropertyValue?.("--pv-nav-active") || "#343436";
+  const rgb = hex => hex.slice(1).match(/../g).map(v => parseInt(v, 16));
+  const a = rgb(accent), b = /^#[0-9a-f]{6}$/i.test(nav) ? rgb(nav) : [52, 52, 54];
+  const fill = a.map((v, i) => Math.round((v * 180 + b[i] * 75) / 255));
+  const fg = (fill[0] * 3 + fill[1] * 4 + fill[2]) / 8 > 150 ? "#101418" : "#ffffff";
+  return `--pv-control-state:${accent};--pv-control-active-bg:rgb(${fill.join(",")});--pv-control-active-fg:${fg}`;
+}
+
+function previewControlAvailable(entityId, allowUnknown = false) {
+  const raw = editor.states.get(entityId);
+  return Boolean(entityId) && raw !== undefined && raw !== null && raw !== "" &&
+    raw !== "unavailable" && (allowUnknown || raw !== "unknown");
+}
+
+function previewSupports(entityId, feature, unknown = true) {
+  const features = editor.stateMeta.get(entityId)?.supported_features;
+  return typeof features === "number" ? (features & feature) !== 0 : unknown;
+}
+
+// Mirrors util/room_extra.c. A running entity without a usable Pause/Stop action is not an active button.
+function previewRoomAction(widget, direction = "toggle") {
+  const id = widget.room_extra_entity_id, state = previewEntityState(id);
+  const fallback = widget.room_extra_mode === "cover" ? "\u2191" : "\u25B6";
+  let action = "";
+  if (widget.room_extra_mode === "media_player") {
+    if (state === "playing" && previewSupports(id, 1)) action = "pause";
+    else if (["paused", "idle", "on", "standby"].includes(state) && previewSupports(id, 16384)) action = "play";
+  } else {
+    const pos = editor.stateMeta.get(id)?.current_position;
+    if (direction === "up") {
+      if (state === "opening" && previewSupports(id, 8)) action = "stop";
+      else if (["closed", "closing"].includes(state) || state === "open" && typeof pos === "number" && pos < 100) action = "up";
+    } else if (direction === "down") {
+      if (state === "closing" && previewSupports(id, 8)) action = "stop";
+      else if (["open", "opening"].includes(state)) action = "down";
+    } else if (["opening", "closing"].includes(state) && previewSupports(id, 8)) action = "stop";
+    else if (state === "closed") action = "up";
+    else if (state === "open") action = "down";
+  }
+  return { symbol: ({pause:"\u23F8",play:"\u25B6",stop:"\u25A0",up:"\u2191",down:"\u2193"})[action] || fallback,
+    role: previewControlClass(["pause", "stop"].includes(action), Boolean(action) && previewControlAvailable(id)) };
+}
+
+function previewPreconditionActive(widget) {
+  const id = widget.precond_entity_id || "";
+  const state = previewEntityState(id);
+  if (/^(switch|input_boolean)\./.test(id)) return state === "on";
+  return id.startsWith("climate.") && ["heat", "cool", "heat_cool", "auto", "dry", "fan_only"].includes(state);
+}
+
 function solarPreviewValue(entityId) {
   const raw = editor.states.get(entityId) ?? "";
   const parsed = Number(String(raw).replace(",", "."));
@@ -98,7 +156,7 @@ function carPreviewExtras(widget) {
   const h = Number(widget.rect && widget.rect.h) || 0;
   const status = [widget.lock_entity_id ? `<span class="car-x-ok">${pvText("car_locked")}</span>` : "",
     widget.interior_temp_entity_id ? "<span>21.5\u00B0C</span>" : ""].join("");
-  const button = widget.precond_entity_id ? `<span class="car-x-btn">${pvText("car_precond")}</span>` : "";
+  const button = widget.precond_entity_id ? `<span class="car-x-btn ${previewControlClass(previewPreconditionActive(widget), previewControlAvailable(widget.precond_entity_id, /^(button|input_button)\./.test(widget.precond_entity_id)))}">${pvText("car_precond")}</span>` : "";
   if (h < 330 || w < 200 || (!status && !button)) return { markup: "", height: 0 };
   const line = previewLineHeight(textRoleSize("meta", 20));
   const height = (status ? line : 0) + (status && button ? 6 : 0) + (button ? 44 : 0);
@@ -154,7 +212,7 @@ function sonosFavoritesPreviewMarkup(widget) {
       ${widgetNamePreview(widget, "div", 'class="sonos-preview-title"')}
       <div class="sonos-preview-meta">${escapeHtml(t(`preview.media.state.${state}`, {}, state))}</div>
       <div class="sonos-preview-list">
-        ${sampleRows.map((name) => `<div>\u25B6 ${escapeHtml(name)}</div>`).join("")}
+        ${sampleRows.map((name) => `<div class="${previewControlClass(false, previewControlAvailable(widget.entity_id))}">\u25B6 ${escapeHtml(name)}</div>`).join("")}
       </div>
     </div>
     <div class="resize-handle"></div>
@@ -398,7 +456,7 @@ function roomPreviewControls(summary) {
   if (summary.lights) controls.push([summary.lightsOn > 0, word(summary.lightsOn, "layout.preview.room_light_on_one", "layout.preview.room_lights_on_n", "layout.preview.room_lights_off")]);
   if (summary.switches) controls.push([summary.switchesOn > 0, word(summary.switchesOn, "layout.preview.room_switch_on", "layout.preview.room_switches_on_n", "layout.preview.room_switches_off")]);
   if (summary.covers) controls.push([summary.coversOpen > 0, t(summary.coversOpen ? "layout.preview.room_open" : "layout.preview.room_closed")]);
-  return controls.map(([on, text]) => `<i class="${on ? "c-amber" : "c-muted"} tp-room-ctl">${escapeHtml(text)}</i>`).join("");
+  return controls.map(([on, text]) => `<i class="${previewControlClass(on)} tp-room-ctl">${escapeHtml(text)}</i>`).join("");
 }
 
 function roomPreviewChips(summary, cardWidth, withControls = false) {
@@ -565,7 +623,7 @@ function heatingSemiPreview(widget, w, h, opening) {
     <circle class="fill" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke-dasharray="${half * 0.5} ${2 * half}"/></g></svg>`;
   const centred = (cls, text, px, y) => `<${cls === "b" ? "b" : "small"} class="${cls === "b" ? "" : cls}" style="left:${Math.round(textCx)}px;top:${Math.round(y)}px;font-size:${px}px">${escapeHtml(text)}</${cls === "b" ? "b" : "small"}>`;
   return `<div class="tp-semi">${ring}${endLabel("5", start)}${endLabel("30", stop)}
-    ${buttons.map(([text, x, y]) => `<span class="tp-semi-btn" style="left:${Math.round(x)}px;top:${Math.round(y)}px">${text}</span>`).join("")}
+    ${buttons.map(([text, x, y]) => `<span class="tp-semi-btn ${previewControlClass(false, previewControlAvailable(widget.entity_id))}" style="left:${Math.round(x)}px;top:${Math.round(y)}px">${text}</span>`).join("")}
     ${centred("tp-heat-target", target, role("meta"), top)}${centred("b", actual, actualPx, top + line(role("meta")) + 2)}
     ${withStatus ? centred("tp-heat-status", status, role("meta"), top + line(role("meta")) + 2 + line(actualPx) + 2) : ""}</div>`;
 }
@@ -703,17 +761,23 @@ function tilePreviewMarkup(widget) {
       // rows (about 226 px plus the name line), so a tile below ~330 px shows none; shuffle and repeat need ~280 px.
       const showCover = h - 28 - (widgetShowsName(widget) ? 22 : 0) - 226 >= 72;
       const extras = w >= 280;
+      const playing = previewEntityState(widget.entity_id) === "playing";
+      const controls = previewControlClass(playing, previewControlAvailable(widget.entity_id));
+      const mediaMeta = editor.stateMeta.get(widget.entity_id) || {};
+      const available = previewControlAvailable(widget.entity_id), action = previewControlClass(false, available);
+      const shuffle = extras && previewSupports(widget.entity_id, 32768);
+      const repeat = extras && previewSupports(widget.entity_id, 262144);
       const showArtist = showCover || h >= 234;
       // Position and duration beside the progress bar, the larger play button in the middle and the volume bar with its
       // speaker symbol, or between minus and plus in the glow and glass styles (w_media_player.c).
-      return `<div class="tp tp-media${showCover ? "" : " tp-media-nocover"}">${name('div', 'class="tp-name"')}
+      return `<div class="tp tp-media${showCover ? "" : " tp-media-nocover"}" style="${previewControlAccentStyle(widget)}">${name('div', 'class="tp-name"')}
         ${showCover ? '<div class="tp-cover"></div>' : ""}<div class="tp-track"><b>${pvText("song")}</b>${showArtist ? `<small>${pvText("artist")}</small>` : ""}</div>
         <div class="tp-media-progress"><small>1:24</small><div class="tp-bar"><i style="width:35%"></i></div><small>3:30</small></div>
-        <div class="tp-btns">${extras ? "<span>\u21C4</span>" : ""}<span>\u23EE</span><span class="tp-primary">\u23F8</span><span>\u23ED</span>${extras ? "<span>\u21BB</span>" : ""}</div>
+        <div class="tp-btns">${shuffle ? `<span class="${action}${available && mediaMeta.shuffle ? " control-selected-icon" : ""}">\u21C4</span>` : ""}<span class="${action}">\u23EE</span><span class="tp-primary ${controls}">${playing ? "\u23F8" : "\u23F5"}</span><span class="${action}">\u23ED</span>${repeat ? `<span class="${action}${available && mediaMeta.repeat && mediaMeta.repeat !== "off" ? " control-selected-icon" : ""}">\u21BB</span>` : ""}</div>
         <div class="tp-vol"><span class="tp-vol-btn">\u2212</span><i>\uD83D\uDD08</i><div class="tp-bar tp-bar-knob"><i style="width:45%"></i><u></u></div><span class="tp-vol-btn">+</span></div></div>${handle}`;
     }
     case "vacuum_tile": {
-      const state = previewEntityState(widget.entity_id);
+      const state = String(editor.states.get(widget.entity_id) ?? "");
       const cleaning = ["cleaning", "returning", "mopping"].includes(state);
       const wide = w >= h * 1.8;
       const robot = h >= 260 || wide;
@@ -724,28 +788,37 @@ function tilePreviewMarkup(widget) {
       // select entity and the suction level share the chip row.
       const battery = Number(previewEntityState(widget.battery_entity_id));
       const batteryText = widget.battery_entity_id && previewEntityState(widget.battery_entity_id) !== "" && Number.isFinite(battery) ? `${Math.round(battery)} %` : "82 %";
-      const mode = widget.tertiary_entity_id ? `<div class="tp-vac-select">${escapeHtml(previewVacuumMode(previewEntityState(widget.tertiary_entity_id)) || "--")}</div>` : "";
+      const mode = widget.tertiary_entity_id ? `<div class="tp-vac-select ${previewControlClass(false, previewControlAvailable(widget.tertiary_entity_id))}">${escapeHtml(previewVacuumMode(previewEntityState(widget.tertiary_entity_id)) || "--")}</div>` : "";
       return `<div class="tp tp-vac${wide ? " tp-vac-wide" : ""}${robot && !wide ? "" : " tp-vac-beside"}${cleaning ? " active" : ""}">${robot ? art : ""}<div class="tp-vac-body">${name('div', 'class="tp-name"')}<span class="tp-vac-battery">${batteryText}</span>
-        <small>${state ? escapeHtml(t(`preview.vacuum.state.${state}`, {}, state)) : pvText("vacuum_docked")}</small><div class="tp-vac-chips">${mode}<div class="tp-vac-select">balanced</div></div>
-        <div class="tp-vac-btns"><span class="on">${cleaning ? "\u23F8" : "\u23F5"}</span><span>\u23F9</span><span>\u2302</span></div></div></div>${handle}`;
+        <small>${state ? escapeHtml(t(`preview.vacuum.state.${state}`, {}, state)) : pvText("vacuum_docked")}</small><div class="tp-vac-chips">${mode}<div class="tp-vac-select ${previewControlClass(false, previewControlAvailable(widget.entity_id))}">balanced</div></div>
+        <div class="tp-vac-btns"><span class="${previewControlClass(cleaning, previewControlAvailable(widget.entity_id))}">${cleaning ? "\u23F8" : "\u23F5"}</span>${previewSupports(widget.entity_id, 8, false) ? `<span class="${previewControlClass(false, previewControlAvailable(widget.entity_id))}">\u23F9</span>` : ""}<span class="${previewControlClass(false, previewControlAvailable(widget.entity_id))}">\u2302</span></div></div></div>${handle}`;
     }
     case "cover_tile":
       // Buttons as tall as the tile allows (h - 24 px, 32-44 px, 40 below 300 px width), like w_cover.c.
       return `<div class="tp tp-blind" style="--btn:${clamp(Math.min(h - 24, w < 300 ? 40 : 44), 32, 44)}px"><div class="tp-blind-text">${name('b', '')}<small>${pvText("open_pct", { pct: 70 })}</small><div class="tp-bar"><i style="width:70%"></i></div></div>
-        <div class="tp-btns"><span>\u2191</span><span>\u25A0</span><span>\u2193</span></div></div>${handle}`;
+        <div class="tp-btns"><span class="${previewControlClass(previewEntityState(widget.entity_id) === "opening", previewControlAvailable(widget.entity_id))}">\u2191</span>${previewSupports(widget.entity_id, 8) ? `<span class="${previewControlClass(false, previewControlAvailable(widget.entity_id))}">\u25A0</span>` : ""}<span class="${previewControlClass(previewEntityState(widget.entity_id) === "closing", previewControlAvailable(widget.entity_id))}">\u2193</span></div></div>${handle}`;
     case "fan_tile":
       if (h >= 220 && w >= 200) {
-        return `<div class="tp tp-fanbig"><div class="tp-fanbig-top">${name('b', '')}<small>${pvText("fan_on", { pct: 60 })} ${pvText("fan_auto")}</small><span class="tp-fan-power">\u23FB</span></div><div class="tp-rotor"><svg viewBox="0 0 100 100" aria-hidden="true">
+        const meta = editor.stateMeta.get(widget.entity_id);
+        const on = previewEntityState(widget.entity_id) === "on";
+        const enabled = previewControlAvailable(widget.entity_id);
+        const step = meta?.percentage_step > 0 ? meta.percentage_step : 100 / 3;
+        const count = clamp(Math.round(100 / step), 2, 6);
+        const current = Math.round((meta?.percentage ?? 60) / (count === 6 && step < 100 / 6 ? 100 / 6 : step));
+        const presets = meta?.preset_modes || [t("layout.preview.fan_auto"), t("layout.preview.fan_sleep"), t("layout.preview.fan_breeze")];
+        const speeds = Array.from({ length: count }, (_, i) => `<i class="${previewControlClass(current === i + 1, enabled)}">${i + 1}</i>`).join("");
+        const choices = presets.map((preset, i) => `<i class="${previewControlClass(meta ? meta.preset_mode === preset : i === 0, enabled)}">${escapeHtml(preset)}</i>`).join("");
+        return `<div class="tp tp-fanbig${on ? "" : " fan-off"}"><div class="tp-fanbig-top">${name('b', '')}<small>${on ? pvText("fan_on", { pct: meta?.percentage ?? 60 }) : escapeHtml(t("layout.preview.off"))}${meta?.preset_mode ? ` · ${escapeHtml(meta.preset_mode)}` : ""}</small><span class="tp-fan-power ${previewControlClass(on, enabled)}">\u23FB</span></div><div class="tp-rotor"><svg viewBox="0 0 100 100" aria-hidden="true">
           <circle class="tp-fan-guard" cx="50" cy="50" r="46"/>
           <g class="tp-fan-blades">${[0, 120, 240].map(angle => `<path transform="rotate(${angle} 50 50)" d="M47 46 C34 39 30 25 38 16 C43 10 57 12 66 18 C75 26 67 40 53 47 Z"/>`).join("")}</g>
           <circle class="tp-fan-hub" cx="50" cy="50" r="8"/></svg></div>
-          <div class="tp-chips"><i>1</i><i>2</i><i class="on">3</i><i>4</i><i>5</i></div><div class="tp-chips"><i class="on">${pvText("fan_auto")}</i><i>${pvText("fan_sleep")}</i><i>${pvText("fan_breeze")}</i></div></div>${handle}`;
+          <div class="tp-chips">${speeds}</div>${choices ? `<div class="tp-chips">${choices}</div>` : ""}</div>${handle}`;
       }
       {
         // A fan that is off reads OFF with an empty bar; buttons h - 24 px within 32-44 px (w_fan.c).
-        const off = ["off", "unavailable"].includes(previewEntityState(widget.entity_id));
+        const off = !previewControlAvailable(widget.entity_id) || previewEntityState(widget.entity_id) === "off";
         return `<div class="tp tp-blind" style="--btn:${clamp(h - 24, 32, 44)}px"><div class="tp-blind-text">${name('b', '')}<small>${off ? escapeHtml(t("layout.preview.off", {}, "OFF")) : pvText("fan_on", { pct: 60 })}</small><div class="tp-bar"><i style="width:${off ? 0 : 60}%"></i></div></div>
-        <div class="tp-btns"><span>\u2212</span><span class="tp-primary${off ? " off" : ""}">\u23FB</span><span>+</span></div></div>${handle}`;
+        <div class="tp-btns"><span class="${previewControlClass(false, previewControlAvailable(widget.entity_id))}">\u2212</span><span class="tp-primary ${previewControlClass(!off, previewControlAvailable(widget.entity_id))}">\u23FB</span><span class="${previewControlClass(false, previewControlAvailable(widget.entity_id))}">+</span></div></div>${handle}`;
       }
     case "camera_tile":
       return `<div class="tp tp-camera"><div class="tp-cam-img">${widget.camera_live ? escapeHtml(t("layout.preview.camera_connecting")) : "\uD83D\uDCF7"}</div>${name('div', 'class="tp-cam-strip"')}</div>${handle}`;
@@ -755,12 +828,12 @@ function tilePreviewMarkup(widget) {
     }
     case "lock_tile": {
       const state = editor.states.get(widget.entity_id) || "locked";
-      return `<div class="tp tp-contact${previewRoomyClass(w, h)}"><div class="tp-icon-circle" style="${previewCircleSize(w, h)}">${["locked", "locking"].includes(state) ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(t(`preview.lock.state.${state}`, {}, state))}</small></div></div>${handle}`;
+      return `<div class="tp tp-contact${previewRoomyClass(w, h)}"><div class="tp-icon-circle ${state === "jammed" && previewControlAvailable(widget.entity_id) ? "control-alert" : previewControlClass(["unlocked", "unlocking", "open", "opening"].includes(state), previewControlAvailable(widget.entity_id))}" style="${previewCircleSize(w, h)}">${["locked", "locking"].includes(state) ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(t(`preview.lock.state.${state}`, {}, state))}</small></div></div>${handle}`;
     }
     case "alarm_tile": {
       const state = editor.states.get(widget.entity_id) || "disarmed";
       const armed = state.startsWith("armed");
-      return `<div class="tp tp-contact${previewRoomyClass(w, h)}"><div class="tp-icon-circle${armed ? " on" : ""}" style="${previewCircleSize(w, h)}">${armed ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(t(`preview.alarm.state.${state}`, {}, state.replace(/_/g, " ")))}</small></div></div>${handle}`;
+      return `<div class="tp tp-contact${previewRoomyClass(w, h)}"><div class="tp-icon-circle ${["pending", "triggered"].includes(state) && previewControlAvailable(widget.entity_id) ? "control-alert" : previewControlClass(armed, previewControlAvailable(widget.entity_id))}" style="${previewCircleSize(w, h)}">${armed ? "\uD83D\uDD12" : "\uD83D\uDD13"}</div><div class="tp-blind-text">${name('b', '')}<small>${escapeHtml(t(`preview.alarm.state.${state}`, {}, state.replace(/_/g, " ")))}</small></div></div>${handle}`;
     }
     case "energy_timeline": {
       // As w_energy_timeline.c: name and the time of the last update on top; four counter rings with unit and caption and a
@@ -834,7 +907,7 @@ function tilePreviewMarkup(widget) {
       }).join("");
       // Options of the price timeline card: day_switch shows the day buttons, cheap_times shades the cheap hours and names the next window.
       const days = daySwitch
-        ? `<span class="tp-price-days"><em class="on">${escapeHtml(t("preview.price.today"))}</em>${Number(widget.rect?.w) < 360 ? "" : `<em>${escapeHtml(t("preview.price.tomorrow"))}</em>`}</span>` : "";
+        ? `<span class="tp-price-days"><em class="control-active">${escapeHtml(t("preview.price.today"))}</em>${Number(widget.rect?.w) < 360 ? "" : `<em class="control-action">${escapeHtml(t("preview.price.tomorrow"))}</em>`}</span>` : "";
       const cheap = widget.price_cheap_times === true;
       // the cheap window 11:00-16:00 (slots 44..64) at its place in the view
       const bandStart = ((44 - shift) % 96 + 96) % 96;
@@ -879,7 +952,7 @@ function tilePreviewMarkup(widget) {
       let y = 40;
       if (tabsOn) y += 34;
       if (chipsOn) y += 34;
-      const chipEm = (label, on) => `<em class="${on ? "on" : ""}">${label}</em>`;
+      const chipEm = (label, on) => `<em class="${previewControlClass(on)}">${label}</em>`;
       const tabsRow = tabsOn
         ? `<div class="tp-pq-chips">${chipEm(escapeHtml(t("layout.option.parqet_view.performance")), !holdingsView)}${chipEm(escapeHtml(t("layout.option.parqet_view.holdings")), holdingsView)}</div>` : "";
       const chipsRow = chipsOn
@@ -952,7 +1025,7 @@ function tilePreviewMarkup(widget) {
       return `<div class="tp tp-datetime">${name('small', '')}<b>${previewEntityValue(widget.entity_id, "06:30", previewDateTimeValue)}</b></div>${handle}`;
     }
     case "scene_tile":
-      return `<div class="tp tp-contact"><div class="tp-icon-circle on" style="${previewCircleSize(w, h)}">\u25B6</div><div class="tp-blind-text">${name('b', '')}<small>${pvText(previewSceneKind(widget.entity_id))}</small></div></div>${handle}`;
+      return `<div class="tp tp-contact"><div class="tp-icon-circle ${previewControlClass(false, previewControlAvailable(widget.entity_id, true))}" style="${previewCircleSize(w, h)}">\u25B6</div><div class="tp-blind-text">${name('b', '')}<small>${pvText(previewSceneKind(widget.entity_id))}</small></div></div>${handle}`;
     case "binary_tile":
       if (widget.display_mode === "door") {
         const open = previewEntityState(widget.entity_id) !== "off";
@@ -988,14 +1061,18 @@ function tilePreviewMarkup(widget) {
       const rightW = w - 28 - ring - 10;
       const expanded = action && ring >= 56 && rightW >= 130;
       const compact = action && !expanded && h >= 100 && w >= 200;
-      const word = extra === "cover" ? pvText("room_open") : pvText("room_playing");
-      const buttons = extra === "cover" ? (rightW - 2 * 44 - 16 >= 56 ? ["\u2191", "\u2193"] : ["\u2193"]) : ["\u25B6"];
+      const extraState = previewEntityState(widget.room_extra_entity_id);
+      const extraActive = extra === "media_player" ? extraState === "playing" : ["opening", "closing"].includes(extraState);
+      const primary = previewRoomAction(widget);
+      const extraRole = primary.role;
+      const word = extra === "cover" ? pvText("room_open") : extraState === "paused" ? escapeHtml(t("layout.preview.room_paused")) : pvText("room_playing");
+      const buttons = extra === "cover" && rightW - 2 * 44 - 16 >= 56 ? [previewRoomAction(widget, "up"), previewRoomAction(widget, "down")] : [primary];
       const side = extra === "humidity" ? `<b class="tp-room-side${ring >= 90 ? " big" : ""}">${escapeHtml(summary.hum ?? "45 %")}</b>`
-        : expanded ? `<span class="tp-room-extra">${word}</span>${buttons.map((b) => `<span class="tp-room-btn">${b}</span>`).join("")}`
+        : expanded ? `<span class="tp-room-extra">${word}</span>${buttons.map((b) => `<span class="tp-room-btn ${b.role}">${b.symbol}</span>`).join("")}`
           : !expanded && summary.hum !== null ? `<b class="tp-room-side tp-room-hum">${escapeHtml(summary.hum)}</b>` : "";
       // The corner button is icon, word and padding wide (at most 52 % of the card); the chips keep clear of it.
       const cornerW = compact ? Math.min(Math.max(44, 8 + 24 + 4 + previewTextWidth(word, textRoleSize("meta", 20)) + 8), (w - 28) * 0.52) : 0;
-      const corner = compact ? `<span class="tp-room-action" style="width:${Math.round(cornerW)}px"><i>${extra === "cover" ? "\u2193" : "\u25B6"}</i>${word}</span>` : "";
+      const corner = compact ? `<span class="tp-room-action ${extraRole}" style="width:${Math.round(cornerW)}px"><i>${primary.symbol}</i>${word}</span>` : "";
       return `<div class="tp tp-room${compact ? " tp-room-cornered" : ""}" style="--corner:${Math.round(cornerW)}px">${corner}${name('div', 'class="tp-name" style="text-align:left"')}<div class="tp-room-main">${ring ? `<i class="tp-room-ring" style="width:${ring}px;height:${ring}px"><b>${temp}</b></i>` : `<b class="tp-room-temp">${temp}</b>`}${side}</div>
         ${controls ? `<div class="tp-room-chips tp-room-controls">${controls}</div>` : ""}<div class="tp-room-chips">${chips}</div></div>${handle}`;
     }
@@ -1025,9 +1102,10 @@ function tilePreviewMarkup(widget) {
     case "button": {
       // A media mode shows its 48 px transport symbol over the name instead of the switch (w_button.c).
       const symbols = { play_pause: previewEntityState(widget.entity_id) === "playing" ? "\u23F8" : "\u25B6", stop: "\u25A0", previous: "\u23EE", next: "\u23ED" };
-      if (symbols[widget.button_mode]) return `<div class="tp tp-button tp-button-icon"><i>${symbols[widget.button_mode]}</i>${name('b', '')}</div>${handle}`;
+      if (symbols[widget.button_mode]) return `<div class="tp tp-button tp-button-icon" style="${previewControlAccentStyle(widget)}"><i class="${previewControlClass(widget.button_mode === "play_pause" && previewEntityState(widget.entity_id) === "playing", previewControlAvailable(widget.entity_id))}">${symbols[widget.button_mode]}</i>${name('b', '')}</div>${handle}`;
       // The state line needs room between it and the name above the switch (w_button.c): about 150 px of height.
-      return `<div class="tp tp-button">${h >= 150 ? `<small class="tp-button-state">${pvText("on_state")}</small>` : ""}<div class="tp-switch tp-switch-big"><i></i></div>${name('b', '')}</div>${handle}`;
+      const on = ["on", "open", "playing", "home"].includes(previewEntityState(widget.entity_id));
+      return `<div class="tp tp-button" style="${previewControlAccentStyle(widget)}">${h >= 150 ? `<small class="tp-button-state">${escapeHtml(t(on ? "layout.preview.on" : "layout.preview.off"))}</small>` : ""}<div class="tp-switch tp-switch-big ${on ? "" : "off "}${previewControlClass(on, previewControlAvailable(widget.entity_id))}"><i></i></div>${name('b', '')}</div>${handle}`;
     }
     case "slider": {
       // Vertical when the direction says so (blinds), horizontal otherwise; like the panel it shows state and value.

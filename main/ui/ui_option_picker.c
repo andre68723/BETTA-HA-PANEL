@@ -67,15 +67,6 @@ static void picker_option_cb(lv_event_t *event)
     lv_obj_delete_async(picker->overlay);
 }
 
-static lv_color_t picker_surface(void)
-{
-    return lv_color_mix(lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BG), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), 220);
-}
-
-static lv_color_t picker_pressed(lv_color_t color)
-{
-    return lv_color_brightness(color) > 127 ? lv_color_darken(color, 26) : lv_color_lighten(color, 26);
-}
 
 lv_obj_t *ui_option_picker_open(const ui_option_picker_cfg_t *cfg)
 {
@@ -153,21 +144,18 @@ lv_obj_t *ui_option_picker_open(const ui_option_picker_cfg_t *cfg)
     lv_obj_set_scrollable(list, true);
     lv_obj_set_scroll_dir(list, LV_DIR_VER);
 
-    const lv_color_t current_bg =
-        lv_color_mix(lv_color_hex(APP_UI_COLOR_STATE_ON), lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 176);
-    const lv_color_t current_border = lv_color_mix(current_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER), 150);
+
     lv_obj_t *current_btn = NULL;
     for (size_t i = 0; i < cfg->count; i++) {
         const bool current = i == cfg->current;
-        const lv_color_t bg = current ? current_bg : picker_surface();
+        const lv_color_t bg = ui_style_control_color(current ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION, true);
         lv_obj_t *btn = lv_btn_create(list);
         lv_obj_set_size(btn, LV_PCT(100), row_h);
         lv_obj_set_scroll_on_focus(btn, false);
         lv_obj_set_user_data(btn, (void *)(uintptr_t)i);
         lv_obj_add_event_cb(btn, picker_option_cb, LV_EVENT_CLICKED, picker);
         lv_obj_set_style_radius(btn, ui_style_radius(18), LV_PART_MAIN);
-        ui_style_button(btn, bg, current ? current_border : lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER),
-                        picker_pressed(bg));
+        ui_style_action_button(btn, NULL, current ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION, true);
         lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
 
         lv_obj_t *label = lv_label_create(btn);
@@ -175,8 +163,7 @@ lv_obj_t *ui_option_picker_open(const ui_option_picker_cfg_t *cfg)
         cfg->label(cfg->user, i, text, sizeof(text));
         lv_label_set_text(label, text);
         lv_obj_set_style_text_font(label, ui_font_role(UI_TEXT_VALUE), LV_PART_MAIN);
-        lv_obj_set_style_text_color(label, current ? ui_style_button_icon_color(bg)
-                                                   : lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
+        lv_obj_set_style_text_color(label, ui_style_button_icon_color(bg), LV_PART_MAIN);
         lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
         lv_obj_set_width(label, card_w - 2 * card_pad - 28);
         lv_obj_set_height(label, lv_font_get_line_height(ui_font_role(UI_TEXT_VALUE)));

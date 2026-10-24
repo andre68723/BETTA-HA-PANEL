@@ -33,7 +33,7 @@ else
 fi
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
-cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -g \
+cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -Dtime=host_test_time -g \
   -I main -I tests/host/stubs "${variant_flags[@]}" "${cjson_flags[@]}" \
   tests/host/test_main.c tests/host/test_energy_timeline_colors.c tests/host/test_sensor_value.c tests/host/test_quote.c main/ha/ha_quote.c main/ui/theme/matte_title.c main/ui/theme/ui_style_registry.c main/settings/brightness_model.c main/settings/settings_restart.c main/settings/settings_validate.c main/layout/layout_validate.c main/layout/bambu_printer_slots.c main/layout/evcc_slots.c main/layout/layout_orientation.c main/layout/widget_types.c main/util/atomic_file.c tests/host/flash_gate_stub.c main/util/cover_scale.c main/drivers/display_policy.c main/util/json_util.c main/util/cover_guard.c main/util/boot_guard.c main/util/entity_id.c main/util/distance_units.c main/util/iso_time.c main/util/room_extra.c main/util/ota_health.c main/util/auto_update.c main/util/sha256_soft.c main/util/auto_update_state.c main/util/user_activity.c main/ui/nav_layout.c main/util/reboot_log.c main/util/net_watchdog.c main/util/ui_watchdog.c main/util/ota_chip_rev.c main/util/history_feed_policy.c main/util/chart_scale.c main/ha/energy_timeline_model.c main/util/url_decode.c main/util/notification_parse.c main/ui/notification_text.c main/util/chime_synth.c main/ha/ha_attrs_compact.c main/ha/ha_attr_serialize.c main/ha/ha_price_series.c main/ha/ha_history_stats.c main/ha/ha_layout_entities.c main/ha/ha_display_precision.c main/ha/ha_discovery_domains.c main/ha/ha_registry_discovery.c main/ha/ha_auth_state.c main/ha/ha_select_options.c main/ha/ha_control_options.c main/ha/ha_datetime_value.c main/ha/ha_timestamp_format.c main/ha/ha_sensor_value.c main/ha/ha_history_reduce.c main/ha/ha_lock_state.c main/ha/ha_alarm_state.c main/ha/ha_room_registry.c main/ui/widgets/weather_value_parse.c main/ui/widgets/weather_condition_icon.c main/net/wifi_signal_level.c main/net/setup_passphrase.c main/net/update_check_parse.c "${cjson_sources[@]}" \
   "${cjson_libs[@]}" -lm -o "$out/test_host"
@@ -46,7 +46,7 @@ cc -std=gnu11 -Wall -Wextra -Werror -g -I main \
   tests/host/test_display_rotation.c main/drivers/display_rotation.c \
   -o "$out/test_display_rotation"
 "$out/test_display_rotation"
-"$out/test_host"
+TZ=Europe/Berlin "$out/test_host"
 
 # C6 diagnostic snapshots: lifecycle/retry policy and versioned incident records, no radio.
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main "${cjson_flags[@]}" \
@@ -194,12 +194,12 @@ cc -std=gnu11 -Wall -Wextra -Werror -g -I main "${cjson_flags[@]}" \
 
 # The real 7-day history worker with pthread-backed FreeRTOS stubs and a scriptable WebSocket: busy gate, silence, late
 # and failing replies, partial sources, units, queue overflow and no allocation left behind after a thousand requests.
-cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -g -pthread \
+cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -Dtime=history_test_time -g -pthread \
   -DWEEK_REPLY_TIMEOUT_MS=300 -DWEEK_GATE_POLL_MS=10 -DWEEK_CHECK_GATE_WAIT_MS=100 -DWEEK_REQUEST_GATE_WAIT_MS=100 \
   -I tests/host/week_stubs -I main -I tests/host/stubs "${variant_flags[@]}" "${cjson_flags[@]}" \
   tests/host/test_history_week.c main/ha/ha_history_week.c main/ha/ha_history_stats.c \
   "${cjson_sources[@]}" "${cjson_libs[@]}" -lm -o "$out/test_history_week"
-"$out/test_history_week"
+TZ=Europe/Berlin "$out/test_history_week"
 
 # Real HTTP workers: bounded gate/slow transfers, auth rejection, cleanup and retry after task creation fails.
 for worker in recorder easy; do

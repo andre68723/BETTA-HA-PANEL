@@ -86,6 +86,41 @@ lv_color_t ui_style_control_bg(lv_color_t fallback)
     return p != NULL ? lv_color_hex(p->matte_track) : fallback;
 }
 
+lv_color_t ui_style_control_fill(ui_control_role_t role, bool enabled, lv_color_t accent)
+{
+    const lv_color_t idle = ui_style_control_bg(lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE));
+    if (!enabled) return idle;
+    switch (role) {
+    case UI_CONTROL_ACTIVE:
+    case UI_CONTROL_SELECTED:
+        return lv_color_mix(accent, lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 180);
+    case UI_CONTROL_DANGER:
+        return lv_color_mix(lv_color_hex(APP_UI_COLOR_ERROR), idle, 70);
+    case UI_CONTROL_ACTION:
+        return idle;
+    }
+    return idle;
+}
+
+lv_color_t ui_style_control_color(ui_control_role_t role, bool enabled)
+{
+    return ui_style_control_fill(role, enabled, lv_color_hex(APP_UI_COLOR_STATE_ON));
+}
+
+void ui_style_action_button(lv_obj_t *btn, lv_obj_t *label, ui_control_role_t role, bool enabled)
+{
+    if (btn == NULL) return;
+    const lv_color_t bg = ui_style_control_color(role, enabled);
+    ui_style_button_auto(btn, bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
+    lv_obj_set_state(btn, LV_STATE_DISABLED, !enabled);
+    lv_obj_set_style_opa(btn, enabled ? LV_OPA_COVER : LV_OPA_40, LV_PART_MAIN);
+    if (label != NULL) {
+        const lv_color_t fg = enabled ? ui_style_button_icon_color(bg) : lv_color_hex(APP_UI_COLOR_TEXT_MUTED);
+        lv_obj_set_style_text_color(label, fg, LV_PART_MAIN);
+        lv_obj_set_style_text_color(label, fg, LV_PART_MAIN | LV_STATE_PRESSED);
+    }
+}
+
 lv_color_t ui_style_control_on(lv_color_t fallback)
 {
     const theme_palette_t *p = own_palette();

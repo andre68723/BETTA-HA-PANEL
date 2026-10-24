@@ -387,7 +387,7 @@ static void bambu_primary_clicked_cb(lv_event_t *event)
 static void stop_label_cb(void *user, size_t index, char *out, size_t out_len)
 {
     (void)user;
-    snprintf(out, out_len, "%s", index == 0 ? tr("bambu.cancel", "Cancel") : tr("bambu.stop", "Stop"));
+    snprintf(out, out_len, "%s", index == 0 ? tr("bambu.cancel", "Cancel") : tr("bambu.abort_confirm", "Abort print"));
 }
 
 static void stop_chosen_cb(void *user, size_t index)
@@ -424,11 +424,11 @@ static void bambu_stop_clicked(lv_event_t *event)
     if (ctx->detail != NULL) {
         lv_obj_delete(ctx->detail); /* one popup at a time: details make way for the confirmation */
     }
-    snprintf(ctx->stop_title, sizeof(ctx->stop_title), "%s", tr("bambu.stop_title", "Stop this print?"));
+    snprintf(ctx->stop_title, sizeof(ctx->stop_title), "%s", tr("bambu.stop_title", "Abort this print?"));
     const ui_option_picker_cfg_t cfg = {
         .title = ctx->stop_title,
         .count = 2,
-        .current = 0,
+        .current = UI_OPTION_PICKER_NONE,
         .label = stop_label_cb,
         .chosen = stop_chosen_cb,
         .closed = stop_closed_cb,
@@ -745,7 +745,7 @@ static void set_label(lv_obj_t *label, const char *text, ui_text_role_t role, lv
 static const lv_font_t *button_font(const w_bambu_ctx_t *ctx)
 {
     const char *texts[] = {tr("bambu.pause", "Pause"), tr("bambu.resume", "Resume"), tr("bambu.status", "Status"),
-                           tr("bambu.stop", "Stop")};
+                           tr("bambu.stop", "Abort")};
     const lv_coord_t btn_w = lv_obj_get_width(ctx->btn[0]);
     const lv_coord_t btn_h = lv_obj_get_height(ctx->btn[0]);
     const lv_font_t *best = NULL;
@@ -761,14 +761,10 @@ static const lv_font_t *button_font(const w_bambu_ctx_t *ctx)
 static void style_button(w_bambu_ctx_t *ctx, int index, const char *text, bool enabled, bool danger)
 {
     lv_obj_t *btn = ctx->btn[index];
-    lv_color_t bg = lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE);
-    if (danger && enabled) {
-        bg = lv_color_mix(lv_color_hex(APP_UI_COLOR_ERROR), bg, 70);
-    }
-    ui_style_button_auto(btn, bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
-    lv_obj_set_style_opa(btn, enabled ? LV_OPA_COVER : LV_OPA_40, LV_PART_MAIN);
+    const ui_control_role_t role = danger ? UI_CONTROL_DANGER
+        : index == BTN_PRIMARY && ctx->state == BAMBU_STATE_RUNNING ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION;
+    ui_style_action_button(btn, ctx->btn_label[index], role, enabled);
     lv_label_set_text(ctx->btn_label[index], text);
-    lv_obj_set_style_text_color(ctx->btn_label[index], ui_style_button_icon_color(bg), LV_PART_MAIN);
     lv_obj_set_style_text_font(ctx->btn_label[index], button_font(ctx), LV_PART_MAIN);
 }
 
@@ -843,7 +839,7 @@ static void bambu_render(w_bambu_ctx_t *ctx)
     style_button(ctx, BTN_PRIMARY, actions.primary_resume ? tr("bambu.resume", "Resume") : tr("bambu.pause", "Pause"),
                  actions.primary_enabled, false);
     style_button(ctx, BTN_STATUS, tr("bambu.status", "Status"), true, false);
-    style_button(ctx, BTN_STOP, tr("bambu.stop", "Stop"), actions.stop_enabled, true);
+    style_button(ctx, BTN_STOP, tr("bambu.stop", "Abort"), actions.stop_enabled, true);
     ui_style_card_set_active(ctx->card, ctx->state == BAMBU_STATE_RUNNING);
     detail_fill(ctx);
 }

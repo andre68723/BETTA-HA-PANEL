@@ -39,6 +39,23 @@ Editor alerts, graphical MQTT setup and sound stay in `docs/notifications.md`;
 optional YAML/HTTP setup is in `docs/http-notifications.md`; event ownership,
 rendering and audio internals are in `docs/notifications-implementation.md`.
 
+## Writing rules
+
+Keep setup and behavior in user guides; source paths, wiring and implementation details belong under Development.
+Headings and table cells name their subject: no leading “The”, “Look at”, “What it does”, “Where to read”,
+“Good to know”, “At a glance”, “I want to” or “Do you”. Avoid marketing, filler, card grids and long prose tables.
+Describe current behavior and the upstream v0.8.2 comparison, not intermediate release-candidate chronology.
+Keep prose near 250 lines; `tools/check_source_sizes.py --docs` fails above 300 unless explicitly exempt.
+Upstream release history and the generated Widget library index retain their existing exceptions.
+Match page titles and navigation labels. Existing README/index, widget-type and device filenames are stable-path
+exceptions: do not rename their .html URLs solely to match a human label. Check navigation before moving a page;
+`hardware/peripherals.md` belongs under Development. Device comparisons are ordered by display size.
+
+Capture at the fixture's device geometry with the demonstrated extras enabled; compact tiles can hide an extra
+although its entity is set. Preserve aspect ratios and relative pixel scale. Mark simulator examples separately
+from dated device captures. Compare claims with upstream `420df764`; JC/Tab5 have no upstream hardware baseline.
+Measurements state device, date and scope; verify versions against manifests, locks and build setup.
+
 ## Preview and build with uv
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run from
@@ -75,7 +92,7 @@ and reusable project skills in `.local/skills/`.
 Put task logs, captures, helper scripts and temporary reports under
 `/private/tmp/betta-<task>/`; remove completed plans and clean up task artifacts.
 The whole `.local/` directory is ignored and sits outside the documentation source.
-Hardware-image working notes and capture metadata are excluded from the site.
+Hardware working notes, vendor metadata and capture metadata are excluded from the site. Brand attribution remains published because Contributing links to it.
 
 ## GitHub Pages CI
 

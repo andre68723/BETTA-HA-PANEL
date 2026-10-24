@@ -8,7 +8,7 @@ below are relative to the repository root; the working rules for contributors an
 ```bash
 source ~/esp/esp-idf-v6.1/export.sh      # ESP-IDF 6.1 with the ESP32-P4 toolchain
 tools/build.sh panel4 build              # one variant, always through this wrapper
-tools/check.sh                           # editor, host C tests and simulator layout checks
+uv run --locked --only-group checks tools/check.sh --changed  # daily checks
 ```
 
 [Build and flash](development/build.md) has the full setup. Updates and rollback are in

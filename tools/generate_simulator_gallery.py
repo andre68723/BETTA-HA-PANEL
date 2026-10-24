@@ -33,11 +33,11 @@ def use_fixed_clock(now=FIXED_NOW):
     """Set the clock of this process and the simulators it starts: a local time YYYY-MM-DDTHH:MM (Berlin) or "real".
     Returns the Unix seconds, or None for the real clock."""
     if now == "real":
-        os.environ.pop("BETTA_SIM_NOW", None)
+        os.environ["BETTA_SIM_NOW"] = "real"  # preserve explicit opt-out in child layout checks
         return None
     os.environ["TZ"] = FIXED_TZ
     time.tzset()
-    seconds = int(time.mktime(time.strptime(now, "%Y-%m-%dT%H:%M")))
+    seconds = int(now) if str(now).isdigit() else int(time.mktime(time.strptime(now, "%Y-%m-%dT%H:%M")))
     os.environ["BETTA_SIM_NOW"] = str(seconds)
     return seconds
 from gallery_content import (DEFAULT_IMG_DIR, DEFAULT_OUT_MD, SIMULATOR_SOURCE_NOTE,

@@ -381,10 +381,6 @@ static lv_color_t w_rr_surface_fill(uint8_t mix)
     return lv_color_mix(lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BG), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), mix);
 }
 
-static lv_color_t w_rr_pressed_fill(lv_color_t color)
-{
-    return lv_color_brightness(color) > 127 ? lv_color_darken(color, 26) : lv_color_lighten(color, 26);
-}
 
 static lv_color_t w_rr_contrast_text(lv_color_t bg)
 {
@@ -1273,33 +1269,19 @@ static void w_rr_merge_map_attr_metadata(w_rr_ctx_t *ctx, cJSON *attrs)
     }
 }
 
-static void w_rr_style_action_button(lv_obj_t *btn, lv_obj_t *label, lv_color_t bg, lv_color_t border, lv_color_t text)
+static void w_rr_style_control(lv_obj_t *btn, lv_obj_t *label, ui_control_role_t role, bool enabled)
 {
-    if (btn == NULL) {
-        return;
-    }
+    if (btn == NULL) return;
     lv_obj_set_style_radius(btn, ui_style_radius(18), LV_PART_MAIN);
-    ui_style_button(btn, bg, border, w_rr_pressed_fill(bg));
     lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
-
-    if (label != NULL) {
-        lv_obj_set_style_text_color(label, text, LV_PART_MAIN);
-    }
+    ui_style_action_button(btn, label, role, enabled);
 }
 
 static esp_err_t w_rr_call_vacuum_simple(const char *service, const char *entity_id);
 
 static void w_rr_style_stop_button(w_rr_ctx_t *ctx)
 {
-    if (ctx == NULL) {
-        return;
-    }
-
-    lv_color_t idle_bg = w_rr_surface_fill(220);
-    lv_color_t idle_border = lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER);
-    lv_color_t idle_text = lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY);
-
-    w_rr_style_action_button(ctx->stop_btn, ctx->stop_label, idle_bg, idle_border, idle_text);
+    if (ctx != NULL) w_rr_style_control(ctx->stop_btn, ctx->stop_label, UI_CONTROL_ACTION, !ctx->unavailable);
 }
 
 /* Colors of the line-art robot: gray while idle, accent while working, red on
@@ -1561,9 +1543,7 @@ static void w_rr_layout_generic(w_rr_ctx_t *ctx, lv_coord_t inner_w, lv_coord_t 
         lv_obj_set_pos(ctx->fan_btn, fan_x, 0);
         lv_obj_set_size(ctx->fan_btn, fan_w, chip_h);
         lv_obj_set_state(ctx->fan_btn, LV_STATE_DISABLED, ctx->unavailable);
-        lv_color_t bg = lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE);
-        w_rr_style_action_button(ctx->fan_btn, ctx->fan_label, bg,
-            lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER), lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY));
+        w_rr_style_control(ctx->fan_btn, ctx->fan_label, UI_CONTROL_ACTION, !ctx->unavailable);
         lv_label_set_text(ctx->fan_label, ctx->fan_speed[0] != '\0' ? ctx->fan_speed : ui_i18n_get("roborock.fan_title", "Suction level"));
         lv_label_set_long_mode(ctx->fan_label, LV_LABEL_LONG_DOT);
         lv_obj_set_size(ctx->fan_label, fan_w - 16, lv_font_get_line_height(ui_font_role(UI_TEXT_META)));
@@ -1665,18 +1645,8 @@ static void w_rr_update_popup_clean_button(w_rr_ctx_t *ctx)
         return;
     }
 
-    lv_color_t enabled_bg = lv_color_mix(lv_color_hex(APP_UI_COLOR_STATE_ON), lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 176);
-    lv_color_t enabled_border = lv_color_mix(enabled_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER), 150);
-    lv_color_t disabled_bg = w_rr_surface_fill(214);
-    lv_color_t disabled_border = lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER);
-    bool enabled = !ctx->unavailable && ctx->mode_count > 0;
-
-    w_rr_style_action_button(
-        ctx->rooms_btn,
-        ctx->rooms_label,
-        enabled ? enabled_bg : disabled_bg,
-        enabled ? enabled_border : disabled_border,
-        enabled ? w_rr_contrast_text(enabled_bg) : lv_color_hex(APP_UI_COLOR_TEXT_MUTED));
+    const bool enabled = !ctx->unavailable && ctx->mode_count > 0;
+    w_rr_style_control(ctx->rooms_btn, ctx->rooms_label, UI_CONTROL_ACTION, enabled);
 
     char text[64] = {0};
     char mode_text[W_RR_MODE_LEN];
@@ -1953,21 +1923,10 @@ static void w_rr_apply_visual(w_rr_ctx_t *ctx)
         lv_label_set_text(ctx->battery_label, battery_text);
     }
 
-    lv_color_t primary_btn_bg = ctx->unavailable
-        ? w_rr_surface_fill(214)
-        : lv_color_mix(lv_color_hex(APP_UI_COLOR_STATE_ON), lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 176);
-    lv_color_t primary_btn_border = lv_color_mix(primary_btn_bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER), 150);
-    lv_color_t primary_btn_text = w_rr_contrast_text(primary_btn_bg);
-    lv_color_t idle_btn_bg = w_rr_surface_fill(220);
-    lv_color_t idle_btn_border = lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER);
-    lv_color_t idle_btn_text = ctx->unavailable ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED) : w_rr_contrast_text(idle_btn_bg);
-
-    w_rr_style_action_button(ctx->start_btn, ctx->start_label, primary_btn_bg, primary_btn_border, primary_btn_text);
-    w_rr_style_action_button(ctx->dock_btn, ctx->dock_label, idle_btn_bg, idle_btn_border, idle_btn_text);
-
-    lv_opa_t button_opa = ctx->unavailable ? LV_OPA_50 : LV_OPA_COVER;
-    if (ctx->start_btn != NULL) lv_obj_set_style_opa(ctx->start_btn, button_opa, LV_PART_MAIN);
-    if (ctx->dock_btn != NULL) lv_obj_set_style_opa(ctx->dock_btn, button_opa, LV_PART_MAIN);
+    /* The primary control pauses both cleaning and return movement. */
+    const bool running = ctx->active_clean || ctx->returning;
+    w_rr_style_control(ctx->start_btn, ctx->start_label, running ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, !ctx->unavailable);
+    w_rr_style_control(ctx->dock_btn, ctx->dock_label, UI_CONTROL_ACTION, !ctx->unavailable);
     w_rr_layout_card(ctx);
 
     if (ctx->popup_map_panel != NULL) {
@@ -2383,11 +2342,7 @@ esp_err_t w_vacuum_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_set_style_pad_all(ctx->controls_panel, 0, LV_PART_MAIN);
 
     /* The Stop icon button; there is no Locate button. */
-    ctx->stop_btn = lv_btn_create(ctx->controls_panel);
-    lv_obj_add_event_cb(ctx->stop_btn, w_rr_stop_event_cb, LV_EVENT_CLICKED, ctx);
-    ctx->stop_label = lv_label_create(ctx->stop_btn);
-    lv_obj_set_style_text_font(ctx->stop_label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
-    lv_obj_center(ctx->stop_label);
+    ctx->stop_btn = w_rr_make_small_button(ctx->controls_panel, APP_SYMBOL_STOP, w_rr_stop_event_cb, ctx, &ctx->stop_label);
 
     ctx->start_btn = w_rr_make_small_button(ctx->controls_panel, ui_i18n_get("common.start", "Start"), w_rr_start_event_cb, ctx, &ctx->start_label);
     ctx->dock_btn = w_rr_make_small_button(ctx->controls_panel, ui_i18n_get("roborock.dock", "Dock"), w_rr_dock_event_cb, ctx, &ctx->dock_label);

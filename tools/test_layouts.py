@@ -43,8 +43,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from widget_cases import catalogue, expand, state_cases, state_fixture, substitute, widget_fields
+
 REPO = Path(__file__).resolve().parent.parent
-CASES = REPO / "tools/test_layout_cases.json"
 DEMO_ENTITIES = REPO / "tools/test_layout_entities_demo.json"
 LOCAL_ENTITIES = REPO / ".local/test-layouts/entities.json"
 BACKUPS = REPO / ".claude/layout-backups"
@@ -54,18 +55,6 @@ FIXED_NOW = "2026-10-15T12:00"  # generate_simulator_gallery.FIXED_NOW, the defa
 MARGIN = GAP = 10
 LONG_TITLE = "Ein sehr langer Titel, der nicht hineinpasst"
 
-EVCC = {"entity_id": "evcc_mode", "evcc_loadpoint_id": "evcc_loadpoint", "evcc_vehicle_entity_id": "evcc_vehicle",
-        "evcc_target_soc_entity_id": "evcc_target", "evcc_power_entity_id": "evcc_power", "evcc_soc_entity_id": "evcc_soc",
-        "evcc_connected_entity_id": "evcc_connected", "evcc_charging_entity_id": "evcc_charging",
-        "evcc_disabled_entity_id": "evcc_disabled", "evcc_effective_soc_entity_id": "evcc_effective",
-        "evcc_energy_entity_id": "evcc_energy", "evcc_remaining_entity_id": "evcc_remaining"}
-EVCC_SITE = {"evcc_pv_power_entity_id": "evcc_pv", "evcc_battery_power_entity_id": "evcc_battery",
-             "evcc_grid_power_entity_id": "evcc_grid", "evcc_home_power_entity_id": "evcc_home"}
-PORTFOLIO = {"entity_id": "portfolio_value", "secondary_entity_id": "portfolio_gain", "tertiary_entity_id": "portfolio_xirr",
-             "dividends_entity_id": "portfolio_dividends"}
-MACROS = {"evcc": EVCC, "evcc_site": EVCC_SITE, "portfolio": PORTFOLIO}
-
-
 def minimum_sizes():
     """Minimum (w, h) per widget type, and per (type, variant), from main/layout/widget_types.c."""
     source = (REPO / "main/layout/widget_types.c").read_text(encoding="utf-8")
@@ -73,30 +62,6 @@ def minimum_sizes():
     sizes.update({(name, variant): (int(w), int(h))
                   for name, variant, w, h in re.findall(r'\{"(\w+)",\s*"(\w+)",\s*\{(\d+),\s*(\d+),', source)})
     return sizes
-
-
-def substitute(value, entities):
-    if isinstance(value, str) and value.startswith("{") and value.endswith("}"):
-        role = value[1:-1]
-        if role not in entities:
-            sys.exit(f"entity map has no role '{role}'")
-        return copy.deepcopy(entities[role])
-    if isinstance(value, list):
-        return [substitute(item, entities) for item in value]
-    if isinstance(value, dict):
-        return {key: substitute(item, entities) for key, item in value.items()}
-    return value
-
-
-def expand(case):
-    """A case's widget fields, macros such as "evcc": true replaced by their role fields."""
-    fields = {}
-    for key, value in case.items():
-        if key in MACROS and value is True:
-            fields.update({field: "{" + role + "}" for field, role in MACROS[key].items()})
-        elif key not in ("w", "h", "expect", "sim"):
-            fields[key] = value
-    return fields
 
 
 def widget_sizes():
@@ -152,7 +117,8 @@ DEMO_ROLES = json.loads(DEMO_ENTITIES.read_text(encoding="utf-8"))
 
 
 def all_suites():
-    suites = json.loads(CASES.read_text(encoding="utf-8"))["suites"]
+    suites = catalogue()["suites"]
+    suites["zustaende"] = {"title": "Zustände", "cases": state_cases(suites)}
     suites["grenzen"] = {"title": "Grenzen", "cases": limits_cases(suites)}
     suites["maximal"] = {"title": "Maximal", "cases": maximum_cases(suites)}
     return suites
@@ -231,6 +197,7 @@ def by_height(cases):
 
 
 EXPECT = {}  # widget id -> texts its case expects to be visible (the case's "expect")
+SIM_STATES = {}  # widget id -> binding field/state overrides, applied to independent simulator-only entities
 SIM_FIELDS = {}  # widget id -> simulator-only fields (the case's "sim", e.g. to-do "items"); never in a panel layout
 PLACEHOLDER = re.compile(r"lädt\s*(…|\.\.\.)|loading|nicht verfügbar|unavailable|unbekannt|unknown", re.I)
 
@@ -263,7 +230,7 @@ def content_problems(layout, dumps, with_expected=True):
             where = f"{page.get('title', page['id'])}: {widget['id']} ({widget['type']}) '{widget.get('title', '')}'"
             missing_entity = "betta_test_missing" in json.dumps(widget)
             placeholders = sorted({t for t in texts if PLACEHOLDER.search(t)})
-            if placeholders and not missing_entity:
+            if placeholders and not missing_entity and not any(value in ("unknown", "unavailable") for value in SIM_STATES.get(widget["id"], {}).values()):
                 problems.append(f"{where} shows {', '.join(repr(t) for t in placeholders)}")
             problems += [f"{where} does not show '{text}'" for text in (EXPECT.get(widget["id"], []) if with_expected else [])
                          if not any(text in t for t in texts)]
@@ -277,9 +244,10 @@ def build_page(suite_id, title, number, placed, entities):
         return dict(page, id=page_id, widgets=[])
     widgets = []
     for index, (case, rect) in enumerate(placed):
-        widget = substitute(expand(case), entities)
+        widget = widget_fields(case, entities)
         widgets.append(dict(widget, id=f"{page_id}_{index}", rect=rect))
         EXPECT[f"{page_id}_{index}"] = case.get("expect", [])
+        SIM_STATES[f"{page_id}_{index}"] = case.get("sim_state", {})
         if "sim" in case:
             SIM_FIELDS[f"{page_id}_{index}"] = case["sim"]
     return {"id": page_id, "title": f"{title} {number}", "widgets": widgets}
@@ -347,7 +315,7 @@ def use_clock(now):
     return use_fixed_clock(now)
 
 
-def render_board(board, styles, steps, languages, out, suite=None):
+def render_board(board, styles, steps, languages, out, suite=None, theme="dark_v2"):
     """Render every page of the board's suites with the demo entities for each style, text step and language, and
     check them per text step: the widget layout check, and content_problems() on the dumps of the first style in German.
     Returns (layouts, {step: {stem: [problems]}})."""
@@ -370,7 +338,7 @@ def render_board(board, styles, steps, languages, out, suite=None):
         png = out / f"{style}-{step}-{language}" / f"{page['id']}.png"
         dump = ["--dump-layout", str(out / f"dump-{step}" / f"{page['id']}.jsonl")] \
             if style == styles[0] and language == content_language else []
-        subprocess.run([str(binary), "--fixture", str(fixture_path), "--page", page["id"], "--style", style, "--theme", "dark_v2",
+        subprocess.run([str(binary), "--fixture", str(fixture_path), "--page", page["id"], "--style", style, "--theme", theme,
                         "--language", language, "--text-step", str(step), "--exit-after-ms", "600", "--screenshot", str(png),
                         *dump], env=env, check=True, capture_output=True)
         Image.open(png).convert("RGB").save(png, optimize=True)
@@ -380,7 +348,8 @@ def render_board(board, styles, steps, languages, out, suite=None):
         fixture_path = out / f"{stem}.fixture.json"
         pages = [dict(page, widgets=[dict(widget, **SIM_FIELDS.get(widget["id"], {})) for widget in page["widgets"]])
                  for page in layout["pages"]]
-        fixture = dict(layout, pages=pages, states=states, ha_online=True, **extra)
+        pages, fixture_states = state_fixture(pages, states, SIM_STATES)
+        fixture = dict(layout, pages=pages, states=fixture_states, ha_online=True, **extra)
         fixture_path.write_text(json.dumps(fixture, ensure_ascii=False), encoding="utf-8")
         for style in styles:
             for step in steps:
@@ -395,7 +364,11 @@ def render_board(board, styles, steps, languages, out, suite=None):
         stem, step = job
         result = subprocess.run([sys.executable, str(REPO / "tools/check_widget_layout.py"), "--fixture", str(out / f"{stem}.fixture.json"),
                                  "--variant", board, "--text-step", str(step)], capture_output=True, text=True)
-        return step, stem, [line.strip() for line in result.stdout.strip().splitlines()[:-1]]
+        lines = result.stdout.strip().splitlines()
+        found = [line.strip() for line in lines[:-1]]
+        if result.returncode or not lines:
+            found.append(f"layout checker exited {result.returncode}: {result.stderr.strip() or (lines[-1] if lines else 'no diagnostic output')}")
+        return step, stem, found
 
     problems = {step: {} for step in steps}
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -408,8 +381,8 @@ def render_board(board, styles, steps, languages, out, suite=None):
     return layouts, problems
 
 
-def simulate(board, suite, styles, steps, languages, out):
-    layouts, problems = render_board(board, styles, steps, languages, out, suite)
+def simulate(board, suite, styles, steps, languages, out, theme="dark_v2"):
+    layouts, problems = render_board(board, styles, steps, languages, out, suite, theme)
     failed = False
     for step in steps:
         for stem, found in problems[step].items():
@@ -429,15 +402,16 @@ PAGE_STYLE = """:root{--bg:#f4f5f7;--fg:#1d2026;--muted:#5d6470;--card:#fff;--li
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#121418;--fg:#e8eaed;--muted:#9aa0a8;--card:#1c1f25;
 --line:#30343c;--bad:#ff8a80;--ok:#7ee2a0;--accent:#6ea8ff}}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif}
-header{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px;z-index:1}
+html{scroll-padding-top:calc(var(--header-h,90px) + var(--nav-h,80px) + 12px)}
+header{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px;z-index:3}
 header h1{font-size:17px;margin:0 0 8px}
 .bar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
 .group{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
 .group span{color:var(--muted);font-size:13px;margin-right:2px}
 button{font:inherit;font-size:14px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);cursor:pointer}
 button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
-nav{display:flex;flex-wrap:wrap;gap:6px 10px;padding:10px 16px}
-nav a{color:var(--accent);text-decoration:none}
+nav{position:sticky;top:var(--header-h,90px);z-index:2;background:var(--card);border-bottom:1px solid var(--line);max-height:22vh;overflow:auto;display:flex;flex-wrap:wrap;gap:6px 10px;padding:10px 16px}
+nav a{color:var(--accent);text-decoration:none;padding:4px 8px;border-radius:6px}nav a:hover,nav a:focus-visible{background:var(--bg);text-decoration:underline}
 main{padding:0 16px 40px}
 section{margin:18px 0 28px}
 h2{font-size:16px;margin:0 0 6px}
@@ -454,30 +428,57 @@ figcaption{font-size:13px;color:var(--muted);padding-top:4px}
 PAGE_SCRIPT = """const state={board:null,style:null,step:null,lang:null};
 function load(){try{return JSON.parse(localStorage.getItem('testlayouts')||'{}')}catch(e){return {}}}
 function save(){try{localStorage.setItem('testlayouts',JSON.stringify(state))}catch(e){}}
+function measureNavigation(){
+ document.documentElement.style.setProperty('--header-h',`${document.querySelector('header').getBoundingClientRect().height}px`);
+ const nav=document.querySelector('.board.shown nav');
+ document.documentElement.style.setProperty('--nav-h',`${nav?.getBoundingClientRect().height||0}px`);
+}
 function apply(){
  document.querySelectorAll('header button').forEach(b=>b.setAttribute('aria-pressed',state[b.dataset.key]===b.dataset.value));
  document.querySelectorAll('.board').forEach(b=>b.classList.toggle('shown',b.dataset.board===state.board));
  document.querySelectorAll('.step').forEach(b=>b.classList.toggle('shown',b.dataset.step===state.step));
  document.querySelectorAll('.board.shown figure img').forEach(i=>{i.src=`${i.dataset.board}/${state.style}-${state.step}-${state.lang}/${i.dataset.page}.png`});
- save();}
+ measureNavigation();save();}
 const saved=load();
 document.querySelectorAll('header .group').forEach(g=>{const key=g.dataset.key,values=[...g.querySelectorAll('button')].map(b=>b.dataset.value);
  state[key]=values.includes(saved[key])?saved[key]:values[0];});
 document.querySelectorAll('header button').forEach(b=>b.onclick=()=>{state[b.dataset.key]=b.dataset.value;apply()});
 document.querySelectorAll('figure img').forEach(i=>i.onclick=()=>i.parentElement.classList.toggle('zoom'));
+const navigationSize=new ResizeObserver(measureNavigation);
+ navigationSize.observe(document.querySelector('header'));
+ document.querySelectorAll('nav').forEach(nav=>navigationSize.observe(nav));
 apply();"""
 
 
-def view(boards, styles, steps, languages, out, open_browser):
+SUITE_LABELS = {
+    "energie": "Energie & Prognosen", "klima": "Klima & Wetter", "steuerung": "Schalten & Bedienen",
+    "status": "Sensoren & Status", "geraete": "Fahrzeuge & Geräte", "finanzen": "Finanzen & Kurse",
+    "zustaende": "Zustände & Bedienung", "grenzen": "Kleine Kacheln & Sonderfälle", "maximal": "Große Kacheln",
+}
+
+
+def suite_label(stem):
+    key, _, part = stem.partition("-")
+    return SUITE_LABELS.get(key, key.capitalize()) + (f" · Teil {part}" if part else "")
+
+
+def page_label(page):
+    match = re.fullmatch(r"t_(\w+)_(\d+)", page["id"])
+    if match and match[1] in SUITE_LABELS:
+        return f"{SUITE_LABELS[match[1]]} · Seite {match[2]}"
+    return page.get("title", page["id"])
+
+
+def view(boards, styles, steps, languages, out, open_browser, theme="dark_v2"):
     """Render the boards' suites, write an overview page and open it."""
     names = {"paneljc": '10" 1280 × 680', "tab5": '5" Tab5 1280 × 600', "panel4": '4" 720 × 600'}
     sections, total = [], 0
     for board in boards:
-        layouts, problems = render_board(board, styles, steps, languages, out / board)
-        links = " ".join(f'<a href="#{board}-{stem}">{html.escape(stem)}</a>' for stem in layouts)
+        layouts, problems = render_board(board, styles, steps, languages, out / board, theme=theme)
+        links = " ".join(f'<a href="#{board}-{stem}">{html.escape(suite_label(stem))}</a>' for stem in layouts)
         findings = []
         for step in steps:
-            items = "".join(f"<li>{html.escape(stem)}: {html.escape(problem)}</li>" for stem, found in problems[step].items() for problem in found)
+            items = "".join(f"<li>{html.escape(suite_label(stem))}: {html.escape(problem)}</li>" for stem, found in problems[step].items() for problem in found)
             count = sum(len(found) for found in problems[step].values())
             total += count
             findings.append(f'<div class="step" data-step="{step}"><p class="{"bad" if count else "ok"}">'
@@ -485,10 +486,10 @@ def view(boards, styles, steps, languages, out, open_browser):
                             f'{f"<ul>{items}</ul>" if items else ""}</div>')
         body = []
         for stem, layout in layouts.items():
-            figures = "".join(f'<figure><img data-board="{board}" data-page="{page["id"]}" alt="{html.escape(page.get("title", page["id"]))}" '
-                              f'loading="lazy"><figcaption>{html.escape(page.get("title", page["id"]))}</figcaption></figure>'
+            figures = "".join(f'<figure><img data-board="{board}" data-page="{page["id"]}" alt="{html.escape(page_label(page))}" '
+                              f'loading="lazy"><figcaption>{html.escape(page_label(page))}</figcaption></figure>'
                               for page in layout["pages"])
-            body.append(f'<section id="{board}-{stem}"><h2>{html.escape(stem)}</h2><div class="pages">{figures}</div></section>')
+            body.append(f'<section id="{board}-{stem}"><h2>{html.escape(suite_label(stem))}</h2><div class="pages">{figures}</div></section>')
         width = "420px" if board == "panel4" else "560px"
         sections.append(f'<div class="board" data-board="{board}" style="--w:{width}"><nav>{links}</nav><main>{"".join(findings)}{"".join(body)}</main></div>')
         print(f"{board}: {sum(len(l['pages']) for l in layouts.values())} pages, "
@@ -505,7 +506,7 @@ def view(boards, styles, steps, languages, out, open_browser):
                      else '<span class="ok">Alle Typen und Varianten haben einen Testfall</span>')
     header = (f'<header><h1>Testseiten im Simulator</h1><div class="bar">{group("board", "Größe", boards, names)}'
               f'{group("style", "Stil", styles)}{group("step", "Textstufe", [str(s) for s in steps])}'
-              f'{group("lang", "Sprache", languages)}{coverage_note}</div></header>')
+              f'{group("lang", "Sprache", languages)}<span>Theme: {html.escape(theme)}</span>{coverage_note}</div></header>')
     page = (f'<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             f"<title>Test layouts</title><style>{PAGE_STYLE}</style></head><body>{header}"
             f'{"".join(sections)}<script>{PAGE_SCRIPT}</script></body></html>')
@@ -600,6 +601,11 @@ def check_catalogue():
     """Fast check for tools/check.sh, without rendering: every widget type and validated value has a case, and every
     board's layouts stay within its pages and the 32 KB limit with no tile outside the canvas or on another."""
     problems = [f"no case: {item}" for item in coverage(all_suites())]
+    from gallery_content import build_spec
+    try:
+        build_spec(json.loads((REPO / "tests/simulator/gallery_data.json").read_text())["entities"])
+    except (ValueError, KeyError) as error:
+        problems.append(f"gallery cases: {error}")
     for board, (width, height, max_pages) in BOARDS.items():
         for stem, layout in generate(board, DEMO_ROLES).items():
             size = len(compact(layout).encode())
@@ -645,6 +651,7 @@ def main():
     sim = commands.add_parser("simulate")
     sim.add_argument("board", choices=BOARDS)
     sim.add_argument("--suite")
+    sim.add_argument("--theme", default="dark_v2")
     add_matrix(sim, ("flat",), (0,), ("de",))
     sim.add_argument("--now", default=FIXED_NOW, help=f"simulator clock, YYYY-MM-DDTHH:MM Berlin time or 'real' (default {FIXED_NOW})")
     sim.add_argument("--out", type=Path)
@@ -654,6 +661,7 @@ def main():
     vw.add_argument("--now", default=FIXED_NOW, help=f"simulator clock, YYYY-MM-DDTHH:MM Berlin time or 'real' (default {FIXED_NOW})")
     vw.add_argument("--out", type=Path, default=Path("/private/tmp/betta-testenv/view"))
     vw.add_argument("--no-open", action="store_true")
+    vw.add_argument("--theme", default="dark_v2", help="theme ID, e.g. classic_v1 for gold active controls")
     ld = commands.add_parser("load")
     ld.add_argument("ip")
     ld.add_argument("suite_file", type=Path)
@@ -679,11 +687,11 @@ def main():
                       args.out or REPO / ".local/test-layouts" / args.board)
     elif args.command == "simulate":
         return simulate(args.board, args.suite, args.styles, args.text_steps, args.languages,
-                        args.out or Path("/private/tmp/betta-testenv/sim") / args.board)
+                        args.out or Path("/private/tmp/betta-testenv/sim") / args.board, args.theme)
     elif args.command == "view":
         if any(board not in BOARDS for board in args.boards):
             parser.error(f"boards: {', '.join(BOARDS)}")
-        return view(args.boards or list(BOARDS), args.styles, args.text_steps, args.languages, args.out, not args.no_open)
+        return view(args.boards or list(BOARDS), args.styles, args.text_steps, args.languages, args.out, not args.no_open, args.theme)
     elif args.command == "load":
         load(args.ip, args.suite_file, args.discard_graph_history)
     elif args.command == "restore":

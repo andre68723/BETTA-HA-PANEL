@@ -262,12 +262,14 @@ function evccPreviewMarkup(widget) {
   const energy = disconnected ? null : number(widget.evcc_energy_entity_id, {Wh:.001,kWh:1});
   const seconds = disconnected ? null : number(widget.evcc_remaining_entity_id, {s:1,min:60,h:3600});
   const minutes = seconds === null || seconds >= 36000000 ? null : Math.ceil(seconds/60);
+  const modeOptions = editor.stateMeta.get(widget.entity_id)?.options;
+  const standardModes = !modeOptions || modeOptions.length === 3 && modeOptions.includes("smart") && modeOptions.includes("now");
   const mode = editor.states.get(widget.entity_id), target = bambuPreviewNumber(widget.evcc_target_soc_entity_id);
   const raw = editor.states.get(widget.evcc_vehicle_entity_id);
   const vehicle = disconnected || raw === "null" ? t("evcc.none") : editor.stateMeta.get(widget.evcc_vehicle_entity_id)?.vehicle_name || raw || "--";
   const status = editor.states.get(widget.evcc_charging_entity_id) === "on" ? "charging" : editor.states.get(widget.evcc_connected_entity_id) === "on" ? "connected" : "unavailable";
   return `<div class="evcc-preview"><div class="evcc-head">${widgetNamePreview(widget,"span")}<span class="evcc-link">${escapeHtml(t("evcc.sessions"))}</span></div>${evccHeaderPreview(widget, power)}
-  <div class="evcc-modes">${["off","smart","now"].map(value=>`<span class="${mode === value ? "selected" : ""}">${escapeHtml(t(`evcc.${value === "now" ? "fast" : value}`))}</span>`).join("")}</div>
+  <div class="evcc-modes">${["off","smart","now"].map(value=>`<span class="${previewControlClass(mode === value && (value !== "smart" || standardModes), previewControlAvailable(widget.entity_id) && (!modeOptions || value === "smart" || modeOptions.includes(value)))}">${escapeHtml(value === "smart" && !standardModes ? mode || t("evcc.mode") : t(`evcc.${value === "now" ? "fast" : value}`))}</span>`).join("")}</div>
   <div class="evcc-reading">${[["power_label",power === null ? "-- kW" : `${power.toFixed(1)} kW`],["charged",energy === null ? "-- kWh" : `${energy.toFixed(1)} kWh`],["remaining",minutes === null ? "--" : `${Math.floor(minutes/60)}:${String(minutes%60).padStart(2,"0")} h`]].map(([label,value])=>`<div><small>${escapeHtml(t(`evcc.${label}`))}</small><b>${escapeHtml(value)}</b></div>`).join("")}</div>
   <div class="evcc-control ${disconnected ? "disconnected" : ""}">${escapeHtml(vehicle)}${disconnected ? "" : " ▾"}</div>
   ${disconnected ? `<div class="evcc-last"><b>${escapeHtml(t("evcc.last"))}</b><span>${escapeHtml(t("evcc.sessions_preview"))}</span></div>` : `<div class="evcc-status">${escapeHtml(t(`evcc.${status}`))}</div><div class="evcc-gauge"><i style="clip-path:inset(0 ${valid ? 100-soc : 100}% 0 0)"></i></div><div class="evcc-soc"><div><small>${escapeHtml(t("evcc.soc_label"))}</small><b>${valid ? Math.round(soc) : "--"} %</b></div><div><small>${escapeHtml(t("evcc.target_label"))}</small><b class="evcc-link">${target !== null && target >= 0 && target <= 100 ? Math.round(target) : "--"} % ▾</b></div></div>`}</div><div class="resize-handle"></div>`;

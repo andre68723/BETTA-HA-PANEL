@@ -238,16 +238,15 @@ static void clicked(lv_event_t *event)
 }
 static void button(wallbox_t *ctx, int i, const char *text, bool enabled, bool selected)
 {
-    lv_color_t bg = lv_color_hex(selected ? APP_UI_COLOR_NAV_BTN_BG_ACTIVE : APP_UI_COLOR_NAV_BTN_BG_IDLE);
-    ui_style_button_auto(ctx->button[i], bg, lv_color_hex(APP_UI_COLOR_TOPBAR_CHIP_BORDER));
-    lv_obj_set_style_opa(ctx->button[i], enabled ? LV_OPA_COVER : LV_OPA_40, 0);
+    const ui_control_role_t role = selected && i < 3 ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION;
+    ui_style_action_button(ctx->button[i], ctx->caption[i], role, enabled);
     lv_label_set_text(ctx->caption[i], text);
     const lv_font_t *font = ui_font_role(UI_TEXT_LABEL);
     int padding = i == 3 && strcmp(ctx->raw[EVCC_CONNECTED], "off") ? 48 : 12;
     lv_obj_set_style_text_font(ctx->caption[i], ui_text_fit(text, font, lv_obj_get_width(ctx->button[i]) - padding, lv_obj_get_height(ctx->button[i]) - 8), 0);
     lv_obj_set_width(ctx->caption[i], lv_obj_get_width(ctx->button[i]) - padding);
     lv_obj_set_style_text_align(ctx->caption[i], i == 4 ? LV_TEXT_ALIGN_RIGHT : i == 3 ? LV_TEXT_ALIGN_LEFT : LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(ctx->caption[i], ui_style_button_icon_color(bg), 0); if (i == 3) lv_obj_align(ctx->caption[i], LV_ALIGN_LEFT_MID, 12, 0); else lv_obj_align(ctx->caption[i], LV_ALIGN_CENTER, 0, 0);
+    if (i == 3) lv_obj_align(ctx->caption[i], LV_ALIGN_LEFT_MID, 12, 0); else lv_obj_align(ctx->caption[i], LV_ALIGN_CENTER, 0, 0);
 }
 /* One bracket over (a source) or under (a consumer) the flow bar, x..x+w in the card: its long side runs through the
  * middle of the icon row and is open around the icon, its ends turn towards the bar. Too narrow for the icon it is a

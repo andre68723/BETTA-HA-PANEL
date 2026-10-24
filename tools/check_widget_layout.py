@@ -174,13 +174,18 @@ def main():
                         help="force the tile growth cap of every tile (calibration; default: the calibrated cap per tile)")
     parser.add_argument("--rotation", type=int, choices=(0, 90, 180, 270),
                         help="display rotation (90/270 require the tab5 variant)")
+    parser.add_argument("--now", help="simulator date YYYY-MM-DDTHH:MM or real; defaults to the shared gallery clock")
     args = parser.parse_args()
     extra_args = ["--text-step", str(args.text_step)] + (["--text-cap", str(args.text_cap)] if args.text_cap is not None else [])
     if args.rotation is not None:
         extra_args += ["--rotation", str(args.rotation)]
 
     sys.path.insert(0, str(REPO / "tools"))
-    from generate_simulator_gallery import DATA, build_simulator, prepare_fixture
+    from generate_simulator_gallery import DATA, FIXED_NOW, build_simulator, prepare_fixture, use_fixed_clock
+    try:
+        use_fixed_clock(args.now or os.environ.get("BETTA_SIM_NOW", FIXED_NOW))
+    except ValueError:
+        parser.error("--now: YYYY-MM-DDTHH:MM or real")
 
     binary = build_simulator(args.variant)
     with tempfile.TemporaryDirectory(prefix="betta_layout_") as temp:

@@ -1,4 +1,0 @@
-# Opt-in measurement overlay (EXTRA_DEFAULTS=config/sdkconfig.defaults.lvgl_stats, delete the build's sdkconfig first):
-# LVGL allocates through main/ui/lvgl_alloc.c, which counts live bytes per pool, shown by GET /api/version?tasks=1 ("lvgl_mem").
-# CONFIG_LV_USE_CLIB_MALLOC is not set
-CONFIG_LV_USE_CUSTOM_MALLOC=y

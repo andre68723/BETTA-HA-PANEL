@@ -24,4 +24,7 @@ fi
 build_dir="$repo_root/build/simulator/$variant"
 cmake -S "$repo_root/tests/simulator" -B "$build_dir" -DSIM_VARIANT="$variant" -DCMAKE_BUILD_TYPE=Debug
 cmake --build "$build_dir" --parallel
+if [[ " $* " == *" --regression "* ]]; then
+    exec python3 -c 'import os,sys; sys.path.insert(0,sys.argv[1]+"/tools"); from generate_simulator_gallery import FIXED_NOW,use_fixed_clock; use_fixed_clock(os.environ.get("BETTA_SIM_NOW",FIXED_NOW)); os.execv(sys.argv[2],sys.argv[2:])' "$repo_root" "$build_dir/betta-widget-sim" "$@"
+fi
 exec "$build_dir/betta-widget-sim" "$@"

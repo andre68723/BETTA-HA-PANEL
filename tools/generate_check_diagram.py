@@ -44,17 +44,17 @@ for y in (130, 300, 470):
 # tools/check.sh
 parts.append(f'<rect x="380" y="20" width="440" height="560" rx="20" fill="{SOFT}" stroke="#f9a825" stroke-width="5"/>')
 parts.append(f'<text x="600" y="58" text-anchor="middle" font-size="23" font-weight="700" fill="{INK}">tools/check.sh</text>')
-inner = [("Editor", ["JS syntax, unit tests, check_web.py"]),
+inner = [("Editor and tooling", ["JS/Python tests, syntax, check_web.py"]),
          ("Host C tests", ["pure logic, panel4 and paneljc"]),
          ("Widget layout in the simulator", ["3 variants; 3 text sizes with --full"]),
          ("Fonts, source and docs sizes", ["file size ceilings, font subsets"]),
          ("Gallery freshness", ["a hint, never a failure"]),
-         ("Slow steps", ["skipped while their inputs are unchanged"])]
+         ("Passing steps", ["cached by inputs and tool versions"])]
 for i, (title, lines) in enumerate(inner):
     box(410, 78 + i * 83, 380, 72, title, lines, fill="#ffffff")
 
 # results
-box(900, 70, 310, 130, "Firmware builds", ["check.sh --build:", "panel4 and paneljc", "(local, not in CI)"])
+box(900, 70, 310, 130, "Firmware builds", ["check.sh --build:", "all five variants", "(explicit, not in CI checks)"])
 box(900, 250, 310, 110, "CI on GitHub", ["check.yml runs check.sh --full", "without the builds"], fill="#ffffff")
 box(900, 410, 310, 130, "Real device", ["screenshots, page captures,", "stress test: only when asked"],
     fill="#ffffff", dash=True)

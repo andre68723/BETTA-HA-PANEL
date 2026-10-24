@@ -71,8 +71,8 @@ resizable widget and needs no Energy page.
 ??? info "Statistics, gaps and estimated source shares"
 
     The panel reads Home Assistant long-term statistics
-    (`recorder/statistics_during_period`, five-minute `change`), one counter at a
-    time, and refreshes every 15 minutes. Missing records stay gaps; **Outdated**
+    (`recorder/statistics_during_period`, hourly `change`), up to two counters per
+    request, and refreshes every 15 minutes. Missing records stay gaps; **Outdated**
     appears after 40 minutes without fresh data. The forecast line covers only
     intervals supplied by its sensor.
 

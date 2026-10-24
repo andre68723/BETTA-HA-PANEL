@@ -49,7 +49,7 @@ test("setup URL suggestion inserts an editable value which reaches saved setting
 });
 
 test("crash time survives periodic status rendering and banner dismissal without duplication", async () => {
-  const { run } = loadEditor();
+  const { run } = loadEditor({ now: Date.UTC(2026, 9, 15, 12) });
   run(`globalThis.nodes = Object.fromEntries(['crashBanner', 'crashBannerTitle', 'crashBannerHint', 'coredumpRow', 'coredumpText'].map(id => [id, { textContent: '', hidden: false }]));
     document.getElementById = id => nodes[id] || null;
     globalThis.dismissed = null;
@@ -58,6 +58,7 @@ test("crash time survives periodic status rendering and banner dismissal without
     globalThis.dump = { present: true, task: 'taskLVGL', pc: '0x1234', mcause: 2, mcause_name: 'Illegal instruction' };
     renderCrashBanner(dump);`);
   await run("loadCrashTime()");
+  assert.equal(run("editor.crashTimeEpoch"), 1792065300);
   const initial = run("nodes.coredumpText.textContent");
   assert.ok(initial.includes(run("formatCrashTime(editor.crashTimeEpoch)")));
   run("dismissed = crashDumpId(dump); renderCrashBanner(dump); renderCrashBanner(dump)");
