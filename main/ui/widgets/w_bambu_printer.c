@@ -170,13 +170,21 @@ static void format_remaining(const w_bambu_ctx_t *ctx, char *out, size_t out_len
     }
 }
 
-/* "heating_hotend" -> "Heating hotend"; the stages that only repeat the status are dropped. */
+/* The stage in the panel language (bambu.step.<key> of the translation table), else the key as words: "heating_hotend"
+ * -> "Heating hotend"; the stages that only repeat the status are dropped. */
 static void format_stage(const w_bambu_ctx_t *ctx, char *out, size_t out_len)
 {
     out[0] = '\0';
     const char *raw = ctx->stage;
     if (raw[0] == '\0' || strcmp(raw, "unavailable") == 0 || strcmp(raw, "unknown") == 0 || strcmp(raw, "printing") == 0 ||
         strcmp(raw, "idle") == 0 || !bambu_state_job_active(ctx->state)) {
+        return;
+    }
+    char key[96];
+    snprintf(key, sizeof(key), "bambu.step.%s", raw);
+    const char *named = tr(key, NULL);
+    if (named[0] != '\0') {
+        snprintf(out, out_len, "%s", named);
         return;
     }
     size_t i = 0;

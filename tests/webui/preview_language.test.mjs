@@ -57,11 +57,13 @@ test("wallbox headers follow the panel's height threshold and never invent missi
   }
   assert.match(fn("evccHeaderPreview")({ ...widget, evcc_header: "power" }, null), /-- \/ 11 kW/);
   const empty = fn("evccHeaderPreview")({ ...widget, evcc_header: "flow" }, null);
-  assert.doesNotMatch(empty, /PV |Battery |Grid |Home |Car |Export /);
+  assert.doesNotMatch(empty, /<b>|evcc-arm|<svg/); // no reading: no value, no bracket
   run(`editor.states.set('sensor.pv', '5400'); editor.stateMeta.set('sensor.pv', {unit:'W'});
        editor.states.set('sensor.battery', '-1.2'); editor.stateMeta.set('sensor.battery', {unit:'kW'});`);
   const live = fn("evccHeaderPreview")({ ...widget, evcc_header: "flow", evcc_pv_power_entity_id: "sensor.pv", evcc_battery_power_entity_id: "sensor.battery" }, 3.7);
-  assert.match(live, /PV 5.4/);
-  assert.match(live, /Battery 1.2/);
-  assert.match(live, /Car 3.7/);
+  // one bar of the sources with the largest value and its unit; PV named above, the car and battery charge below
+  assert.match(live, /<b>5\.4 kW<\/b>/);
+  assert.equal((live.match(/evcc-arm above/g) || []).length, 2);
+  assert.equal((live.match(/evcc-arm below/g) || []).length, 4);
+  assert.match(live, /<svg[^>]*color:#43bf79/);
 });

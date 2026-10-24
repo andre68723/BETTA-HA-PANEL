@@ -44,6 +44,10 @@
 #define APP_SYMBOL_WIFI_MEDIUM  "\xF3\xB0\xA4\xA2" /* U+F0922 wifi-strength-2 */
 #define APP_SYMBOL_WIFI_STRONG  "\xF3\xB0\xA4\xA8" /* U+F0928 wifi-strength-4 */
 #define APP_SYMBOL_HOME         "\xF3\xB0\x8B\x9C" /* U+F02DC home */
+#define APP_SYMBOL_SOLAR        "\xF3\xB0\xA9\xB2" /* U+F0A72 solar-power */
+#define APP_SYMBOL_GRID         "\xF3\xB0\xB4\xBE" /* U+F0D3E transmission-tower */
+#define APP_SYMBOL_BATTERY      "\xF3\xB1\x8A\xA3" /* U+F12A3 battery-high */
+#define APP_SYMBOL_CAR          "\xF3\xB0\x84\x8B" /* U+F010B car */
 #define APP_SYMBOL_LIST         "\xF3\xB0\x89\xB9" /* U+F0279 format-list-bulleted */
 #define APP_SYMBOL_LOCK        "\xF3\xB0\x8C\xBE" /* U+F033E lock */
 #define APP_SYMBOL_LOCK_OPEN   "\xF3\xB0\x8C\xBF" /* U+F033F lock-open */

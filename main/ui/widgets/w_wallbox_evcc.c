@@ -46,18 +46,21 @@ typedef struct {
     char site[EVCC_SITE_COUNT][APP_MAX_ENTITY_ID_LEN];
     char site_raw[EVCC_SITE_COUNT][APP_MAX_STATE_LEN], site_unit[EVCC_SITE_COUNT][12];
     lv_obj_t *head_caption, *head_value, *head_bar;
-    lv_obj_t *flow_track[2], *flow_seg[EVCC_FLOW_IN_COUNT + EVCC_FLOW_OUT_COUNT];
-    lv_obj_t *flow_dot[EVCC_FLOW_IN_COUNT + EVCC_FLOW_OUT_COUNT], *flow_label[EVCC_FLOW_IN_COUNT + EVCC_FLOW_OUT_COUNT];
-    int flow_row_y[2];
+    lv_obj_t *flow_track, *flow_seg[EVCC_FLOW_IN_COUNT], *flow_value[EVCC_FLOW_IN_COUNT];
+    /* each source and consumer: a bracket of two arms around its icon */
+    lv_obj_t *flow_arm[EVCC_FLOW_IN_COUNT + EVCC_FLOW_OUT_COUNT][2], *flow_icon[EVCC_FLOW_IN_COUNT + EVCC_FLOW_OUT_COUNT];
+    int flow_bar_y;
 } wallbox_t;
 enum { HEADER_OFF, HEADER_POWER, HEADER_FLOW };
 #define FLOW_ITEMS (EVCC_FLOW_IN_COUNT + EVCC_FLOW_OUT_COUNT)
-#define HEADER_BAR_H 12
-#define FLOW_BAR_H 10
+#define HEADER_BAR_H 20
+#define CHARGE_BAR_H 16
 /* PV, battery discharge, grid import; home, the car, battery charge, export: the energy timeline's colours, the car in the
  * evcc green of the charge bar, home in the theme's text colour (flow_color()). */
 static const uint32_t k_flow_color[FLOW_ITEMS] = {ETL_COLOR_SOLAR, ETL_COLOR_BATTERY_OUT, ETL_COLOR_GRID,
                                                   0, 0x43BF79, ETL_COLOR_BATTERY_IN, ETL_COLOR_EXPORT};
+static const char *const k_flow_icon[FLOW_ITEMS] = {APP_SYMBOL_SOLAR, APP_SYMBOL_BATTERY, APP_SYMBOL_GRID,
+                                                    APP_SYMBOL_HOME, APP_SYMBOL_CAR, APP_SYMBOL_BATTERY, APP_SYMBOL_GRID};
 static lv_color_t flow_color(int item)
 {
     return item == EVCC_FLOW_IN_COUNT + EVCC_FLOW_HOME ? lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY) : lv_color_hex(k_flow_color[item]);
@@ -246,16 +249,42 @@ static void button(wallbox_t *ctx, int i, const char *text, bool enabled, bool s
     lv_obj_set_style_text_align(ctx->caption[i], i == 4 ? LV_TEXT_ALIGN_RIGHT : i == 3 ? LV_TEXT_ALIGN_LEFT : LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(ctx->caption[i], ui_style_button_icon_color(bg), 0); if (i == 3) lv_obj_align(ctx->caption[i], LV_ALIGN_LEFT_MID, 12, 0); else lv_obj_align(ctx->caption[i], LV_ALIGN_CENTER, 0, 0);
 }
-static const char *flow_name(int item)
+/* One bracket over (a source) or under (a consumer) the flow bar, x..x+w in the card: its long side runs through the
+ * middle of the icon row and is open around the icon, its ends turn towards the bar. Too narrow for the icon it is a
+ * plain bracket; too narrow for that, nothing. */
+static void place_bracket(wallbox_t *ctx, int item, bool above, int x, int w)
 {
-    static const char *const keys[FLOW_ITEMS][2] = {
-        {"evcc.flow_pv", "PV"}, {"evcc.flow_battery", "Battery"}, {"evcc.flow_grid", "Grid"},
-        {"evcc.flow_home", "Home"}, {"evcc.flow_car", "Car"}, {"evcc.flow_battery", "Battery"}, {"evcc.flow_export", "Export"},
-    };
-    return tr(keys[item][0], keys[item][1]);
+    lv_obj_t *const *arm = ctx->flow_arm[item];
+    const int inner = w - 4; /* 2 px apart from the next bracket */
+    const bool shown = ctx->header_shown && inner >= 8;
+    lv_point_t icon;
+    lv_text_get_size(&icon, k_flow_icon[item], APP_FONT_SYMBOL_MEDIUM, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    const bool with_icon = shown && inner >= icon.x + 16;
+    lv_obj_set_hidden(arm[0], !shown);
+    lv_obj_set_hidden(arm[1], !with_icon);
+    lv_obj_set_hidden(ctx->flow_icon[item], !with_icon);
+    if (!shown) return;
+    const int row_h = lv_font_get_line_height(APP_FONT_SYMBOL_MEDIUM);
+    const int bar_top = ctx->flow_bar_y, bar_bottom = ctx->flow_bar_y + lv_obj_get_height(ctx->flow_track);
+    const int row_y = above ? bar_top - 2 - row_h : bar_bottom + 2;
+    const int line_y = row_y + row_h / 2;
+    const int arm_y = above ? line_y : bar_bottom + 2;
+    const int arm_h = above ? bar_top - 2 - line_y : line_y - arm_y + 1;
+    const lv_border_side_t side = above ? LV_BORDER_SIDE_TOP : LV_BORDER_SIDE_BOTTOM;
+    const int gap = with_icon ? icon.x + 8 : 0;
+    const int left_w = with_icon ? (inner - gap) / 2 : inner;
+    lv_obj_set_pos(arm[0], x + 2, arm_y);
+    lv_obj_set_size(arm[0], left_w, arm_h);
+    lv_obj_set_style_border_side(arm[0], side | LV_BORDER_SIDE_LEFT | (with_icon ? 0 : LV_BORDER_SIDE_RIGHT), 0);
+    if (!with_icon) return;
+    lv_obj_set_pos(arm[1], x + 2 + left_w + gap, arm_y);
+    lv_obj_set_size(arm[1], inner - left_w - gap, arm_h);
+    lv_obj_set_style_border_side(arm[1], side | LV_BORDER_SIDE_RIGHT, 0);
+    lv_obj_set_pos(ctx->flow_icon[item], x + 2 + left_w + 4, row_y);
+    lv_obj_set_size(ctx->flow_icon[item], icon.x, row_h);
 }
-/* The header's readings: the charging power against its maximum, or the energy flow as two bars on one scale (in above,
- * out below) with a dot and value per source and consumer that is running; a row keeps the items that fit. */
+/* The header's readings: the charging power against its maximum, or the energy flow as one bar of the sources (PV,
+ * battery, grid) with brackets naming them above and the consumers (home, car, battery charge, export) below. */
 static void render_header(wallbox_t *ctx)
 {
     if (!ctx->header_shown) return;
@@ -278,45 +307,49 @@ static void render_header(wallbox_t *ctx)
     evcc_flow_t flow;
     evcc_flow_compute(site[EVCC_SITE_PV], site[EVCC_SITE_BATTERY], site[EVCC_SITE_GRID], site[EVCC_SITE_HOME],
                       has_car ? car : 0.0f, &flow);
-    const int track_w = lv_obj_get_width(ctx->flow_track[0]);
-    const int card_w = lv_obj_get_width(ctx->card) - 24;
-    const int unit_w = lv_obj_get_width(ctx->head_value) + 8; /* the sources row ends before the "kW" */
+    const int track_w = lv_obj_get_width(ctx->flow_track), track_h = lv_obj_get_height(ctx->flow_track);
     const lv_font_t *font = ui_font_role(UI_TEXT_META);
-    const int line = lv_font_get_line_height(font);
-    for (int row = 0; row < 2; row++) {
-        const int first = row ? EVCC_FLOW_IN_COUNT : 0, count = row ? EVCC_FLOW_OUT_COUNT : EVCC_FLOW_IN_COUNT;
-        int x = 0, label_x = 12;
-        for (int k = 0; k < count; k++) {
-            const int item = first + k;
-            const float value = row ? flow.out[k] : flow.in[k];
-            const int w = flow.scale > 0.0f ? (int)lroundf((float)track_w * value / flow.scale) : 0;
-            lv_obj_set_hidden(ctx->flow_seg[item], w < 1);
-            lv_obj_set_pos(ctx->flow_seg[item], x, 0);
-            lv_obj_set_size(ctx->flow_seg[item], w > 0 ? w : 1, FLOW_BAR_H);
-            x += w;
-            bool shown = value >= 0.05f;
-            if (shown) {
-                /* the word and the value, or only the value beside its coloured dot where the row is full */
-                lv_point_t size;
-                snprintf(text, sizeof(text), "%s %.1f", flow_name(item), (double)value);
-                lv_text_get_size(&size, text, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-                const int row_end = 12 + card_w - (row ? 0 : unit_w);
-                if (label_x + 12 + size.x > row_end) {
-                    snprintf(text, sizeof(text), "%.1f", (double)value);
-                    lv_text_get_size(&size, text, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-                }
-                shown = label_x + 12 + size.x <= row_end;
-                if (shown) {
-                    lv_label_set_text(ctx->flow_label[item], text);
-                    lv_obj_set_pos(ctx->flow_dot[item], label_x, ctx->flow_row_y[row] + (line - 8) / 2);
-                    lv_obj_set_pos(ctx->flow_label[item], label_x + 12, ctx->flow_row_y[row]);
-                    lv_obj_set_size(ctx->flow_label[item], size.x + 2, line);
-                    label_x += 12 + size.x + 10;
-                }
-            }
-            lv_obj_set_hidden(ctx->flow_dot[item], !shown);
-            lv_obj_set_hidden(ctx->flow_label[item], !shown);
+    /* The sources fill the bar in their colours, each with its value where it fits, the largest with the unit. */
+    int largest = 0;
+    for (int k = 1; k < EVCC_FLOW_IN_COUNT; k++) if (flow.in[k] > flow.in[largest]) largest = k;
+    int seg_x[EVCC_FLOW_IN_COUNT], seg_w[EVCC_FLOW_IN_COUNT], x = 0;
+    for (int k = 0; k < EVCC_FLOW_IN_COUNT; k++) {
+        const int w = flow.scale > 0.0f ? (int)lroundf((float)track_w * flow.in[k] / flow.scale) : 0;
+        seg_x[k] = x;
+        seg_w[k] = w;
+        x += w;
+        lv_obj_set_hidden(ctx->flow_seg[k], w < 1);
+        lv_obj_set_pos(ctx->flow_seg[k], seg_x[k], 0);
+        lv_obj_set_size(ctx->flow_seg[k], w > 0 ? w : 1, track_h);
+        lv_point_t size;
+        snprintf(text, sizeof(text), k == largest ? "%.1f kW" : "%.1f", (double)flow.in[k]);
+        lv_text_get_size(&size, text, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        if (size.x + 8 > w) {
+            snprintf(text, sizeof(text), "%.1f", (double)flow.in[k]);
+            lv_text_get_size(&size, text, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
         }
+        const bool shown = flow.in[k] >= 0.05f && size.x + 8 <= w;
+        lv_obj_set_hidden(ctx->flow_value[k], !shown);
+        if (shown) {
+            lv_label_set_text(ctx->flow_value[k], text);
+            lv_obj_center(ctx->flow_value[k]);
+        }
+    }
+    /* Brackets: the sources above their segments, the consumers below in their share of the same length. */
+    int out_x = 0;
+    for (int item = 0; item < FLOW_ITEMS; item++) {
+        const bool source = item < EVCC_FLOW_IN_COUNT;
+        int bx = 0, bw = 0;
+        if (source) {
+            bx = seg_x[item];
+            bw = flow.in[item] >= 0.05f ? seg_w[item] : 0;
+        } else {
+            const float value = flow.out[item - EVCC_FLOW_IN_COUNT];
+            bw = flow.scale > 0.0f && value >= 0.05f ? (int)lroundf((float)track_w * value / flow.scale) : 0;
+            bx = out_x;
+            out_x += bw;
+        }
+        place_bracket(ctx, item, source, 12 + bx, bw);
     }
 }
 static void render(wallbox_t *ctx)
@@ -409,19 +442,23 @@ static void render(wallbox_t *ctx)
 static int header_height(const wallbox_t *ctx, int meta)
 {
     if (ctx->header == HEADER_POWER) return meta + 4 + HEADER_BAR_H + 12;
-    if (ctx->header == HEADER_FLOW) return meta + 4 + FLOW_BAR_H + 3 + FLOW_BAR_H + 4 + meta + 12;
+    if (ctx->header == HEADER_FLOW) {
+        const int row = lv_font_get_line_height(APP_FONT_SYMBOL_MEDIUM);
+        return row + 2 + meta + 8 + 2 + row + 12; /* icons, the bar holding a value line, icons */
+    }
     return 0;
 }
 static void layout_header(wallbox_t *ctx, int y, int width, int meta)
 {
     lv_obj_t *power[] = {ctx->head_caption, ctx->head_bar};
     for (int i = 0; i < 2; i++) if (power[i]) lv_obj_set_hidden(power[i], !(ctx->header_shown && ctx->header == HEADER_POWER));
-    if (ctx->head_value) lv_obj_set_hidden(ctx->head_value, !ctx->header_shown);
-    for (int i = 0; i < 2; i++) if (ctx->flow_track[i]) lv_obj_set_hidden(ctx->flow_track[i], !(ctx->header_shown && ctx->header == HEADER_FLOW));
-    for (int i = 0; i < FLOW_ITEMS; i++) {
-        if (ctx->flow_dot[i] && !(ctx->header_shown && ctx->header == HEADER_FLOW)) {
-            lv_obj_set_hidden(ctx->flow_dot[i], true);
-            lv_obj_set_hidden(ctx->flow_label[i], true);
+    if (ctx->head_value) lv_obj_set_hidden(ctx->head_value, !(ctx->header_shown && ctx->header == HEADER_POWER));
+    if (ctx->flow_track) lv_obj_set_hidden(ctx->flow_track, !(ctx->header_shown && ctx->header == HEADER_FLOW));
+    if (ctx->header == HEADER_FLOW && !ctx->header_shown) {
+        for (int i = 0; i < FLOW_ITEMS; i++) {
+            lv_obj_set_hidden(ctx->flow_arm[i][0], true);
+            lv_obj_set_hidden(ctx->flow_arm[i][1], true);
+            lv_obj_set_hidden(ctx->flow_icon[i], true);
         }
     }
     if (!ctx->header_shown) return;
@@ -431,13 +468,9 @@ static void layout_header(wallbox_t *ctx, int y, int width, int meta)
         lv_obj_set_pos(ctx->head_bar, 12, y + meta + 4); lv_obj_set_size(ctx->head_bar, width, HEADER_BAR_H);
         return;
     }
-    ctx->flow_row_y[0] = y;
-    lv_point_t unit;
-    lv_text_get_size(&unit, "kW", ui_font_role(UI_TEXT_META), 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-    lv_obj_set_pos(ctx->head_value, 12 + width - unit.x - 2, y); lv_obj_set_size(ctx->head_value, unit.x + 2, meta);
-    lv_obj_set_pos(ctx->flow_track[0], 12, y + meta + 4); lv_obj_set_size(ctx->flow_track[0], width, FLOW_BAR_H);
-    lv_obj_set_pos(ctx->flow_track[1], 12, y + meta + 4 + FLOW_BAR_H + 3); lv_obj_set_size(ctx->flow_track[1], width, FLOW_BAR_H);
-    ctx->flow_row_y[1] = y + meta + 4 + 2 * FLOW_BAR_H + 3 + 4;
+    ctx->flow_bar_y = y + lv_font_get_line_height(APP_FONT_SYMBOL_MEDIUM) + 2;
+    lv_obj_set_pos(ctx->flow_track, 12, ctx->flow_bar_y);
+    lv_obj_set_size(ctx->flow_track, width, meta + 8);
 }
 static void layout(wallbox_t *ctx)
 {
@@ -453,7 +486,7 @@ static void layout(wallbox_t *ctx)
     lv_obj_set_size(ctx->sessions_caption, history_w-8, meta); lv_obj_center(ctx->sessions_caption);
     int y = 12+meta+12;
     /* the rows below the header, from the mode buttons to the charge level */
-    const int body = row+10 + meta+label+12 + row+10 + meta+6 + 18 + meta+2 + value;
+    const int body = row+10 + meta+label+12 + row+10 + meta+6 + CHARGE_BAR_H+8 + meta+2 + value;
     const int head = header_height(ctx, meta);
     ctx->header_shown = head > 0 && y + head + body + 8 <= lv_obj_get_height(ctx->card);
     layout_header(ctx, y, width, meta);
@@ -473,8 +506,8 @@ static void layout(wallbox_t *ctx)
     lv_obj_set_pos(ctx->last, 12, y); lv_obj_set_size(ctx->last, width, label);
     lv_obj_set_pos(ctx->last_date, 12, y+label+8); lv_obj_set_size(ctx->last_date, width, label);
     y += meta+6;
-    for (int i = 0; i < 2; i++) { lv_obj_set_pos(ctx->bar[i], 12+i*(width/5), y); lv_obj_set_size(ctx->bar[i], i ? width-width/5 : width/5, 10); }
-    y += 18;
+    for (int i = 0; i < 2; i++) { lv_obj_set_pos(ctx->bar[i], 12+i*(width/5), y); lv_obj_set_size(ctx->bar[i], i ? width-width/5 : width/5, CHARGE_BAR_H); }
+    y += CHARGE_BAR_H + 8;
     lv_obj_set_pos(ctx->soc_title, 12, y); lv_obj_set_size(ctx->soc_title, width/2-4, meta);
     lv_obj_set_pos(ctx->target_title, 12+width/2, y); lv_obj_set_size(ctx->target_title, width/2, meta);
     y += meta+2;
@@ -582,25 +615,31 @@ esp_err_t w_wallbox_evcc_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
         lv_obj_set_style_bg_color(ctx->head_bar, lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE), LV_PART_MAIN); lv_obj_set_style_bg_opa(ctx->head_bar, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_bg_color(ctx->head_bar, lv_color_hex(0x43BF79), LV_PART_INDICATOR); lv_obj_set_style_bg_opa(ctx->head_bar, LV_OPA_COVER, LV_PART_INDICATOR);
     } else if (ctx->header == HEADER_FLOW) {
-        /* the unit of every value, once, at the end of the sources row */
-        ctx->head_value = lv_label_create(ctx->card); ui_text_set(ctx->head_value, UI_TEXT_META, true);
-        lv_label_set_text(ctx->head_value, "kW"); lv_obj_set_style_text_align(ctx->head_value, LV_TEXT_ALIGN_RIGHT, 0);
-        lv_obj_set_style_text_color(ctx->head_value, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), 0);
-        for (int i = 0; i < 2; i++) {
-            ctx->flow_track[i] = lv_obj_create(ctx->card); lv_obj_remove_style_all(ctx->flow_track[i]);
-            lv_obj_set_scrollable(ctx->flow_track[i], false); lv_obj_set_clickable(ctx->flow_track[i], false);
-            lv_obj_set_style_radius(ctx->flow_track[i], ui_style_track_radius(), 0); lv_obj_set_style_clip_corner(ctx->flow_track[i], true, 0);
-            lv_obj_set_style_bg_color(ctx->flow_track[i], lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE), 0); lv_obj_set_style_bg_opa(ctx->flow_track[i], LV_OPA_COVER, 0);
+        ctx->flow_track = lv_obj_create(ctx->card); lv_obj_remove_style_all(ctx->flow_track);
+        lv_obj_set_scrollable(ctx->flow_track, false); lv_obj_set_clickable(ctx->flow_track, false);
+        lv_obj_set_style_radius(ctx->flow_track, ui_style_track_radius(), 0); lv_obj_set_style_clip_corner(ctx->flow_track, true, 0);
+        lv_obj_set_style_bg_color(ctx->flow_track, lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE), 0); lv_obj_set_style_bg_opa(ctx->flow_track, LV_OPA_COVER, 0);
+        for (int k = 0; k < EVCC_FLOW_IN_COUNT; k++) {
+            ctx->flow_seg[k] = lv_obj_create(ctx->flow_track); lv_obj_remove_style_all(ctx->flow_seg[k]);
+            lv_obj_set_scrollable(ctx->flow_seg[k], false); lv_obj_set_clickable(ctx->flow_seg[k], false);
+            lv_obj_set_style_bg_color(ctx->flow_seg[k], flow_color(k), 0); lv_obj_set_style_bg_opa(ctx->flow_seg[k], LV_OPA_COVER, 0);
+            ctx->flow_value[k] = lv_label_create(ctx->flow_seg[k]); ui_text_set(ctx->flow_value[k], UI_TEXT_META, true);
+            lv_obj_set_style_text_color(ctx->flow_value[k], ui_style_button_icon_color(flow_color(k)), 0);
         }
         for (int i = 0; i < FLOW_ITEMS; i++) {
-            ctx->flow_seg[i] = lv_obj_create(ctx->flow_track[i < EVCC_FLOW_IN_COUNT ? 0 : 1]); lv_obj_remove_style_all(ctx->flow_seg[i]);
-            lv_obj_set_clickable(ctx->flow_seg[i], false);
-            lv_obj_set_style_bg_color(ctx->flow_seg[i], flow_color(i), 0); lv_obj_set_style_bg_opa(ctx->flow_seg[i], LV_OPA_COVER, 0);
-            ctx->flow_dot[i] = lv_obj_create(ctx->card); lv_obj_remove_style_all(ctx->flow_dot[i]); lv_obj_set_clickable(ctx->flow_dot[i], false);
-            lv_obj_set_size(ctx->flow_dot[i], 8, 8); lv_obj_set_style_radius(ctx->flow_dot[i], LV_RADIUS_CIRCLE, 0);
-            lv_obj_set_style_bg_color(ctx->flow_dot[i], flow_color(i), 0); lv_obj_set_style_bg_opa(ctx->flow_dot[i], LV_OPA_COVER, 0);
-            ctx->flow_label[i] = lv_label_create(ctx->card); ui_text_set(ctx->flow_label[i], UI_TEXT_META, true);
-            lv_obj_set_hidden(ctx->flow_dot[i], true); lv_obj_set_hidden(ctx->flow_label[i], true);
+            for (int a = 0; a < 2; a++) {
+                lv_obj_t *arm = lv_obj_create(ctx->card); lv_obj_remove_style_all(arm);
+                lv_obj_set_scrollable(arm, false); lv_obj_set_clickable(arm, false);
+                lv_obj_set_style_border_width(arm, 1, 0); lv_obj_set_style_radius(arm, 6, 0);
+                lv_obj_set_style_border_color(arm, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), 0);
+                lv_obj_set_hidden(arm, true);
+                ctx->flow_arm[i][a] = arm;
+            }
+            ctx->flow_icon[i] = lv_label_create(ctx->card);
+            lv_label_set_text(ctx->flow_icon[i], k_flow_icon[i]);
+            lv_obj_set_style_text_font(ctx->flow_icon[i], APP_FONT_SYMBOL_MEDIUM, 0);
+            lv_obj_set_style_text_color(ctx->flow_icon[i], flow_color(i), 0);
+            lv_obj_set_hidden(ctx->flow_icon[i], true);
         }
     }
     instance->obj = ctx->card; instance->ctx = ctx; instance->visible = true;

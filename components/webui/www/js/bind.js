@@ -95,7 +95,7 @@ function bindUi() {
 if (el.fEvccDetectBtn) el.fEvccDetectBtn.onclick = () => void evccDetectLoadpoints();
 if (el.fEvccLoadpoint) el.fEvccLoadpoint.addEventListener("change", () => evccChooseLoadpoint(el.fEvccLoadpoint.value));
 for (const input of [el.fEvccHeader, el.fEvccPowerMax].filter(Boolean)) {
-  input.addEventListener("change", () => { evccHeaderVisibility(); autoApplyInspector();
+  input.addEventListener("change", () => { evccHeaderChanged(); autoApplyInspector();
     if (selectedWidget()?.type === "wallbox_evcc") evccBindingStatus(selectedWidget()); });
 }
 for (const input of evccInspectorInputs()) {

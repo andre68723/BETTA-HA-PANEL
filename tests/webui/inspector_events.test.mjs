@@ -721,6 +721,23 @@ test("a loadpoint brings its instance's site sensors", () => {
   assert.equal(run("selectedWidget().evcc_home_power_entity_id"), "sensor.site_home");
   assert.equal(run("selectedWidget().evcc_grid_power_entity_id"), undefined);
 });
+test("switching the wallbox header to the energy flow fills the site sensors of its loadpoint", async () => {
+  const run = setupInspector("wallbox_evcc", "select.demo_mode");
+  run(`selectedWidget().evcc_loadpoint_id='demo';
+    evccLoadpoints=[{id:'demo',entities:{entity_id:'select.demo_mode',evcc_pv_power_entity_id:'sensor.site_pv',evcc_battery_power_entity_id:'sensor.site_battery',
+      evcc_grid_power_entity_id:'sensor.site_grid',evcc_home_power_entity_id:'sensor.site_home'}}];`);
+  run("el.fEvccHeader.value='flow'; el.fEvccHeader.dispatch('change')");
+  assert.equal(run("selectedWidget().evcc_header"), "flow");
+  assert.equal(run("selectedWidget().evcc_pv_power_entity_id"), "sensor.site_pv");
+  assert.equal(run("selectedWidget().evcc_home_power_entity_id"), "sensor.site_home");
+  // without a lookup yet, the switch starts one
+  const fresh = setupInspector("wallbox_evcc", "select.demo_mode");
+  fresh(`selectedWidget().evcc_loadpoint_id='demo';
+    apiGet=async()=>({status:'ready',loadpoints:[{id:'demo',entities:{entity_id:'select.demo_mode',evcc_grid_power_entity_id:'sensor.site_grid'}}]});`);
+  fresh("el.fEvccHeader.value='flow'; el.fEvccHeader.dispatch('change')");
+  await fresh("new Promise(resolve => setTimeout(resolve, 0))");
+  assert.equal(fresh("selectedWidget().evcc_grid_power_entity_id"), "sensor.site_grid");
+});
 test("wallbox discovery uses only the selected evcc instance and removes unrelated saved bindings", async () => {
   const run = setupInspector("wallbox_evcc", "select.demo_mode");
   run(`selectedWidget().evcc_loadpoint_id='saved';

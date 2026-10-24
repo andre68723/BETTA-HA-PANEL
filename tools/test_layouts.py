@@ -2,12 +2,16 @@
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723
 """Test layouts: every widget and variant, by topic, for each panel size, in the simulator and on a panel.
 
+  tools/test_layouts.py check
   tools/test_layouts.py generate <board> [--entities FILE] [--out DIR]
   tools/test_layouts.py simulate <board> [--suite NAME] [--text-step N] [--out DIR]
   tools/test_layouts.py view [<board> ...] [--text-step N] [--no-open]
   tools/test_layouts.py load <panel-ip> <suite-file>
   tools/test_layouts.py restore <panel-ip> [--force]
   tools/test_layouts.py status <panel-ip>
+
+check (part of tools/check.sh) needs no simulator: every widget type and enumerated value has a case, and every
+board's layouts fit its pages, 32 KB and canvas without overlaps.
 
 The suites are in tools/test_layout_cases.json: widgets at their 10-inch size with "{role}" entities. generate places
 them on pages for a board (paneljc, tab5, panel4), splitting a suite where it exceeds the board's pages or the 32 KB
@@ -46,9 +50,7 @@ LOCAL_ENTITIES = REPO / ".local/test-layouts/entities.json"
 BACKUPS = REPO / ".claude/layout-backups"
 BOARDS = {"paneljc": (1280, 680, 12), "tab5": (1280, 600, 12), "panel4": (720, 600, 8)}
 MAX_BYTES = 32768
-# The simulator's fixed clock for reproducible renders: Thursday 15 October 2026, 12:00 in Berlin (see --now).
-FIXED_NOW = "2026-10-15T12:00"
-FIXED_TZ = "CET-1CEST,M3.5.0,M10.5.0/3"
+FIXED_NOW = "2026-10-15T12:00"  # generate_simulator_gallery.FIXED_NOW, the default of --now
 MARGIN = GAP = 10
 LONG_TITLE = "Ein sehr langer Titel, der nicht hineinpasst"
 
@@ -339,16 +341,10 @@ LANGUAGES = ("de", "en")
 
 
 def use_clock(now):
-    """Set the simulator clock for this process and the simulators it starts: a fixed local time (ISO, in Berlin
-    time) or "real". Returns the Unix seconds used, or None for the real clock."""
-    if now == "real":
-        os.environ.pop("BETTA_SIM_NOW", None)
-        return None
-    os.environ["TZ"] = FIXED_TZ
-    time.tzset()
-    seconds = int(time.mktime(time.strptime(now, "%Y-%m-%dT%H:%M")))
-    os.environ["BETTA_SIM_NOW"] = str(seconds)
-    return seconds
+    """The simulator clock shared with the gallery (generate_simulator_gallery.use_fixed_clock)."""
+    sys.path.insert(0, str(REPO / "tools"))
+    from generate_simulator_gallery import use_fixed_clock
+    return use_fixed_clock(now)
 
 
 def render_board(board, styles, steps, languages, out, suite=None):
@@ -600,6 +596,30 @@ def status(ip):
     print(f"{ip}: test layout {state.get('suite')}{' (edited since)' if changed else ''}; own layout saved in {path}")
 
 
+def check_catalogue():
+    """Fast check for tools/check.sh, without rendering: every widget type and validated value has a case, and every
+    board's layouts stay within its pages and the 32 KB limit with no tile outside the canvas or on another."""
+    problems = [f"no case: {item}" for item in coverage(all_suites())]
+    for board, (width, height, max_pages) in BOARDS.items():
+        for stem, layout in generate(board, DEMO_ROLES).items():
+            size = len(compact(layout).encode())
+            if len(layout["pages"]) > max_pages or size > MAX_BYTES:
+                problems.append(f"{board}/{stem}: {len(layout['pages'])} pages, {size} bytes")
+            for page in layout["pages"]:
+                rects = [(w["id"], w["rect"]) for w in page["widgets"]]
+                for wid, r in rects:
+                    if r["x"] < 0 or r["y"] < 0 or r["x"] + r["w"] > width or r["y"] + r["h"] > height:
+                        problems.append(f"{board}/{stem}: {wid} outside the canvas")
+                for i, (a, ra) in enumerate(rects):
+                    for b, rb in rects[i + 1:]:
+                        if ra["x"] < rb["x"] + rb["w"] and rb["x"] < ra["x"] + ra["w"] and ra["y"] < rb["y"] + rb["h"] and rb["y"] < ra["y"] + ra["h"]:
+                            problems.append(f"{board}/{stem}: {a} overlaps {b}")
+    for problem in problems:
+        print(problem)
+    print(f"test pages: {'ok' if not problems else f'{len(problems)} problem(s)'}")
+    return 1 if problems else 0
+
+
 def add_matrix(parser, styles, steps, languages):
     def listed(choices, kind=str):
         def parse(text):
@@ -642,6 +662,7 @@ def main():
     rs = commands.add_parser("restore")
     rs.add_argument("ip")
     rs.add_argument("--force", action="store_true")
+    commands.add_parser("check", help="cases cover every type and value; layouts fit every board (no rendering)")
     st = commands.add_parser("status")
     st.add_argument("ip")
     args = parser.parse_args()
@@ -650,6 +671,8 @@ def main():
             use_clock(args.now)
         except ValueError:
             parser.error("--now: YYYY-MM-DDTHH:MM or real")
+    if args.command == "check":
+        return check_catalogue()
     if args.command == "generate":
         source = args.entities or (LOCAL_ENTITIES if LOCAL_ENTITIES.exists() else DEMO_ENTITIES)
         write_layouts(args.board, json.loads(source.read_text(encoding="utf-8")),

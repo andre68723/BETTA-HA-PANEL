@@ -340,9 +340,10 @@ WIDGETS = {
         "options": [("Loadpoint", "**Find loadpoints** refreshes the complete bindings from the selected evcc instance"),
                     ("Detected entities", "read-only bindings from the selected evcc instance"),
                     ("Header", "off, the charging power as a bar up to **Maximum charging power (kW)** (empty = 11), or the energy flow: "
-                               "sources above two bars on one scale, consumers below; the selected loadpoint automatically supplies the site sensors")],
+                               "one bar of the sources with brackets naming them above and the consumers below; the selected loadpoint "
+                               "automatically supplies the site sensors")],
         "panel": ["Status, power, charged energy, remaining time and the current SOC on a green bar.",
-                  "The optional header sits above the modes: the charging power against its maximum, or the site's flow in kW (PV, battery, grid in; home, car, battery, export out). It needs about 400 px (power) or 440 px (flow) of height and stays off on a shorter card."],
+                  "The optional header sits above the modes: the charging power against its maximum, or the site's flow as in the evcc app: one bar of the sources (PV, battery, grid) with their values in kW, brackets with icons above for the sources and below for the consumers (home, car, battery charge, export). On the 10-inch panel it needs about 410 px (power) or 450 px (flow) of height, more with larger text, and stays off on a shorter card; the Inspector names the height."],
     },
     "weather_3day": {
         "summary": "Compares **forecast days** of a `weather.*` entity: temperatures and precipitation in configurable columns.",

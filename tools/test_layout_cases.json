@@ -16,7 +16,7 @@
    {"type": "energy_price_forecast", "title": "Preis als Linie", "w": 480, "h": 470, "entity_id": "{price_nordpool}", "price_day_switch": true, "price_cheap_times": true, "price_average": 0.3, "price_line": true},
    {"type": "wallbox_evcc", "title": "Wallbox", "w": 360, "h": 360, "evcc": true},
    {"type": "wallbox_evcc", "title": "Wallbox Ladeleistung", "w": 360, "h": 500, "evcc": true, "evcc_header": "power", "evcc_power_max_kw": 11, "expect": ["11 kW"]},
-   {"type": "wallbox_evcc", "title": "Wallbox Energiefluss", "w": 420, "h": 540, "evcc": true, "evcc_header": "flow", "evcc_site": true, "expect": ["PV", "Haus", "Auto"]},
+   {"type": "wallbox_evcc", "title": "Wallbox Energiefluss", "w": 420, "h": 540, "evcc": true, "evcc_header": "flow", "evcc_site": true, "expect": ["kW"]},
    {"type": "gauge", "title": "Ladeleistung", "w": 100, "h": 260, "entity_id": "{evcc_power}", "style_variant": "linear", "gauge_bar_style": "segmented", "gauge_min": 0, "gauge_max": 11, "show_name": false},
    {"type": "graph", "title": "Balken 30 min", "w": 390, "h": 200, "entity_id": "{power}", "graph_display_mode": "bars", "graph_time_window_min": 360, "graph_bar_bucket_min": 30, "graph_ha_history": true},
    {"type": "graph", "title": "Balken 5 min", "w": 300, "h": 160, "entity_id": "{power}", "graph_display_mode": "bars", "graph_time_window_min": 120, "graph_bar_bucket_min": 5},
@@ -125,7 +125,7 @@
    {"type": "media_player", "title": "Musik", "w": 350, "h": 410, "entity_id": "{media}"},
    {"type": "media_player", "title": "Musik klein", "w": 260, "h": 220, "entity_id": "{media}"},
    {"type": "sonos_favorites", "title": "Sonos", "w": 280, "h": 410, "entity_id": "{sonos}", "secondary_entity_id": "{sonos_favorites}"},
-   {"type": "bambu_printer", "title": "Drucker", "w": 360, "h": 420, "entity_id": "{bambu_status}", "nozzle_temp_entity_id": "{bambu_nozzle}", "bed_temp_entity_id": "{bambu_bed}", "progress_entity_id": "{bambu_progress}", "remaining_time_entity_id": "{bambu_remaining}", "stage_entity_id": "{bambu_stage}", "job_name_entity_id": "{bambu_job}", "pause_entity_id": "{bambu_pause}", "resume_entity_id": "{bambu_resume}", "stop_entity_id": "{bambu_stop}", "camera_entity_id": "{bambu_camera}", "expect": ["Düse", "Pause", "Stopp"]},
+   {"type": "bambu_printer", "title": "Drucker", "w": 360, "h": 420, "entity_id": "{bambu_status}", "nozzle_temp_entity_id": "{bambu_nozzle}", "bed_temp_entity_id": "{bambu_bed}", "progress_entity_id": "{bambu_progress}", "remaining_time_entity_id": "{bambu_remaining}", "stage_entity_id": "{bambu_stage}", "job_name_entity_id": "{bambu_job}", "pause_entity_id": "{bambu_pause}", "resume_entity_id": "{bambu_resume}", "stop_entity_id": "{bambu_stop}", "camera_entity_id": "{bambu_camera}", "expect": ["Düse", "Pause", "Stopp", "Hotend heizt"]},
    {"type": "bambu_printer", "title": "Drucker klein", "w": 320, "h": 320, "entity_id": "{bambu_status}", "progress_entity_id": "{bambu_progress}", "remaining_time_entity_id": "{bambu_remaining}", "stage_entity_id": "{bambu_stage}", "job_name_entity_id": "{bambu_job}"}
   ]},
   "finanzen": {"title": "Finanzen", "cases": [

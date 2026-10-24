@@ -22,6 +22,24 @@ import time
 from datetime import date, timedelta
 
 from gallery_freshness import REPO, SOURCES_JSON, write_stamp
+
+# The simulator's fixed clock (tests/simulator/stubs/sim_clock.h) for the gallery and the test pages, so their images
+# do not change with the day they are made: Thursday 15 October 2026, 12:00 in Berlin.
+FIXED_NOW = "2026-10-15T12:00"
+FIXED_TZ = "CET-1CEST,M3.5.0,M10.5.0/3"
+
+
+def use_fixed_clock(now=FIXED_NOW):
+    """Set the clock of this process and the simulators it starts: a local time YYYY-MM-DDTHH:MM (Berlin) or "real".
+    Returns the Unix seconds, or None for the real clock."""
+    if now == "real":
+        os.environ.pop("BETTA_SIM_NOW", None)
+        return None
+    os.environ["TZ"] = FIXED_TZ
+    time.tzset()
+    seconds = int(time.mktime(time.strptime(now, "%Y-%m-%dT%H:%M")))
+    os.environ["BETTA_SIM_NOW"] = str(seconds)
+    return seconds
 from gallery_content import (DEFAULT_IMG_DIR, DEFAULT_OUT_MD, SIMULATOR_SOURCE_NOTE,
                              STYLES, NAME_VISIBILITY_EXAMPLES, build_layout, build_spec, collect_images, render_markdown)
 
@@ -372,7 +390,10 @@ def main():
                         help="rewrite Markdown from existing images without rendering or changing the freshness stamp")
     parser.add_argument("--stamp-only", action="store_true",
                         help="record the current sources as the gallery's state without rendering (the change is not visible)")
+    parser.add_argument("--now", default=FIXED_NOW,
+                        help=f"simulator clock, YYYY-MM-DDTHH:MM Berlin time or 'real' (default {FIXED_NOW})")
     args = parser.parse_args()
+    use_fixed_clock(args.now)
     if args.stamp_only and args.markdown_only:
         parser.error("--stamp-only and --markdown-only cannot be combined")
     default_variant = args.variant == "panel4"

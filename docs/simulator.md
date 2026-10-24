@@ -86,7 +86,8 @@ edge cases; `check_widget_layout.py --fixture` checks it) and `dutch-characters.
 ## Gallery
 
 `python3 tools/generate_simulator_gallery.py` renders the [gallery](gallery.md) from `tests/simulator/gallery_data.json`
-in all four styles; `--variant paneljc|tab5` renders the house and energy pages at that size
+in all four styles on the fixed clock (15 October 2026, 12:00 Berlin; `--now real` for the host clock), so a new run
+changes only images whose widget changed; `--variant paneljc|tab5` renders the house and energy pages at that size
 ([10-inch](gallery-sim-paneljc.md), [5-inch](gallery-sim-tab5.md)). It needs Pillow and no panel; see
 [Gallery](development/testing.md#gallery).
 

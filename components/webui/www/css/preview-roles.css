@@ -372,16 +372,22 @@ body:is([data-ui-style="glow"], [data-ui-style="glass"]) #canvas .tp-media .tp-v
 #canvas .tp-room-controls i { background: color-mix(in srgb, var(--pv-text) 10%, transparent); }
 #canvas .tp-empty { justify-content: flex-start; align-items: flex-start; }
 #canvas .tp-empty .tp-name { text-align: left; }
-/* wallbox header (evccHeaderPreview()): META rows, 12 px power bar, two 10 px flow bars 3 px apart */
+/* wallbox header (evccHeaderPreview()): META row and 20 px power bar; the flow as one bar of a value line between two
+ * 25 px icon rows with brackets (1 px lines, their ends towards the bar, open around the icon) */
 #canvas .evcc-header { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
 #canvas .evcc-header-row { display: flex; justify-content: space-between; align-items: center; font-size: var(--meta); line-height: 1.25; white-space: nowrap; overflow: hidden; }
-#canvas .evcc-header-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: color-mix(in srgb, var(--pv-text) 14%, transparent); }
-#canvas .evcc-flow .evcc-header-bar { height: 10px; }
-#canvas .evcc-flow .evcc-header-bar + .evcc-header-bar { margin-top: -1px; }
+#canvas .evcc-header-bar { display: flex; height: 20px; border-radius: 6px; overflow: hidden; background: color-mix(in srgb, var(--pv-text) 14%, transparent); }
 #canvas .evcc-header-bar i { display: block; height: 100%; }
-#canvas .evcc-flow-row { justify-content: flex-start; gap: 10px; }
-#canvas .evcc-flow-row span { display: inline-flex; align-items: center; gap: 4px; }
-#canvas .evcc-flow-row span i { width: 8px; height: 8px; border-radius: 50%; }
-#canvas .evcc-flow-unit { margin-left: auto; color: var(--pv-muted); }
+#canvas .evcc-flow { gap: 2px; }
+#canvas .evcc-flow-brackets { position: relative; height: 25px; }
+#canvas .evcc-flow-bar { position: relative; height: var(--flow-bar); border-radius: 6px; overflow: hidden; background: color-mix(in srgb, var(--pv-text) 14%, transparent); }
+#canvas .evcc-flow-bar i { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; }
+#canvas .evcc-flow-bar b { font-size: var(--meta); font-weight: 500; font-style: normal; color: #fff; white-space: nowrap; }
+#canvas .evcc-arm { position: absolute; box-sizing: border-box; border: 0 solid var(--pv-muted); border-radius: 6px; }
+#canvas .evcc-arm.above { top: 12px; bottom: 0; border-top-width: 1px; }
+#canvas .evcc-arm.below { top: 0; bottom: 12px; border-bottom-width: 1px; }
+#canvas .evcc-arm.start, #canvas .evcc-arm.both { border-left-width: 1px; }
+#canvas .evcc-arm.end, #canvas .evcc-arm.both { border-right-width: 1px; }
+#canvas .evcc-flow-brackets svg { position: absolute; top: 0; width: 26px; height: 25px; fill: currentColor; }
 /* the wallbox draws from 12 px inside its card like w_wallbox_evcc.c, without the preview box's own padding */
 #canvas .widget-box:has(> .evcc-preview) { padding: 0; }

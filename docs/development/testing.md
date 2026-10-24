@@ -13,7 +13,8 @@ first, then review on hardware.
   tables with identical keys and interpolation variables, non-empty values, duplicate-free firmware JSON, matching
   printf formats and an ASCII English firmware table (German may use umlauts and `ß`), the source and
   documentation size checks, that the simulator reads every widget field the firmware reads
-  (`check_simulator_fields.py`) and, with cmake and SDL2, the simulator regressions, the widget layout check and the host
+  (`check_simulator_fields.py`), that the [test pages](#test-layouts) cover every widget type and option and fit every
+  board (`test_layouts.py check`) and, with cmake and SDL2, the simulator regressions, the widget layout check and the host
   tests. `--build` also builds all five variants (`panel4`, `panel10`, `paneljc`, `paneljc-v2`, `tab5`) with the full
   define set and checks the flash size in `flash_args`. Run it before committing editor or translation changes.
   `.github/workflows/check.yml` runs the checks with `--full`; `.github/workflows/build.yml` builds and packages every
