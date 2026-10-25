@@ -192,7 +192,7 @@ menu "ESP-Hosted"
 config APP_HOSTED_AUTO_UPDATE_C6_FW
     bool "Auto-update C6 firmware on version mismatch"
     default y
-    depends on ESP_HOSTED_ENABLED
+    depends on ESP_HOSTED
     help
         If enabled, the host runs automatic C6 slave OTA using the bundled
         firmware image whenever running C6 firmware differs from host version,

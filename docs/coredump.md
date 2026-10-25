@@ -169,6 +169,8 @@ dump. Read `wifi_diag` in the saved `/api/version`: `c6_memory` is the Wi-Fi co-
 `restart_cause` the sample was written just before that restart, which also covers a silent gateway with the link
 still up. `same_host_boot: false` means it comes from an earlier boot; `sample_age_ms` is the sample's age at the
 incident, so an old sample says little about the moment itself. A low `free_heap_bytes` or `min_free_heap_bytes`
-points at the C6 rather than the P4. These values are not yet confirmed on hardware.
+points at the C6 rather than the P4. These values are not yet confirmed on hardware. With a co-processor image that has no
+memory monitor (the prebuilt ESP-Hosted 3.0.10 image) `c6_memory.state` is `unsupported` and neither a live reading nor a
+`c6_last_incident` is reported; ignore them then.
 - A panic before import can overwrite a previous raw dump; only reports successfully
   archived after boot get the two-report retention guarantee.

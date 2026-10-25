@@ -2,6 +2,8 @@
  * Copyright (c) 2026 andre68723 -- added in the BETTA-HA-PANEL fork
  */
 #include "net/c6_memory.h"
+
+#include <string.h>
 #include "net/wifi_diag_store.h"
 #include "esp_log.h"
 #include "esp_random.h"
@@ -164,6 +166,8 @@ void c6_memory_add_json(cJSON *root, cJSON *wifi_diag)
     incident = s_incident;
     const uint32_t boot = s_boot_id;
     portEXIT_CRITICAL(&s_lock);
-    c6_memory_state_json(root, &state, now_ms(), boot);
-    c6_memory_incident_json(wifi_diag, &incident, boot);
+    const int64_t now = now_ms();
+    c6_memory_state_json(root, &state, now, boot);
+    /* A co-processor image without the memory monitor never reports: an incident retained from an earlier image is not shown beside it. */
+    if (strcmp(c6_memory_state_name(&state, now), "unsupported") != 0) c6_memory_incident_json(wifi_diag, &incident, boot);
 }

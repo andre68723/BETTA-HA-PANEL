@@ -8,7 +8,8 @@ function setup() {
   const editor = loadEditor();
   editor.run(`
     var c6Nodes = Object.fromEntries([
-      "settingsStatusC6", "settingsStatusC6Dma", "settingsStatusC6Error", "settingsStatusC6Incident"
+      "settingsStatusC6", "settingsStatusC6Dma", "settingsStatusC6Error", "settingsStatusC6Incident",
+      "settingsStatusC6Label", "settingsStatusC6Row"
     ].map(id => [id, { textContent: "", hidden: false }]));
     document.getElementById = id => c6Nodes[id] || null;
   `);
@@ -24,7 +25,12 @@ test("C6 status distinguishes absent, collecting, unsupported and real zero", ()
   render({ c6_memory: { state: "collecting", available: false } });
   assert.match(text(), /Collecting/);
   render({ c6_memory: { state: "unsupported", available: false } });
-  assert.match(text(), /not supported/);
+  // unsupported hides the whole row (label and values) instead of showing a text
+  assert.equal(e.run("c6Nodes.settingsStatusC6Label.hidden"), true);
+  assert.equal(e.run("c6Nodes.settingsStatusC6Row.hidden"), true);
+  render({ c6_memory: { state: "collecting", available: false } });
+  assert.equal(e.run("c6Nodes.settingsStatusC6Label.hidden"), false);
+  assert.equal(e.run("c6Nodes.settingsStatusC6Row.hidden"), false);
   render({ c6_memory: { state: "fresh", available: true, free_heap_bytes: 0,
     internal_largest_block_bytes: 0, sample_age_ms: 0 } });
   assert.match(text(), /Free 0 KB, lowest --, largest block 0 KB/);

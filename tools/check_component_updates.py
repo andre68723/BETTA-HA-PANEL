@@ -287,7 +287,7 @@ def check_variant(variant, prerelease, cache):
         if vendored and status != "up to date":
             status = "vendored copy in components/, newer registry version (update by hand)"
         # The newest version of the same major.minor line: a patch release the manifest pin would have to be moved to, which "latest"
-        # hides when a new major or minor exists (esp_hosted 2.12.13 next to 3.0.9).
+        # hides when a new major or minor exists (a pinned esp_hosted 3.0.10 next to a later 3.x minor).
         same_line = [v for v in versions if core(v)[:2] == core(ver)[:2] and vkey(v) > vkey(ver)]
         line_latest = same_line[-1] if same_line else None
         if line_latest and line_latest != latest and status != "up to date":

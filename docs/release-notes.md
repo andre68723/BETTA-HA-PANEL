@@ -4,7 +4,7 @@
 
 Changes of **this fork**, compared with upstream v0.8.2. The release notes of the original project (v0.8.2 and earlier, by Cpt_Kirk) are kept unchanged in [Upstream release notes](release-notes-upstream.md).
 
-## v0.9.1-rc1
+## v0.9.1-rc2
 
 Release candidate, not published. Changes since [v0.9.0](#v090).
 
@@ -26,6 +26,7 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 
 ### Fixes
 
+- **C6 Wi-Fi memory status:** the Device status row is hidden, and no retained C6 incident sample is reported, when the Wi-Fi co-processor firmware has no memory monitor (the prebuilt ESP-Hosted 3.0.10 image); before it showed an unsupported text.
 - **Solar bars on the compact boards:** vertical bars take about two thirds of their column (up to 72 px) instead of half (up to 42 px), so the margins beside them are narrower on the 4-inch and Tab5 boards; the 10-inch boards are unchanged.
 - **Seven forecast days:** Weather offers up to seven days including today and Solar gets **Day 6** and **Day 7** forecast fields, so both can show a week (Visible days 1-7). Layouts saved before keep their six weather columns and five solar days. With a Visible-days count the weather cards sit on the shared day grid, so **Line up days with the weather tile** holds for every count on the 10-inch boards (it was off with few days, where the cards were capped at 96 px). A long forecast leaves less room in the attribute budget: the detail-popup readings are dropped first so the forecast stays.
 - **Solar today:** the remaining part is now the bright start of today's bar and the part already produced is dimmed at its end.

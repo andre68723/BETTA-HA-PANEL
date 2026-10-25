@@ -25,7 +25,7 @@
 #include "net/wifi_diag_store.h"
 #include "net/c6_memory.h"
 
-#if CONFIG_ESP_HOSTED_ENABLED
+#if CONFIG_ESP_HOSTED
 #include "esp_app_desc.h"
 #include "esp_app_format.h"
 #include "esp_hosted.h"
@@ -65,7 +65,7 @@ static wifi_config_t s_cached_sta_cfg = {0};
 static bool s_cached_sta_cfg_valid = false;
 static char s_wifi_country_code[APP_WIFI_COUNTRY_CODE_MAX_LEN] = {0};
 
-#if CONFIG_ESP_HOSTED_ENABLED
+#if CONFIG_ESP_HOSTED
 static bool s_hosted_transport_ready = false;
 #endif
 
@@ -133,7 +133,7 @@ static void wifi_mgr_diag_persist(bool critical)
     wifi_diag_store_save(&diag, critical);
 }
 
-#if CONFIG_ESP_HOSTED_ENABLED
+#if CONFIG_ESP_HOSTED
 static void wifi_mgr_diag_record_hard_recover(esp_err_t result)
 {
     s_diag_hard_recover_count++;
@@ -489,11 +489,17 @@ static void wifi_mgr_try_reconnect(uint8_t reason, int attempt_no)
     (void)wifi_mgr_request_connect(false, "normal-recovery");
 }
 
-#if CONFIG_ESP_HOSTED_ENABLED
+#if CONFIG_ESP_HOSTED
 #define HOSTED_TRANSPORT_UP_BIT BIT0
 #define HOSTED_TRANSPORT_FAIL_BIT BIT1
 #define HOSTED_TRANSPORT_WAIT_MS 8000
+/* The 3.x host rejects a write above its per-RPC limit (EH_HOST_CP_OTA_CHUNK_MAX, 1488 bytes on SDIO) before sending it, so a fixed
+ * 1500-byte chunk would fail every co-processor update (ESPHome hit the same in esphome#21394). 2.x had no such macro. */
+#ifdef EH_HOST_CP_OTA_CHUNK_MAX
+#define HOSTED_C6_OTA_CHUNK_SIZE ((uint32_t)EH_HOST_CP_OTA_CHUNK_MAX)
+#else
 #define HOSTED_C6_OTA_CHUNK_SIZE 1500U
+#endif
 #define HOSTED_C6_FWVER_QUERY_RETRIES 3
 #define HOSTED_C6_FWVER_QUERY_RETRY_DELAY_MS 300
 
@@ -615,12 +621,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     }
 }
 
-#if CONFIG_ESP_HOSTED_ENABLED
-#if CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE
+#if CONFIG_ESP_HOSTED
+#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
 static void wifi_mgr_pulse_hosted_reset_gpio(void)
 {
-#if defined(CONFIG_ESP_HOSTED_SDIO_GPIO_RESET_SLAVE)
-    const int reset_gpio = CONFIG_ESP_HOSTED_SDIO_GPIO_RESET_SLAVE;
+#if defined(CONFIG_ESP_HOSTED_HOST_RESET_GPIO)
+    const int reset_gpio = CONFIG_ESP_HOSTED_HOST_RESET_GPIO;
     if (reset_gpio < 0) {
         return;
     }
@@ -642,13 +648,9 @@ static void wifi_mgr_pulse_hosted_reset_gpio(void)
         return;
     }
 
-#if CONFIG_ESP_HOSTED_SDIO_RESET_ACTIVE_LOW
+    /* esp_hosted 3.x drives the C6's EN line itself: HIGH runs it, LOW holds it in reset; there is no polarity option. */
     const int inactive_level = 1;
     const int active_level = 0;
-#else
-    const int inactive_level = 0;
-    const int active_level = 1;
-#endif
 
     (void)gpio_set_level(reset_pin, inactive_level);
     vTaskDelay(pdMS_TO_TICKS(2));
@@ -792,7 +794,14 @@ static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_
     uint32_t bundled_major = 0;
     uint32_t bundled_minor = 0;
     uint32_t bundled_patch = 0;
-    if (hosted_parse_version_text(fw_version_text, &bundled_major, &bundled_minor, &bundled_patch)) {
+    /* esp_hosted 3.x images from esphome/esp-hosted-firmware carry app_desc.version "1" (no git describe); the file name
+     * release/network_adapter_esp32c6_<version>.bin was already chosen by the host component's version, so use that. */
+    if (!hosted_parse_version_text(fw_version_text, &bundled_major, &bundled_minor, &bundled_patch)) {
+        ESP_LOGW(TAG_WIFI, "Bundled C6 image has no version ('%s'); assuming the host version %s", fw_version_text,
+            APP_HOSTED_C6_EXPECTED_VERSION);
+        (void)hosted_parse_version_text(APP_HOSTED_C6_EXPECTED_VERSION, &bundled_major, &bundled_minor, &bundled_patch);
+    }
+    if (bundled_major != 0U || bundled_minor != 0U || bundled_patch != 0U) {
         uint32_t bundled_version = hosted_version_pack(bundled_major, bundled_minor, bundled_patch);
         ESP_LOGW(TAG_WIFI,
             "Bundled C6 firmware version: %u.%u.%u (%u bytes)",
@@ -846,9 +855,19 @@ static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_
     }
 
     ESP_LOGW(TAG_WIFI, "Starting automatic C6 OTA update over ESP-Hosted transport");
+    /* The deferred update runs after the boot splash is gone (the new image must become valid first): show it again, or the
+     * messages below land on a splash nobody sees. A failed update hides it again; a finished one restarts the host. */
+    (void)ui_boot_splash_show();
     ui_boot_splash_set_title("C6 Firmware Update");
     ui_boot_splash_clear_status();
     ui_boot_splash_set_status("Updating Wi-Fi coprocessor");
+    {
+        char versions[40];
+        snprintf(versions, sizeof(versions), "%u.%u.%u -> %u.%u.%u", (unsigned int)running_fw->major1,
+            (unsigned int)running_fw->minor1, (unsigned int)running_fw->patch1, (unsigned int)bundled_major,
+            (unsigned int)bundled_minor, (unsigned int)bundled_patch);
+        ui_boot_splash_set_status(versions);
+    }
     ui_boot_splash_set_status("Do not disconnect power");
     ui_boot_splash_set_status("Please wait...");
     ui_boot_splash_set_progress(0);
@@ -857,6 +876,7 @@ static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_
     if (err != ESP_OK) {
         ESP_LOGW(TAG_WIFI, "esp_hosted_slave_ota_begin failed: %s", esp_err_to_name(err));
         ui_boot_splash_set_status("C6 update failed to start");
+        ui_boot_splash_hide();
         return;
     }
 
@@ -869,6 +889,7 @@ static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_
             ESP_LOGW(TAG_WIFI, "esp_hosted_slave_ota_write failed at offset %u: %s",
                 (unsigned int)offset, esp_err_to_name(err));
             ui_boot_splash_set_status("C6 update write failed");
+        ui_boot_splash_hide();
             (void)esp_hosted_slave_ota_end();
             return;
         }
@@ -884,6 +905,7 @@ static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_
     if (err != ESP_OK) {
         ESP_LOGW(TAG_WIFI, "esp_hosted_slave_ota_end failed: %s", esp_err_to_name(err));
         ui_boot_splash_set_status("C6 update finalize failed");
+        ui_boot_splash_hide();
         return;
     }
 
@@ -894,6 +916,7 @@ static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_
         if (err != ESP_OK) {
             ESP_LOGW(TAG_WIFI, "esp_hosted_slave_ota_activate failed: %s", esp_err_to_name(err));
             ui_boot_splash_set_status("C6 update activate failed");
+            ui_boot_splash_hide();
             return;
         }
     }
@@ -906,7 +929,7 @@ static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_
 #endif
 }
 
-#if CONFIG_ESP_HOSTED_ENABLED
+#if CONFIG_ESP_HOSTED
 static void c6_deferred_update_task(void *arg)
 {
     (void)arg;
@@ -929,7 +952,7 @@ static void c6_deferred_update_task(void *arg)
 
 void wifi_mgr_run_deferred_c6_update(void)
 {
-#if CONFIG_ESP_HOSTED_ENABLED
+#if CONFIG_ESP_HOSTED
     if (!s_c6_update_deferred) {
         return;
     }
@@ -1122,7 +1145,7 @@ static esp_err_t wifi_mgr_ensure_stack_initialized(void)
         return err;
     }
 
-#if CONFIG_ESP_HOSTED_ENABLED
+#if CONFIG_ESP_HOSTED
     ESP_RETURN_ON_ERROR(wifi_mgr_init_hosted_transport(), TAG_WIFI, "init ESP-Hosted transport");
 #endif
 
@@ -1158,7 +1181,7 @@ esp_err_t wifi_mgr_init(const wifi_mgr_config_t *cfg)
         return ESP_ERR_INVALID_ARG;
     }
 
-#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED
     ESP_LOGW(TAG_WIFI, "Wi-Fi is not supported on target %s", CONFIG_IDF_TARGET);
     return ESP_ERR_NOT_SUPPORTED;
 #endif
@@ -1255,7 +1278,7 @@ bool wifi_mgr_is_connected(void)
     return s_wifi_connected;
 }
 
-#if CONFIG_ESP_HOSTED_ENABLED
+#if CONFIG_ESP_HOSTED
 static esp_err_t wifi_mgr_force_hosted_hard_recover_locked(int64_t now_ms);
 
 static esp_err_t wifi_mgr_force_hosted_hard_recover(void)
@@ -1303,7 +1326,7 @@ static esp_err_t wifi_mgr_force_hosted_hard_recover_locked(int64_t now_ms)
     }
     s_hosted_transport_ready = false;
 
-#if CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE
+#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
     wifi_mgr_pulse_hosted_reset_gpio();
 #endif
 
@@ -1359,7 +1382,7 @@ static esp_err_t wifi_mgr_force_hosted_hard_recover_locked(int64_t now_ms)
 
 static esp_err_t wifi_mgr_force_reconnect_internal(bool allow_transport_escalation)
 {
-#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED
     (void)allow_transport_escalation;
     return ESP_ERR_NOT_SUPPORTED;
 #else
@@ -1398,7 +1421,7 @@ static esp_err_t wifi_mgr_force_reconnect_internal(bool allow_transport_escalati
                     esp_err_to_name(start_err));
             }
         }
-#if CONFIG_ESP_HOSTED_ENABLED
+#if CONFIG_ESP_HOSTED
         if (allow_transport_escalation) {
             ESP_LOGW(TAG_WIFI,
                 "Escalating forced reconnect failure to C6 hard recover");
@@ -1420,9 +1443,9 @@ esp_err_t wifi_mgr_force_reconnect(void)
 
 esp_err_t wifi_mgr_force_transport_recover(void)
 {
-#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED
     return ESP_ERR_NOT_SUPPORTED;
-#elif CONFIG_ESP_HOSTED_ENABLED
+#elif CONFIG_ESP_HOSTED
     return wifi_mgr_force_hosted_hard_recover();
 #else
     return wifi_mgr_force_reconnect();
@@ -1431,7 +1454,7 @@ esp_err_t wifi_mgr_force_transport_recover(void)
 
 esp_err_t wifi_mgr_start_setup_ap(const wifi_mgr_ap_config_t *cfg)
 {
-#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED
     return ESP_ERR_NOT_SUPPORTED;
 #else
     esp_err_t err = wifi_mgr_ensure_stack_initialized();
@@ -1506,7 +1529,7 @@ esp_err_t wifi_mgr_start_setup_ap(const wifi_mgr_ap_config_t *cfg)
 
 esp_err_t wifi_mgr_stop_setup_ap(void)
 {
-#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED
     return ESP_ERR_NOT_SUPPORTED;
 #else
     if (!s_setup_ap_active) {
@@ -1546,7 +1569,7 @@ const char *wifi_mgr_get_setup_ap_ssid(void)
 
 esp_err_t wifi_mgr_get_sta_ip(char *out, size_t out_len)
 {
-#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED
     (void)out;
     (void)out_len;
     return ESP_ERR_NOT_SUPPORTED;
@@ -1568,7 +1591,7 @@ bool wifi_mgr_get_sta_gateway(uint32_t *out_addr)
 
 esp_err_t wifi_mgr_get_ap_ip(char *out, size_t out_len)
 {
-#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED
     (void)out;
     (void)out_len;
     return ESP_ERR_NOT_SUPPORTED;
@@ -1579,7 +1602,7 @@ esp_err_t wifi_mgr_get_ap_ip(char *out, size_t out_len)
 
 esp_err_t wifi_mgr_get_sta_ap_info(wifi_mgr_sta_ap_info_t *out_info)
 {
-#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED
     (void)out_info;
     return ESP_ERR_NOT_SUPPORTED;
 #else
@@ -1609,7 +1632,7 @@ esp_err_t wifi_mgr_get_sta_ap_info(wifi_mgr_sta_ap_info_t *out_info)
 
 esp_err_t wifi_mgr_try_get_sta_rssi(int8_t *out_rssi_dbm)
 {
-#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED
     (void)out_rssi_dbm;
     return ESP_ERR_NOT_SUPPORTED;
 #else
@@ -1633,7 +1656,7 @@ esp_err_t wifi_mgr_try_get_sta_rssi(int8_t *out_rssi_dbm)
 
 esp_err_t wifi_mgr_get_sta_rssi(int8_t *out_rssi_dbm)
 {
-#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED
     (void)out_rssi_dbm;
     return ESP_ERR_NOT_SUPPORTED;
 #else
@@ -1653,7 +1676,7 @@ esp_err_t wifi_mgr_get_sta_rssi(int8_t *out_rssi_dbm)
 
 esp_err_t wifi_mgr_scan(wifi_mgr_scan_result_t *results, size_t max_results, size_t *out_count)
 {
-#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED_ENABLED
+#if !SOC_WIFI_SUPPORTED && !CONFIG_ESP_HOSTED
     (void)results;
     (void)max_results;
     if (out_count != NULL) {

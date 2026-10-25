@@ -16,11 +16,11 @@ source ~/esp/esp-idf-v6.1/export.sh              # in every new terminal
 Builds from the development checkout can contain changes newer than any release.
 
 **C6 adapter image.** The binary is not tracked; put the version your checkout needs into `release/` before building
-(ESP-Hosted 2.12.13 for the current source):
+(ESP-Hosted 3.0.10 for the current source):
 
 ```bash
-curl -L --fail https://github.com/esphome/esp-hosted-firmware/releases/download/v2.12.13/network_adapter_esp32c6.bin -o release/network_adapter_esp32c6_2.12.13.bin
-shasum -a 256 release/network_adapter_esp32c6_2.12.13.bin   # 09e4ed4ff648444ad045c1d934825af407648f58898586ce9f4275e53fdb23f6
+curl -L --fail https://github.com/esphome/esp-hosted-firmware/releases/download/v3.0.10/network_adapter_esp32c6.bin -o release/network_adapter_esp32c6_3.0.10.bin
+shasum -a 256 release/network_adapter_esp32c6_3.0.10.bin   # c552957fad9f35cf31b0273099dd3b23dc5c388bb43884c6567756ab97fd8cce
 ```
 
 The build embeds it and the P4 updates the C6 over SDIO when needed. Without the file the build warns and skips that

@@ -41,22 +41,20 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=10240
 # CLK 12, CMD 13, D0 11, D1 10, D2 9, D3 8, C6 reset 15 (active low). This matches M5Stack's pin table
 # (https://docs.m5stack.com/en/core/Tab5, checked 2026-10-02; IO2 = G14 is the C6 wake line, unused here). The C6's enable sits behind an I/O expander pin (BSP_WIFI_EN),
 # switched on in display_init_tab5.c before ESP-Hosted starts.
-CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CLK_SLOT_1=12
-CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CMD_SLOT_1=13
-CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D0_SLOT_1=11
-CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D1_4BIT_BUS_SLOT_1=10
-CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D2_4BIT_BUS_SLOT_1=9
-CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D3_4BIT_BUS_SLOT_1=8
-CONFIG_ESP_HOSTED_SDIO_GPIO_RESET_SLAVE=15
-# The Tab5 resets the C6 with an active-high pulse on GPIO15, like the other boards (ESPHome lists the Tab5 with active_high: true);
-# the first try with active-low left the C6 in reset (SDIO card init timed out, 2026-10-05).
-CONFIG_ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH=y
-# CONFIG_ESP_HOSTED_SDIO_RESET_ACTIVE_LOW is not set
-CONFIG_ESP_HOSTED_SDIO_CLOCK_FREQ_KHZ=40000
-# CONFIG_ESP_HOSTED_USE_MEMPOOL is not set
-CONFIG_ESP_HOSTED_MEMPOOL_PREFER_SPIRAM=y
-CONFIG_ESP_HOSTED_SDIO_TX_Q_SIZE=26
-CONFIG_ESP_HOSTED_SDIO_RX_Q_SIZE=26
+CONFIG_ESP_HOSTED_HOST_SDIO_PIN_CLK=12
+CONFIG_ESP_HOSTED_HOST_SDIO_PIN_CMD=13
+CONFIG_ESP_HOSTED_HOST_SDIO_PIN_D0=11
+CONFIG_ESP_HOSTED_HOST_SDIO_PIN_D1=10
+CONFIG_ESP_HOSTED_HOST_SDIO_PIN_D2=9
+CONFIG_ESP_HOSTED_HOST_SDIO_PIN_D3=8
+CONFIG_ESP_HOSTED_HOST_RESET_GPIO=15
+# The 3.x host resets the C6 itself (EN idles high, pulsed low); there is no polarity option any more. With the 2.x
+# polarity option, active-low left the C6 in reset on this board (SDIO card init timed out, 2026-10-05); esp_hosted 3.0.10
+# in ESPHome's PR #21394 was tested on a Tab5.
+CONFIG_ESP_HOSTED_HOST_SDIO_CLK_KHZ=40000
+CONFIG_EH_HOST_PORT_DMA_PREFER_SPIRAM=y
+CONFIG_ESP_HOSTED_HOST_SDIO_TX_Q_SIZE=26
+CONFIG_ESP_HOSTED_HOST_SDIO_RX_Q_SIZE=26
 
 # --- Image support and LVGL caches (as on the other P4 boards) ---
 CONFIG_LV_USE_LODEPNG=y

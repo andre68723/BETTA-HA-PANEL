@@ -58,15 +58,28 @@ dependencies:
       type: service
     version: 1.5.11
   espressif/esp_hosted:
-    component_hash: f1792f36ef9a637adf2faa2662f3c4500b07f3d2ba65c25f3ed4824490ba59f9
+    component_hash: c88052665d8df3c7185cb5e34327d77674599006bbbbe4bfdb43c44f9a2a73a3
     dependencies:
     - name: idf
       require: private
-      version: '>=5.3'
+      version: '>=5.5'
     source:
       registry_url: https://components.espressif.com/
       type: service
-    version: 2.12.13
+    targets:
+    - esp32
+    - esp32c2
+    - esp32s2
+    - esp32s3
+    - esp32c3
+    - esp32c5
+    - esp32c6
+    - esp32c61
+    - esp32h2
+    - esp32h4
+    - esp32h21
+    - esp32p4
+    version: 3.0.10
   espressif/esp_lcd_touch:
     component_hash: 3f85a7d95af876f1a6ecca8eb90a81614890d0f03a038390804e5a77e2caf862
     dependencies:
@@ -293,7 +306,7 @@ dependencies:
       type: service
     version: 1.1.0
   espressif/libpng:
-    component_hash: d094357a329f78668629d7c9656064b2b0123196eb6d25ca77db3782e0752480
+    component_hash: 9a576d8fbd0ddb29330e1f4c4fe82470b3e0e7eca71ea3bc4dce168d0b1088e3
     dependencies:
     - name: idf
       require: private
@@ -305,7 +318,7 @@ dependencies:
     source:
       registry_url: https://components.espressif.com
       type: service
-    version: 1.6.58~2
+    version: 1.6.59
   espressif/mqtt:
     component_hash: fb18bc3b65aa8c94693a9811ffc322cca8a65d92d5ec84983d3e385080e3969c
     dependencies:
@@ -461,6 +474,6 @@ direct_dependencies:
 - joltwallet/littlefs
 - lvgl/lvgl
 - waveshare/esp32_p4_wifi6_touch_lcd_4b
-manifest_hash: 6048470dfae8a6a760a86c308d0b41c708b0b762cc624a8446687b33b0de55e6
+manifest_hash: 405156ccdc5583b4d6efdd8ef4bd3175456dd4dacf8c80a45cb0471208867862
 target: esp32p4
 version: 3.0.0

@@ -24,10 +24,6 @@ CONFIG_ESP32P4_REV_MIN_100=y
 # CONFIG_ESP32P4_REV_MIN_300 is not set
 # CONFIG_ESP32P4_REV_MIN_301 is not set
 
-# ESP-Hosted static mempool can exhaust internal DMA memory before display
-# init on this board too (same reasoning as the paneljc overlay).
-# CONFIG_ESP_HOSTED_USE_MEMPOOL is not set
-
 # Faster UI: cache what LVGL would recompute on every draw (shadow blur,
 # rounded corners, decoded PNG icons).
 CONFIG_LV_DRAW_SW_SHADOW_CACHE_SIZE=64

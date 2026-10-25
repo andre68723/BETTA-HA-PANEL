@@ -1219,6 +1219,13 @@ function renderC6MemoryStatus(info) {
     ? t("settings.status.c6_age", { seconds: Math.floor(n / 1000) }) : "--";
   const states = ["fresh", "stale", "collecting", "unavailable", "unsupported"];
   const state = states.includes(mem?.state) ? mem.state : "unavailable";
+  // A co-processor image without the memory monitor (esp_hosted 3.x prebuilt) never reports: show nothing instead of a row that stays empty.
+  const unsupported = state === "unsupported";
+  for (const id of ["settingsStatusC6Label", "settingsStatusC6Row"]) {
+    const node = document.getElementById(id);
+    if (node) node.hidden = unsupported;
+  }
+  if (unsupported) return;
   const status = t(`settings.status.c6_${state}`);
   const hasSample = mem?.available === true;
   set("settingsStatusC6", hasSample

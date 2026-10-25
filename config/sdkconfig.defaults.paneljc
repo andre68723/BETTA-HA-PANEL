@@ -46,14 +46,13 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=10240
 # 40 MHz like panel4 and the Guition demos. The earlier 20 MHz came from ESPHome's
 # profile; at 40 MHz the queues drain faster and the two-editor load test kept
 # 18 KB internal RAM instead of 5.6 KB (docs/development.md).
-CONFIG_ESP_HOSTED_SDIO_CLOCK_FREQ_KHZ=40000
-# ESP-Hosted static mempool can exhaust internal DMA memory before display init.
-# CONFIG_ESP_HOSTED_USE_MEMPOOL is not set
+CONFIG_ESP_HOSTED_HOST_SDIO_CLK_KHZ=40000
+# esp_hosted 3.x has no static mempool; its DMA buffers come from the DMA allocator below.
 # Reproduced editor-open outage: repeated STA TX aligned 1536-byte allocations
 # failed while PSRAM still had >12 MB free. ESP32-P4 can allocate DMA-capable
 # PSRAM for these transient transport buffers; the component falls back to
 # internal DMA RAM if that pool is unavailable. Keep the static mempool off.
-CONFIG_ESP_HOSTED_MEMPOOL_PREFER_SPIRAM=y
+CONFIG_EH_HOST_PORT_DMA_PREFER_SPIRAM=y
 # The SDIO transport's own TX/RX queues (a separate pool from the one above, still active with it
 # off) are 20 deep by default -- reproduced live (tools/stress_test.py) that a burst of simultaneous
 # page navigation + Room/House-import discovery calls can exceed that during normal runtime
@@ -63,8 +62,8 @@ CONFIG_ESP_HOSTED_MEMPOOL_PREFER_SPIRAM=y
 # 2 * 6 * ESP_TRANSPORT_MAX_BUF_SIZE (1600 bytes) =~ 19 KB more permanently reserved internal RAM,
 # against ~80-100 KB normally free at runtime on this variant -- a real but modest trade against a
 # genuine, reproduced burst-capacity shortfall, not blind tuning.
-CONFIG_ESP_HOSTED_SDIO_TX_Q_SIZE=26
-CONFIG_ESP_HOSTED_SDIO_RX_Q_SIZE=26
+CONFIG_ESP_HOSTED_HOST_SDIO_TX_Q_SIZE=26
+CONFIG_ESP_HOSTED_HOST_SDIO_RX_Q_SIZE=26
 # Avoid long native OTA flash preparation stalls before upload progress starts.
 # CONFIG_SPI_FLASH_YIELD_DURING_ERASE is not set
 

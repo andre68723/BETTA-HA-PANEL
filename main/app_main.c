@@ -208,7 +208,7 @@ void app_main(void)
     bool has_wifi_credentials = false;
     bool wifi_ready = false;
 
-#if SOC_WIFI_SUPPORTED || CONFIG_ESP_HOSTED_ENABLED
+#if SOC_WIFI_SUPPORTED || CONFIG_ESP_HOSTED
     has_wifi_credentials = runtime_settings_has_wifi(&s_runtime_settings);
     if (has_wifi_credentials) {
         wifi_mgr_config_t wifi_cfg = {
