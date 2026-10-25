@@ -38,7 +38,7 @@ test("the media player preview drops the cover where the panel does", () => {
 test("price preview keeps the interval on its own row and one day toggle on a narrow tile", () => {
   const { fn, run } = loadEditor();
   run("editor.i18nMap = WEB_I18N_BUILTIN.en");
-  const tile = { type: "energy_price_forecast", id: "p", title: "Price", price_day_switch: true, rect: { w: 240, h: 150 } };
+  const tile = { type: "energy_price_forecast", id: "p", title: "Price", price_selector: true, rect: { w: 240, h: 150 } };
   const narrow = fn("tilePreviewMarkup")(tile);
   assert.match(narrow, /class="tp-price-slot">\d{2}:\d{2}-\d{2}:\d{2}<\/div>/);
   assert.match(narrow, /Today/);

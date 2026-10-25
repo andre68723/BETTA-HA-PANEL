@@ -125,7 +125,7 @@ static void calendar_cases(void)
         sim_clock_set(cases[i].now);
         CHECK(day_start(time(NULL), 0) == cases[i].midnight && day_start(time(NULL), 1) == cases[i].tomorrow);
         fresh_screen();
-        ui_widget_def_t def = {.w = 700, .h = 400, .price_day_switch = true, .price_cheap_times = true};
+        ui_widget_def_t def = {.w = 700, .h = 400, .price_selector = true, .price_cheap_times = true};
         strcpy(def.type, "energy_price_forecast");
         strcpy(def.entity_id, "sensor.price");
         strcpy(def.title, "Price");
@@ -157,7 +157,7 @@ int sim_price_regression(void)
     setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
     tzset();
     calendar_cases();
-    ui_widget_def_t def = {.w = 700, .h = 400, .price_day_switch = true, .price_cheap_times = true};
+    ui_widget_def_t def = {.w = 700, .h = 400, .price_selector = true, .price_cheap_times = true};
     strcpy(def.type, "energy_price_forecast");
     strcpy(def.entity_id, "sensor.price");
     strcpy(def.title, "Price");
@@ -232,7 +232,7 @@ int sim_price_regression(void)
     cJSON_Delete(attrs);
 
     /* a narrow tile has one button that names the day and switches it */
-    ui_widget_def_t narrow_def = {.w = 300, .h = 220, .price_day_switch = true};
+    ui_widget_def_t narrow_def = {.w = 300, .h = 220, .price_selector = true};
     strcpy(narrow_def.type, "energy_price_forecast");
     strcpy(narrow_def.entity_id, "sensor.price");
     strcpy(narrow_def.title, "Narrow");

@@ -299,7 +299,7 @@ static void sensor_apply_layout(w_sensor_ctx_t *ctx)
     lv_obj_set_style_text_align(ctx->value_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_align(ctx->age_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 
-    lv_obj_align(ctx->title_label, LV_ALIGN_TOP_MID, 0, APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
+    lv_obj_align(ctx->title_label, LV_ALIGN_TOP_MID, 0, 2);
 
     /* Reserve room for the title and freshness line before choosing the value
      * font. A long raw HA value may include a unit and otherwise wrap into the

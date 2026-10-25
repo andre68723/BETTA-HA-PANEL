@@ -159,8 +159,9 @@ function initInspectorLayout() {
     byId("heatingOptions"), etlStyle, byId("energyTimelineColorOptions"));
   // Controls: what tap and long press do.
   move("controls", byId("historyOptions"), byId("lockOptions"), byId("alarmOptions"), byId("buttonOptions"));
-  follow(byId("priceOptions"), [label(el.fPriceDaySwitch)], "controls");
+  follow(byId("priceOptions"), [label(el.fPriceSelector)], "controls");
   follow(byId("parqetOptions"), [label(el.fParqetSelector)], "controls");
+  follow(byId("stockOptions"), [el.fStockSelectorRow], "controls");
   follow(byId("roomEntitiesFields"), [label(el.fRoomControls), byId("fRoomControlsHint")], "controls");
   follow(byId("vacuumOptions"), [label(el.fVacuumDefaultMode), byId("fVacuumDefaultModeHint")], "controls");
   // The old groups are emptied; Placement is a section like the others, collapsed, at the end.

@@ -88,17 +88,18 @@ typedef struct {
     bool camera_live; /* camera_tile: HA MJPEG while visible; opt-in, default false */
     unsigned alarm_actions; /* alarm_tile: bit (1 << ha_alarm_action_t) per action offered, 0 = all */
     bool history_popup; /* sensor/binary/contact/lock: show Recorder history on tap/long press */
-    bool price_day_switch;  /* energy_price_forecast: Today/Tomorrow buttons, default false */
+    bool price_selector;    /* energy_price_forecast: Today/Tomorrow buttons on the tile, default false (the 24 hours around now) */
     bool price_line; /* energy_price_forecast: a stepped line instead of filled bars, default false */
     bool price_cheap_times; /* energy_price_forecast: shade the cheap times and name the next one, default false */
     bool parqet_hide_amounts; /* parqet_portfolio: percentages only, no amounts, default false */
-    bool parqet_selector;     /* parqet_portfolio: tabs and interval chips to change the view by touch, default false */
+    bool parqet_selector;     /* parqet_portfolio: tabs and interval chips to change the view by touch, default true */
     char parqet_view[16];     /* parqet_portfolio: "performance" (default) or "holdings" */
     char parqet_interval[8];  /* parqet_portfolio: "1d", "1w", "1m", "ytd" or "max" (default: the sensors' own figures) */
     float price_average;    /* energy_price_forecast: fixed average in EUR/kWh, 0 = none (the day's own average, or the sensor in secondary_entity_id) */
     char stock_period[8];   /* stock_quotes: "1d", "1w", "30d" (default), "ytd" or "1y": the charts' and the detail's start period */
     char stock_delta[12];   /* stock_quotes: "percent" (default), "absolute" or "both" */
     bool stock_ticker;      /* stock_quotes: the symbol after the name, default false */
+    bool stock_selector;    /* stock_quotes: period buttons on the chart tile, default true */
     int x;
     int y;
     int w;

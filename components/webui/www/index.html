@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BETTA HA Panel - BETTA Editor</title>
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/css/editor-refinements.css" />
   <link rel="stylesheet" href="/css/style-depth.css" />
   <link rel="stylesheet" href="/css/style-flat.css" />
   <link rel="stylesheet" href="/css/style-glow.css" />
@@ -1660,8 +1661,8 @@
                   </div>
                   <div id="priceOptions" class="slider-options hidden">
                     <label class="row">
-                      <input id="fPriceDaySwitch" type="checkbox" />
-                      <span id="fPriceDaySwitchLabel">Day switch (Today / Tomorrow)</span>
+                      <input id="fPriceSelector" type="checkbox" />
+                      <span id="fPriceSelectorLabel">Show selector buttons on the tile</span>
                     </label>
                     <label class="row">
                       <input id="fPriceCheapTimes" type="checkbox" />
@@ -1702,6 +1703,10 @@
                       <input id="fStockTicker" type="checkbox" />
                       <span id="fStockTickerLabel">Show the symbol</span>
                     </label>
+                    <label class="row" id="fStockSelectorRow">
+                      <input id="fStockSelector" type="checkbox" />
+                      <span id="fStockSelectorLabel">Show selector buttons on the tile</span>
+                    </label>
                   </div>
                   <div id="parqetOptions" class="slider-options hidden">
                     <div class="field-hint" id="fParqetHint">The tile reads the sensors above for MAX. The other intervals (1D, 1W, 1M, YTD) are requested from the Parqet integration; the start view and interval apply when the tile is built, the tabs and buttons change them on the panel. Hide amounts shows percentages only.</div>
@@ -1711,7 +1716,7 @@
                     </label>
                     <label class="row">
                       <input id="fParqetSelector" type="checkbox" />
-                      <span id="fParqetSelectorLabel">Show tabs and interval buttons on the tile</span>
+                      <span id="fParqetSelectorLabel">Show selector buttons on the tile</span>
                     </label>
                     <label><span id="fParqetViewLabel">View</span>
                       <select id="fParqetView">
@@ -2001,6 +2006,7 @@
   <script src="/js/tile-previews.js"></script>
   <script src="/js/layout-history.js"></script>
   <script src="/js/widget-actions.js"></script>
+  <script src="/js/energy-canvas-preview.js"></script>
   <script src="/js/canvas.js"></script>
   <script src="/js/inspector-layout.js"></script>
   <script src="/js/room-import.js"></script>

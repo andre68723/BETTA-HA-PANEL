@@ -356,10 +356,10 @@ static void slider_apply_layout(lv_obj_t *card, w_slider_ctx_t *ctx)
     /* A short tile (near the 100 px minimum) cannot spare the margins sized for a large one. */
     lv_obj_update_layout(card);
     const bool compact = lv_obj_get_content_height(card) < 120;
-    lv_obj_align(ctx->title_label, LV_ALIGN_BOTTOM_MID, 0, compact ? 0 : (APP_UI_TILE_LAYOUT_TUNED ? -12 : -10));
+    lv_obj_align(ctx->title_label, LV_ALIGN_BOTTOM_MID, 0, compact ? 0 : -12);
 
-    const lv_coord_t top_gap = compact ? 2 : (APP_UI_TILE_LAYOUT_TUNED ? 10 : 8);
-    const lv_coord_t bottom_gap = compact ? 4 : (APP_UI_TILE_LAYOUT_TUNED ? 12 : 10);
+    const lv_coord_t top_gap = compact ? 2 : 10;
+    const lv_coord_t bottom_gap = compact ? 4 : 12;
     ctx->direction_effective = slider_effective_direction(ctx, card);
     const bool vertical = slider_direction_is_vertical(ctx->direction_effective);
     /* The area above the title the track may use at least. A vertical track needs real length; a
@@ -685,13 +685,9 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_set_size(card, def->w, def->h);
     lv_obj_set_scrollable(card, false);
     lv_obj_set_style_radius(card, APP_UI_CARD_RADIUS, LV_PART_MAIN);
-#if APP_UI_REWORK_V2
     lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
     lv_obj_set_style_border_color(card, lv_color_hex(APP_UI_COLOR_CARD_BORDER), LV_PART_MAIN);
     lv_obj_set_style_border_opa(card, LV_OPA_70, LV_PART_MAIN);
-#else
-    lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
-#endif
     lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
 
     lv_obj_t *title = ui_widget_name_create(card, !def->hide_name);
@@ -702,13 +698,13 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_font(title, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, APP_UI_TILE_LAYOUT_TUNED ? -12 : -10);
+    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, -12);
 
     lv_obj_t *state = lv_label_create(card);
     lv_label_set_text(state, ui_i18n_get("common.off", "OFF"));
     lv_obj_set_style_text_font(state, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_label_set_long_mode(state, LV_LABEL_LONG_DOT);
-    lv_obj_align(state, LV_ALIGN_TOP_LEFT, 0, APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
+    lv_obj_align(state, LV_ALIGN_TOP_LEFT, 0, 2);
 
     lv_obj_t *value = lv_label_create(card);
     slider_set_value_label(value, 0);

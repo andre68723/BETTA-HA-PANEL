@@ -844,7 +844,7 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     cJSON *solar_forecast_bar_orientation = cJSON_GetObjectItemCaseSensitive(widget_json, "solar_forecast_bar_orientation");
     cJSON *sensor_show_age = cJSON_GetObjectItemCaseSensitive(widget_json, "sensor_show_age");
     cJSON *lock_confirm = cJSON_GetObjectItemCaseSensitive(widget_json, "lock_confirm");
-    cJSON *price_day_switch = cJSON_GetObjectItemCaseSensitive(widget_json, "price_day_switch");
+    cJSON *price_selector = cJSON_GetObjectItemCaseSensitive(widget_json, "price_selector");
     cJSON *price_cheap_times = cJSON_GetObjectItemCaseSensitive(widget_json, "price_cheap_times");
     cJSON *price_line = cJSON_GetObjectItemCaseSensitive(widget_json, "price_line");
     cJSON *price_average = cJSON_GetObjectItemCaseSensitive(widget_json, "price_average");
@@ -904,11 +904,11 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     out->room_controls = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "room_controls"));
     out->hide_name = !widget_show_name(widget_json);
     out->lock_confirm = cJSON_IsTrue(lock_confirm);
-    out->price_day_switch = cJSON_IsTrue(price_day_switch);
+    out->price_selector = cJSON_IsTrue(price_selector); /* off unless the layout says true: the running 24 hours */
     out->price_cheap_times = cJSON_IsTrue(price_cheap_times);
     out->price_line = cJSON_IsTrue(price_line);
     out->parqet_hide_amounts = cJSON_IsTrue(parqet_hide_amounts);
-    out->parqet_selector = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "parqet_selector"));
+    out->parqet_selector = !cJSON_IsFalse(cJSON_GetObjectItemCaseSensitive(widget_json, "parqet_selector"));
     ui_runtime_copy_json_string(widget_json, "parqet_view", out->parqet_view, sizeof(out->parqet_view));
     ui_runtime_copy_json_string(widget_json, "parqet_interval", out->parqet_interval, sizeof(out->parqet_interval));
     out->price_average = cJSON_IsNumber(price_average) && price_average->valuedouble > 0.0 ? (float)price_average->valuedouble : 0.0f;
@@ -996,6 +996,7 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
         ui_runtime_copy_json_string(widget_json, "stock_period", out->stock_period, sizeof(out->stock_period));
         ui_runtime_copy_json_string(widget_json, "stock_delta", out->stock_delta, sizeof(out->stock_delta));
         out->stock_ticker = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "stock_ticker"));
+        out->stock_selector = !cJSON_IsFalse(cJSON_GetObjectItemCaseSensitive(widget_json, "stock_selector"));
     }
     if (strcmp(out->type, "energy_timeline") == 0) {
         ui_runtime_copy_json_string(widget_json, "battery_charge_entity_id",

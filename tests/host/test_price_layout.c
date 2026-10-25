@@ -108,8 +108,8 @@ int main(void)
     const char *tail = "\"rect\":{\"x\":0,\"y\":0,\"w\":400,\"h\":200}}]}]}";
     const char *head = "{\"version\":1,\"pages\":[{\"id\":\"p\",\"title\":\"P\",\"widgets\":[{\"id\":\"w\",\"type\":\"energy_price_forecast\",\"title\":\"P\",\"entity_id\":\"sensor.p\",";
     layout_validation_result_t result = {0};
-    const char *good[] = {"\"price_day_switch\":true,", "\"price_cheap_times\":false,", "\"price_line\":true,", "\"price_average\":0.25,", "\"secondary_entity_id\":\"sensor.price_average\",", ""};
-    const char *bad[] = {"\"price_day_switch\":\"yes\",", "\"price_cheap_times\":1,", "\"price_line\":\"line\",", "\"price_average\":-0.1,", "\"price_average\":9,", "\"price_average\":\"0.25\",",
+    const char *good[] = {"\"price_selector\":true,", "\"price_cheap_times\":false,", "\"price_line\":true,", "\"price_average\":0.25,", "\"secondary_entity_id\":\"sensor.price_average\",", ""};
+    const char *bad[] = {"\"price_selector\":\"yes\",", "\"price_cheap_times\":1,", "\"price_line\":\"line\",", "\"price_average\":-0.1,", "\"price_average\":9,", "\"price_average\":\"0.25\",",
                          "\"secondary_entity_id\":\"light.kitchen\","};
     for (size_t i = 0; i < sizeof(good) / sizeof(good[0]); i++) {
         snprintf(json, sizeof(json), "%s%s%s", head, good[i], tail);

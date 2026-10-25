@@ -29,7 +29,7 @@ The sensors report one **interval**, set in the integration's options (default M
 | Option | Effect |
 | --- | --- |
 | Hide amounts (percentages only) | percentages and weights only; the value is replaced by the return (or the XIRR), dividends are not shown |
-| Show tabs and interval buttons on the tile | **Performance** and **Holdings** tabs and the intervals **1D, 1W, 1M, YTD, MAX** |
+| Show selector buttons on the tile | on by default: **Performance** and **Holdings** tabs and the intervals **1D, 1W, 1M, YTD, MAX**; off shows the start view |
 | Start view, Start interval | what the tile starts with; without the buttons they choose what it shows |
 
 <a href="../img/examples/inspector-parqet_portfolio.png"><img src="../img/examples/inspector-parqet_portfolio.png" alt="Inspector of the Parqet portfolio widget" loading="lazy" width="340" height="659"></a>

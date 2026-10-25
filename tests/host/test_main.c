@@ -1926,6 +1926,14 @@ static void test_auto_update_state(void)
 
 static void test_ui_watchdog(void)
 {
+    /* The beat stamp is never 0 ("no beat yet"), also where the millisecond count wraps after 49.7 days. */
+    CHECK_INT((int)ui_wd_stamp_ms(0), 1);
+    CHECK_INT((int)ui_wd_stamp_ms(1000 * 1000LL), 1001);
+    CHECK(ui_wd_stamp_ms(0xFFFFFFFELL * 1000) == 0xFFFFFFFFU);
+    CHECK(ui_wd_stamp_ms(0xFFFFFFFFLL * 1000) != 0U); /* the millisecond that used to give 0 */
+    CHECK(ui_wd_stamp_ms(0x100000000LL * 1000) != 0U);
+    CHECK((uint32_t)(ui_wd_stamp_ms(0x100000005LL * 1000) - ui_wd_stamp_ms(0xFFFFFFFELL * 1000)) == 7U); /* ages stay right across the wrap */
+
     ui_wd_state_t st;
     ui_wd_init(&st);
     ui_wd_input_t in = {.lvgl_age_s = 1, .runtime_age_s = 1, .restarts_in_a_row = 0};
@@ -2186,6 +2194,19 @@ static void test_auth_state(void)
     ha_auth_state_reset();
     CHECK(ha_auth_state_report_ws_auth_invalid());
     CHECK(strcmp(ha_auth_state_name(), "token_rejected") == 0);
+    ha_auth_state_reset();
+
+    /* An image URL with its own token (camera_proxy) or on a foreign host says nothing about the panel's token. */
+    CHECK(!ha_auth_state_report_image_fetch(401, false));
+    CHECK(!ha_auth_state_report_image_fetch(403, false));
+    CHECK(!ha_auth_state_blocked());
+    CHECK(!ha_auth_state_report_image_fetch(200, true));
+    CHECK(!ha_auth_state_blocked());
+    CHECK(ha_auth_state_report_image_fetch(401, true)); /* the panel's own token was sent and refused */
+    CHECK_INT(ha_auth_state_reason(), HA_AUTH_TOKEN_REJECTED);
+    ha_auth_state_reset();
+    CHECK(ha_auth_state_report_image_fetch(403, true));
+    CHECK_INT(ha_auth_state_reason(), HA_AUTH_FORBIDDEN);
     ha_auth_state_reset();
 }
 

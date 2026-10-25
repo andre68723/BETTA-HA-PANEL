@@ -1757,13 +1757,9 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     lv_obj_set_size(card, def->w, def->h);
     lv_obj_set_scrollable(card, false);
     lv_obj_set_style_radius(card, APP_UI_CARD_RADIUS, LV_PART_MAIN);
-#if APP_UI_REWORK_V2
     lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
     lv_obj_set_style_border_color(card, lv_color_hex(APP_UI_COLOR_CARD_BORDER), LV_PART_MAIN);
     lv_obj_set_style_border_opa(card, LV_OPA_70, LV_PART_MAIN);
-#else
-    lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
-#endif
     lv_obj_set_style_pad_all(card, 14, LV_PART_MAIN);
 
     lv_obj_t *icon = lv_label_create(card);

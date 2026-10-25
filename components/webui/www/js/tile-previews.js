@@ -895,7 +895,7 @@ function tilePreviewMarkup(widget) {
       const slotNow = now.getHours() * 4 + Math.floor(now.getMinutes() / 15);
       const clock = (slot) => `${String(Math.floor(slot / 4) % 24).padStart(2, "0")}:${String((slot % 4) * 15).padStart(2, "0")}`;
       const interval = `${clock(slotNow)}-${clock(slotNow + 1)}`;
-      const daySwitch = widget.price_day_switch === true;
+      const daySwitch = widget.price_selector === true;
       // Without the day buttons the view is the 24 hours around now (the running interval in the middle, as on the panel); with them it is the day.
       const shift = daySwitch ? 0 : slotNow - 48;
       const slotAt = (i) => (((i + shift) % 96) + 96) % 96;
@@ -943,7 +943,7 @@ function tilePreviewMarkup(widget) {
       // or drop out as the tile gets smaller. MAX uses the sensors; the other intervals show a sample of the integration's answer.
       const intervalCode = ["1d", "1w", "1m", "ytd"].includes(widget.parqet_interval) ? widget.parqet_interval : "max";
       const ws = intervalCode !== "max";
-      const selector = widget.parqet_selector === true;
+      const selector = widget.parqet_selector !== false;
       const holdingsView = widget.parqet_view === "holdings";
       const heightPx = Number(widget.rect?.h) || 0;
       const limit = heightPx - 6;

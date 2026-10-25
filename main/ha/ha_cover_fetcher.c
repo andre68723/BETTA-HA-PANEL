@@ -1461,7 +1461,7 @@ static esp_err_t cover_download(const char *url, http_sink_t *sink)
         ret = ESP_ERR_HTTP_FETCH_HEADER;
         goto client_close;
     }
-    if (ha_auth_state_report_http(status, false, true)) {
+    if (ha_auth_state_report_image_fetch(status, send_bearer)) {
         ESP_LOGE(TAG, "HA rejected the panel (HTTP %d, %s): image fetches stop until a restart", status,
                  ha_auth_state_name());
     }

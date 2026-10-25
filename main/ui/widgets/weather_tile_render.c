@@ -482,15 +482,9 @@ void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_val
         lv_obj_set_style_text_font(ctx->condition_label, WEATHER_CONDITION_FONT, LV_PART_MAIN);
         lv_obj_set_style_text_color(ctx->condition_label, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
         lv_obj_set_hidden(ctx->condition_label, false);
-#if APP_UI_TILE_LAYOUT_TUNED
         lv_obj_align(ctx->condition_label, LV_ALIGN_TOP_MID, 0, 36 - (ctx->hide_name ? 28 : 0));
         lv_obj_align(ctx->temp_label, LV_ALIGN_TOP_MID, 0, 76 - (ctx->hide_name ? 28 : 0));
         lv_obj_align(ctx->meta_label, LV_ALIGN_TOP_MID, 0, 130 - (ctx->hide_name ? 28 : 0));
-#else
-        lv_obj_align(ctx->condition_label, LV_ALIGN_TOP_MID, 0, 34 - (ctx->hide_name ? 28 : 0));
-        lv_obj_align(ctx->temp_label, LV_ALIGN_TOP_MID, 0, 72 - (ctx->hide_name ? 28 : 0));
-        lv_obj_align(ctx->meta_label, LV_ALIGN_TOP_MID, 0, 124 - (ctx->hide_name ? 28 : 0));
-#endif
         lv_label_set_text(ctx->condition_label, ui_i18n_get("weather.unavailable", "Unavailable"));
         lv_label_set_text(ctx->temp_label, "--");
         lv_label_set_text(ctx->meta_label, "");

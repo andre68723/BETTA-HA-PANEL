@@ -1,0 +1,701 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
+ * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+ * Later layer of the editor styles, loaded right after styles.css: the sentence-case UI pass (compact form fields, settings,
+ * stored secrets, light theme), the add-widget menu, the canvas and tile-preview refinements and the entity-first rows.
+ */
+/* =========================================================================
+ * UI pass (v0.8.3): sentence-case titles, compact form fields, grouped
+ * settings, stored-secret fields and a light theme. The canvas and the tile
+ * previews stay dark in both themes: they show the panel's own screen.
+ * ========================================================================= */
+:root {
+  --text-muted: var(--muted);
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #edf1f5;
+  --surf-1: #ffffff;
+  --surf-2: #f4f7fa;
+  --surf-3: #e4ebf2;
+  --line: #ced9e4;
+  --line-strong: #b4c3d2;
+  --text: #15202b;
+  --text-2: #33465a;
+  --muted: #5b6f84;
+  --accent: #0b7fbf;
+  --panel: #ffffff;
+  --panel-2: #e4ebf2;
+  --overlay-0: rgba(0, 0, 0, 0.03);
+  --overlay-1: rgba(0, 0, 0, 0.05);
+  --overlay-2: rgba(0, 0, 0, 0.08);
+  --overlay-3: rgba(0, 0, 0, 0.14);
+  --grid: rgba(0, 0, 0, 0.08);
+}
+:root[data-theme="light"] body {
+  background: radial-gradient(circle at 80% 10%, #ffffff 0%, var(--bg) 60%);
+}
+:root[data-theme="light"] .btn.tab.active,
+:root[data-theme="light"] .btn.primary,
+:root[data-theme="light"] .btn.primary * {
+  color: #ffffff;
+}
+:root[data-theme="light"] .settings-nav-btn.active {
+  background: #dcecf8;
+}
+:root[data-theme="light"] .code-block,
+:root[data-theme="light"] pre {
+  background: #f1f5f9;
+  color: #1c2b39;
+}
+/* Titles in sentence case (no forced capitals). */
+h2,
+h3,
+.settings-subheading,
+.settings-nav-group,
+.dropdown-group-label,
+.widget-box .w-type {
+  text-transform: none;
+}
+h2 {
+  font-size: 14px;
+  letter-spacing: 0;
+  font-weight: 700;
+}
+.settings-nav-group {
+  margin: 16px 4px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.settings-nav-btn {
+  font-weight: 600;
+}
+.settings-subheading {
+  margin: 18px 0 2px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.settings-subheading:first-child {
+  margin-top: 0;
+}
+/* Section headers with an action row of their own (no wrapping between the buttons). */
+.section-head {
+  flex-wrap: wrap;
+}
+
+.section-head h2 {
+  flex: 1 1 auto;
+}
+
+/* Settings forms: fields as wide as their content needs, not the full pane. */
+.settings-content-section .form > label,
+.settings-content-section .form > .meta,
+.settings-content-section .form > .row {
+  max-width: 620px;
+}
+
+.settings-content-section .form > .field-row {
+  max-width: 620px;
+}
+
+.field-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.field-row > label {
+  min-width: 0;
+}
+
+.field-row > .grow {
+  flex: 1 1 0;
+}
+
+.field-xs {
+  flex: 0 0 auto;
+  width: 130px;
+  max-width: 130px;
+}
+
+.field-md {
+  max-width: 340px !important;
+}
+
+.field-lg {
+  max-width: 480px !important;
+}
+
+.field-slider {
+  max-width: 460px !important;
+}
+
+input[type="number"],
+input[type="time"] {
+  max-width: 150px;
+}
+
+.time-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.time-range input[type="time"] {
+  width: 130px;
+}
+
+.kv-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 6px 0 4px;
+  padding: 12px 14px;
+  max-width: 620px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surf-2);
+  font-size: 12px;
+  /* A row whose dd grows taller than its dt (the memory bars below) should not have WebKit stretch
+   * either cell to match the other -- see the same fix on .section-body/.form for the actual bug
+   * this avoids (a CSS Grid auto-row-height miscalculation for wrapped text at some widths); dt/dd
+   * never need to stretch to match each other's height here anyway. */
+  align-items: start;
+}
+
+.kv-list dt {
+  color: var(--muted);
+}
+
+.kv-list dd {
+  margin: 0;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-all;
+}
+
+/* Free-memory bars (Settings > Device > Device status): how much of each pool is still free, at a
+ * glance, next to the existing free/lowest-ever numbers rather than instead of them. */
+.mem-bar {
+  position: relative;
+  margin-top: 4px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surf-3);
+  overflow: hidden;
+}
+
+.mem-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  background: #3fb950; /* plenty free; JS switches to amber/red as it drops, see settings.js */
+  transition: width 0.4s ease, background-color 0.4s ease;
+}
+
+.mem-bar-min-marker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 0%;
+  width: 2px;
+  background: var(--text);
+  opacity: 0.6;
+}
+
+/* Stored secrets: a calm status row instead of an empty password field. */
+.secret-stored {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surf-2);
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.secret-stored .secret-dots {
+  letter-spacing: 2px;
+  color: var(--muted);
+}
+
+.secret-stored .secret-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(79, 203, 126, 0.16);
+  color: #2a9d5c;
+  font-weight: 600;
+}
+
+.secret-stored .btn {
+  margin-left: auto;
+}
+
+.secret-editing-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.secret-editing-row > input,
+.secret-editing-row > textarea {
+  flex: 1 1 auto;
+}
+
+/* Workspace header with the theme toggle. */
+.workspace-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workspace-top-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-toggle {
+  min-width: 34px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* Add-widget menu: the groups side by side instead of one long list. */
+#addWidgetMenu:not(.hidden) {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 4px 14px;
+  left: 0;
+  right: auto;
+  width: max-content;
+  max-width: min(640px, 90vw);
+}
+
+#addWidgetMenu .dropdown-group-label {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  #addWidgetMenu:not(.hidden) {
+    grid-template-columns: 1fr;
+    width: auto;
+  }
+}
+
+.secret-editing-row[hidden],
+.secret-stored[hidden] {
+  display: none;
+}
+
+.field-sm {
+  max-width: 210px !important;
+}
+
+.settings-nav-btn {
+  font-weight: 500;
+}
+
+.log-view {
+  max-height: 320px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surf-1);
+  font: 11px/1.4 ui-monospace, Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.settings-box {
+  margin: 0 0 16px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surf-1);
+}
+.settings-box > h2:first-child {
+  margin-top: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.style-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 4px 0 10px;
+}
+.style-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--surf-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.style-card.selected {
+  border-color: var(--accent, #4a90e2);
+}
+.style-preview {
+  position: relative;
+  display: block;
+  width: 116px;
+  height: 66px;
+  border-radius: 6px;
+  background: #1c222b;
+  overflow: hidden;
+}
+.style-preview .sp-btn {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 44px;
+  height: 22px;
+  border-radius: 7px;
+  background: #3d7dd8;
+}
+.style-preview .sp-bar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 12px;
+  height: 10px;
+  border-radius: 5px;
+  background: #2f3947;
+}
+.style-preview .sp-bar i {
+  display: block;
+  width: 60%;
+  height: 100%;
+  border-radius: 5px;
+  background: #3d7dd8;
+}
+.style-card[data-style="glow"] .sp-btn {
+  background: linear-gradient(#6aa8f5, #2c62b3);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.style-card[data-style="glow"] .sp-bar {
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.6);
+}
+.style-card[data-style="glow"] .sp-bar i {
+  background: linear-gradient(#6aa8f5, #2c62b3);
+}
+.style-card[data-style="glass"] .style-preview {
+  background: linear-gradient(135deg, #24405f, #4a2f5c);
+}
+.style-card[data-style="glass"] .sp-btn {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.style-card[data-style="glass"] .sp-bar {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.style-card[data-style="glass"] .sp-bar i {
+  background: rgba(255, 255, 255, 0.4);
+}
+.style-card[data-style="matte"] .style-preview {
+  background: #171a1e;
+}
+.style-card[data-style="matte"] .sp-btn {
+  border-radius: 8px;
+  background: #4a5d76;
+}
+.style-card[data-style="matte"] .sp-bar {
+  height: 14px;
+  border-radius: 7px;
+  background: #30343a;
+}
+.style-card[data-style="matte"] .sp-bar i {
+  border-radius: 7px;
+  background: #f4bd56;
+}
+
+.info-details {
+  margin: 6px 0 10px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.info-details summary {
+  cursor: pointer;
+}
+.info-details ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.info-details li {
+  margin: 4px 0;
+}
+
+#pagesList .list-item.draggable {
+  cursor: grab;
+}
+#pagesList .list-item.dragging {
+  opacity: 0.4;
+}
+#pagesList .list-item.drop-before {
+  box-shadow: 0 -3px 0 0 var(--accent);
+}
+#pagesList .list-item.drop-after {
+  box-shadow: 0 3px 0 0 var(--accent);
+}
+
+#settingsApInfo {
+  white-space: pre-line;
+}
+
+/* The canvas and the theme preview always show the panel's dark look, also in the light editor theme:
+ * give them the dark tokens again so the tile texts stay readable. */
+:root[data-theme="light"] #canvas,
+:root[data-theme="light"] .canvas-stage,
+:root[data-theme="light"] .theme-preview-wrap {
+  color-scheme: dark;
+  --bg: #091017;
+  --surf-1: #111f2e;
+  --surf-2: #132433;
+  --surf-3: #1a2d40;
+  --line: #2b445b;
+  --line-strong: #30506b;
+  --text: #ecf3fa;
+  --text-2: #c8d7e7;
+  --muted: #9db0c3;
+  --panel: #111f2e;
+  --panel-2: #1a2d40;
+  --overlay-0: rgba(255, 255, 255, 0.03);
+  --overlay-1: rgba(255, 255, 255, 0.06);
+  --overlay-2: rgba(255, 255, 255, 0.09);
+  --overlay-3: rgba(255, 255, 255, 0.16);
+  --grid: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.warning-box {
+  margin: 4px 0 10px;
+  padding: 10px 12px;
+  border: 1px solid #b8741f;
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: rgba(184, 116, 31, 0.14);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 620px;
+}
+
+/* Light tile preview: closer to what the panel draws. */
+.tp-light { position: relative; justify-content: flex-end; gap: 4px; }
+.tp-light-top {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: 10px;
+  color: var(--muted, #9db0c3);
+}
+.tp-light-pct { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.tp-wheel {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: conic-gradient(#ff5d5d, #ffd84d, #6bd968, #4dd6e8, #5a7dff, #d564ff, #ff5d5d);
+  box-shadow: inset 0 0 0 5px rgba(20, 28, 38, 0.55);
+}
+.tp-bulb-svg { width: 34%; max-width: 46px; min-width: 22px; align-self: center; margin-bottom: auto; margin-top: 24px; }
+.tp-bar-knob { position: relative; height: 10px; }
+.tp-bar-knob u {
+  position: absolute;
+  left: 70%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffe2a3;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Slider tile preview, vertical variant (blinds, shutters). */
+.tp-slider { position: relative; }
+.tp-slider-vertical { justify-content: flex-end; gap: 6px; padding-top: 22px; }
+.tp-vbar {
+  position: relative;
+  flex: 1;
+  width: 26px;
+  align-self: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.tp-vbar i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: inherit;
+  background: linear-gradient(0deg, #4fcb7e, #f2c14e);
+}
+
+.tp-fanbig { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; height: 100%; box-sizing: border-box; }
+.tp-fanbig-top { display: flex; flex-direction: column; text-align: left; }
+.tp-fanbig-top small { opacity: 0.7; }
+.tp-rotor { flex: 1; min-height: 40px; display: flex; justify-content: center; overflow: hidden; }
+.tp-rotor svg { height: 100%; width: auto; max-width: 100%; aspect-ratio: 1; }
+.tp-fan-guard { fill: none; stroke: var(--pv-muted, #b8c6d4); stroke-width: 1.5; opacity: .55; }
+.tp-fan-blades { fill: var(--pv-accent, #67e8ff); opacity: .85; }
+.tp-fan-hub { fill: var(--pv-card, #172938); stroke: var(--pv-accent, #67e8ff); stroke-width: 2; }
+.tp-chips { display: flex; gap: 6px; }
+.tp-chips i { flex: 1; font-style: normal; font-size: 0.8em; padding: 5px 2px; border-radius: 8px; background: linear-gradient(180deg, #3a566f, #1a2c3d); border: 1px solid #4e6a84; }
+.tp-chips i.on { background: linear-gradient(180deg, #d5dde5, #8fa0b0); color: #10202e; }
+
+.car-preview-extras { display: flex; gap: 6px; justify-content: center; align-items: center; font-size: 0.75em; margin: 2px 6px 4px; }
+.car-preview-extras span { flex: 1; text-align: center; padding: 4px 2px; }
+.car-preview-extras .car-x-ok { color: #6fdc8c; }
+.car-preview-extras .car-x-btn { border-radius: 8px; background: linear-gradient(180deg, #3a566f, #1a2c3d); border: 1px solid #4e6a84; }
+
+/* ENTITY-FIRST (removable) */
+.entity-first-row { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; cursor: default; text-align: left; }
+.entity-first-row * { text-align: left; }
+.entity-first-text { display: flex; flex-direction: column; min-width: 0; }
+.entity-first-text span { opacity: 0.7; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; }
+.entity-first-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.entity-first-chip { padding: 4px 10px; border-radius: 999px; border: 1px solid #4e6a84; background: linear-gradient(180deg, #3a566f, #1a2c3d); color: inherit; font-size: 0.85em; cursor: pointer; }
+.entity-first-chip:hover { border-color: #4e9ff5; }
+/* ENTITY-FIRST (removable): the search button only needs the room of its icon */
+
+/* A little air between the Pages / Widgets header (with its action buttons) and the first row. */
+.panel-section.collapsible > .section-head { margin-bottom: 8px; }
+
+/* The widget inspector's own heading names the selected tile's type and title (updated live, not
+ * just on selection); kept stuck to the top of the scrolling aside while the field groups below it
+ * scroll past, since it is the only thing on screen that still says which of several similar tiles
+ * is being edited once the canvas itself has scrolled out of view. Same background as the section
+ * itself (`--overlay-0`) so it reads as one surface rather than a floating strip. */
+#inspectorSection > .section-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--overlay-0);
+  padding-bottom: 4px;
+}
+
+.entity-first-chips { row-gap: 6px; }
+
+/* The page and widget lists and the Settings menu share one row size, so switching between them does not make the
+ * left column jump: a little tighter than the old lists, not as tight as a table. */
+:root {
+  --nav-row-gap: 4px;
+  --nav-row-pad: 6px 10px;
+  --nav-row-min-h: 32px;
+}
+#pagesList,
+#widgetsList {
+  gap: var(--nav-row-gap);
+}
+#pagesList .list-item,
+#widgetsList .list-item {
+  padding: var(--nav-row-pad);
+  min-height: var(--nav-row-min-h);
+  border-radius: 8px;
+  font-size: 13px;
+  gap: 6px;
+}
+#pagesList .row-actions,
+#widgetsList .row-actions {
+  gap: 12px; /* the red delete button keeps its distance from the duplicate button */
+}
+#pagesList .row-icon-btn,
+#widgetsList .row-icon-btn {
+  padding: 2px 5px;
+  font-size: 12px;
+}
+#pagesList .row-delete-btn,
+#widgetsList .row-delete-btn {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+}
+
+/* The Inspector (right column) was roomier than the lists on the left: the same moderate density, scoped to its groups so the
+ * Settings forms keep their spacing. */
+.inspector-group {
+  margin-bottom: 6px;
+}
+.inspector-group > summary {
+  padding: 5px 10px;
+}
+.inspector-group-body {
+  padding: 4px 10px 8px;
+  gap: 4px;
+}
+.inspector-group-body label {
+  gap: 2px;
+}
+.inspector-group-body input,
+.inspector-group-body select,
+.inspector-group-body textarea {
+  padding: 6px 8px;
+}
+.inspector-group-body textarea {
+  margin-top: 2px;
+  min-height: 68px;
+}
+.inspector-group-body .field-hint {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+/* Long Inspector hints show their first sentence and a flat info symbol at its end (js/inspector-hints.js). */
+.hint-toggle {
+  display: inline;
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  box-shadow: none;
+  font-size: 13px;
+  line-height: inherit;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+.hint-toggle:hover,
+.hint-toggle:focus-visible {
+  background: var(--overlay-2);
+}
+
+/* Exports and battery charging sit below the timeline baseline, like on the panel. */
+.tp-etl-bars { margin-bottom: 8px; }
+.tp-etl-bars u { position: relative; }
+.tp-etl-bars u::after { content: ""; position: absolute; top: 100%; left: 0; right: 0; height: 6px; background: linear-gradient(var(--etl-export) 50%, var(--etl-battery_in) 50%); }
+
+/* Tiles that overlap cover each other on the panel (overlappingWidgetIds() in js/canvas.js). */
+#canvas .widget-box.overlapping { outline: 3px dashed var(--danger); outline-offset: -3px; }

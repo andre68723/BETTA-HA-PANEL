@@ -657,23 +657,15 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_set_size(card, def->w, def->h);
     lv_obj_set_scrollable(card, false);
     lv_obj_set_style_radius(card, APP_UI_CARD_RADIUS, LV_PART_MAIN);
-#if APP_UI_REWORK_V2
     lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
     lv_obj_set_style_border_color(card, lv_color_hex(APP_UI_COLOR_CARD_BORDER), LV_PART_MAIN);
     lv_obj_set_style_border_opa(card, LV_OPA_70, LV_PART_MAIN);
-#else
-    lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
-#endif
     lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
 
     lv_obj_t *icon = lv_label_create(card);
     lv_label_set_text(icon, APP_SYMBOL_POWER);
     lv_obj_set_style_text_font(icon, APP_FONT_SYMBOL_SMALL, LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(icon, LV_ALIGN_TOP_LEFT, 0, 2);
-#else
-    lv_obj_align(icon, LV_ALIGN_TOP_LEFT, 0, 0);
-#endif
 
     lv_obj_t *title = ui_widget_name_create(card, !def->hide_name);
     lv_label_set_text(title, def->title[0] ? def->title : def->id);
@@ -683,41 +675,25 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_font(title, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 2);
-#else
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
-#endif
 
     lv_obj_t *arc = lv_arc_create(card);
     lv_obj_set_size(arc, HEATING_ARC_SIZE_MIN, HEATING_ARC_SIZE_MIN);
     lv_arc_set_range(arc, 10, 60);
     lv_arc_set_value(arc, 40);
     lv_arc_set_bg_angles(arc, 160, 20);
-#if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(arc, LV_ALIGN_CENTER, 0, 30);
-#else
-    lv_obj_align(arc, LV_ALIGN_CENTER, 0, 20);
-#endif
     lv_obj_set_event_bubble(arc, false);
 
     lv_obj_t *target_label = lv_label_create(card);
     heating_set_target_label(target_label, 20.0f);
     lv_obj_set_style_text_font(target_label, HEATING_TARGET_FONT, LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(target_label, LV_ALIGN_CENTER, 0, 8);
-#else
-    lv_obj_align(target_label, LV_ALIGN_CENTER, 0, 4);
-#endif
 
     lv_obj_t *actual_label = lv_label_create(card);
     lv_label_set_text(actual_label, "--.- C");
     lv_obj_set_style_text_font(actual_label, HEATING_ACTUAL_FONT, LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(actual_label, LV_ALIGN_CENTER, 0, 50);
-#else
-    lv_obj_align(actual_label, LV_ALIGN_CENTER, 0, 40);
-#endif
 
     lv_obj_t *status_label = lv_label_create(card);
     lv_label_set_text(status_label, ui_i18n_get("common.off", "OFF"));

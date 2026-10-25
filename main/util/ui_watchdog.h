@@ -39,5 +39,8 @@ typedef enum {
 void ui_wd_init(ui_wd_state_t *state);
 /* One evaluation at `now_s` (seconds since boot). */
 ui_wd_decision_t ui_wd_step(ui_wd_state_t *state, const ui_wd_input_t *in, int64_t now_s);
+/* The 32-bit beat stamp for an uptime in microseconds: milliseconds plus one, never 0 because 0 means "no beat yet". The sum
+ * would wrap to 0 once every 49.7 days (at 0xFFFFFFFF ms); that millisecond maps to 1 instead. */
+uint32_t ui_wd_stamp_ms(int64_t uptime_us);
 /* True once the UI has been alive for UI_WD_CLEAR_AFTER_S: the counter of restarts in a row may be cleared. */
 int ui_wd_may_clear_restarts(const ui_wd_state_t *state, int64_t now_s);

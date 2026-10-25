@@ -39,7 +39,7 @@ static ui_wd_decision_t s_last_decision = UI_WD_OK;
 
 static uint32_t now_ms(void)
 {
-    return (uint32_t)(esp_timer_get_time() / 1000) + 1U; /* never 0, which means "no beat yet" */
+    return ui_wd_stamp_ms(esp_timer_get_time()); /* never 0, which means "no beat yet" */
 }
 
 static int64_t age_s(uint32_t beat_ms)

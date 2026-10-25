@@ -8,6 +8,12 @@ void ui_wd_init(ui_wd_state_t *state)
     state->alive_since = -1;
 }
 
+uint32_t ui_wd_stamp_ms(int64_t uptime_us)
+{
+    const uint32_t stamp = (uint32_t)(uptime_us / 1000) + 1U;
+    return stamp == 0U ? 1U : stamp;
+}
+
 ui_wd_decision_t ui_wd_step(ui_wd_state_t *state, const ui_wd_input_t *in, int64_t now_s)
 {
     if (now_s < UI_WD_BOOT_GRACE_S) {

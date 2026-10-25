@@ -281,12 +281,12 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     def->hide_name = !widget_show_name(json);
     def->sensor_show_age = json_bool(json, "sensor_show_age", true);
     def->lock_confirm = json_bool(json, "lock_confirm", false);
-    def->price_day_switch = json_bool(json, "price_day_switch", false);
+    def->price_selector = json_bool(json, "price_selector", false);
     def->price_cheap_times = json_bool(json, "price_cheap_times", false);
     def->price_line = json_bool(json, "price_line", false);
     def->price_average = json_float(json, "price_average", 0.0f);
     def->parqet_hide_amounts = json_bool(json, "parqet_hide_amounts", false);
-    def->parqet_selector = json_bool(json, "parqet_selector", false);
+    def->parqet_selector = json_bool(json, "parqet_selector", true);
     copy_field(def->parqet_view, sizeof(def->parqet_view), json, "parqet_view");
     copy_field(def->parqet_interval, sizeof(def->parqet_interval), json, "parqet_interval");
     def->camera_live = json_bool(json, "camera_live", false);
@@ -337,6 +337,7 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
         copy_field(def->stock_period, sizeof(def->stock_period), json, "stock_period");
         copy_field(def->stock_delta, sizeof(def->stock_delta), json, "stock_delta");
         def->stock_ticker = json_bool(json, "stock_ticker", false);
+        def->stock_selector = json_bool(json, "stock_selector", true);
     }
     if (strcmp(def->type, "room_tile") == 0) {
         copy_field(def->display_mode, sizeof(def->display_mode), json, "room_extra_mode");

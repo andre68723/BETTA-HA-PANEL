@@ -324,23 +324,11 @@ static void button_layout_switch(lv_obj_t *card, w_button_ctx_t *ctx)
 
         const bool compact = button_card_is_compact(card);
     const lv_coord_t side_inset =
-#if APP_UI_TILE_LAYOUT_TUNED
         compact ? 0 : 2;
-#else
-        0;
-#endif
     const lv_coord_t top_gap =
-#if APP_UI_TILE_LAYOUT_TUNED
         compact ? 8 : 10;
-#else
-        8;
-#endif
     const lv_coord_t bottom_gap =
-#if APP_UI_TILE_LAYOUT_TUNED
         compact ? 9 : 12;
-#else
-        10;
-#endif
         const lv_coord_t min_height = compact ? 30 : 34;
 
     lv_coord_t content_w = 24;
@@ -395,17 +383,9 @@ static void button_layout_icon(lv_obj_t *card, w_button_ctx_t *ctx)
 
         const bool compact = button_card_is_compact(card);
     const lv_coord_t top_gap_base =
-#if APP_UI_TILE_LAYOUT_TUNED
         compact ? 10 : 14;
-#else
-        12;
-#endif
     const lv_coord_t bottom_gap_base =
-#if APP_UI_TILE_LAYOUT_TUNED
         compact ? 12 : 16;
-#else
-        14;
-#endif
         const lv_coord_t min_height = compact ? 26 : 30;
 
     lv_coord_t top_gap = button_label_visible(ctx->state_label) ? top_gap_base : 4;
@@ -631,13 +611,9 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_set_size(card, def->w, def->h);
     lv_obj_set_scrollable(card, false);
     lv_obj_set_style_radius(card, APP_UI_CARD_RADIUS, LV_PART_MAIN);
-#if APP_UI_REWORK_V2
     lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
     lv_obj_set_style_border_color(card, lv_color_hex(APP_UI_COLOR_CARD_BORDER), LV_PART_MAIN);
     lv_obj_set_style_border_opa(card, LV_OPA_70, LV_PART_MAIN);
-#else
-    lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
-#endif
     lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
 
     const bool is_media_player = button_entity_is_media_player(def->entity_id);
@@ -662,11 +638,7 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
      * it to one line does not otherwise change its position. */
     lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
     lv_obj_set_height(title, lv_font_get_line_height(ui_font_role(UI_TEXT_META)));
-#if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, -12);
-#else
-    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, -10);
-#endif
 
     lv_obj_t *state_label = lv_label_create(card);
     lv_label_set_text(state_label, ui_i18n_get("common.off", "OFF"));
@@ -675,11 +647,7 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_set_width(state_label, def->w - 32);
     lv_obj_set_height(state_label, lv_font_get_line_height(ui_font_role(UI_TEXT_META)));
     lv_label_set_long_mode(state_label, LV_LABEL_LONG_DOT);
-#if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, 2);
-#else
-    lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, 0);
-#endif
 
     lv_obj_t *action_switch = lv_switch_create(card);
     lv_obj_set_event_bubble(action_switch, false);

@@ -1103,13 +1103,9 @@ void ui_pages_init(void)
     lv_obj_set_style_radius(s_content_box, 0, LV_PART_MAIN);
     lv_obj_set_style_bg_color(s_content_box, ui_style_page_bg(lv_color_hex(APP_UI_COLOR_CONTENT_BG)), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(s_content_box, LV_OPA_COVER, LV_PART_MAIN);
-#if APP_UI_REWORK_V2
     lv_obj_set_style_border_width(s_content_box, ui_style_traits()->frameless_page ? 0 : 1, LV_PART_MAIN);
     lv_obj_set_style_border_color(s_content_box, lv_color_hex(APP_UI_COLOR_CONTENT_BORDER), LV_PART_MAIN);
     lv_obj_set_style_border_opa(s_content_box, LV_OPA_70, LV_PART_MAIN);
-#else
-    lv_obj_set_style_border_width(s_content_box, 0, LV_PART_MAIN);
-#endif
     lv_obj_set_style_pad_all(s_content_box, 0, LV_PART_MAIN);
     ui_style_glass_background(s_content_box, lv_color_hex(APP_UI_COLOR_CONTENT_BG), lv_color_hex(APP_UI_COLOR_NAV_TAB_ACTIVE));
 

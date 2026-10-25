@@ -24,7 +24,7 @@ None beyond the entities.
 | Option | Effect |
 | --- | --- |
 | Average (fixed, EUR/kWh; empty = calculated) | a fixed average instead of the day's own; an average sensor replaces it too |
-| Day switch (Today / Tomorrow) | Today/Tomorrow buttons, one toggle on a narrow tile; off shows the 24 hours around now |
+| Show selector buttons on the tile | Today/Tomorrow buttons, one toggle on a narrow tile; off (default) shows the 24 hours around now |
 | Cheap times (shade and name the cheapest hours) | shades the cheap windows and names the next one |
 | Line instead of filled bars | a stepped line |
 

@@ -41,12 +41,19 @@ function stockLoadInspector(widget) {
   if (el.fStockPeriod) el.fStockPeriod.value = isStock && STOCK_PERIODS.includes(widget.stock_period) ? widget.stock_period : "30d";
   if (el.fStockDelta) el.fStockDelta.value = isStock && ["absolute", "both"].includes(widget.stock_delta) ? widget.stock_delta : "percent";
   if (el.fStockTicker) el.fStockTicker.checked = isStock && widget.stock_ticker === true;
+  if (el.fStockSelector) el.fStockSelector.checked = isStock && widget.stock_selector !== false;
+  stockSyncSelectorRow();
   stockRefreshRows();
+}
+
+// The period buttons exist only in the chart view; the saved choice is kept while the list view hides the control.
+function stockSyncSelectorRow() {
+  if (el.fStockSelectorRow) el.fStockSelectorRow.hidden = el.fStockView?.value !== "chart";
 }
 
 // Writes the quotes in order without gaps and the options that differ from the defaults; another type keeps none.
 function stockSaveInspector(widget, widgetType) {
-  for (const key of ["stock_entities", "stock_view", "stock_period", "stock_delta", "stock_ticker"]) delete widget[key];
+  for (const key of ["stock_entities", "stock_view", "stock_period", "stock_delta", "stock_ticker", "stock_selector"]) delete widget[key];
   if (widgetType !== "stock_quotes") return;
   const ids = stockQuoteInputs().map(input => input.value.trim()).filter(Boolean);
   if (ids.length) widget.entity_id = ids[0];
@@ -57,6 +64,7 @@ function stockSaveInspector(widget, widgetType) {
     if (value && value !== STOCK_DEFAULTS[key]) widget[key] = value;
   }
   if (el.fStockTicker?.checked) widget.stock_ticker = true;
+  if (el.fStockSelector && !el.fStockSelector.checked) widget.stock_selector = false; // on unless the layout says false
   delete widget.secondary_entity_id;
   delete widget.tertiary_entity_id;
 }
@@ -118,7 +126,7 @@ function stockPreviewMarkup(widget, name, height) {
   const amountOf = q => q.price * q.change / 100;
   if (widget.stock_view === "chart") {
     const period = STOCK_PERIODS.includes(widget.stock_period) ? widget.stock_period : "30d";
-    const chips = STOCK_PERIODS.map(code => `<em class="${previewControlClass(code === period)}">${escapeHtml(t(`layout.option.stock_period_short.${code}`))}</em>`).join("");
+    const chips = widget.stock_selector === false ? "" : STOCK_PERIODS.map(code => `<em class="${previewControlClass(code === period)}">${escapeHtml(t(`layout.option.stock_period_short.${code}`))}</em>`).join("");
     const sections = quotes.map((q, i) => {
       const change = delta === "absolute" ? `${number(amountOf(q), 2, true)} ${q.currency}` : delta === "both"
         ? `${number(amountOf(q), 2, true)} ${q.currency}  ${number(q.change, 2, true)} %` : `${number(q.change, 2, true)} %`;
@@ -132,7 +140,7 @@ function stockPreviewMarkup(widget, name, height) {
         <small><em class="${sign(q.change)}">${escapeHtml(change)}</em> ${escapeHtml(since)}</small>
         <svg class="tp-stock-spark ${sign(q.change)}" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${points}"/></svg></div>`;
     }).join("");
-    return `<div class="tp tp-stock">${name("div", 'class="tp-name"')}<div class="tp-stock-chips">${chips}</div><div class="tp-stock-list">${sections}</div></div>`;
+    return `<div class="tp tp-stock">${name("div", 'class="tp-name"')}${chips ? `<div class="tp-stock-chips">${chips}</div>` : ""}<div class="tp-stock-list">${sections}</div></div>`;
   }
   const rows = quotes.map(q => {
     const first = delta === "absolute" ? `${number(amountOf(q), 2, true)} ${q.currency}` : `${number(q.change, 2, true)} %`;

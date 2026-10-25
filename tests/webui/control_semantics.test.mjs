@@ -138,7 +138,7 @@ test("optional Stop controls follow the reported capabilities", () => {
 test("day and chart-period selections share the active role", () => {
   const { fn } = loadEditor();
   for (const width of [260, 680]) {
-    const price = fn("tilePreviewMarkup")({ type: "energy_price_forecast", price_day_switch: true, rect: { w: width, h: 300 } });
+    const price = fn("tilePreviewMarkup")({ type: "energy_price_forecast", price_selector: true, rect: { w: width, h: 300 } });
     assert.equal((price.match(/control-active/g) || []).length, 1);
     assert.equal(price.includes('class="control-action"'), width >= 360);
   }

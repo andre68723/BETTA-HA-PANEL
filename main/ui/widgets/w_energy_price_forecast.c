@@ -9,7 +9,7 @@
  * rounded to whole cents, is above the average and green otherwise; hours that are over are dimmed and the running interval is marked; the
  * average is the mean of the day's prices (in tenths of a cent) rounded to a cent, or a fixed value or a sensor of the layout; the cheap times
  * are the lowest quarter of each day's prices (rounded to 0.001 EUR/kWh), neighbours joined, at least an hour long and not over yet. The
- * options are the card's: average (fixed value or sensor), day_switch (Today/Tomorrow buttons) and cheap_times (shade and name the cheap
+ * options are the card's: average (fixed value or sensor), selector (Today/Tomorrow buttons, option price_selector) and cheap_times (shade and name the cheap
  * times). Nothing is copied from the card; this is the panel's own drawing and code.
  */
 #include "ui/ui_widget_factory.h"
@@ -591,7 +591,7 @@ esp_err_t w_energy_price_forecast_create(const ui_widget_def_t *def, lv_obj_t *p
     }
     strlcpy(ctx->entity_id, def->entity_id, sizeof(ctx->entity_id));
     strlcpy(ctx->avg_entity, def->secondary_entity_id, sizeof(ctx->avg_entity));
-    ctx->day_switch = def->price_day_switch;
+    ctx->day_switch = def->price_selector;
     ctx->cheap_times = def->price_cheap_times;
     ctx->line_mode = def->price_line;
     ctx->avg_fixed = def->price_average > 0.0f ? (double)def->price_average : 0.0;

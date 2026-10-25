@@ -28,6 +28,7 @@ One of two integrations from HACS, or both mixed: **[Yahoo Finance](https://gith
 | Period | 1 day, 1 week, 30 days, year to date or 1 year: the charts' first period and the one the details open with |
 | Change | percent, amount, or both |
 | Show the symbol | the ticker under the name (list) or after it (charts) |
+| Show selector buttons on the tile | on by default, charts only: the period buttons **1D, 1W, 30D, YTD, 1Y**; off shows the period above |
 
 <a href="../img/examples/inspector-stock_quotes.png"><img src="../img/examples/inspector-stock_quotes.png" alt="Inspector of the Stocks &amp; ETFs widget" loading="lazy" width="340" height="573"></a>
 

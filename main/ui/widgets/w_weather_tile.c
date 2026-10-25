@@ -102,13 +102,9 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_set_size(card, def->w, def->h);
     lv_obj_set_scrollable(card, false);
     lv_obj_set_style_radius(card, APP_UI_CARD_RADIUS, LV_PART_MAIN);
-#if APP_UI_REWORK_V2
     lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
     lv_obj_set_style_border_color(card, lv_color_hex(APP_UI_COLOR_CARD_BORDER), LV_PART_MAIN);
     lv_obj_set_style_border_opa(card, LV_OPA_70, LV_PART_MAIN);
-#else
-    lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
-#endif
     #if UI_TEXT_ADAPTIVE
     lv_obj_set_style_pad_all(card, 14, LV_PART_MAIN);
 #else
@@ -126,11 +122,7 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_set_height(title, title_font->line_height);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_color(title, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 2);
-#else
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
-#endif
 
     lv_obj_t *condition = lv_label_create(card);
     lv_label_set_text(condition, "--");
@@ -138,11 +130,7 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_set_style_text_align(condition, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_color(condition, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
     lv_obj_set_style_text_font(condition, WEATHER_CONDITION_FONT, LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(condition, LV_ALIGN_TOP_MID, 0, 36);
-#else
-    lv_obj_align(condition, LV_ALIGN_TOP_MID, 0, 34);
-#endif
 
     lv_obj_t *temp = lv_label_create(card);
     lv_label_set_text(temp, "--");
@@ -150,22 +138,14 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_set_style_text_align(temp, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_color(temp, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_font(temp, WEATHER_TEMP_FONT, LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(temp, LV_ALIGN_TOP_MID, 0, 76);
-#else
-    lv_obj_align(temp, LV_ALIGN_TOP_MID, 0, 72);
-#endif
 
     lv_obj_t *meta = lv_label_create(card);
     lv_label_set_text(meta, "");
     lv_obj_set_width(meta, def->w - 32);
     lv_obj_set_style_text_align(meta, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_color(meta, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
     lv_obj_align(meta, LV_ALIGN_TOP_MID, 0, 130);
-#else
-    lv_obj_align(meta, LV_ALIGN_TOP_MID, 0, 124);
-#endif
 
     w_weather_tile_ctx_t *ctx = weather_calloc(1, sizeof(w_weather_tile_ctx_t));
     if (ctx == NULL) {

@@ -9,26 +9,8 @@
 #include "app_config.h"
 #include "ui/theme/theme_palette.h"
 
-#ifndef APP_UI_REWORK_V2
-#define APP_UI_REWORK_V2 1
-#endif
-
-/*
- * Global switch for experimental tile spacing/alignment tuning.
- * Set to 0 to instantly restore legacy per-tile layout positions.
- */
-#ifndef APP_UI_TILE_LAYOUT_TUNED
-#define APP_UI_TILE_LAYOUT_TUNED 1
-#endif
-
-#if APP_UI_REWORK_V2
 #ifndef APP_UI_CARD_RADIUS
 #define APP_UI_CARD_RADIUS 22
-#endif
-#else
-#ifndef APP_UI_CARD_RADIUS
-#define APP_UI_CARD_RADIUS 20
-#endif
 #endif
 
 /*

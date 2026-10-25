@@ -42,6 +42,11 @@ bool ha_auth_state_report_http(int status, bool template_request, bool ws_authen
     return false;
 }
 
+bool ha_auth_state_report_image_fetch(int status, bool panel_token_sent)
+{
+    return panel_token_sent && ha_auth_state_report_http(status, false, true);
+}
+
 bool ha_auth_state_blocked(void)
 {
     return s_block != HA_AUTH_OK;

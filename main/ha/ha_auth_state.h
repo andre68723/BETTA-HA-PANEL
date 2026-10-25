@@ -33,6 +33,10 @@ bool ha_auth_state_report_ws_auth_invalid(void);
  * 401/403 are ignored. `template_request` with `ws_authenticated` marks the not-admin case.
  * True when this changes the state (log it once). */
 bool ha_auth_state_report_http(int status, bool template_request, bool ws_authenticated);
+/* The status of an image fetch. Only a request that carried the panel's token can tell it was rejected: a
+ * media URL with its own ?token= (a camera_proxy URL expires every few minutes, and after a Home Assistant
+ * restart) or a foreign host answers 401/403 about that URL, not about the panel. False for those. */
+bool ha_auth_state_report_image_fetch(int status, bool panel_token_sent);
 /* True while no request carrying the token may be sent. */
 bool ha_auth_state_blocked(void);
 ha_auth_block_t ha_auth_state_reason(void);

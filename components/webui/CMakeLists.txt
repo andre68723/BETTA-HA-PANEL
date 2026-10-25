@@ -30,6 +30,7 @@ set(WEBUI_JS_SOURCES
     js/tile-previews.js
     js/layout-history.js
     js/widget-actions.js
+    js/energy-canvas-preview.js
     js/canvas.js
     js/inspector-layout.js
     js/room-import.js
@@ -41,6 +42,7 @@ set(WEBUI_JS_SOURCES
 # Base editor styles first, then one file per appearance style (docs/appearance.md).
 set(WEBUI_CSS_SOURCES
     styles.css
+    css/editor-refinements.css
     css/style-depth.css
     css/style-flat.css
     css/style-glow.css

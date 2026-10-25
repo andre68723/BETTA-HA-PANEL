@@ -453,7 +453,7 @@
           },
           "entity_id": "sensor.price",
           "secondary_entity_id": "sensor.price_average",
-          "price_day_switch": true,
+          "price_selector": true,
           "price_cheap_times": true,
           "price_line": true,
           "price_average": 0.25
@@ -502,7 +502,8 @@
           "stock_view": "chart",
           "stock_period": "ytd",
           "stock_delta": "both",
-          "stock_ticker": true
+          "stock_ticker": true,
+          "stock_selector": false
         }
       ]
     }

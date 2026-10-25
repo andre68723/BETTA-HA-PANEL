@@ -250,11 +250,7 @@ void weather_set_3day_row_values(weather_3day_row_widgets_t *widgets, const weat
 lv_coord_t weather_content_top_y(const w_weather_tile_ctx_t *ctx)
 {
     if (ctx->hide_name) return 4;
-#if APP_UI_TILE_LAYOUT_TUNED
     return 34;
-#else
-    return 32;
-#endif
 }
 
 lv_coord_t weather_content_bottom_y(lv_obj_t *card, const w_weather_tile_ctx_t *ctx)
@@ -268,11 +264,7 @@ lv_coord_t weather_content_bottom_y(lv_obj_t *card, const w_weather_tile_ctx_t *
 
     if (ctx != NULL && ctx->show_forecast) {
         lv_coord_t row_y =
-#if APP_UI_TILE_LAYOUT_TUNED
             card_h - 102;
-#else
-            card_h - 106;
-#endif
         if (row_y < 152) {
             row_y = 152;
         }

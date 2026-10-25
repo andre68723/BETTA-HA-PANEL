@@ -98,13 +98,6 @@ PATCHES = [
         "\t\treturn ESP_FAIL;\n"
         "\t}\n"
         "\tg_h.funcs->_h_post_semaphore(sem_to_slave_queue);\n")),
-    ("waveshare__esp32_p4_wifi6_touch_lcd_4b", "CMakeLists.txt",
-     "panel4 BSP under IDF 6: requirements", ensure_requires, ("REQUIRES", ["esp_driver_i2s", "esp_driver_sdmmc"])),
-    ("waveshare__esp32_p4_wifi6_touch_lcd_4b", "CMakeLists.txt",
-     "panel4 BSP under IDF 6: private requirements", ensure_requires, ("PRIV_REQUIRES", ["esp_driver_ledc"])),
-    ("waveshare__esp32_p4_wifi6_touch_lcd_4b", "include/bsp/display.h",
-     "panel4 BSP under IDF 6: colour order name",
-     replace, ("ESP_LCD_COLOR_SPACE_RGB", "LCD_RGB_ELEMENT_ORDER_RGB")),
     ("waveshare__esp_lcd_hx8394", "esp_lcd_hx8394.c",
      "panel10 under IDF 6: colour order field (build check only)",
      replace, ("panel_dev_config->color_space", "panel_dev_config->rgb_ele_order")),

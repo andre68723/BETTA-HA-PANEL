@@ -6,7 +6,7 @@
  * entry; a sensor of another integration is named as such instead of being read. Two views (display_mode):
  *   list   rows of name (and, with stock_ticker, the symbol), price and the last session's change;
  *   chart  a section per quote: price, the change over the chosen period against its reference, and a small chart; one
- *          row of period buttons (1D, 1W, 30D, YTD, 1Y) applies to every chart of the tile.
+ *          row of period buttons (1D, 1W, 30D, YTD, 1Y, option stock_selector, on by default) applies to every chart of the tile.
  * stock_period is the charts' first period and the one the detail popup opens with; stock_delta shows the change in
  * percent, as an amount or both. Rows scroll when they do not fit; a tap (not a drag) opens the detail popup.
  * Histories come from ui/quote_history_feed.c, only for charts on screen.
@@ -78,6 +78,7 @@ typedef struct w_qs_ctx {
     bool show_name;
     bool chart;
     bool ticker;
+    bool selector;                      /* chart view: the period buttons (stock_selector) */
     qs_delta_t delta_mode;
     ui_text_role_t number_role;         /* list view: the price and change columns, LABEL or the smaller META */
     ha_quote_period_t period;
@@ -436,8 +437,9 @@ static void qs_layout(w_qs_ctx_t *ctx)
         qs_place(ctx->title_label, QS_PAD, y, inner_w, meta_h);
         y += meta_h + 4;
     }
-    for (int p = 0; p < HA_QUOTE_PERIOD_COUNT; p++) lv_obj_set_hidden(ctx->chip[p], !ctx->chart);
-    if (ctx->chart) {
+    const bool buttons = ctx->chart && ctx->selector;
+    for (int p = 0; p < HA_QUOTE_PERIOD_COUNT; p++) lv_obj_set_hidden(ctx->chip[p], !buttons);
+    if (buttons) {
         /* the period buttons share the width; the chosen one is filled */
         const int chip_h = meta_h + 8, chip_w = (inner_w - (HA_QUOTE_PERIOD_COUNT - 1) * 6) / HA_QUOTE_PERIOD_COUNT;
         for (int p = 0; p < HA_QUOTE_PERIOD_COUNT; p++) {
@@ -603,6 +605,7 @@ esp_err_t w_stock_quotes_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->show_name = !def->hide_name;
     ctx->chart = strcmp(def->display_mode, "chart") == 0;
     ctx->ticker = def->stock_ticker;
+    ctx->selector = def->stock_selector;
     ctx->delta_mode = strcmp(def->stock_delta, "absolute") == 0 ? QS_DELTA_ABSOLUTE
                       : strcmp(def->stock_delta, "both") == 0 ? QS_DELTA_BOTH : QS_DELTA_PERCENT;
     if (!ha_quote_period_from_code(def->stock_period, &ctx->period)) ctx->period = HA_QUOTE_PERIOD_30D;

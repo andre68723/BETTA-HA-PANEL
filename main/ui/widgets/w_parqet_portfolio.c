@@ -7,7 +7,7 @@
  * dividends_entity_id the dividends and return_entity_id the unrealised return in percent. The sensors report one interval chosen in the integration
  * (Max here: it is the sensors' own figures). Another interval (1D, 1W, 1M, YTD) comes from the integration's WebSocket command through
  * ha/parqet_request.c. Two views: Performance (value, gain, XIRR, TTWROR, dividends, a value curve) and Holdings (the largest holdings with their
- * return in the interval). The option parqet_selector shows tabs and interval chips to change both by touch; parqet_view and parqet_interval
+ * return in the interval). The option parqet_selector (on by default) shows tabs and interval chips to change both by touch; parqet_view and parqet_interval
  * set the start. parqet_hide_amounts shows percentages only.
  */
 #include "ui/ui_widget_factory.h"

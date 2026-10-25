@@ -200,7 +200,7 @@ WIDGETS = {
                         "the attribute `top_holdings` of the total value sensor (five entries). The integration disables its detailed sensors "
                         "by default; only the unrealised return in percent is useful here: enable *Unrealised return (gross)* in its entity settings.",
         "options": [("Hide amounts (percentages only)", "percentages and weights only; the value is replaced by the return (or the XIRR), dividends are not shown"),
-                    ("Show tabs and interval buttons on the tile", "**Performance** and **Holdings** tabs and the intervals **1D, 1W, 1M, YTD, MAX**"),
+                    ("Show selector buttons on the tile", "on by default: **Performance** and **Holdings** tabs and the intervals **1D, 1W, 1M, YTD, MAX**; off shows the start view"),
                     ("Start view, Start interval", "what the tile starts with; without the buttons they choose what it shows")],
         "panel": ["The value, the gain with the return in percent, XIRR and dividends, and on a taller tile the largest holdings as weight bars.",
                   "The tile names the interval in its corner.",
@@ -218,7 +218,8 @@ WIDGETS = {
                     ("View", "**List**: name, price and the last session's change; **Charts**: a small chart per quote"),
                     ("Period", "1 day, 1 week, 30 days, year to date or 1 year: the charts' first period and the one the details open with"),
                     ("Change", "percent, amount, or both"),
-                    ("Show the symbol", "the ticker under the name (list) or after it (charts)")],
+                    ("Show the symbol", "the ticker under the name (list) or after it (charts)"),
+                    ("Show selector buttons on the tile", "on by default, charts only: the period buttons **1D, 1W, 30D, YTD, 1Y**; off shows the period above")],
         "panel": ["The price is the sensor's state with its currency; pence stay pence (GBp). A change that does not belong to the shown price "
                   "(a converted or after-hours price) is left out, a missing change shows `--`.",
                   "Rows scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market "
@@ -233,7 +234,7 @@ WIDGETS = {
         "entities": [("Price sensor", "`sensor.*` with a price list", True), ("Average sensor (EUR/kWh)", "`sensor.*`", False)],
         "requirements": None,
         "options": [("Average (fixed, EUR/kWh; empty = calculated)", "a fixed average instead of the day's own; an average sensor replaces it too"),
-                    ("Day switch (Today / Tomorrow)", "Today/Tomorrow buttons, one toggle on a narrow tile; off shows the 24 hours around now"),
+                    ("Show selector buttons on the tile", "Today/Tomorrow buttons, one toggle on a narrow tile; off (default) shows the 24 hours around now"),
                     ("Cheap times (shade and name the cheapest hours)", "shades the cheap windows and names the next one"),
                     ("Line instead of filled bars", "a stepped line")],
         "panel": ["One bar per interval in cent per kWh: green below the average, orange above it; past intervals dimmed, the running one outlined.",

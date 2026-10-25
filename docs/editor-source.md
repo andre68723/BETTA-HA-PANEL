@@ -15,6 +15,7 @@ refresh it when that image changes (asset declaration and copy are in the WebUI 
 ```
 www/index.html        the page (loads the scripts below, in this order)
 www/styles.css        base editor styles, the canvas and the layout preview shared by every style
+www/css/editor-refinements.css  the later layer of the base: sentence-case UI pass, settings forms, light theme, add-widget menu, preview refinements
 www/css/style-*.css   rules for one appearance style (depth: shared by Glow and Glass), after the base
 www/css/readability.css  the readability controls' styles, after the style files
 www/css/preview-fit.css  tile preview sizes that follow the tile (container units) and the looks matched to the panel
@@ -44,6 +45,7 @@ www/js/energy-timeline-colors.js energy flow palette, compact color controls and
 www/js/tile-previews.js  the schematic tile previews (solar, car, Sonos, `tilePreviewMarkup`) and the house page grid (before canvas)
 www/js/layout-history.js bounded layout/selection snapshots, edit grouping and Undo/Redo
 www/js/widget-actions.js validated page transfers, widget menu and target dialog
+www/js/energy-canvas-preview.js  the Energy page's schematic preview on the canvas
 www/js/canvas.js      pages list, canvas, inspector, page and widget operations
 www/js/inspector-layout.js Inspector presentation: tabs, optional groups, wrapping entity fields and automatic Appearance fit
 www/js/room-import.js room import: area pick, role assignment dialog with preview, zone layout
@@ -62,7 +64,7 @@ boundaries; `tools/check_web.py` checks order, syntax, fingerprinted names and g
 1. Create it under `www/js/` with the licence header of the others.
 2. Add it to `WEBUI_JS_SOURCES` in `components/webui/CMakeLists.txt` and to the `<script>` list in `www/index.html` in
    the same position. A stylesheet goes into `WEBUI_CSS_SOURCES` and the `<link>` block the same way (order is cascade
-   order; style files come after `styles.css`).
+   order; style files come after `styles.css` and `css/editor-refinements.css`).
 3. `tools/check.sh` fails when the lists, tags and `www/js/` disagree or the bundle breaks, and runs the editor tests
    (`node --test tests/webui/*.test.mjs`). `load_editor.mjs` loads the scripts into a Node `vm` context with a small DOM
    stub and derives production order from `index.html`, excluding only the browser bootstrap `main.js`.
