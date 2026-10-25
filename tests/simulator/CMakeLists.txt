@@ -85,6 +85,8 @@ add_executable(betta-widget-sim
     font_budget_regression.c
     notification_regression.c
     price_regression.c
+    chart_refresh_regression.c
+    car_refresh_regression.c
     parqet_regression.c
     pages_stubs.c
     sim_clock.c

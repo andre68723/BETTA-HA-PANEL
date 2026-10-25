@@ -1136,7 +1136,7 @@ function renderInspector() {
   if (el.fParqetView) el.fParqetView.value = widget.type === "parqet_portfolio" && widget.parqet_view === "holdings" ? "holdings" : "performance";
   if (el.fParqetInterval) el.fParqetInterval.value = widget.type === "parqet_portfolio" && ["1d", "1w", "1m", "ytd"].includes(widget.parqet_interval) ? widget.parqet_interval : "";
   if (el.priceOptions) el.priceOptions.classList.toggle("hidden", widget.type !== "energy_price_forecast");
-  if (el.fPriceDaySwitch) el.fPriceSelector.checked = widget.type === "energy_price_forecast" && widget.price_selector === true;
+  if (el.fPriceSelector) el.fPriceSelector.checked = widget.type === "energy_price_forecast" && widget.price_selector === true;
   if (el.fPriceCheapTimes) el.fPriceCheapTimes.checked = widget.type === "energy_price_forecast" && widget.price_cheap_times === true;
   if (el.fPriceLine) el.fPriceLine.checked = widget.type === "energy_price_forecast" && widget.price_line === true;
   if (el.fPriceAverage) el.fPriceAverage.value = widget.type === "energy_price_forecast" && widget.price_average > 0 ? String(widget.price_average) : "";

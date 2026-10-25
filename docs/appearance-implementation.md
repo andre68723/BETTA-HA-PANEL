@@ -40,6 +40,10 @@ button or card background is not covered by this exception and should follow Fla
 
 ## Control semantics
 
+Card styling compares existing local properties before applying them. Repeated
+state reconciliation must not invalidate an unchanged surface; widget changes
+to the card and active-state colours must still receive the selected style.
+
 Interactive controls use `ui_style_control_color()` and `ui_style_action_button()` in
 `main/ui/theme/ui_style.{h,c}`. The low-level `ui_style_button()` renders surfaces; widgets must
 not use it to invent another meaning for accent colours. The editor mirrors these roles with

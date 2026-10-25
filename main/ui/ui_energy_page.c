@@ -1758,7 +1758,7 @@ static void energy_days_received(uint32_t generation, ha_history_days_t *result)
         return;
     }
     const ui_days_view_t view = {.body = ctx->detail_body, .status = ctx->detail_status,
-        .color = energy_node_color(ctx->detail_node)};
+        .color = energy_node_color(ctx->detail_node), .production = ctx->detail_node == ENERGY_NODE_SOLAR};
     ui_days_view_show(&view, result);
     ha_history_days_free(result);
 }
@@ -1828,7 +1828,8 @@ static void energy_node_clicked(lv_event_t *event)
     for (size_t i = 0; i < count; i++) {
         list[i] = ids[i];
     }
-    ui_history_popup_open_days(lv_label_get_text(ctx->nodes[node_id].title_label), energy_node_color(node_id), list, count);
+    ui_history_popup_open_days(lv_label_get_text(ctx->nodes[node_id].title_label), energy_node_color(node_id), list, count,
+        node_id == ENERGY_NODE_SOLAR);
 }
 
 static void energy_create_detail_panel(energy_page_ctx_t *ctx)

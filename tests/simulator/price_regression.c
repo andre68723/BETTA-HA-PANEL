@@ -16,8 +16,10 @@
 esp_err_t w_energy_price_forecast_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_energy_price_forecast_apply_state(ui_widget_instance_t *, const ha_state_t *);
 void w_energy_price_forecast_mark_unavailable(ui_widget_instance_t *);
+void sim_chart_refresh_regression(void);
 
 static unsigned checks;
+static unsigned draws;
 #define CHECK(x) do { ++checks; if (!(x)) { fprintf(stderr, "price line %d: %s\n", __LINE__, #x); exit(1); } } while (0)
 
 static const double TODAY[24] = {0.20038, 0.18343, 0.16618, 0.1524, 0.14999, 0.15302, 0.15022, 0.16521, 0.18674, 0.17057, 0.16114, 0.14435,
@@ -25,7 +27,8 @@ static const double TODAY[24] = {0.20038, 0.18343, 0.16618, 0.1524, 0.14999, 0.1
 static const double TOMORROW[24] = {0.149, 0.14663, 0.14779, 0.14263, 0.14735, 0.15199, 0.14114, 0.15642, 0.18276, 0.20084, 0.19449, 0.1901,
                                     0.18337, 0.16312, 0.16192, 0.16977, 0.19086, 0.21263, 0.22627, 0.2206, 0.19828, 0.17955, 0.17661, 0.17101};
 
-static void advance(unsigned ms) { (void)ms; lv_obj_update_layout(lv_screen_active()); lv_timer_handler(); lv_timer_handler(); }
+static void advance(unsigned ms) { sim_virtual_delay(ms); lv_obj_update_layout(lv_screen_active()); lv_timer_handler(); lv_timer_handler(); }
+static void drawn(lv_event_t *event) { (void)event; draws++; }
 
 /* The first label under root whose text starts with prefix. */
 static lv_obj_t *find_prefix(lv_obj_t *root, const char *prefix)
@@ -171,6 +174,34 @@ int sim_price_regression(void)
     /* today and tomorrow: the price of the running hour, the day buttons, minimum and maximum, a cheap window */
     cJSON *attrs = list_attrs(2);
     apply_attrs(&widget, "sensor.price", "0.2", attrs);
+    /* Prove the probe sees real drawing, then require identical HA updates and
+     * idle 30-second timer ticks to leave the card alone. */
+    lv_obj_add_event_cb(widget.obj, drawn, LV_EVENT_DRAW_MAIN, NULL);
+    lv_obj_invalidate(widget.obj);
+    advance(50);
+    CHECK(draws > 0);
+    advance(50);
+    draws = 0;
+    apply_attrs(&widget, "sensor.price", "0.2", attrs);
+    CHECK(draws == 0);
+    advance(30001);
+    CHECK(draws == 0);
+    cJSON *first_price = cJSON_GetObjectItemCaseSensitive(cJSON_GetArrayItem(
+        cJSON_GetObjectItemCaseSensitive(attrs, "data"), 0), "price_per_kwh");
+    const double original_price = first_price->valuedouble;
+    cJSON_SetNumberValue(first_price, original_price + 0.1);
+    apply_attrs(&widget, "sensor.price", "0.2", attrs);
+    CHECK(draws > 0);
+    cJSON_SetNumberValue(first_price, original_price);
+    apply_attrs(&widget, "sensor.price", "0.2", attrs);
+    advance(50);
+    draws = 0;
+    const time_t saved_now = time(NULL);
+    sim_clock_set(saved_now + 3600);
+    advance(30001);
+    CHECK(draws > 0);
+    sim_clock_set(saved_now);
+    advance(30001);
     CHECK(find_prefix(widget.obj, "No prices") == NULL);
     time_t now = time(NULL);
     struct tm tm;
@@ -298,6 +329,13 @@ int sim_price_regression(void)
     apply_attrs(&avg, "sensor.price", "0.2", attrs);
     apply_attrs(&avg, "sensor.price_avg", "0.163377", NULL);
     CHECK(find_prefix(avg.obj, slot) != NULL);
+    lv_obj_add_event_cb(avg.obj, drawn, LV_EVENT_DRAW_MAIN, NULL);
+    advance(50);
+    draws = 0;
+    apply_attrs(&avg, "sensor.price_avg", "0.163377", NULL);
+    CHECK(draws == 0);
+    apply_attrs(&avg, "sensor.price_avg", "0.18", NULL);
+    CHECK(draws > 0);
     apply_attrs(&avg, "sensor.price_avg", "unavailable", NULL);
     apply_attrs(&avg, "sensor.price_avg", "16.3", NULL); /* cent instead of EUR: not used */
     CHECK(find_prefix(avg.obj, slot) != NULL && find_prefix(avg.obj, range) != NULL);
@@ -372,6 +410,8 @@ int sim_price_regression(void)
     CHECK(middle_point.x > first_point.x && middle_point.x < last_point.x);
     CHECK(abs(2 * (middle_point.x - first_point.x) - (last_point.x - first_point.x)) <= 2);
 
+    fresh_screen();
+    sim_chart_refresh_regression();
     printf("price forecast: %u checks passed\n", checks);
     return 0;
 }

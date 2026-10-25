@@ -34,9 +34,9 @@ void ui_history_popup_quote_select(ha_quote_period_t period);
 void ui_history_popup_simulator_set_range(const ha_range_series_t *series);
 #endif
 
-/* Daily consumption of cumulative counters (the Water or Gas source of the Energy page): seven bars for the last
- * seven local days, from Home Assistant statistics. ids are statistic IDs (up to four, summed); bar_color is 0xRRGGBB. */
-void ui_history_popup_open_days(const char *title, uint32_t bar_color, const char *const *ids, size_t count);
+/* Daily totals of cumulative counters (Water, Gas or Solar): seven bars for the last seven local days, from HA
+ * statistics. ids are statistic IDs (up to four, summed); production selects solar-yield wording. */
+void ui_history_popup_open_days(const char *title, uint32_t bar_color, const char *const *ids, size_t count, bool production);
 
 /* evcc completed charging sessions, using the same activity popup frame. */
 void ui_history_popup_open_evcc(const char *mode_entity);

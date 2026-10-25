@@ -660,6 +660,18 @@ esp_err_t w_stock_quotes_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     return ESP_OK;
 }
 
+static bool qs_quote_equal(const ha_quote_t *a, const ha_quote_t *b)
+{
+    return a->available == b->available && a->price == b->price && a->price_decimals == b->price_decimals &&
+        a->has_change == b->has_change && a->change == b->change &&
+        a->has_change_pct == b->has_change_pct && a->change_pct == b->change_pct &&
+        a->has_prev_close == b->has_prev_close && a->prev_close == b->prev_close &&
+        a->market == b->market && a->has_quote_time == b->has_quote_time && a->quote_time == b->quote_time &&
+        a->has_live == b->has_live && a->price_is_live == b->price_is_live &&
+        strcmp(a->currency, b->currency) == 0 && strcmp(a->symbol, b->symbol) == 0 &&
+        strcmp(a->name, b->name) == 0 && strcmp(a->long_name, b->long_name) == 0;
+}
+
 void w_stock_quotes_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
 {
     if (instance == NULL || instance->ctx == NULL || state == NULL) return;
@@ -669,6 +681,9 @@ void w_stock_quotes_apply_state(ui_widget_instance_t *instance, const ha_state_t
     for (int i = 0; i < ctx->count; i++) {
         qs_item_t *it = &ctx->item[i];
         if (strcmp(state->entity_id, it->entity_id) != 0) continue;
+        const ha_quote_t previous = it->quote;
+        const bool had_state = it->has_state;
+        const ha_quote_provider_t provider = it->provider;
         it->provider = ha_quote_provider_from_platform(ha_display_precision_platform(it->entity_id));
         it->has_state = ha_quote_parse(it->provider, state->state, state->attributes_json, &it->quote);
         if (!it->has_state) {
@@ -679,6 +694,7 @@ void w_stock_quotes_apply_state(ui_widget_instance_t *instance, const ha_state_t
             if (cJSON_IsString(name) && name->valuestring != NULL) strlcpy(it->quote.name, name->valuestring, sizeof(it->quote.name));
             cJSON_Delete(attrs);
         }
+        if (provider == it->provider && had_state == it->has_state && qs_quote_equal(&previous, &it->quote)) continue;
         if (it->has_change && it->point_count > 0) {
             /* a new price moves the end of the period change, not its history */
             ha_quote_change_t c = it->change;

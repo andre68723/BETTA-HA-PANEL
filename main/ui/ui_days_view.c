@@ -140,7 +140,9 @@ static void render_days(const ui_days_view_t *view, const ha_history_days_t *res
         lv_label_set_text(view->status, missing_sources ? ui_i18n_get("history.days_sources", "Some sources are missing")
                                                            : ui_i18n_get("history.days_partial", "Lighter bars: incomplete day"));
     } else {
-        lv_label_set_text(view->status, ui_i18n_get("history.days_title", "Daily consumption"));
+        lv_label_set_text(view->status, view->production
+            ? ui_i18n_get("history.days_production", "Daily production")
+            : ui_i18n_get("history.days_title", "Daily consumption"));
     }
 }
 

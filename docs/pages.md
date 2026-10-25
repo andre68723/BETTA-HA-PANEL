@@ -45,7 +45,8 @@ See [Home Assistant setup](home-assistant.md#energy-and-rooms) for what each nee
 
 ### Seven-day details
 
-Tap **Gas**, **Water** or **Solar** to see the last seven days as daily consumption: one bar per local calendar day,
+Tap **Gas**, **Water** or **Solar** to see the last seven days: daily consumption for Gas/Water and daily production
+for Solar, with one bar per local calendar day,
 today last. Today is lighter because it is not complete yet; a day without statistics shows a dash instead of a bar.
 Water and Gas use the sources of Home Assistant's Energy dashboard, or with *Manual live sensors* the Gas and Water
 entities of the page. Solar sums its production counters. A source needs long-term statistics as a cumulative counter

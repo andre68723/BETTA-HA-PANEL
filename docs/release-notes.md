@@ -26,6 +26,12 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 
 ### Fixes
 
+- **Price forecast:** the Inspector restores the saved Today/Tomorrow selector checkbox. Identical price/average updates and idle timer ticks no longer redraw the tile; changed data and interval/day boundaries still update it.
+- **Stocks and graphs:** identical normalized quote updates and unchanged graph samples no longer redraw the tiles. Changed quote metadata and later graph samples still update, including equal values at a new timestamp.
+- **Solar forecast:** identical readings and units no longer redraw the tile; changed values, availability and local-day labels still update. This reduces redraw work, but does not establish a fix for physical display flashes.
+- **Car:** repeated battery, power, range, temperature, lock and preconditioning states no longer redraw the tile. Changed readings and availability still update, including recovery from unavailable sources.
+- **Card styles:** Flat, Glass and Matte no longer reapply unchanged card properties on every state update. Widget changes and active-state surfaces still receive the selected style.
+- **Energy details:** Solar daily statistics use **Daily production**, in both the popup and the right-hand panel; Gas and Water retain **Daily consumption**.
 - **Energy day totals:** the Energy page in Home Assistant Energy mode uses the full local day on daylight-saving changes; the request could omit hours before.
 - **Names and larger text:** light, empty, camera, car, Sonos and media player tiles keep their name on one line; with larger text, lock, sensor, car, gauge, to-do, slider and weather tiles drop or move elements instead of overlapping.
 - **Wallbox:** unchanged HA refreshes keep vehicle, mode and target popups open; `null` is shown as Guest vehicle while connected, and the list uses HA's vehicle names. Choosing the energy flow in the Inspector fills the site sensors; idle timers no longer redraw the card; a wallbox beside a price tile keeps its own text size.

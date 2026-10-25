@@ -52,6 +52,7 @@ typedef struct {
     bool vertical_bars;
     bool aligned;
     int forecast_days;
+    int rendered_day;
     lv_obj_t *summary;
     lv_obj_t *popup;
     lv_timer_t *popup_timer;
@@ -283,11 +284,20 @@ static void solar_set_row_hidden(solar_forecast_row_t *row, bool hidden)
     }
 }
 
+static int solar_calendar_day(void)
+{
+    const time_t now = time(NULL);
+    struct tm local;
+    return now > 1600000000 && localtime_r(&now, &local) != NULL
+        ? local.tm_year * 366 + local.tm_yday + 1 : 0;
+}
+
 static void solar_render(w_solar_forecast_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->card == NULL) {
         return;
     }
+    ctx->rendered_day = solar_calendar_day();
     lv_obj_update_layout(ctx->card);
 
     float max_value = 0.0f;
@@ -671,9 +681,16 @@ void w_solar_forecast_apply_state(ui_widget_instance_t *instance, const ha_state
     }
 
     float value = 0.0f;
-    ctx->valid[index] = solar_parse_value(state, &value);
-    ctx->values[index] = ctx->valid[index] ? value : 0.0f;
-    solar_extract_unit(state->attributes_json, ctx->units[index], sizeof(ctx->units[index]));
+    const bool valid = solar_parse_value(state, &value);
+    if (!valid) value = 0.0f;
+    char unit[APP_MAX_UNIT_LEN];
+    strlcpy(unit, ctx->units[index], sizeof(unit));
+    solar_extract_unit(state->attributes_json, unit, sizeof(unit));
+    if (ctx->valid[index] == valid && ctx->values[index] == value && strcmp(ctx->units[index], unit) == 0 &&
+        ctx->rendered_day == solar_calendar_day()) return;
+    ctx->valid[index] = valid;
+    ctx->values[index] = value;
+    strlcpy(ctx->units[index], unit, sizeof(ctx->units[index]));
     solar_render(ctx);
 }
 

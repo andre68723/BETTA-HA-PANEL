@@ -18,6 +18,7 @@ typedef struct {
     lv_obj_t *body;     /* container the bars are drawn into; cleaned on every update */
     lv_obj_t *status;   /* one line of text above it: the title, a hint or an error */
     uint32_t color;     /* 0xRRGGBB of the bars */
+    bool production;   /* solar yield; otherwise cumulative consumption */
 } ui_days_view_t;
 
 /* Replaces the content of the view with the answer: bars, or the message that fits the outcome (error, no statistics

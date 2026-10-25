@@ -1330,6 +1330,8 @@ static void graph_apply_unavailable(w_graph_ctx_t *ctx)
         return;
     }
 
+    if (ctx->unavailable && strcmp(ctx->value_text, ui_i18n_get("common.unavailable", "unavailable")) == 0) return;
+
     ctx->unavailable = true;
     snprintf(ctx->value_text, sizeof(ctx->value_text), "%s", ui_i18n_get("common.unavailable", "unavailable"));
     lv_label_set_text(ctx->value_label, ctx->value_text);
@@ -1550,6 +1552,7 @@ void w_graph_apply_state(ui_widget_instance_t *instance, const ha_state_t *state
     }
 
     const char *unit = NULL;
+    bool unit_changed = false;
     cJSON *attrs = cJSON_Parse(state->attributes_json);
     if (attrs != NULL) {
         cJSON *unit_item = cJSON_GetObjectItemCaseSensitive(attrs, "unit_of_measurement");
@@ -1558,6 +1561,7 @@ void w_graph_apply_state(ui_widget_instance_t *instance, const ha_state_t *state
         }
     }
     if (unit != NULL && unit[0] != '\0') {
+        unit_changed = strcmp(ctx->unit, unit) != 0;
         snprintf(ctx->unit, sizeof(ctx->unit), "%s", unit);
     }
     if (attrs != NULL) {
@@ -1569,6 +1573,7 @@ void w_graph_apply_state(ui_widget_instance_t *instance, const ha_state_t *state
     ctx->unavailable = false;
 
     if (!parsed) {
+        if (!was_unavailable && !unit_changed && strcmp(ctx->value_text, state->state) == 0) return;
         snprintf(ctx->value_text, sizeof(ctx->value_text), "%s", state->state);
         lv_label_set_text(ctx->value_label, ctx->value_text);
         if (was_unavailable) {
@@ -1579,12 +1584,14 @@ void w_graph_apply_state(ui_widget_instance_t *instance, const ha_state_t *state
 
     char value_text[48] = {0};
     graph_format_value(value_text, sizeof(value_text), numeric, ctx->unit);
+    uint32_t bucket_ts = graph_current_bucket_ts();
+    bool history_changed = graph_history_append_or_update(ctx, bucket_ts, numeric, NULL);
+    /* Equal values at a later timestamp are still live history samples. Only
+     * suppress rendering when both the reading and the history are unchanged. */
+    if (!was_unavailable && !history_changed && !unit_changed && strcmp(ctx->value_text, value_text) == 0) return;
     snprintf(ctx->value_text, sizeof(ctx->value_text), "%s", value_text);
     lv_label_set_text(ctx->value_label, ctx->value_text);
     graph_apply_layout(ctx);
-
-    uint32_t bucket_ts = graph_current_bucket_ts();
-    bool history_changed = graph_history_append_or_update(ctx, bucket_ts, numeric, NULL);
     if (history_changed) {
         if (ctx->ha_history && ctx->first_live_ts == 0U) {
             ctx->first_live_ts = bucket_ts;

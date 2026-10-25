@@ -50,7 +50,7 @@ function setupInspector(widgetType = "graph", entityId = "sensor.temperature", s
           if (!listeners.has(name)) listeners.set(name, []);
           listeners.get(name).push(callback);
         },
-        focus() {}, appendChild() {},
+        focus() {}, appendChild() {}, replaceChildren() {},
         dispatchEvent(event) { this.dispatch(event.type); },
         dispatch(name) {
           const event = { target: this };
@@ -62,7 +62,9 @@ function setupInspector(widgetType = "graph", entityId = "sensor.temperature", s
     globalThis.searchButton = { dataset: { inspectorEntityTarget: ${JSON.stringify(searchTarget)} },
       addEventListener(name, callback) { this[name] = callback; } };
     document.querySelectorAll = selector => selector === "[data-inspector-entity-target]" ? [searchButton] : [];
-    document.getElementById = id => el[id] || null;
+    globalThis.forecastFields = { classList: { toggle() {} } };
+    el.fAlignForecast.closest = () => forecastFields;
+    document.getElementById = id => id === "forecastReadabilityOptions" ? forecastFields : el[id] || null;
     bindUi();
     editor.layout = { pages: [{ id: "history", widgets: [{ id: "graph", type: ${JSON.stringify(widgetType)},
       entity_id: ${JSON.stringify(entityId)}, title: "Temperature", rect: { x: 20, y: 20, w: 590, h: 300 } }] }] };
@@ -268,22 +270,53 @@ for (const [input, type, entity, property, firstChecked, firstValue, secondValue
   ["fParqetHideAmounts", "parqet_portfolio", "sensor.portfolio_value", "parqet_hide_amounts", true, true, undefined],
   ["fParqetSelector", "parqet_portfolio", "sensor.portfolio_value", "parqet_selector", false, false, undefined],
   ["fStockSelector", "stock_quotes", "sensor.quote_a", "stock_selector", false, false, undefined],
+  ["fStockTicker", "stock_quotes", "sensor.quote_a", "stock_ticker", true, true, undefined],
   ["fShowName", "sensor", "sensor.temperature", "show_name", false, false, undefined],
   ["fSensorShowAge", "sensor", "sensor.temperature", "sensor_show_age", false, false, undefined],
   ["fWeatherShowPrecip", "weather_3day", "weather.home", "show_precipitation", false, false, undefined],
   ["fAlignForecast", "solar_forecast", "sensor.solar", "align_forecast", true, true, undefined],
 ]) {
-  test(`${input} on ${type}: change, save, reload model and reverse`, async () => {
+  test(`${input} on ${type}: change, save, restore Inspector and reverse`, async () => {
     const run = setupInspector(type, entity);
+    run("renderEntityOptions = () => {}");
     run(`el.${input}.checked = ${firstChecked}; el.${input}.dispatch('change')`);
     assert.equal(run(`selectedWidget().${property}`), firstValue);
     await run("el.saveBtn.onclick()");
     assert.equal(run(`savedLayout.pages[0].widgets[0].${property}`), firstValue);
-    run(`editor.layout = savedLayout; el.${input}.checked = ${!firstChecked}; el.${input}.dispatch('change')`);
+    run(`editor.layout = savedLayout; el.${input}.checked = ${!firstChecked}; renderInspector()`);
+    assert.equal(run(`el.${input}.checked`), firstChecked);
+    run(`el.${input}.checked = ${!firstChecked}; el.${input}.dispatch('change')`);
     await run("el.saveBtn.onclick()");
     assert.equal(run(`savedLayout.pages[0].widgets[0].${property}`), secondValue);
   });
 }
+
+test("price selector restores saved state when selecting widgets and after save/reload", async () => {
+  const run = setupInspector("energy_price_forecast", "sensor.epex_spot_data_market_price");
+  run(`
+    renderEntityOptions = () => {};
+    selectedWidget().price_selector = true;
+    selectedWidget().price_cheap_times = true;
+    editor.layout.pages[0].widgets.push({ id: "other", type: "energy_price_forecast",
+      entity_id: "sensor.other_prices", rect: { x: 20, y: 340, w: 590, h: 300 } });
+    renderInspector();
+  `);
+  assert.equal(run("el.fPriceSelector.checked"), true);
+  run('editor.selectedWidgetId = "other"; renderInspector()');
+  assert.equal(run("el.fPriceSelector.checked"), false);
+  run('editor.selectedWidgetId = "graph"; renderInspector()');
+  assert.equal(run("el.fPriceSelector.checked"), true);
+  run('el.fPriceSelector.checked = false; el.fPriceSelector.dispatch("change")');
+  await run("el.saveBtn.onclick()");
+  run("editor.layout = savedLayout; el.fPriceSelector.checked = true; renderInspector()");
+  assert.equal(run("el.fPriceSelector.checked"), false);
+  assert.equal(run("selectedWidget().price_cheap_times"), true);
+  run('el.fPriceSelector.checked = true; el.fPriceSelector.dispatch("change")');
+  await run("el.saveBtn.onclick()");
+  run("editor.layout = savedLayout; el.fPriceSelector.checked = false; renderInspector()");
+  assert.equal(run("el.fPriceSelector.checked"), true);
+  assert.equal(run("selectedWidget().price_cheap_times"), true);
+});
 
 for (const [input, type, entity, property, value, reset, savedDefault] of [
   ["fGraphPointCount", "graph", "sensor.temperature", "graph_point_count", 32, "", undefined],
@@ -300,11 +333,38 @@ for (const [input, type, entity, property, value, reset, savedDefault] of [
     assert.equal(run(`savedLayout.pages[0].widgets[0].${property}`), value);
     run("editor.layout=savedLayout; normalizeLayoutWidgets(editor.layout); renderInspector()");
     assert.equal(run(`selectedWidget().${property}`), value);
+    assert.equal(run(`String(el.${input}.value)`), String(value));
     run(`el.${input}.value=${JSON.stringify(reset)}; el.${input}.dispatch('change')`);
     await run("el.saveBtn.onclick()");
     assert.equal(run(`savedLayout.pages[0].widgets[0].${property}`), savedDefault);
   });
 }
+
+test("stock chart options restore after widget switches and save/reload, including a hidden selector", async () => {
+  const run = setupInspector("stock_quotes", "sensor.quote_a");
+  run(`
+    renderEntityOptions = () => {};
+    Object.assign(selectedWidget(), { stock_view: "chart", stock_period: "1w", stock_delta: "both", stock_selector: false });
+    editor.layout.pages[0].widgets.push({ id: "other", type: "stock_quotes", entity_id: "sensor.quote_b",
+      rect: { x: 20, y: 340, w: 590, h: 300 } });
+    renderInspector();
+  `);
+  assert.equal(run("el.fStockView.value"), "chart");
+  assert.equal(run("el.fStockPeriod.value"), "1w");
+  assert.equal(run("el.fStockDelta.value"), "both");
+  assert.equal(run("el.fStockSelector.checked"), false);
+  run('editor.selectedWidgetId = "other"; renderInspector()');
+  assert.equal(run("el.fStockPeriod.value"), "30d");
+  assert.equal(run("el.fStockSelector.checked"), true);
+  run('editor.selectedWidgetId = "graph"; renderInspector(); el.fStockView.value = "list"; el.fStockView.dispatch("change")');
+  await run("el.saveBtn.onclick()");
+  run('editor.layout = savedLayout; renderInspector(); el.fStockView.value = "chart"; el.fStockView.dispatch("change")');
+  await run("el.saveBtn.onclick()");
+  run("editor.layout = savedLayout; renderInspector()");
+  assert.equal(run("el.fStockPeriod.value"), "1w");
+  assert.equal(run("el.fStockDelta.value"), "both");
+  assert.equal(run("el.fStockSelector.checked"), false);
+});
 
 test("portfolio view and interval: choose, save, reload and return to the defaults through Inspector events", async () => {
   const run = setupInspector("parqet_portfolio", "sensor.portfolio_value");

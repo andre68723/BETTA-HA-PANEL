@@ -231,6 +231,27 @@ static lv_color_t matte_card_color(const lv_obj_t *card)
     return lv_color_hex(ui_style_card_is_active(card) ? palette->matte_card_on : palette->matte_card_off);
 }
 
+/* Reapplying a local LVGL property invalidates the object even when its value
+ * is unchanged. Compare the same local selector, not the computed/inherited
+ * style, so widgets can still restore the card surface after their own edits. */
+static void card_set_num(lv_obj_t *card, lv_style_prop_t prop, int32_t number)
+{
+    lv_style_value_t previous;
+    if (lv_obj_get_local_style_prop(card, prop, &previous, LV_PART_MAIN) == LV_STYLE_RES_FOUND &&
+        previous.num == number) return;
+    const lv_style_value_t next = {.num = number};
+    lv_obj_set_local_style_prop(card, prop, next, LV_PART_MAIN);
+}
+
+static void card_set_color(lv_obj_t *card, lv_style_prop_t prop, lv_color_t color)
+{
+    lv_style_value_t previous;
+    if (lv_obj_get_local_style_prop(card, prop, &previous, LV_PART_MAIN) == LV_STYLE_RES_FOUND &&
+        lv_color_eq(previous.color, color)) return;
+    const lv_style_value_t next = {.color = color};
+    lv_obj_set_local_style_prop(card, prop, next, LV_PART_MAIN);
+}
+
 void ui_style_card_set_active(lv_obj_t *card, bool active)
 {
     if (card == NULL) {
@@ -238,7 +259,7 @@ void ui_style_card_set_active(lv_obj_t *card, bool active)
     }
     lv_obj_set_state_user_1(card, active);
     if (ui_style_is_matte()) {
-        lv_obj_set_style_bg_color(card, matte_card_color(card), LV_PART_MAIN);
+        card_set_color(card, LV_STYLE_BG_COLOR, matte_card_color(card));
     }
 }
 
@@ -256,10 +277,10 @@ bool ui_style_card_is_active(const lv_obj_t *card)
  */
 static void flat_card(lv_obj_t *card)
 {
-    lv_obj_set_style_shadow_width(card, 0, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
-    lv_obj_set_style_border_opa(card, LV_OPA_90, LV_PART_MAIN);
-    lv_obj_set_style_radius(card, UI_STYLE_FLAT_CARD_RADIUS, LV_PART_MAIN);
+    card_set_num(card, LV_STYLE_SHADOW_WIDTH, 0);
+    card_set_num(card, LV_STYLE_BORDER_WIDTH, 1);
+    card_set_num(card, LV_STYLE_BORDER_OPA, LV_OPA_90);
+    card_set_num(card, LV_STYLE_RADIUS, UI_STYLE_FLAT_CARD_RADIUS);
 }
 
 /* Glass cards: the tile background turns translucent with a light edge, over
@@ -286,14 +307,14 @@ static void glass_card(lv_obj_t *card)
     /* Unchanged since the last call: the colour is already frosted, do not mix again. */
     if (!lv_color_eq(base, lv_obj_get_style_outline_color(card, LV_PART_MAIN))) {
         lv_color_t frosted = lv_color_mix(lv_color_white(), base, 32);
-        lv_obj_set_style_outline_color(card, frosted, LV_PART_MAIN);
-        lv_obj_set_style_bg_color(card, frosted, LV_PART_MAIN);
+        card_set_color(card, LV_STYLE_OUTLINE_COLOR, frosted);
+        card_set_color(card, LV_STYLE_BG_COLOR, frosted);
     }
-    lv_obj_set_style_bg_opa(card, LV_OPA_60, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
-    lv_obj_set_style_border_side(card, LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_LEFT, LV_PART_MAIN);
-    lv_obj_set_style_border_color(card, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_border_opa(card, LV_OPA_40, LV_PART_MAIN);
+    card_set_num(card, LV_STYLE_BG_OPA, LV_OPA_60);
+    card_set_num(card, LV_STYLE_BORDER_WIDTH, 1);
+    card_set_num(card, LV_STYLE_BORDER_SIDE, LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_LEFT);
+    card_set_color(card, LV_STYLE_BORDER_COLOR, lv_color_white());
+    card_set_num(card, LV_STYLE_BORDER_OPA, LV_OPA_40);
 }
 
 /* Matte cards: opaque, no outline or shadow, a muted tint for an active entity. Widgets set their
@@ -301,13 +322,13 @@ static void glass_card(lv_obj_t *card)
  * explicit state (ui_style_card_set_active()). */
 static void matte_card(lv_obj_t *card)
 {
-    lv_obj_set_style_bg_color(card, matte_card_color(card), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_bg_grad_dir(card, LV_GRAD_DIR_NONE, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
-    lv_obj_set_style_shadow_width(card, 0, LV_PART_MAIN);
-    lv_obj_set_style_outline_width(card, 0, LV_PART_MAIN);
-    lv_obj_set_style_radius(card, UI_STYLE_MATTE_CARD_RADIUS, LV_PART_MAIN);
+    card_set_color(card, LV_STYLE_BG_COLOR, matte_card_color(card));
+    card_set_num(card, LV_STYLE_BG_OPA, LV_OPA_COVER);
+    card_set_num(card, LV_STYLE_BG_GRAD_DIR, LV_GRAD_DIR_NONE);
+    card_set_num(card, LV_STYLE_BORDER_WIDTH, 0);
+    card_set_num(card, LV_STYLE_SHADOW_WIDTH, 0);
+    card_set_num(card, LV_STYLE_OUTLINE_WIDTH, 0);
+    card_set_num(card, LV_STYLE_RADIUS, UI_STYLE_MATTE_CARD_RADIUS);
 }
 
 void ui_style_apply_card(lv_obj_t *card)

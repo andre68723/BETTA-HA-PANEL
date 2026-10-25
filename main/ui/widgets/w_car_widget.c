@@ -585,6 +585,14 @@ static void car_apply_lock(w_car_widget_ctx_t *ctx, const ha_state_t *state)
     }
 }
 
+static bool car_set_reading(bool *valid, float *stored, bool next_valid, float next)
+{
+    const bool changed = *valid != next_valid || (next_valid && *stored != next);
+    *valid = next_valid;
+    if (next_valid) *stored = next;
+    return changed;
+}
+
 void w_car_widget_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
 {
     if (instance == NULL || instance->ctx == NULL || state == NULL) {
@@ -592,52 +600,66 @@ void w_car_widget_apply_state(ui_widget_instance_t *instance, const ha_state_t *
     }
     w_car_widget_ctx_t *ctx = (w_car_widget_ctx_t *)instance->ctx;
     float value = 0.0f;
+    bool changed = false;
     if (ctx->lock_entity_id[0] != '\0' && strncmp(state->entity_id, ctx->lock_entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
+        const int previous = ctx->lock_kind;
         car_apply_lock(ctx, state);
+        changed = previous != ctx->lock_kind;
     } else if (ctx->temp_entity_id[0] != '\0' && strncmp(state->entity_id, ctx->temp_entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
-        ctx->has_temp = !car_state_is_unavailable(state->state) && car_parse_float(state->state, &value);
+        const bool valid = !car_state_is_unavailable(state->state) && car_parse_float(state->state, &value);
+        changed = car_set_reading(&ctx->has_temp, &ctx->interior_temp, valid, value);
         if (ctx->has_temp) {
-            ctx->interior_temp = value;
+            char previous[APP_MAX_UNIT_LEN];
+            strlcpy(previous, ctx->temp_unit, sizeof(previous));
             car_state_unit(state, ctx->temp_unit, sizeof(ctx->temp_unit));
+            changed |= strcmp(previous, ctx->temp_unit) != 0;
         }
     } else if (ctx->precond_entity_id[0] != '\0' && strncmp(state->entity_id, ctx->precond_entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
-        ctx->has_precond = !car_state_is_unavailable(state->state);
-        strlcpy(ctx->precond_state, state->state, sizeof(ctx->precond_state));
+        const bool valid = !car_state_is_unavailable(state->state);
+        char next[CAR_STATE_LEN];
+        strlcpy(next, state->state, sizeof(next));
+        changed = ctx->has_precond != valid || strcmp(ctx->precond_state, next) != 0;
+        ctx->has_precond = valid;
+        strlcpy(ctx->precond_state, next, sizeof(ctx->precond_state));
     } else if (strncmp(state->entity_id, ctx->battery_entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
-        ctx->has_soc = !car_state_is_unavailable(state->state) && car_parse_float(state->state, &value);
-        if (ctx->has_soc) {
-            ctx->soc = value;
-        }
+        const bool valid = !car_state_is_unavailable(state->state) && car_parse_float(state->state, &value);
+        changed = car_set_reading(&ctx->has_soc, &ctx->soc, valid, value);
     } else if (ctx->power_entity_id[0] != '\0' &&
                strncmp(state->entity_id, ctx->power_entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
-        ctx->has_power = !car_state_is_unavailable(state->state) && car_parse_float(state->state, &value);
+        const bool valid = !car_state_is_unavailable(state->state) && car_parse_float(state->state, &value);
+        changed = car_set_reading(&ctx->has_power, &ctx->power_w, valid, value);
         if (ctx->has_power) {
-            ctx->power_w = value;
             if (!ctx->power_unit_from_attrs) {
+                char previous[APP_MAX_UNIT_LEN];
+                strlcpy(previous, ctx->power_unit, sizeof(previous));
                 car_state_unit(state, ctx->power_unit, sizeof(ctx->power_unit));
                 if (ctx->power_unit[0] != '\0') {
                     ctx->power_unit_from_attrs = true;
                 } else {
                     snprintf(ctx->power_unit, sizeof(ctx->power_unit), "W");
                 }
+                changed |= strcmp(previous, ctx->power_unit) != 0;
             }
         }
     } else if (ctx->range_entity_id[0] != '\0' &&
                strncmp(state->entity_id, ctx->range_entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
-        ctx->has_range = !car_state_is_unavailable(state->state) && car_parse_float(state->state, &value);
+        const bool valid = !car_state_is_unavailable(state->state) && car_parse_float(state->state, &value);
+        changed = car_set_reading(&ctx->has_range, &ctx->range, valid, value);
         if (ctx->has_range) {
-            ctx->range = value;
             if (!ctx->range_unit_from_attrs) {
+                char previous[APP_MAX_UNIT_LEN];
+                strlcpy(previous, ctx->range_unit, sizeof(previous));
                 car_state_unit(state, ctx->range_unit, sizeof(ctx->range_unit));
                 if (ctx->range_unit[0] != '\0') {
                     ctx->range_unit_from_attrs = true;
                 } else {
                     snprintf(ctx->range_unit, sizeof(ctx->range_unit), "km");
                 }
+                changed |= strcmp(previous, ctx->range_unit) != 0;
             }
         }
     }
-    car_render(ctx);
+    if (changed) car_render(ctx);
 }
 
 void w_car_widget_mark_unavailable(ui_widget_instance_t *instance)
@@ -646,11 +668,13 @@ void w_car_widget_mark_unavailable(ui_widget_instance_t *instance)
         return;
     }
     w_car_widget_ctx_t *ctx = (w_car_widget_ctx_t *)instance->ctx;
+    const bool changed = ctx->has_soc || ctx->has_power || ctx->has_range || ctx->has_temp ||
+                         ctx->has_precond || ctx->lock_kind != 0;
     ctx->has_soc = false;
     ctx->has_power = false;
     ctx->has_range = false;
     ctx->has_temp = false;
     ctx->has_precond = false;
     ctx->lock_kind = 0;
-    car_render(ctx);
+    if (changed) car_render(ctx);
 }

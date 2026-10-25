@@ -405,12 +405,21 @@ static void pf_layout(w_pf_ctx_t *ctx)
     lv_obj_invalidate(ctx->plot);
 }
 
-static void pf_refresh(w_pf_ctx_t *ctx)
+static void pf_refresh(w_pf_ctx_t *ctx, bool changed)
 {
     if (ctx == NULL || ctx->card == NULL) return;
+    const int64_t start = ctx->day_start_s, end = ctx->day_end_s;
+    const int current = ctx->cur_slot, shown = ctx->shown_slot;
+    const size_t windows = ctx->window_count;
+    const char *status = ctx->status;
+    pf_update(ctx);
+    /* Data/options/geometry changes force layout. With the same inputs, only
+     * interval/day boundaries, expiring cheap windows or status can change it. */
+    if (!changed && start == ctx->day_start_s && end == ctx->day_end_s &&
+        current == ctx->cur_slot && shown == ctx->shown_slot &&
+        windows == ctx->window_count && status == ctx->status) return;
     /* The timer, a button and a size change run outside the factory's calls: take the tile's text-size cap here as well. */
     ui_fonts_tile_begin("energy_price_forecast", (int)lv_obj_get_width(ctx->card), (int)lv_obj_get_height(ctx->card));
-    pf_update(ctx);
     pf_layout(ctx);
     ui_fonts_tile_end();
 }
@@ -537,12 +546,12 @@ static void pf_day_clicked(lv_event_t *e)
     const int want = single ? 1 - ctx->day_offset : (lv_event_get_target(e) == ctx->btn_tomorrow ? 1 : 0);
     if (want == ctx->day_offset) return;
     ctx->day_offset = want;
-    pf_refresh(ctx);
+    pf_refresh(ctx, true);
 }
 
 static void pf_tick_cb(lv_timer_t *timer)
 {
-    pf_refresh((w_pf_ctx_t *)lv_timer_get_user_data(timer));
+    pf_refresh((w_pf_ctx_t *)lv_timer_get_user_data(timer), false);
 }
 
 static void pf_event_cb(lv_event_t *e)
@@ -553,7 +562,7 @@ static void pf_event_cb(lv_event_t *e)
         if (ctx->timer != NULL) lv_timer_delete(ctx->timer);
         free(ctx);
     } else if (lv_event_get_code(e) == LV_EVENT_SIZE_CHANGED) {
-        pf_refresh(ctx);
+        pf_refresh(ctx, true);
     }
 }
 
@@ -640,7 +649,7 @@ esp_err_t w_energy_price_forecast_create(const ui_widget_def_t *def, lv_obj_t *p
     lv_obj_add_event_cb(card, pf_event_cb, LV_EVENT_DELETE, ctx);
     lv_obj_add_event_cb(card, pf_event_cb, LV_EVENT_SIZE_CHANGED, ctx);
     ctx->timer = lv_timer_create(pf_tick_cb, PF_TICK_PERIOD_MS, ctx);
-    pf_refresh(ctx);
+    pf_refresh(ctx, true);
     return ESP_OK;
 }
 
@@ -652,28 +661,36 @@ void w_energy_price_forecast_apply_state(ui_widget_instance_t *instance, const h
         /* The optional average sensor: its state is the average price in EUR/kWh. Anything else leaves the day's own average in use. */
         char *end = NULL;
         const double v = strtod(state->state, &end);
-        ctx->avg_sensor_valid = end != state->state && isfinite(v) && v > 0.0 && v < 5.0;
-        ctx->avg_sensor = ctx->avg_sensor_valid ? v : 0.0;
-        pf_refresh(ctx);
+        const bool valid = end != state->state && isfinite(v) && v > 0.0 && v < 5.0;
+        const double average = valid ? v : 0.0;
+        const bool changed = valid != ctx->avg_sensor_valid || average != ctx->avg_sensor;
+        ctx->avg_sensor_valid = valid;
+        ctx->avg_sensor = average;
+        pf_refresh(ctx, changed);
         return;
     }
     ha_price_series_t *next = ui_calloc_prefer_psram(1, sizeof(*next));
     if (next == NULL) return;
+    bool changed = ctx->has_series;
     if (ha_price_series_from_json(state->attributes_json, next)) {
+        changed = !ctx->has_series || ctx->series.start_s != next->start_s ||
+            ctx->series.interval_s != next->interval_s || ctx->series.count != next->count ||
+            memcmp(ctx->series.price, next->price, next->count * sizeof(next->price[0])) != 0;
         ctx->series = *next;
         ctx->has_series = true;
     } else {
         ctx->has_series = false;
     }
     free(next);
-    pf_refresh(ctx);
+    pf_refresh(ctx, changed);
 }
 
 void w_energy_price_forecast_mark_unavailable(ui_widget_instance_t *instance)
 {
     if (instance == NULL || instance->ctx == NULL) return;
     w_pf_ctx_t *ctx = (w_pf_ctx_t *)instance->ctx;
+    const bool changed = ctx->has_series || ctx->avg_sensor_valid;
     ctx->has_series = false;
     ctx->avg_sensor_valid = false;
-    pf_refresh(ctx);
+    pf_refresh(ctx, changed);
 }

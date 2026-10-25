@@ -66,6 +66,7 @@ typedef struct {
     int row_y;                 /* top of the selector/status row, below the title at any text size */
     /* daily consumption view (Energy page nodes): no selector, seven bars from hourly statistics */
     bool days_mode;
+    bool days_production;
     uint32_t days_generation;
     /* range view (a quote): 30 days of daily or 12 months of weekly means; the two selector buttons switch between them */
     bool range_mode;
@@ -738,7 +739,8 @@ static void days_received(uint32_t generation, ha_history_days_t *result)
         ha_history_days_free(result);
         return;
     }
-    const ui_days_view_t view = {.body = popup->body, .status = popup->status, .color = popup->bar_color};
+    const ui_days_view_t view = {.body = popup->body, .status = popup->status, .color = popup->bar_color,
+        .production = popup->days_production};
     ui_days_view_show(&view, result);
     ha_history_days_free(result);
 }
@@ -904,13 +906,14 @@ static void simulator_show_days(history_popup_t *popup)
 }
 #endif
 
-void ui_history_popup_open_days(const char *title, uint32_t bar_color, const char *const *ids, size_t count)
+void ui_history_popup_open_days(const char *title, uint32_t bar_color, const char *const *ids, size_t count, bool production)
 {
     if (ids == NULL || count == 0 || count > HA_DAYS_MAX_SOURCES || ids[0] == NULL || ids[0][0] == '\0') return;
     if (s_popup != NULL) lv_obj_delete(s_popup->overlay);
     history_popup_t *popup = calloc(1, sizeof(*popup));
     if (popup == NULL) return;
     popup->days_mode = true;
+    popup->days_production = production;
     popup->numeric = true;
     popup->bar_color = bar_color;
     popup->id_count = (uint8_t)count;
