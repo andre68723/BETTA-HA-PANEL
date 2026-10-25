@@ -26,6 +26,7 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 
 ### Fixes
 
+- **Car preconditioning:** the button shows **Sending...** after the call until the climate, switch or input boolean changes between on and off, then returns to its normal look; a missing answer ends it after 60 seconds and taps in between are ignored. A cloud-backed car can take tens of seconds to report the new mode.
 - **Price forecast:** the Inspector restores the saved Today/Tomorrow selector checkbox. Identical price/average updates and idle timer ticks no longer redraw the tile; changed data and interval/day boundaries still update it.
 - **Stocks and graphs:** identical normalized quote updates and unchanged graph samples no longer redraw the tiles. Changed quote metadata and later graph samples still update, including equal values at a new timestamp.
 - **Solar forecast:** identical readings and units no longer redraw the tile; changed values, availability and local-day labels still update. This reduces redraw work, but does not establish a fix for physical display flashes.

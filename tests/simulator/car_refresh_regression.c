@@ -86,6 +86,29 @@ void sim_car_refresh_regression(void)
     CHECK(sim_host_service_calls()->count == 1);
     CHECK(strcmp(sim_host_service_calls()->service, "turn_off") == 0);
     settle();
+    /* Pending: the neutral word replaces the label, a second tap sends nothing, the entity's answer ends it. */
+    CHECK(label(widget.obj, "Sending...") != NULL && label(widget.obj, "Precondition") == NULL);
+    lv_obj_send_event(lv_obj_get_parent(label(widget.obj, "Sending...")), LV_EVENT_CLICKED, NULL);
+    CHECK(sim_host_service_calls()->count == 1);
+    apply(&widget, ids[3], "heat_cool", attrs[3]); /* still on: not an answer */
+    CHECK(label(widget.obj, "Sending...") != NULL);
+    apply(&widget, ids[3], "off", attrs[3]);
+    CHECK(label(widget.obj, "Precondition") != NULL && label(widget.obj, "Sending...") == NULL);
+    /* No answer at all: the cap ends it, and a refused call never starts it. */
+    apply(&widget, ids[3], "heat", attrs[3]);
+    precond = label(widget.obj, "Precondition");
+    sim_host_service_reset(ESP_OK);
+    lv_obj_send_event(lv_obj_get_parent(precond), LV_EVENT_CLICKED, NULL);
+    CHECK(label(widget.obj, "Sending...") != NULL);
+    sim_virtual_delay(61000);
+    settle();
+    CHECK(label(widget.obj, "Precondition") != NULL && label(widget.obj, "Sending...") == NULL);
+    sim_host_service_reset(ESP_FAIL);
+    precond = label(widget.obj, "Precondition");
+    lv_obj_send_event(lv_obj_get_parent(precond), LV_EVENT_CLICKED, NULL);
+    CHECK(label(widget.obj, "Sending...") == NULL);
+    sim_host_service_reset(ESP_OK);
+    apply(&widget, ids[3], next[3], attrs[3]);
     draws = 0;
     apply(&widget, "sensor.unrelated", "123", "{}");
     CHECK(draws == 0);

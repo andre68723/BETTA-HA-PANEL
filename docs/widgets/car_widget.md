@@ -31,7 +31,7 @@ No options beyond the entities; the controls follow what the entity supports.
 
 - Rings for the battery level and, when set, the range and charging power.
 - From 200 × 330 px the lock state and interior temperature share a line under the rings, with the preconditioning button across the card below it; the Inspector says when the tile is too small for them.
-- Preconditioning is a button; everything else is read-only.
+- Preconditioning is a button; everything else is read-only. For a `climate.*`, `switch.*` or `input_boolean.*` the button reads **Sending...** after the call until the entity changes between on and off (at most 60 seconds); taps in between are ignored.
 
 ## Size
 

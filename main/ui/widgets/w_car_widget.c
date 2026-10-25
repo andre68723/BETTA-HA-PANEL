@@ -29,6 +29,9 @@
 #define CAR_EXTRAS_BTN_H 44 /* a touch target, as wide as the card */
 #define CAR_EXTRAS_GAP 6
 #define CAR_STATE_LEN 24
+/* A cloud-backed car can take tens of seconds to report the new mode after Home Assistant accepted the call. The button
+ * shows a neutral pending word meanwhile; this cap ends it if no state change ever arrives. */
+#define CAR_PRECOND_PENDING_MS 60000
 
 typedef struct {
     lv_obj_t *card;
@@ -48,6 +51,9 @@ typedef struct {
     char temp_entity_id[APP_MAX_ENTITY_ID_LEN];
     char precond_state[CAR_STATE_LEN];
     bool has_precond;
+    bool precond_pending;         /* a call was sent and the entity has not changed its on/off meaning yet */
+    bool precond_pending_from_on; /* the on/off meaning when it was sent */
+    lv_timer_t *precond_timer;
     int lock_kind; /* 0 unknown, 1 locked, 2 unlocked, 3 closed, 4 open */
     float interior_temp;
     char temp_unit[APP_MAX_UNIT_LEN];
@@ -293,6 +299,48 @@ static bool car_state_is_off(const char *state)
            strcasecmp(state, "idle") == 0 || strcmp(state, "unavailable") == 0 || strcmp(state, "unknown") == 0;
 }
 
+static bool car_precond_active(const w_car_widget_ctx_t *ctx)
+{
+    const bool is_toggle = strncmp(ctx->precond_entity_id, "switch.", 7) == 0 ||
+                           strncmp(ctx->precond_entity_id, "input_boolean.", 14) == 0;
+    const bool is_climate = strncmp(ctx->precond_entity_id, "climate.", 8) == 0;
+    const bool climate_on = strcmp(ctx->precond_state, "heat") == 0 || strcmp(ctx->precond_state, "cool") == 0 ||
+        strcmp(ctx->precond_state, "heat_cool") == 0 || strcmp(ctx->precond_state, "auto") == 0 ||
+        strcmp(ctx->precond_state, "dry") == 0 || strcmp(ctx->precond_state, "fan_only") == 0;
+    return ctx->has_precond && ((is_toggle && strcmp(ctx->precond_state, "on") == 0) || (is_climate && climate_on));
+}
+
+/* Only entities whose on/off state follows the call can show a pending state; select and button have no such end. */
+static bool car_precond_can_pend(const w_car_widget_ctx_t *ctx)
+{
+    return strncmp(ctx->precond_entity_id, "climate.", 8) == 0 || strncmp(ctx->precond_entity_id, "switch.", 7) == 0 ||
+           strncmp(ctx->precond_entity_id, "input_boolean.", 14) == 0;
+}
+
+static void car_precond_pending_clear(w_car_widget_ctx_t *ctx)
+{
+    ctx->precond_pending = false;
+    if (ctx->precond_timer != NULL) {
+        lv_timer_delete(ctx->precond_timer);
+        ctx->precond_timer = NULL;
+    }
+}
+
+static void car_render(w_car_widget_ctx_t *ctx);
+
+static void car_precond_timeout_cb(lv_timer_t *timer)
+{
+    w_car_widget_ctx_t *ctx = (w_car_widget_ctx_t *)lv_timer_get_user_data(timer);
+    if (ctx == NULL) {
+        return;
+    }
+    ctx->precond_timer = NULL; /* one-shot: LVGL deletes it after this run */
+    if (ctx->precond_pending) {
+        ctx->precond_pending = false;
+        car_render(ctx);
+    }
+}
+
 static void car_render_extras(w_car_widget_ctx_t *ctx)
 {
     /* Lock / door status */
@@ -336,15 +384,10 @@ static void car_render_extras(w_car_widget_ctx_t *ctx)
 
     /* Pre-conditioning button: a select shows its option, everything else a fixed word. */
     const bool is_select = strncmp(ctx->precond_entity_id, "select.", 7) == 0;
-    const bool is_toggle = strncmp(ctx->precond_entity_id, "switch.", 7) == 0 ||
-                           strncmp(ctx->precond_entity_id, "input_boolean.", 14) == 0;
-    const bool is_climate = strncmp(ctx->precond_entity_id, "climate.", 8) == 0;
-    const bool climate_on = strcmp(ctx->precond_state, "heat") == 0 || strcmp(ctx->precond_state, "cool") == 0 ||
-        strcmp(ctx->precond_state, "heat_cool") == 0 || strcmp(ctx->precond_state, "auto") == 0 ||
-        strcmp(ctx->precond_state, "dry") == 0 || strcmp(ctx->precond_state, "fan_only") == 0;
-    const bool active = ctx->has_precond && ((is_toggle && strcmp(ctx->precond_state, "on") == 0) || (is_climate && climate_on));
+    const bool active = car_precond_active(ctx);
     lv_label_set_text(ctx->precond_label,
-        is_select && ctx->has_precond ? ctx->precond_state : ui_i18n_get("car.precond", "Precondition"));
+        ctx->precond_pending ? ui_i18n_get("car.precond_pending", "Sending...")
+        : is_select && ctx->has_precond ? ctx->precond_state : ui_i18n_get("car.precond", "Precondition"));
     const bool available = ctx->has_precond && strcmp(ctx->precond_state, "unavailable") != 0 &&
                            (strncmp(ctx->precond_entity_id, "button.", 7) == 0 ||
                             strncmp(ctx->precond_entity_id, "input_button.", 13) == 0 || strcmp(ctx->precond_state, "unknown") != 0);
@@ -354,8 +397,8 @@ static void car_render_extras(w_car_widget_ctx_t *ctx)
 static void car_precond_cb(lv_event_t *event)
 {
     w_car_widget_ctx_t *ctx = (w_car_widget_ctx_t *)lv_event_get_user_data(event);
-    if (ctx == NULL || ctx->precond_entity_id[0] == '\0') {
-        return;
+    if (ctx == NULL || ctx->precond_entity_id[0] == '\0' || ctx->precond_pending) {
+        return; /* a second tap while the first is unanswered would toggle it back */
     }
     const char *id = ctx->precond_entity_id;
     const char *domain = "switch";
@@ -377,7 +420,18 @@ static void car_precond_cb(lv_event_t *event)
     }
     char payload[APP_MAX_ENTITY_ID_LEN + 40];
     snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\"%s}", id, strcmp(domain, "select") == 0 ? ",\"cycle\":true" : "");
-    (void)ha_client_call_service(domain, service, payload);
+    if (ha_client_call_service(domain, service, payload) == ESP_OK && ctx->has_precond && car_precond_can_pend(ctx)) {
+        ctx->precond_pending = true;
+        ctx->precond_pending_from_on = car_precond_active(ctx);
+        if (ctx->precond_timer != NULL) {
+            lv_timer_delete(ctx->precond_timer);
+        }
+        ctx->precond_timer = lv_timer_create(car_precond_timeout_cb, CAR_PRECOND_PENDING_MS, ctx);
+        if (ctx->precond_timer != NULL) {
+            lv_timer_set_repeat_count(ctx->precond_timer, 1);
+        }
+        car_render(ctx);
+    }
 }
 
 static void car_render(w_car_widget_ctx_t *ctx)
@@ -444,6 +498,7 @@ static void car_event_cb(lv_event_t *event)
     }
     lv_event_code_t code = lv_event_get_code(event);
     if (code == LV_EVENT_DELETE) {
+        car_precond_pending_clear(ctx);
         free(ctx);
     } else if (code == LV_EVENT_SIZE_CHANGED) {
         car_layout(ctx);
@@ -621,6 +676,10 @@ void w_car_widget_apply_state(ui_widget_instance_t *instance, const ha_state_t *
         changed = ctx->has_precond != valid || strcmp(ctx->precond_state, next) != 0;
         ctx->has_precond = valid;
         strlcpy(ctx->precond_state, next, sizeof(ctx->precond_state));
+        if (ctx->precond_pending && (!valid || car_precond_active(ctx) != ctx->precond_pending_from_on)) {
+            car_precond_pending_clear(ctx); /* the entity answered, or went away */
+            changed = true;
+        }
     } else if (strncmp(state->entity_id, ctx->battery_entity_id, APP_MAX_ENTITY_ID_LEN) == 0) {
         const bool valid = !car_state_is_unavailable(state->state) && car_parse_float(state->state, &value);
         changed = car_set_reading(&ctx->has_soc, &ctx->soc, valid, value);
@@ -676,5 +735,8 @@ void w_car_widget_mark_unavailable(ui_widget_instance_t *instance)
     ctx->has_temp = false;
     ctx->has_precond = false;
     ctx->lock_kind = 0;
+    if (ctx->precond_pending) {
+        car_precond_pending_clear(ctx);
+    }
     if (changed) car_render(ctx);
 }
