@@ -99,6 +99,56 @@ int main(void)
     CHECK(strcmp(parqet_currency_symbol("EUR"), "\xE2\x82\xAC") == 0 && strcmp(parqet_currency_symbol("USD"), "$") == 0);
     CHECK(strcmp(parqet_currency_symbol("CHF"), "CHF") == 0 && strcmp(parqet_currency_symbol(NULL), "") == 0);
 
+
+    /* a sensor whose attributes exceed the model's buffer keeps ids, interval, unit and the positions */
+    {
+        char big[2400];
+        int n = snprintf(big, sizeof(big),
+            "{\"state_class\":\"total\",\"entry_id\":\"01JABCDEFGHJKMNPQRSTVWXYZ0\",\"portfolio_id\":\"6657aa00bb11cc22dd33ee44\","
+            "\"holdings_count\":35,\"interval\":\"1y\",\"unit_of_measurement\":\"EUR\",\"device_class\":\"monetary\","
+            "\"friendly_name\":\"Depot Beispiel Gesamtwert\",\"attribution\":\"%0700d\",\"top_holdings\":[", 0);
+        for (int i = 0; i < 5; i++) {
+            n += snprintf(big + n, sizeof(big) - (size_t)n,
+                "%s{\"name\":\"iShares STOXX Global Select Dividend 100 UCITS ETF (DE) - EUR DIS %d\",\"value\":%d.123456789,\"weight\":%d.987654321}",
+                i ? "," : "", i, 4000 - i, 5 - i);
+        }
+        snprintf(big + n, sizeof(big) - (size_t)n, "]}");
+        CHECK(strlen(big) > 1279);
+        cJSON *src = cJSON_Parse(big);
+        CHECK(parqet_attrs_is_portfolio(src));
+        char out[1280];
+        CHECK(parqet_attrs_compact(src, out, sizeof(out)) && strlen(out) < sizeof(out));
+        parqet_attrs_t full, small;
+        CHECK(parqet_attrs_parse(big, &full) && parqet_attrs_parse(out, &small));
+        CHECK(small.count == 5 && strcmp(small.entry_id, full.entry_id) == 0 && strcmp(small.portfolio_id, full.portfolio_id) == 0);
+        CHECK(strcmp(small.interval, "1y") == 0 && strcmp(small.unit, "EUR") == 0 && small.holdings_count == 35);
+        for (int i = 0; i < 5; i++) {
+            CHECK(strcmp(small.holding[i].name, full.holding[i].name) == 0);
+            CHECK(fabs(small.holding[i].value - full.holding[i].value) < 0.006 && fabs(small.holding[i].weight - full.holding[i].weight) < 0.006);
+        }
+        CHECK(strstr(out, "device_class") != NULL && strstr(out, "attribution") == NULL);
+        /* a tighter buffer drops metadata first, then trailing positions, and stays valid JSON */
+        char tight[420];
+        CHECK(parqet_attrs_compact(src, tight, sizeof(tight)));
+        cJSON *check = cJSON_Parse(tight);
+        CHECK(cJSON_IsObject(check) && strstr(tight, "friendly_name") == NULL);
+        parqet_attrs_t part;
+        CHECK(parqet_attrs_parse(tight, &part) && part.count > 0 && part.count < 5 && strcmp(part.holding[0].name, full.holding[0].name) == 0);
+        cJSON_Delete(check);
+        /* no room for the ids: the result is the empty object, reported as false */
+        char none[40];
+        CHECK(!parqet_attrs_compact(src, none, sizeof(none)) && strcmp(none, "{}") == 0);
+        cJSON_Delete(src);
+        /* other sensors, and a portfolio sensor without ids, are not claimed */
+        cJSON *other = cJSON_Parse("{\"unit_of_measurement\":\"EUR\"}");
+        CHECK(!parqet_attrs_is_portfolio(other) && !parqet_attrs_compact(other, out, sizeof(out)) && strcmp(out, "{}") == 0);
+        cJSON_Delete(other);
+        other = cJSON_Parse("{\"portfolio_id\":\"p\",\"top_holdings\":[]}");
+        CHECK(parqet_attrs_is_portfolio(other) && !parqet_attrs_compact(other, out, sizeof(out)));
+        cJSON_Delete(other);
+        CHECK(!parqet_attrs_is_portfolio(NULL));
+    }
+
     printf("parqet portfolio: %u checks passed\n", checks);
     return 0;
 }

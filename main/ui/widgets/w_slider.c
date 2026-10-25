@@ -546,6 +546,12 @@ static void slider_apply_visual(w_slider_ctx_t *ctx)
     lv_obj_set_style_bg_color(card, card_bg, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
     ui_style_card_set_active(card, ctx->is_on && !ctx->unavailable);
+    /* An unavailable entity cannot take a value: the slider stops answering touch until HA reports a state again. */
+    if (ctx->unavailable) {
+        lv_obj_add_state(ctx->slider, LV_STATE_DISABLED);
+    } else {
+        lv_obj_clear_state(ctx->slider, LV_STATE_DISABLED);
+    }
     lv_obj_set_style_text_color(ctx->title_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->state_label, state_color, LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->value_label, value_color, LV_PART_MAIN);
@@ -634,6 +640,13 @@ static void w_slider_event_cb(lv_event_t *event)
 
     lv_obj_t *slider = lv_event_get_target(event);
     if (slider == NULL) {
+        return;
+    }
+
+    if (ctx->unavailable) {
+        /* The entity went unavailable (also mid-drag): send nothing, keep the flag until HA reports a state, and put the knob back. */
+        ctx->dragging = false;
+        slider_apply_visual(ctx);
         return;
     }
 

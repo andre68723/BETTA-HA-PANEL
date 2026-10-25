@@ -49,6 +49,7 @@ The sensors report one **interval**, set in the integration's options (default M
 - The value, the gain with the return in percent, XIRR and dividends, and on a taller tile the largest holdings as weight bars.
 - The tile names the interval in its corner.
 - The widget does not compute the return: the total value includes cash, and the result would differ from Parqet's figure.
+- A gain or dividends sensor in another currency than the total value, or a percentage sensor without `%`, is left out and the line says **Unit differs**.
 
 ## Variants
 

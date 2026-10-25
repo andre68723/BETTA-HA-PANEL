@@ -210,6 +210,8 @@ static void on_range(uint32_t generation, ha_history_range_t *range)
     ha_history_range_free(range);
 }
 
+/* Keyed by symbol alone on purpose: Easy Stock's GET /api/easy_stock/history?symbol= answers from the symbol only (the first entry
+ * with that symbol), so nothing else -- entity, currency, connection -- can make two answers differ. */
 static easy_cache_t *easy_cached(const char *symbol, int64_t now)
 {
     for (int i = 0; s_easy != NULL && i < EASY_CACHE; i++) {

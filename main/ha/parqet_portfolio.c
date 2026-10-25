@@ -34,16 +34,8 @@ static double json_number(const cJSON *object, const char *key, bool *ok)
     return item->valuedouble;
 }
 
-bool parqet_attrs_parse(const char *attributes_json, parqet_attrs_t *out)
+static void parse_attrs_object(const cJSON *root, parqet_attrs_t *out)
 {
-    if (out == NULL) return false;
-    memset(out, 0, sizeof(*out));
-    if (attributes_json == NULL || attributes_json[0] == '\0') return false;
-    cJSON *root = cJSON_Parse(attributes_json);
-    if (!cJSON_IsObject(root)) {
-        cJSON_Delete(root);
-        return false;
-    }
     const cJSON *interval = cJSON_GetObjectItemCaseSensitive(root, "interval");
     if (cJSON_IsString(interval) && interval->valuestring != NULL) copy_utf8(out->interval, sizeof(out->interval), interval->valuestring);
     const cJSON *unit = cJSON_GetObjectItemCaseSensitive(root, "unit_of_measurement");
@@ -69,8 +61,91 @@ bool parqet_attrs_parse(const char *attributes_json, parqet_attrs_t *out)
         h->value = value;
         h->weight = weight;
     }
+}
+
+bool parqet_attrs_parse(const char *attributes_json, parqet_attrs_t *out)
+{
+    if (out == NULL) return false;
+    memset(out, 0, sizeof(*out));
+    if (attributes_json == NULL || attributes_json[0] == '\0') return false;
+    cJSON *root = cJSON_Parse(attributes_json);
+    if (!cJSON_IsObject(root)) {
+        cJSON_Delete(root);
+        return false;
+    }
+    parse_attrs_object(root, out);
     cJSON_Delete(root);
     return true;
+}
+
+bool parqet_attrs_is_portfolio(const cJSON *attrs)
+{
+    return cJSON_IsObject(attrs) && cJSON_IsArray(cJSON_GetObjectItemCaseSensitive(attrs, "top_holdings")) &&
+           cJSON_IsString(cJSON_GetObjectItemCaseSensitive(attrs, "portfolio_id"));
+}
+
+static void add_string_copy(cJSON *dst, const cJSON *src, const char *key)
+{
+    const cJSON *item = cJSON_GetObjectItemCaseSensitive(src, key);
+    if (cJSON_IsString(item) && item->valuestring != NULL) cJSON_AddStringToObject(dst, key, item->valuestring);
+}
+
+/* Prints the identity fields, the optional generic metadata and the first `holdings` positions. NULL on allocation failure. */
+static char *print_compact(const cJSON *src, const parqet_attrs_t *a, int holdings, bool metadata)
+{
+    cJSON *obj = cJSON_CreateObject();
+    cJSON *top = cJSON_CreateArray();
+    if (obj == NULL || top == NULL) {
+        cJSON_Delete(obj);
+        cJSON_Delete(top);
+        return NULL;
+    }
+    cJSON_AddStringToObject(obj, "entry_id", a->entry_id);
+    cJSON_AddStringToObject(obj, "portfolio_id", a->portfolio_id);
+    if (a->interval[0] != '\0') cJSON_AddStringToObject(obj, "interval", a->interval);
+    if (a->unit[0] != '\0') cJSON_AddStringToObject(obj, "unit_of_measurement", a->unit);
+    cJSON_AddNumberToObject(obj, "holdings_count", a->holdings_count);
+    if (metadata) {
+        add_string_copy(obj, src, "device_class");
+        add_string_copy(obj, src, "state_class");
+        add_string_copy(obj, src, "friendly_name");
+    }
+    for (int i = 0; i < holdings; i++) {
+        cJSON *h = cJSON_CreateObject();
+        if (h == NULL) break;
+        cJSON_AddStringToObject(h, "name", a->holding[i].name);
+        cJSON_AddNumberToObject(h, "value", floor(a->holding[i].value * 100.0 + 0.5) / 100.0);
+        cJSON_AddNumberToObject(h, "weight", floor(a->holding[i].weight * 100.0 + 0.5) / 100.0);
+        cJSON_AddItemToArray(top, h);
+    }
+    cJSON_AddItemToObject(obj, "top_holdings", top);
+    char *json = cJSON_PrintUnformatted(obj);
+    cJSON_Delete(obj);
+    return json;
+}
+
+bool parqet_attrs_compact(const cJSON *src, char *out_json, size_t out_size)
+{
+    if (out_json == NULL || out_size == 0) return false;
+    snprintf(out_json, out_size, "{}");
+    if (!parqet_attrs_is_portfolio(src)) return false;
+    parqet_attrs_t a;
+    memset(&a, 0, sizeof(a));
+    parse_attrs_object(src, &a);
+    /* The widget cannot request other intervals without both ids, so a sensor without them is not worth keeping. */
+    if (a.entry_id[0] == '\0' || a.portfolio_id[0] == '\0') return false;
+    for (int holdings = a.count; holdings >= 0; holdings--) {
+        for (int meta = 1; meta >= 0; meta--) {
+            char *json = print_compact(src, &a, holdings, meta != 0);
+            if (json == NULL) return false;
+            const size_t len = strlen(json);
+            const bool fits = len < out_size;
+            if (fits) memcpy(out_json, json, len + 1U);
+            cJSON_free(json);
+            if (fits) return true;
+        }
+    }
+    return false;
 }
 
 bool parqet_number(const char *state, double *out)

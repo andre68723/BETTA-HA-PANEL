@@ -30,6 +30,7 @@
 #include "app_config.h"
 #include "app_events.h"
 #include "ha/ha_attrs_compact.h"
+#include "ha/parqet_portfolio.h"
 #include "ha/ha_attr_serialize.h"
 #include "ha/ha_energy_model.h"
 #include "ha/ha_energy_prefs.h"
@@ -4229,9 +4230,13 @@ static bool ha_client_import_state_object(cJSON *state_obj)
                     /* The snprintf() above already left an invalid, truncated JSON string in the
                      * buffer -- silently unparseable by every reader's cJSON_Parse(). Replace it with
                      * a small but always-valid object holding the handful of fields a generic
-                     * (non-domain-specific) widget might still need, instead of leaving that. */
-                    ha_attrs_build_generic_overflow_fallback(
-                        attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
+                     * (non-domain-specific) widget might still need, instead of leaving that. A Parqet portfolio
+                     * sensor keeps its ids, interval and positions instead (long fund names push it over the limit). */
+                    if (!parqet_attrs_is_portfolio(attributes) ||
+                        !parqet_attrs_compact(attributes, model_state.attributes_json, sizeof(model_state.attributes_json))) {
+                        ha_attrs_build_generic_overflow_fallback(
+                            attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
+                    }
                 }
                 cJSON_free(attr_json);
             }

@@ -266,6 +266,20 @@ int sim_parqet_regression(void)
     apply(&w, "sensor.pq_value", "52840.55", ATTRS_MAX);
     CHECK(find_prefix(w.obj, "52,841") != NULL && find_prefix(w.obj, "XIRR") == NULL && find_prefix(w.obj, "Alpha Utilities") != NULL);
 
+    /* an amount sensor in another currency, or a percentage sensor in another unit, is left out and named; the others stay */
+    w = make(330, false, true);
+    apply(&w, "sensor.pq_value", "52840.55", ATTRS_MAX);
+    apply(&w, "sensor.pq_gain", "8425.1", "{\"unit_of_measurement\":\"USD\"}");
+    apply(&w, "sensor.pq_div", "1820.4", "{\"unit_of_measurement\":\"EUR\"}");
+    apply(&w, "sensor.pq_xirr", "9.8", "{\"unit_of_measurement\":\"EUR\"}");
+    CHECK(find_prefix(w.obj, "+8,425") == NULL && find_prefix(w.obj, "Unit differs") != NULL);
+    CHECK(find_prefix(w.obj, "Dividends") != NULL && find_prefix(w.obj, "1,820") != NULL);
+    CHECK(find_prefix(w.obj, "XIRR") == NULL && find_prefix(w.obj, "+9.8 %") == NULL);
+    apply(&w, "sensor.pq_gain", "8425.1", "{\"unit_of_measurement\":\"EUR\"}");
+    apply(&w, "sensor.pq_xirr", "9.8", "{\"unit_of_measurement\":\"%\"}");
+    CHECK(find_prefix(w.obj, "+8,425") != NULL && find_prefix(w.obj, "Unit differs") == NULL);
+    CHECK(find_prefix(w.obj, "XIRR") != NULL && find_prefix(w.obj, "+9.8 %") != NULL);
+
     interval_cases();
 
     printf("parqet portfolio: %u checks passed\n", checks);

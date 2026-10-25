@@ -24,3 +24,6 @@ typedef struct {
 } sim_service_calls_t;
 void sim_host_service_reset(esp_err_t result);
 const sim_service_calls_t *sim_host_service_calls(void);
+/* Values the slider widget handed to ui_bindings_set_slider_value(): how many, and the last one (-1 before any). */
+unsigned sim_host_slider_sets(void);
+int sim_host_slider_last(void);

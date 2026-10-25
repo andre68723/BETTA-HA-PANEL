@@ -46,8 +46,12 @@ bool ha_model_get_state(const char *entity_id, ha_state_t *out_state)
 esp_err_t ui_bindings_toggle_entity(const char *entity_id) { (void)entity_id; return ESP_OK; }
 esp_err_t ui_bindings_set_entity_power(const char *entity_id, bool on)
 { (void)entity_id; (void)on; return ESP_OK; }
+static unsigned s_slider_sets;
+static int s_slider_last = -1;
+unsigned sim_host_slider_sets(void) { return s_slider_sets; }
+int sim_host_slider_last(void) { return s_slider_last; }
 esp_err_t ui_bindings_set_slider_value(const char *entity_id, int value)
-{ (void)entity_id; (void)value; return ESP_OK; }
+{ (void)entity_id; s_slider_sets++; s_slider_last = value; return ESP_OK; }
 esp_err_t ui_bindings_set_climate_target_c(const char *entity_id, float celsius)
 { (void)entity_id; (void)celsius; return ESP_OK; }
 esp_err_t ui_bindings_set_light_color_temp_kelvin(const char *entity_id, int kelvin)

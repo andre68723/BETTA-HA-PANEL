@@ -11,6 +11,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "cJSON.h"
+
 #define PARQET_MAX_HOLDINGS 5
 #define PARQET_NAME_MAX 40 /* bytes including the terminator; longer fund names are cut at a character boundary */
 
@@ -32,6 +34,12 @@ typedef struct {
 
 /* Reads the attributes JSON of the total value sensor. False when it is not valid JSON; missing attributes leave their fields empty. */
 bool parqet_attrs_parse(const char *attributes_json, parqet_attrs_t *out);
+/* True for the attributes of the total value sensor: a `top_holdings` list and a `portfolio_id`. */
+bool parqet_attrs_is_portfolio(const cJSON *attrs);
+/* The same attributes shrunk to fit `out_size` bytes: both ids, interval, unit, holdings count, generic metadata and up to five
+ * positions with names cut as parqet_attrs_parse() does. Metadata, then trailing positions, are dropped before the ids; never a cut
+ * list. False (and "{}") when the ids are missing or nothing fits. Used when the full JSON exceeds APP_HA_ATTRS_MAX_LEN. */
+bool parqet_attrs_compact(const cJSON *src, char *out_json, size_t out_size);
 /* A sensor state as a number; false for "unknown", "unavailable", empty text or non-finite values. */
 bool parqet_number(const char *state, double *out);
 /* Short label of an interval code for the tile: "Max", "1Y", "YTD", "1M" ... */

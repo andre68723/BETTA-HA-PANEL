@@ -70,6 +70,7 @@ typedef struct {
     int interval;     /* index into PQ_INTERVAL_CODE */
 
     bool has_value, has_gain, has_xirr, has_div, has_ret, has_attrs;
+    char gain_unit[8], xirr_unit[8], div_unit[8], ret_unit[8]; /* each optional sensor's own unit_of_measurement, "" when it has none */
     double value, gain, xirr, dividends, ret;
     parqet_attrs_t attrs;
 
@@ -123,6 +124,18 @@ static void pq_money(const w_pq_ctx_t *ctx, char *out, size_t cap, double v, boo
     char num[40];
     parqet_format_number(num, sizeof(num), v, 0, pq_german(), plus);
     snprintf(out, cap, "%s %s", num, parqet_currency_symbol(ctx->attrs.unit[0] != '\0' ? ctx->attrs.unit : "EUR"));
+}
+
+/* An optional amount sensor must be in the primary sensor's currency; a percentage sensor must be in percent. A missing unit is not
+ * a mismatch (the states of such sensors are read as they come), and neither is a primary sensor that has not reported yet. */
+static bool pq_money_unit_ok(const w_pq_ctx_t *ctx, const char *unit)
+{
+    return unit[0] == '\0' || ctx->attrs.unit[0] == '\0' || strcmp(unit, ctx->attrs.unit) == 0;
+}
+
+static bool pq_percent_unit_ok(const char *unit)
+{
+    return unit[0] == '\0' || strcmp(unit, "%") == 0;
 }
 
 static void pq_percent(char *out, size_t cap, double v, int decimals, bool plus)
@@ -460,12 +473,18 @@ static void pq_layout(w_pq_ctx_t *ctx)
             k->colored = true;
         }
     } else {
-        /* the sensors' own figures */
+        /* the sensors' own figures; a sensor in another currency or unit than expected is left out, not converted */
+        const bool gain_ok = ctx->has_gain && pq_money_unit_ok(ctx, ctx->gain_unit);
+        const bool div_ok = ctx->has_div && pq_money_unit_ok(ctx, ctx->div_unit);
+        const bool xirr_ok = ctx->has_xirr && pq_percent_unit_ok(ctx->xirr_unit);
+        const bool ret_ok = ctx->has_ret && pq_percent_unit_ok(ctx->ret_unit);
+        const bool unit_mismatch = (ctx->has_gain && !gain_ok) || (ctx->has_div && !div_ok) || (ctx->has_xirr && !xirr_ok) ||
+                                   (ctx->has_ret && !ret_ok);
         if (ctx->hide_amounts) {
-            if (ctx->has_ret) {
+            if (ret_ok) {
                 pq_percent(hero, sizeof(hero), ctx->ret, 1, true);
                 hero_sign = ctx->ret;
-            } else if (ctx->has_xirr) {
+            } else if (xirr_ok) {
                 pq_percent(hero, sizeof(hero), ctx->xirr, 1, true);
                 hero_sign = ctx->xirr;
             } else {
@@ -473,26 +492,31 @@ static void pq_layout(w_pq_ctx_t *ctx)
             }
         } else {
             pq_money(ctx, hero, sizeof(hero), ctx->value, false);
-            if (ctx->has_gain || ctx->has_ret) {
+            if (gain_ok || ret_ok) {
                 char amount[48] = "";
                 char pct[24] = "";
-                if (ctx->has_gain) pq_money(ctx, amount, sizeof(amount), ctx->gain, true);
-                if (ctx->has_ret) pq_percent(pct, sizeof(pct), ctx->ret, 1, true);
+                if (gain_ok) pq_money(ctx, amount, sizeof(amount), ctx->gain, true);
+                if (ret_ok) pq_percent(pct, sizeof(pct), ctx->ret, 1, true);
                 snprintf(gain_text, sizeof(gain_text), "%s%s%s", amount, amount[0] != '\0' && pct[0] != '\0' ? "  " : "", pct);
             }
         }
-        if (ctx->has_xirr) {
+        if (xirr_ok) {
             pq_kpi_item_t *k = &items[item_count++];
             snprintf(k->name, sizeof(k->name), "%s", ui_i18n_get("parqet.xirr", "XIRR"));
             pq_percent(k->value, sizeof(k->value), ctx->xirr, 1, true);
             k->color = pq_sign_color(ctx->xirr);
             k->colored = true;
         }
-        if (ctx->has_div && !ctx->hide_amounts) {
+        if (div_ok && !ctx->hide_amounts) {
             pq_kpi_item_t *k = &items[item_count++];
             snprintf(k->name, sizeof(k->name), "%s", ui_i18n_get("parqet.dividends", "Dividends"));
             pq_money(ctx, k->value, sizeof(k->value), ctx->dividends, false);
             k->colored = false;
+        }
+        if (unit_mismatch) {
+            const size_t used = strlen(gain_text);
+            snprintf(gain_text + used, sizeof(gain_text) - used, "%s%s", used > 0 ? "  " : "",
+                ui_i18n_get("parqet.unit_mismatch", "Unit differs"));
         }
     }
     lv_label_set_text(ctx->hero_label, hero);
@@ -510,7 +534,7 @@ static void pq_layout(w_pq_ctx_t *ctx)
         lv_obj_set_height(ctx->gain_label, lab_h);
         lv_obj_align(ctx->gain_label, LV_ALIGN_TOP_LEFT, pad, y);
         lv_obj_set_style_text_color(ctx->gain_label,
-            lv_color_hex(pq_sign_color(ws ? ctx->perf.unrealized_gain : (ctx->has_gain ? ctx->gain : ctx->ret))), LV_PART_MAIN);
+            lv_color_hex(pq_sign_color(ws ? ctx->perf.unrealized_gain : (ctx->has_gain && pq_money_unit_ok(ctx, ctx->gain_unit) ? ctx->gain : ctx->ret))), LV_PART_MAIN);
         pq_set_hidden(ctx->gain_label, false);
         y += lab_h + gap;
     }
@@ -726,6 +750,8 @@ void w_parqet_portfolio_apply_state(ui_widget_instance_t *instance, const ha_sta
     w_pq_ctx_t *ctx = (w_pq_ctx_t *)instance->ctx;
     double v = 0.0;
     const bool ok = parqet_number(state->state, &v);
+    parqet_attrs_t own;
+    (void)parqet_attrs_parse(state->attributes_json, &own);
     if (strcmp(state->entity_id, ctx->entity_id) == 0) {
         ctx->has_value = ok;
         ctx->value = ok ? v : 0.0;
@@ -735,18 +761,22 @@ void w_parqet_portfolio_apply_state(ui_widget_instance_t *instance, const ha_sta
     /* one sensor can fill several roles (the same entity as gain and dividends is the user's choice) */
     if (ctx->gain_entity[0] != '\0' && strcmp(state->entity_id, ctx->gain_entity) == 0) {
         ctx->has_gain = ok;
+        snprintf(ctx->gain_unit, sizeof(ctx->gain_unit), "%s", own.unit);
         ctx->gain = ok ? v : 0.0;
     }
     if (ctx->xirr_entity[0] != '\0' && strcmp(state->entity_id, ctx->xirr_entity) == 0) {
         ctx->has_xirr = ok;
+        snprintf(ctx->xirr_unit, sizeof(ctx->xirr_unit), "%s", own.unit);
         ctx->xirr = ok ? v : 0.0;
     }
     if (ctx->div_entity[0] != '\0' && strcmp(state->entity_id, ctx->div_entity) == 0) {
         ctx->has_div = ok;
+        snprintf(ctx->div_unit, sizeof(ctx->div_unit), "%s", own.unit);
         ctx->dividends = ok ? v : 0.0;
     }
     if (ctx->ret_entity[0] != '\0' && strcmp(state->entity_id, ctx->ret_entity) == 0) {
         ctx->has_ret = ok;
+        snprintf(ctx->ret_unit, sizeof(ctx->ret_unit), "%s", own.unit);
         ctx->ret = ok ? v : 0.0;
     }
     pq_refresh(ctx);

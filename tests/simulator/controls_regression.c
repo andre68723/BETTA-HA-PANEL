@@ -18,6 +18,9 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_ins
 void w_light_tile_apply_state(ui_widget_instance_t *, const ha_state_t *);
 void w_light_tile_mark_unavailable(ui_widget_instance_t *);
 void w_light_tile_set_visible(ui_widget_instance_t *, bool);
+esp_err_t w_slider_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
+void w_slider_apply_state(ui_widget_instance_t *, const ha_state_t *);
+void w_slider_mark_unavailable(ui_widget_instance_t *);
 esp_err_t w_vacuum_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_vacuum_apply_state(ui_widget_instance_t *, const ha_state_t *);
 void w_vacuum_mark_unavailable(ui_widget_instance_t *);
@@ -406,6 +409,76 @@ static void cached_favorites_test(void)
     lv_obj_delete(widget.obj);
 }
 
+static lv_obj_t *find_slider(lv_obj_t *root)
+{
+    if (lv_obj_check_type(root, &lv_slider_class)) return root;
+    for (uint32_t i = 0; i < lv_obj_get_child_count(root); i++) {
+        lv_obj_t *found = find_slider(lv_obj_get_child(root, i));
+        if (found != NULL) return found;
+    }
+    return NULL;
+}
+/* A finger on the slider: press, move to `value`, release. */
+static void drag_slider(lv_obj_t *slider, int value)
+{
+    lv_obj_send_event(slider, LV_EVENT_PRESSED, NULL);
+    lv_slider_set_value(slider, value, LV_ANIM_OFF);
+    lv_obj_send_event(slider, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_send_event(slider, LV_EVENT_RELEASED, NULL);
+    advance();
+}
+static void slider_unavailable_test(void)
+{
+    lv_screen_load(lv_obj_create(NULL));
+    ui_widget_def_t def = {.w = 360, .h = 240};
+    strcpy(def.type, "slider"); strcpy(def.entity_id, "light.slider_test"); strcpy(def.title, "Slider");
+    ui_widget_instance_t widget = {0};
+    CHECK(w_slider_create(&def, lv_screen_active(), &widget) == ESP_OK);
+    lv_obj_t *slider = find_slider(widget.obj);
+    CHECK(slider != NULL);
+    ha_state_t state = {0};
+    snprintf(state.entity_id, sizeof(state.entity_id), "light.slider_test");
+    snprintf(state.state, sizeof(state.state), "on");
+    snprintf(state.attributes_json, sizeof(state.attributes_json), "{\"brightness_pct\":40}");
+    w_slider_apply_state(&widget, &state);
+    advance();
+    const unsigned before = sim_host_slider_sets();
+    CHECK(!lv_obj_has_state(slider, LV_STATE_DISABLED));
+    drag_slider(slider, 70);
+    CHECK(sim_host_slider_sets() == before + 1 && sim_host_slider_last() == 70);
+
+    /* unavailable: no send, no value shown, the slider is disabled and the state stays unavailable */
+    snprintf(state.state, sizeof(state.state), "unavailable");
+    state.attributes_json[0] = '\0';
+    w_slider_apply_state(&widget, &state);
+    advance();
+    CHECK(lv_obj_has_state(slider, LV_STATE_DISABLED));
+    drag_slider(slider, 30);
+    CHECK(sim_host_slider_sets() == before + 1);
+    CHECK(lv_slider_get_value(slider) == 0 && label(widget.obj, "unavailable") != NULL);
+
+    /* going unavailable in the middle of a drag drops the rest of that drag */
+    snprintf(state.state, sizeof(state.state), "on");
+    snprintf(state.attributes_json, sizeof(state.attributes_json), "{\"brightness_pct\":40}");
+    w_slider_apply_state(&widget, &state);
+    advance();
+    CHECK(!lv_obj_has_state(slider, LV_STATE_DISABLED) && lv_slider_get_value(slider) == 40);
+    lv_obj_send_event(slider, LV_EVENT_PRESSED, NULL);
+    w_slider_mark_unavailable(&widget);
+    lv_slider_set_value(slider, 90, LV_ANIM_OFF);
+    lv_obj_send_event(slider, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_send_event(slider, LV_EVENT_RELEASED, NULL);
+    advance();
+    CHECK(sim_host_slider_sets() == before + 1 && lv_slider_get_value(slider) == 0 && label(widget.obj, "unavailable") != NULL);
+
+    /* the entity is back: the slider works again and the stale 90 % is not replayed */
+    w_slider_apply_state(&widget, &state);
+    advance();
+    CHECK(!lv_obj_has_state(slider, LV_STATE_DISABLED));
+    drag_slider(slider, 55);
+    CHECK(sim_host_slider_sets() == before + 2 && sim_host_slider_last() == 55);
+}
+
 int sim_controls_regression(void)
 {
     now = lv_tick_get(); lv_tick_set_cb(tick);
@@ -418,6 +491,7 @@ int sim_controls_regression(void)
     phase = "unavailable actions"; stale_controls_test();
     phase = "light"; light_test(); phase = "vacuum"; vacuum_test();
     phase = "cached favorites"; cached_favorites_test();
+    phase = "slider unavailable"; slider_unavailable_test();
     /* A fixture can contain more entities than widget slots. Keep the firmware model's capacity. */
     ha_state_t capacity_state = {0};
     snprintf(capacity_state.state, sizeof(capacity_state.state), "1");
