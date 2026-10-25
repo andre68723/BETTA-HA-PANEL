@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
+#include "popup_contract_regression.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +26,7 @@ static void advance(uint32_t ms) {
         uint32_t step = ms - elapsed > 100 ? 100 : ms - elapsed;
         now += step; elapsed += step; lv_timer_handler();
     }
+    sim_popup_contract_check();
 }
 
 /* Find public labels, then dispatch the same clicked event as the input driver. */

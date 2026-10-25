@@ -9,7 +9,10 @@
 #include "ha/ha_display_precision.h"
 #include "ui/ui_widget_factory.h"
 #include "ui/ui_history_popup.h"
+#include "ui/text_font.h"
 #include "ui/theme/ui_style.h"
+#include "ui/theme/theme_default.h"
+#include "popup_contract_regression.h"
 
 static unsigned checks, draws;
 void sim_car_refresh_regression(void);
@@ -21,6 +24,7 @@ static void advance(void)
     lv_obj_update_layout(lv_screen_active());
     lv_timer_handler();
     lv_timer_handler();
+    sim_popup_contract_check();
 }
 static void apply(ui_widget_instance_t *widget, ha_state_t *state)
 {
@@ -44,6 +48,15 @@ static lv_obj_t *find_chart(lv_obj_t *root)
     for (uint32_t i = 0; i < lv_obj_get_child_count(root); i++) {
         lv_obj_t *chart = find_chart(lv_obj_get_child(root, i));
         if (chart != NULL) return chart;
+    }
+    return NULL;
+}
+static lv_obj_t *find_text(lv_obj_t *root, const char *text)
+{
+    if (lv_obj_check_type(root, &lv_label_class) && strcmp(lv_label_get_text(root), text) == 0) return root;
+    for (uint32_t i = 0; i < lv_obj_get_child_count(root); i++) {
+        lv_obj_t *found = find_text(lv_obj_get_child(root, i), text);
+        if (found != NULL) return found;
     }
     return NULL;
 }
@@ -144,12 +157,16 @@ static void graph_cases(void)
     advance();
     sim_clock_set(saved);
 }
-static void solar_cases(void)
+static void solar_cases(bool vertical)
 {
     const time_t saved = time(NULL);
     ui_widget_def_t def = {.w = 650, .h = 400};
     strcpy(def.type, "solar_forecast");
+    strcpy(def.title, "Solar detail");
+    strcpy(def.solar_forecast_bar_orientation, vertical ? "vertical" : "horizontal");
     strcpy(def.entity_id, "sensor.refresh_solar");
+    strcpy(def.forecast_today_entity_id, "sensor.refresh_solar_total");
+    strcpy(def.forecast_tomorrow_entity_id, "sensor.refresh_solar_tomorrow");
     ui_widget_instance_t widget = {0};
     CHECK(ui_widget_factory_create(&def, lv_screen_active(), &widget) == ESP_OK);
     ha_state_t state = {0};
@@ -185,6 +202,54 @@ static void solar_cases(void)
     strcpy(state.state, "22");
     apply(&widget, &state);
     CHECK(draws > 0);
+    const int original_step = ui_fonts_user_step();
+    ui_fonts_set_user_step(2);
+    lv_obj_t *hit = lv_obj_get_child(widget.obj, -1);
+    lv_area_t bounds; lv_obj_get_coords(hit, &bounds);
+    lv_point_t point = {.x = (bounds.x1 + bounds.x2) / 2, .y = bounds.y2 + 5};
+    if (vertical) { point.x = bounds.x2 + 8; point.y = (bounds.y1 + bounds.y2) / 2; }
+    lv_obj_t *future = lv_indev_search_obj(lv_screen_active(), &point);
+    if (future != NULL) lv_obj_send_event(future, LV_EVENT_CLICKED, NULL);
+    CHECK(find_text(lv_layer_top(), "Solar forecast today") == NULL);
+    point.x = (bounds.x1 + bounds.x2) / 2;
+    point.y = (bounds.y1 + bounds.y2) / 2;
+    CHECK(lv_indev_search_obj(lv_screen_active(), &point) == hit);
+    lv_obj_send_event(hit, LV_EVENT_CLICKED, NULL);
+    advance();
+    lv_obj_t *heading = find_text(lv_layer_top(), "Solar forecast today");
+    CHECK(heading != NULL);
+    CHECK(lv_obj_get_width(lv_obj_get_parent(heading)) <= 560);
+    CHECK(lv_obj_get_height(lv_obj_get_parent(heading)) < 400);
+    lv_obj_t *popup = lv_obj_get_parent(heading);
+    lv_obj_t *remaining = find_text(popup, "Remaining");
+    lv_obj_t *reading = find_text(popup, "22 Wh");
+    CHECK(remaining != NULL && reading != NULL);
+    CHECK(lv_color_eq(lv_obj_get_style_text_color(heading, LV_PART_MAIN), theme_default_color_text_primary()));
+    CHECK(lv_color_eq(lv_obj_get_style_text_color(remaining, LV_PART_MAIN), theme_default_color_text_muted()));
+    CHECK(lv_color_eq(lv_obj_get_style_text_color(reading, LV_PART_MAIN), theme_default_color_text_primary()));
+    CHECK(find_text(popup, "Total") != NULL);
+    CHECK(find_text(popup, "-- kWh") != NULL); /* missing today's total remains explicit */
+    strcpy(state.entity_id, def.forecast_today_entity_id);
+    strcpy(state.state, "30");
+    strcpy(state.attributes_json, "{\"unit_of_measurement\":\"kWh\"}");
+    apply(&widget, &state);
+    CHECK(find_text(popup, "30 kWh") != NULL);
+    strcpy(state.entity_id, def.forecast_tomorrow_entity_id);
+    strcpy(state.state, "99");
+    apply(&widget, &state);
+    CHECK(find_text(popup, "99 kWh") == NULL);
+    strcpy(state.entity_id, def.entity_id);
+    strcpy(state.state, "unavailable");
+    strcpy(state.attributes_json, "{\"unit_of_measurement\":\"Wh\"}");
+    apply(&widget, &state);
+    CHECK(find_text(popup, "22 Wh") == NULL);
+    CHECK(find_text(popup, "-- Wh") != NULL);
+    apply(&widget, &state);
+    CHECK(find_text(lv_layer_top(), "Solar forecast today") == heading);
+    sim_virtual_delay(60001);
+    advance();
+    CHECK(find_text(lv_layer_top(), "Solar forecast today") == NULL);
+    ui_fonts_set_user_step(original_step);
     lv_obj_delete(widget.obj);
     advance();
     sim_clock_set(saved);
@@ -199,7 +264,8 @@ void sim_chart_refresh_regression(void)
         ui_style_set(styles[i]);
         stock_cases();
         graph_cases();
-        solar_cases();
+        solar_cases(false);
+        solar_cases(true);
         sim_car_refresh_regression();
     }
     ui_style_set(original);

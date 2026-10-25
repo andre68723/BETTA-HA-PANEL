@@ -188,15 +188,10 @@ static void popup_open(w_datetime_ctx_t *ctx)
     lv_obj_add_event_cb(overlay, popup_deleted, LV_EVENT_DELETE, ctx);
     lv_obj_add_event_cb(overlay, popup_backdrop, LV_EVENT_CLICKED, ctx);
 
-    lv_obj_t *card = lv_obj_create(overlay);
+    lv_obj_t *card = ui_popup_card_create(overlay);
     lv_obj_set_size(card, card_w, card_h);
     lv_obj_center(card);
-    lv_obj_set_scrollable(card, false);
-    lv_obj_set_event_bubble(card, false);
-    lv_obj_set_style_bg_color(card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
-    ui_popup_style_frame(card);
+
     lv_obj_set_style_radius(card, ui_style_radius(18), LV_PART_MAIN);
     lv_obj_set_style_pad_all(card, 14, LV_PART_MAIN);
 

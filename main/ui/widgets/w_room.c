@@ -724,16 +724,11 @@ static void room_show_popup(w_room_ctx_t *ctx)
 
     int cw = sw - 48 < 520 ? sw - 48 : 520;
     int ch = sh - 48 < 560 ? sh - 48 : 560;
-    lv_obj_t *card = lv_obj_create(overlay);
+    lv_obj_t *card = ui_popup_card_create(overlay);
     lv_obj_set_size(card, cw, ch);
     lv_obj_center(card);
-    lv_obj_set_scrollable(card, false);
-    lv_obj_set_event_bubble(card, false);
     lv_obj_set_style_radius(card, 16, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
-    ui_popup_style_frame(card);
+
     lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
 
     lv_obj_t *title = lv_label_create(card);
@@ -776,7 +771,12 @@ static void room_show_popup(w_room_ctx_t *ctx)
                             room_domain_is(id, "fan") || room_domain_is(id, "media_player");
         lv_obj_t *row = lv_obj_create(list);
         lv_obj_remove_style_all(row);
-        lv_obj_set_size(row, LV_PCT(100), 44);
+        const lv_font_t *font = ui_font_role(UI_TEXT_META);
+        const int line_h = lv_font_get_line_height(font);
+        lv_point_t value_size;
+        lv_text_get_size(&value_size, value, font, 0, 0, (cw - 32) * 34 / 100, LV_TEXT_FLAG_NONE);
+        const int content_h = value_size.y > line_h ? value_size.y : line_h;
+        lv_obj_set_size(row, LV_PCT(100), content_h + 12 > 44 ? content_h + 12 : 44);
         lv_obj_set_scrollable(row, false);
         lv_obj_set_style_radius(row, ui_style_radius(10), LV_PART_MAIN);
         lv_obj_set_style_bg_color(row, lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), LV_PART_MAIN);
@@ -784,12 +784,16 @@ static void room_show_popup(w_room_ctx_t *ctx)
         lv_obj_t *nl = lv_label_create(row);
         lv_label_set_text(nl, name);
         lv_label_set_long_mode(nl, LV_LABEL_LONG_DOT);
-        lv_obj_set_width(nl, LV_PCT(62));
+        lv_obj_set_width(nl, LV_PCT(60));
+        lv_obj_set_height(nl, line_h);
         lv_obj_set_style_text_font(nl, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
         lv_obj_set_style_text_color(nl, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
         lv_obj_align(nl, LV_ALIGN_LEFT_MID, 12, 0);
         lv_obj_t *vl = lv_label_create(row);
         lv_label_set_text(vl, value);
+        lv_label_set_long_mode(vl, LV_LABEL_LONG_WRAP);
+        lv_obj_set_size(vl, LV_PCT(34), LV_SIZE_CONTENT);
+        lv_obj_set_style_text_align(vl, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
         lv_obj_set_style_text_font(vl, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
         lv_obj_set_style_text_color(vl, lv_color_hex(ROOM_MUTED_COLOR), LV_PART_MAIN);
         lv_obj_align(vl, LV_ALIGN_RIGHT_MID, -12, 0);

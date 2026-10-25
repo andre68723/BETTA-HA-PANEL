@@ -63,7 +63,6 @@ typedef struct {
     int camera_h;
 } ui_notification_state_t;
 
-
 /* The popup's text font: the META role with the color emoji of ui/notification_emoji.c in front of the monochrome fallback. */
 static const lv_font_t *notif_font(void)
 {
@@ -360,7 +359,7 @@ static void notif_create_overlay(const app_notification_t *notification)
         max_card_h = screen_h - 24;
     }
 
-    lv_obj_t *card = lv_obj_create(overlay);
+    lv_obj_t *card = ui_popup_card_create(overlay);
     s_notif.card = card;
     lv_obj_set_width(card, card_w);
     if (large_display && strlen(notification->message) > 320U) {
@@ -373,12 +372,8 @@ static void notif_create_overlay(const app_notification_t *notification)
     lv_obj_set_scrollable(card, true);
     lv_obj_set_scrollbar_mode(card, LV_SCROLLBAR_MODE_AUTO);
     lv_obj_set_scroll_dir(card, LV_DIR_VER); /* never sideways: it shifted the content off centre */
-    lv_obj_set_event_bubble(card, false);
     lv_obj_set_style_radius(card, 12, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
-    ui_popup_style_frame(card);
+
     lv_obj_set_style_pad_all(card, 20, LV_PART_MAIN);
     lv_obj_set_flex_flow(card, LV_FLEX_FLOW_COLUMN);
     /* Cross-axis center only affects the dismiss button; the labels span 100%. */

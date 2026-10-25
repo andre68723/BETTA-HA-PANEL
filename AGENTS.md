@@ -61,6 +61,8 @@ Panel10 and paneljc-v2 are compile-checked only; host/SDL success does not estab
   No pixel-size call sites, bitmap font generation or LV_SYMBOL_* in widgets. Font/subset/emoji rules: `main/ui/fonts/README.md`.
 - Controls: `ui_style_action_button()` and semantic colors; active/selected carries accent. Keep previewControlClass,
   state transitions and unavailable behavior in step; see Control semantics in the appearance implementation guide.
+- Native dialogs: use `ui_popup_card_create()` and semantic `ui_popup_label_create()` roles; special colours remain explicit.
+  Exercise opening/closing, content, theme contrast and bounds in SDL; see Popup contracts in the testing guide.
 - Preview: keep tilePreviewMarkup and LVGL elements/order/geometry aligned. The preview-parity skill is a deliberate
   audit outside check.sh, not a pixel-equality or hardware gate.
 - Editor source: update ordered WEBUI_JS_SOURCES/WEBUI_CSS_SOURCES and source index.html together; check_web compares

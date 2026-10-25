@@ -67,7 +67,6 @@ static void picker_option_cb(lv_event_t *event)
     lv_obj_delete_async(picker->overlay);
 }
 
-
 lv_obj_t *ui_option_picker_open(const ui_option_picker_cfg_t *cfg)
 {
     if (cfg == NULL || cfg->count == 0 || cfg->label == NULL) {
@@ -109,16 +108,11 @@ lv_obj_t *ui_option_picker_open(const ui_option_picker_cfg_t *cfg)
     const int want_h = head_h + rows_h + 2 * card_pad;
     const int card_h = want_h < screen_h - 48 ? want_h : screen_h - 48;
 
-    lv_obj_t *card = lv_obj_create(overlay);
+    lv_obj_t *card = ui_popup_card_create(overlay);
     lv_obj_set_size(card, card_w, card_h);
     lv_obj_center(card);
-    lv_obj_set_scrollable(card, false);
-    lv_obj_set_event_bubble(card, false);
     lv_obj_set_style_radius(card, 12, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
-    ui_popup_style_frame(card);
+
     lv_obj_set_style_pad_all(card, card_pad, LV_PART_MAIN);
 
     lv_obj_t *title = lv_label_create(card);
@@ -143,7 +137,6 @@ lv_obj_t *ui_option_picker_open(const ui_option_picker_cfg_t *cfg)
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_scrollable(list, true);
     lv_obj_set_scroll_dir(list, LV_DIR_VER);
-
 
     lv_obj_t *current_btn = NULL;
     for (size_t i = 0; i < cfg->count; i++) {

@@ -268,16 +268,11 @@ static void climate_show_popup(w_climate_ctx_t *ctx, unsigned kind)
     int want_h = head_h + count * (row_h + row_gap) + 12;
     int card_h = want_h < sh - 48 ? want_h : sh - 48;
 
-    lv_obj_t *card = lv_obj_create(overlay);
+    lv_obj_t *card = ui_popup_card_create(overlay);
     lv_obj_set_size(card, card_w, card_h);
     lv_obj_center(card);
-    lv_obj_set_scrollable(card, false);
-    lv_obj_set_event_bubble(card, false);
     lv_obj_set_style_radius(card, 14, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
-    ui_popup_style_frame(card);
+
     lv_obj_set_style_pad_all(card, 14, LV_PART_MAIN);
 
     lv_obj_t *title = lv_label_create(card);

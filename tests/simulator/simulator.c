@@ -41,6 +41,7 @@
 #include "host_adapters.h"
 #include "simulator_frame.h"
 #include "ui/ui_conn_popup.h"
+#include "popup_contract_regression.h"
 #include "ui/ui_pages.h"
 #include "typography_dump.h"
 
@@ -1317,6 +1318,7 @@ int main(int argc, char **argv)
     if (strcmp(popup, "wifi") == 0) ui_conn_popup_show_wifi();
     else if (strcmp(popup, "ha") == 0) ui_conn_popup_show_ha();
     else if (strcmp(popup, "mqtt") == 0) ui_conn_popup_show_mqtt();
+    sim_popup_contract_check();
     /* Public demo credentials render the real boot splash, matching app_show_wifi_setup_screen(). */
     const cJSON *setup = cJSON_GetObjectItemCaseSensitive(root, "setup_screen");
     if (cJSON_IsObject(setup)) {

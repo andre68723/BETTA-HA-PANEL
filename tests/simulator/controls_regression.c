@@ -12,6 +12,7 @@
 #include "ui/fonts/app_symbols.h"
 #include "ui/ui_option_picker.h"
 #include "ui/ui_pin_pad.h"
+#include "popup_contract_regression.h"
 
 esp_err_t w_light_tile_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_light_tile_apply_state(ui_widget_instance_t *, const ha_state_t *);
@@ -27,7 +28,7 @@ static unsigned checks;
 static uint32_t now;
 #define CHECK(c) do { checks++; if (!(c)) { fprintf(stderr, "Controls regression line %d: %s\n", __LINE__, #c); exit(1); } } while (0)
 static uint32_t tick(void) { return now; }
-static void advance(void) { now += 100; lv_timer_handler(); }
+static void advance(void) { now += 100; lv_timer_handler(); sim_popup_contract_check(); }
 static lv_obj_t *label(lv_obj_t *root, const char *text)
 {
     if (lv_obj_check_type(root, &lv_label_class)) {
@@ -195,6 +196,7 @@ static void picker_roles_test(void)
     ui_option_picker_cfg_t cfg = {.title = "Selection", .count = 2, .current = 0, .label = option_text};
     lv_obj_t *picker = ui_option_picker_open(&cfg);
     CHECK(picker != NULL);
+    sim_popup_contract_check();
     lv_obj_t *off = label(picker, "Off"), *on = label(picker, "On");
     CHECK(off != NULL && on != NULL);
     CHECK(!same_color(lv_obj_get_style_bg_color(lv_obj_get_parent(off), LV_PART_MAIN),
@@ -203,6 +205,7 @@ static void picker_roles_test(void)
     ui_pin_pad_cfg_t pin = {.title = "Code"};
     lv_obj_t *pad = ui_pin_pad_open(&pin);
     CHECK(pad != NULL);
+    sim_popup_contract_check();
     lv_obj_t *ok = label(pad, "OK"), *one = label(pad, "1");
     CHECK(ok != NULL && one != NULL);
     CHECK(same_color(lv_obj_get_style_bg_color(lv_obj_get_parent(ok), LV_PART_MAIN),
@@ -408,6 +411,7 @@ int sim_controls_regression(void)
     now = lv_tick_get(); lv_tick_set_cb(tick);
     sim_host_set_online(true);
     phase = "semantic roles"; semantic_controls_test();
+    phase = "popup contracts"; sim_popup_contract_regression();
     phase = "media primary"; process_primary_test();
     phase = "fan selection"; fan_selection_test();
     phase = "picker roles"; picker_roles_test();

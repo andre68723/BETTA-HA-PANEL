@@ -114,6 +114,12 @@ static void test_lookup(void)
         {"en", "roborock.state.docked", "Docked"},
         {"de", "ota.receiving", "Firmware wird empfangen ..."},
         {"en", "ota.receiving", "Receiving firmware..."},
+        {"de", "solar.details_title", "Solarprognose heute"},
+        {"en", "solar.details_title", "Solar forecast today"},
+        {"de", "solar.remaining", "Verbleibend"},
+        {"en", "solar.remaining", "Remaining"},
+        {"de", "solar.total", "Gesamt"},
+        {"en", "solar.total", "Total"},
         {"de", "solar.rest", "Rest"},
         {"en", "solar.rest", "Remaining"},
     };

@@ -26,6 +26,23 @@ and ß; English stays ASCII apart from °. The checker enforces this; dropped la
 - Cards inside tiles (weather days) are rounded surfaces slightly lighter than the tile, label muted, value in the
   primary colour.
 
+## Native popups
+
+Create dialog cards through `ui_popup_card_create()` in `ui/ui_popup.h`. It supplies an opaque themed surface,
+readable inherited text/font, frame and disabled event bubbling. Keep dialog size, placement, padding and scrolling
+with its own layout; use `ui_popup_close_button()` for the shared close control. Camera fullscreen and the
+display-protection overlay have intentional black backgrounds and their own lifecycle.
+
+Use `ui_popup_label_create()` for new text: **TITLE**, **BODY**, **CAPTION**, **HINT** or **VALUE** supply font and
+colour together. Captions/hints are muted; other roles use primary text. Explicit warning, accent and control
+colours may override them. Titles, captions and values have one-line heights; titles may use an ellipsis, while
+essential values must fit in full. Body/hint text may wrap within the caller's width. Legacy labels inherit readable text even when they omit a colour; do not depend on
+LVGL's default text colour. `ui_popup_style_frame()` also supplies that fallback for existing external callers.
+
+Add an actual opening/closing case, expected content and a check through `sim_popup_contract_check()` in the
+relevant native suite. Check small geometry, long text, larger text and light/dark themes; inspect representative
+rendered views. The existing cases and limits are described in [Popup contracts](testing.md#popup-contracts).
+
 ## New widget types
 
 `scripts/check.sh --changed` checks every type from `main/layout/widget_types.c` in these places:

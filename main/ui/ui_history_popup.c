@@ -156,7 +156,14 @@ static void render_plot(history_popup_t *popup, float lowest, float highest, siz
     new_label(popup->body, summary, ui_font_role(UI_TEXT_LABEL), APP_UI_COLOR_TEXT_PRIMARY, 8, 6,
               lv_obj_get_width(popup->body) - 16);
 
-    const int axis_w = 96;          /* the value labels left of the plot */
+    const lv_font_t *meta = ui_font_role(UI_TEXT_META);
+    int axis_w = 96; /* grow for the actual ticks/units at larger text sizes */
+    for (int i = 0; i <= scale.intervals; i++) {
+        char value[24]; lv_point_t extent;
+        chart_scale_format(value, sizeof(value), scale.max - scale.step * (float)i, scale.decimals, unit);
+        lv_text_get_size(&extent, value, meta, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        if (extent.x + 12 > axis_w) axis_w = extent.x + 12;
+    }
     /* the plot starts below the summary line and the top axis label, which grow with the text size (50 px at the reference size) */
     const int summary_h = (int)lv_font_get_line_height(ui_font_role(UI_TEXT_LABEL));
     const int axis_h = (int)lv_font_get_line_height(ui_font_role(UI_TEXT_META));
@@ -196,7 +203,6 @@ static void render_plot(history_popup_t *popup, float lowest, float highest, siz
     }
     lv_chart_refresh(chart);
 
-    const lv_font_t *meta = ui_font_role(UI_TEXT_META);
     const int plot_top = chart_top + 4, plot_h = chart_h - 8; /* inside the chart's padding */
     for (int i = 0; i <= scale.intervals; i++) {
         char value[24];
@@ -205,7 +211,12 @@ static void render_plot(history_popup_t *popup, float lowest, float highest, siz
         lv_obj_t *label = new_label(popup->body, value, meta, APP_UI_COLOR_TEXT_MUTED, 0, y, axis_w - 8);
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     }
-    const int time_w = label_w > (int)(2.4f * (float)meta->line_height) ? label_w : (int)(2.4f * (float)meta->line_height); /* "00:00" must fit at larger text sizes */
+    int time_w = label_w > (int)(2.4f * (float)meta->line_height) ? label_w : (int)(2.4f * (float)meta->line_height);
+    for (size_t i = 0; i < label_count; i++) {
+        lv_point_t extent;
+        lv_text_get_size(&extent, labels[i].text, meta, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        if (extent.x + 4 > time_w) time_w = extent.x + 4;
+    }
     int last_x = -10000;
     for (size_t i = 0; i < label_count; i++) {
         int x = axis_w + 4 + (int)((float)(chart_w - 8) * labels[i].frac) - time_w / 2;
@@ -767,15 +778,11 @@ static void create_frame(history_popup_t *popup, const char *title, const char *
     if (cw > 680) cw = 680;
     int ch = sh - 48;
     if (ch > 560) ch = 560;
-    popup->card = lv_obj_create(popup->overlay);
+    popup->card = ui_popup_card_create(popup->overlay);
     lv_obj_set_size(popup->card, cw, ch);
     lv_obj_center(popup->card);
-    lv_obj_set_scrollable(popup->card, false);
-    lv_obj_set_event_bubble(popup->card, false);
-    lv_obj_set_style_bg_color(popup->card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(popup->card, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_radius(popup->card, ui_style_radius(18), LV_PART_MAIN);
-    ui_popup_style_frame(popup->card);
+
     lv_obj_set_style_pad_all(popup->card, 14, LV_PART_MAIN);
     char title_buf[APP_MAX_NAME_LEN * 2];
     const char *shown_title = ui_style_title(title_buf, sizeof(title_buf), title ? title : fallback_title);

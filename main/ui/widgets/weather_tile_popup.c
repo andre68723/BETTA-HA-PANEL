@@ -284,7 +284,6 @@ static void weather_request_day_details(w_weather_tile_ctx_t *ctx, lv_obj_t *lis
 
 /* ---- Weather report (DWD text) ------------------------------------------ */
 
-
 static int weather_weekday_from_date(const char *date)
 {
     int y = 0, m = 0, d = 0;
@@ -397,16 +396,11 @@ static void weather_show_report_popup(w_weather_tile_ctx_t *ctx)
     int card_h = 330;
     if (card_h > screen_h - 48) card_h = screen_h - 48;
 
-    lv_obj_t *card = lv_obj_create(overlay);
+    lv_obj_t *card = ui_popup_card_create(overlay);
     lv_obj_set_size(card, card_w, card_h);
     lv_obj_center(card);
-    lv_obj_set_scrollable(card, false);
-    lv_obj_set_event_bubble(card, false);
     lv_obj_set_style_radius(card, 16, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
-    ui_popup_style_frame(card);
+
     #if UI_TEXT_ADAPTIVE
     lv_obj_set_style_pad_all(card, 14, LV_PART_MAIN);
 #else
@@ -512,16 +506,11 @@ static void weather_show_day_popup(w_weather_tile_ctx_t *ctx, int index)
     int card_h = screen_h - 48;
     if (card_h > (wide ? 560 : 560)) card_h = 560;
 
-    lv_obj_t *card = lv_obj_create(overlay);
+    lv_obj_t *card = ui_popup_card_create(overlay);
     lv_obj_set_size(card, card_w, card_h);
     lv_obj_center(card);
-    lv_obj_set_scrollable(card, false);
-    lv_obj_set_event_bubble(card, false);
     lv_obj_set_style_radius(card, 16, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
-    ui_popup_style_frame(card);
+
     lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
 
     const int inner_w = card_w - 32;

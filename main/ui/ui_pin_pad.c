@@ -148,16 +148,11 @@ lv_obj_t *ui_pin_pad_open(const ui_pin_pad_cfg_t *cfg)
     const int card_h = 2 * card_pad + head_h + display_h + 4 * row_h + 4 * gap;
     const int inner_w = card_w - 2 * card_pad;
 
-    lv_obj_t *card = lv_obj_create(overlay);
+    lv_obj_t *card = ui_popup_card_create(overlay);
     lv_obj_set_size(card, card_w, card_h);
     lv_obj_center(card);
-    lv_obj_set_scrollable(card, false);
-    lv_obj_set_event_bubble(card, false);
     lv_obj_set_style_radius(card, 12, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
-    ui_popup_style_frame(card);
+
     lv_obj_set_style_pad_all(card, card_pad, LV_PART_MAIN);
 
     lv_obj_t *title = lv_label_create(card);

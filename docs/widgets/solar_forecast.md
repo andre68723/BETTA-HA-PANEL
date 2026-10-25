@@ -32,7 +32,7 @@ Sensors that forecast the solar production per day, for example from **[Solcast 
 
 - Today's row carries two readings: its bar and value are the day's total (**Today forecast**); the part still to come (**Remaining today**) is the bright end of the bar over the dimmed total, so the dim start reads as already produced. This needs both sensors; in the example 25 of 55 kWh are still to come.
 - With **Line up days with the weather tile** the header shows **Rest** and the remaining kWh.
-- A tap opens a popup with Rest and every day's value; it closes after a minute.
+- Tap today's bar to see a compact **Solar forecast today** popup with **Total** and **Remaining**. Future days do not open a popup. It closes with **×** or after a minute.
 
 ## Variants
 

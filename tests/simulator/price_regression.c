@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 */
 /* Energy price forecast widget: what Home Assistant's price list becomes on the tile, the Today/Tomorrow buttons, the states without prices and the
  * tile's own timer. The list is built like the real EPEX Spot attribute (public market data of 2026-10-17) around the simulator's local today. */
+#include "popup_contract_regression.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@
 #include "ha/ha_attr_serialize.h"
 #include "ui/ui_history_popup.h"
 #include "ui/ui_widget_factory.h"
+#include "ui/text_font.h"
 
 esp_err_t w_energy_price_forecast_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_energy_price_forecast_apply_state(ui_widget_instance_t *, const ha_state_t *);
@@ -27,7 +29,7 @@ static const double TODAY[24] = {0.20038, 0.18343, 0.16618, 0.1524, 0.14999, 0.1
 static const double TOMORROW[24] = {0.149, 0.14663, 0.14779, 0.14263, 0.14735, 0.15199, 0.14114, 0.15642, 0.18276, 0.20084, 0.19449, 0.1901,
                                     0.18337, 0.16312, 0.16192, 0.16977, 0.19086, 0.21263, 0.22627, 0.2206, 0.19828, 0.17955, 0.17661, 0.17101};
 
-static void advance(unsigned ms) { sim_virtual_delay(ms); lv_obj_update_layout(lv_screen_active()); lv_timer_handler(); lv_timer_handler(); }
+static void advance(unsigned ms) { sim_virtual_delay(ms); lv_obj_update_layout(lv_screen_active()); lv_timer_handler(); lv_timer_handler();  sim_popup_contract_check(); }
 static void drawn(lv_event_t *event) { (void)event; draws++; }
 
 /* The first label under root whose text starts with prefix. */
@@ -343,6 +345,13 @@ int sim_price_regression(void)
 
     /* the stock chip's popup: 30 days of daily means, a tap on the second button shows 12 months of weekly means */
     fresh_screen();
+    const int original_step = ui_fonts_user_step();
+    ui_fonts_set_user_step(2);
+    ui_history_popup_open_range("sensor.quote", "SAP.DE", "199.22 EUR");
+    advance(50);
+    CHECK(find_prefix(lv_layer_top(), "220 EUR") != NULL);
+    lv_obj_delete(lv_obj_get_child(lv_layer_top(), 0));
+    ui_fonts_set_user_step(original_step);
     ui_history_popup_open_range("sensor.quote", "SAP.DE", "199.22 EUR");
     lv_obj_update_layout(lv_layer_top());
     advance(50);

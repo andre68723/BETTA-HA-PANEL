@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 */
+#include "popup_contract_regression.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,7 +21,7 @@ static unsigned draws;
 static uint32_t now;
 #define CHECK(x) do { ++checks; if (!(x)) { fprintf(stderr,"wallbox line %d: %s\n",__LINE__,#x); exit(1); } } while (0)
 static uint32_t tick(void) { return now; }
-static void advance(unsigned ms) { now += ms; lv_timer_handler(); lv_timer_handler(); }
+static void advance(unsigned ms) { now += ms; lv_timer_handler(); lv_timer_handler();  sim_popup_contract_check(); }
 static void drawn(lv_event_t *event) { (void)event; draws++; }
 static lv_obj_t *find(lv_obj_t *root, const char *text, const lv_obj_class_t *kind)
 {

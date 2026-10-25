@@ -77,6 +77,7 @@ add_executable(betta-widget-sim
     host_adapters.c
     camera_stream_stub.c
     controls_regression.c
+    popup_contract_regression.c
     camera_regression.c
     wallbox_regression.c
     bambu_regression.c

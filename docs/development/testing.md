@@ -33,6 +33,24 @@ prerequisites are reported as unavailable and fail in CI. Node22 requires test f
 Firmware builds and SDL/host results never establish physical touch, display rotation/colors or optical backlight behavior.
 Device tests remain deliberate, separately authorized actions; they are not triggered by a changed source path.
 
+## Popup contracts
+
+Native dialogs share `ui_popup_card_create()` and semantic label roles. The controls suite checks the base in
+all six built-in themes and four styles at Standard/Largest text, including an unstyled legacy label and the
+real close-button event. It also opens connectivity, Room, weather-report/day and Energy-detail dialogs.
+
+The existing control, wallbox, printer, history, energy, notification and price suites audit their opened cards
+through `sim_popup_contract_check()`. Solar popup cases cover content, theme colours, missing values, repeated
+updates and timeout. Picker/PIN, climate, date/time, light, printer and charging popups retain their behavioral
+tests. The simulator's fixture-based `tap_widget`, `history_popup`, `notification` and `open_popup` paths also
+run the audit, allowing captures with the actual production widgets.
+
+The audit checks opaque card backgrounds, inherited text, screen bounds, nonzero labels and near-invisible text
+(contrast below 1.5 against the composited ancestor backgrounds). Non-scrolling labels must remain inside their card;
+scrolling content may extend beyond it. This is a regression guard, not accessibility certification or a pixel
+assessment of gradients/images. Review rendered views for overlap, clipping, scrolling and comfortable reading.
+Camera fullscreen and display-protection overlays use separate explicit black-background contracts.
+
 ## Test clocks
 
 Routine SDL checks and Gallery/test-page renders share the Gallery's fixed Berlin clock,2026-10-15 12:00.

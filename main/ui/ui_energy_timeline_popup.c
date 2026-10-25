@@ -128,15 +128,11 @@ void ui_energy_timeline_popup_open(const ui_energy_timeline_popup_info_t *info, 
 
     lv_coord_t cw = sw - 24 > 640 ? 640 : sw - 24;
     lv_coord_t ch = sh - 48 > 560 ? 560 : sh - 48;
-    lv_obj_t *card = lv_obj_create(s_popup.overlay);
+    lv_obj_t *card = ui_popup_card_create(s_popup.overlay);
     lv_obj_set_size(card, cw, ch);
     lv_obj_center(card);
-    lv_obj_set_scrollable(card, false);
-    lv_obj_set_event_bubble(card, false);
-    lv_obj_set_style_bg_color(card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_radius(card, ui_style_radius(18), LV_PART_MAIN);
-    ui_popup_style_frame(card);
+
     lv_obj_set_style_pad_all(card, 14, LV_PART_MAIN);
     char title_buf[APP_MAX_NAME_LEN * 2];
     popup_label(card, ui_style_title(title_buf, sizeof(title_buf), info->title[0] ? info->title : "Energy"),

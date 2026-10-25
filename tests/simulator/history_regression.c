@@ -4,6 +4,7 @@
 /* The history popup's 24 h / 7 days selector driven through the real buttons: it exists only for a numeric sensor,
  * every switch replaces the chart (never two at once), choosing the active range does nothing, and a closed popup
  * leaves nothing behind and reopens at 24 h. */
+#include "popup_contract_regression.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,6 +37,7 @@ static unsigned checks;
 static void advance(void)
 {
     for (int i = 0; i < 12; i++) lv_timer_handler();
+    sim_popup_contract_check();
 }
 
 static lv_obj_t *label(lv_obj_t *root, const char *text)

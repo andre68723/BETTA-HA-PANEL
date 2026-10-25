@@ -4,6 +4,7 @@
 /* The Energy page's seven-day details through the real node circles: a tap opens the popup (default) or fills the
  * right-hand panel ("side", wide pages only), nodes without a source stay informational, a new selection replaces the
  * old one, and the page can be deleted with a popup or a selection open. */
+#include "popup_contract_regression.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,6 +42,7 @@ static unsigned checks;
 static void advance(void)
 {
     for (int i = 0; i < 12; i++) lv_timer_handler();
+    sim_popup_contract_check();
 }
 
 static lv_obj_t *label(lv_obj_t *root, const char *text)

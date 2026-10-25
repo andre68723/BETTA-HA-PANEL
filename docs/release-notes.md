@@ -29,6 +29,9 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 - **Price forecast:** the Inspector restores the saved Today/Tomorrow selector checkbox. Identical price/average updates and idle timer ticks no longer redraw the tile; changed data and interval/day boundaries still update it.
 - **Stocks and graphs:** identical normalized quote updates and unchanged graph samples no longer redraw the tiles. Changed quote metadata and later graph samples still update, including equal values at a new timestamp.
 - **Solar forecast:** identical readings and units no longer redraw the tile; changed values, availability and local-day labels still update. This reduces redraw work, but does not establish a fix for physical display flashes.
+- **Solar details:** tapping today's bar opens a compact **Solar forecast today** popup with the total and remaining forecast, instead of repeating all days. Values update while it is open; future days do not open a popup. Theme text colours keep it readable.
+- **Native popups:** dialog cards share an opaque themed surface and readable inherited text. Semantic label helpers and native contrast/bounds checks guard against invisible content, including in light/dark themes and larger text.
+- **Popup text fitting:** Room details keep long names on one line; history axes reserve space for complete values, units and dates at larger text sizes.
 - **Car:** repeated battery, power, range, temperature, lock and preconditioning states no longer redraw the tile. Changed readings and availability still update, including recovery from unavailable sources.
 - **Card styles:** Flat, Glass and Matte no longer reapply unchanged card properties on every state update. Widget changes and active-state surfaces still receive the selected style.
 - **Energy details:** Solar daily statistics use **Daily production**, in both the popup and the right-hand panel; Gas and Water retain **Daily consumption**.

@@ -190,15 +190,14 @@ static void number_open(wallbox_t *ctx)
     lv_obj_set_style_bg_color(overlay, lv_color_black(), 0); lv_obj_set_style_bg_opa(overlay, LV_OPA_60, 0);
     lv_obj_set_style_border_width(overlay, 0, 0); lv_obj_set_style_pad_all(overlay, 0, 0); lv_obj_set_scrollable(overlay, false);
     lv_obj_add_event_cb(overlay, number_deleted, LV_EVENT_DELETE, ctx);
-    lv_obj_t *card = lv_obj_create(overlay);
+    lv_obj_t *card = ui_popup_card_create(overlay);
     int card_w = lv_obj_get_width(lv_screen_active()) - 32; if (card_w > 420) card_w = 420;
     int value_h = lv_font_get_line_height(ui_font_role(UI_TEXT_VALUE));
     int meta_h = lv_font_get_line_height(ui_font_role(UI_TEXT_META));
     int slider_y = 62 + value_h + 24, hint_y = slider_y + 40;
     int card_h = hint_y + meta_h + 90; if (card_h < 300) card_h = 300;
-    lv_obj_set_size(card, card_w, card_h); lv_obj_center(card); lv_obj_set_scrollable(card, false);
-    lv_obj_set_style_text_color(card, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), 0);
-    lv_obj_set_style_bg_color(card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), 0); ui_popup_style_frame(card);
+    lv_obj_set_size(card, card_w, card_h); lv_obj_center(card);
+
     lv_obj_t *title = lv_label_create(card); ui_text_set(title, UI_TEXT_LABEL, true);
     lv_label_set_text(title, tr("evcc.target", "Target SOC")); lv_obj_set_pos(title, 0, 0);
     lv_obj_t *close = ui_popup_close_button(card, lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE), number_close, ctx);

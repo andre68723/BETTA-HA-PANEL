@@ -1568,17 +1568,13 @@ static void w_light_tile_open_color_popup(w_light_tile_ctx_t *ctx)
         card_h = screen_h - 16;
     }
 
-    lv_obj_t *card = lv_obj_create(popup->overlay);
+    lv_obj_t *card = ui_popup_card_create(popup->overlay);
     lv_obj_set_size(card, card_w, card_h);
     lv_obj_center(card);
     lv_obj_set_scrollable(card, true);
     lv_obj_set_scroll_dir(card, LV_DIR_VER);
-    lv_obj_set_event_bubble(card, false);
     lv_obj_set_style_radius(card, 12, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(card, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
-    ui_popup_style_frame(card);
+
     lv_obj_set_style_pad_all(card, 18, LV_PART_MAIN);
 
     lv_obj_t *title = lv_label_create(card);

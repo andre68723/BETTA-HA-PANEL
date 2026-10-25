@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 andre68723 -- see docs/release-notes.md
  */
+#include "popup_contract_regression.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,6 +42,7 @@ static void show(const char *message)
     ui_notification_popup_show(n);
     lv_obj_update_layout(lv_layer_top());
     for (int i = 0; i < 4; i++) { lv_tick_inc(20); lv_timer_handler(); }
+    sim_popup_contract_check();
 }
 
 int sim_notification_regression(void)
