@@ -21,7 +21,7 @@ Compares **cumulative energy counters** (`sensor.*`, kWh) over 24 hours, with ri
 
 ## Requirements
 
-Cumulative counters in kWh (state class `total` or `total_increasing`) from your meter, inverter or battery integrations, and Home Assistant's **[Recorder](https://www.home-assistant.io/integrations/recorder/)** with their long-term statistics (enabled by default).
+Cumulative counters in Wh, kWh or MWh (state class `total` or `total_increasing`) from your meter, inverter or battery integrations, and Home Assistant's **[Recorder](https://www.home-assistant.io/integrations/recorder/)** with their long-term statistics (enabled by default).
 
 ## Options
 
@@ -36,6 +36,7 @@ Cumulative counters in kWh (state class `total` or `total_increasing`) from your
 
 ## On the panel
 
+- Search offers cumulative energy counters; the battery SOC and Solcast fields use their own filters. Counters also need Recorder statistics. The Entities info icon explains the requirements and troubleshooting; confirmed incompatible sources get a short status.
 - A wider card shows more details.
 - A tap opens a popup with the measured counters and the estimated mix.
 

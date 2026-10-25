@@ -57,7 +57,7 @@ curl -L -o 'NotoEmoji[wght].ttf' 'https://raw.githubusercontent.com/google/fonts
 python3 tools/generate_widget_fonts.py --emoji 'NotoEmoji[wght].ttf'
 # The editor's preview font: the Poppins subset as a WOFF2 data URI in components/webui/www/styles.css
 python3 tools/generate_widget_fonts.py --web
-# Check that subsets, arrays and manifests agree (tools/check.sh runs it when fontTools is installed)
+# Check that subsets, arrays and manifests agree (scripts/check.sh runs it when fontTools is installed)
 python3 tools/generate_widget_fonts.py --check
 ```
 

@@ -266,7 +266,7 @@ function evccPreviewMarkup(widget) {
   const standardModes = !modeOptions || modeOptions.length === 3 && modeOptions.includes("smart") && modeOptions.includes("now");
   const mode = editor.states.get(widget.entity_id), target = bambuPreviewNumber(widget.evcc_target_soc_entity_id);
   const raw = editor.states.get(widget.evcc_vehicle_entity_id);
-  const vehicle = disconnected || raw === "null" ? t("evcc.none") : editor.stateMeta.get(widget.evcc_vehicle_entity_id)?.vehicle_name || raw || "--";
+  const vehicle = disconnected ? t("evcc.none") : raw === "null" ? t("evcc.guest") : editor.stateMeta.get(widget.evcc_vehicle_entity_id)?.vehicle_name || raw || "--";
   const status = editor.states.get(widget.evcc_charging_entity_id) === "on" ? "charging" : editor.states.get(widget.evcc_connected_entity_id) === "on" ? "connected" : "unavailable";
   return `<div class="evcc-preview"><div class="evcc-head">${widgetNamePreview(widget,"span")}<span class="evcc-link">${escapeHtml(t("evcc.sessions"))}</span></div>${evccHeaderPreview(widget, power)}
   <div class="evcc-modes">${["off","smart","now"].map(value=>`<span class="${previewControlClass(mode === value && (value !== "smart" || standardModes), previewControlAvailable(widget.entity_id) && (!modeOptions || value === "smart" || modeOptions.includes(value)))}">${escapeHtml(value === "smart" && !standardModes ? mode || t("evcc.mode") : t(`evcc.${value === "now" ? "fast" : value}`))}</span>`).join("")}</div>

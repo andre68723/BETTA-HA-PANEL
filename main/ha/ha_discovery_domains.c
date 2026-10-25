@@ -11,7 +11,7 @@
 /* Domains the editor may request directly (entity pickers per widget type). */
 static const char *const s_domains[] = {
     "light", "sensor", "switch", "weather", "climate", "todo", "media_player", "vacuum", "cover", "fan", "camera",
-    "number", "binary_sensor", "select", "input_select", "input_datetime", "time", "date", "datetime", "image", "scene", "script", "button", "event", "lock", "alarm_control_panel", "input_button",
+    "number", "input_boolean", "binary_sensor", "select", "input_select", "input_datetime", "time", "date", "datetime", "image", "scene", "script", "button", "event", "lock", "alarm_control_panel", "input_button",
     "room", /* pseudo domain: the entities of a room card, per area */
     "any",  /* pseudo domain: every entity the tiles can show (add from an entity) */
 };
@@ -19,7 +19,7 @@ static const char *const s_domains[] = {
 /* "any": the domains of the widget types, for adding a widget from an entity. */
 static const char *const s_any_domains[] = {
     "sensor", "binary_sensor", "light", "cover", "fan", "climate", "media_player", "lock", "alarm_control_panel", "switch",
-    "input_boolean", "weather", "vacuum", "camera", "event", "scene", "script", "button", "input_button", "todo",
+    "input_boolean", "weather", "vacuum", "camera", "image", "event", "scene", "script", "button", "input_button", "todo",
     "select", "input_select", "input_datetime", "time", "date", "datetime",
 };
 

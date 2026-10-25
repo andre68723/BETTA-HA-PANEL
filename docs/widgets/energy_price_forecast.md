@@ -17,7 +17,7 @@ Shows **electricity prices** for today or tomorrow from a price `sensor.*` as ba
 
 ## Requirements
 
-None beyond the entities.
+Choose the price-list sensor, not a scalar current price or CO₂ reading. Open the Inspector’s **Entities** info icon for supported data, average-reference precedence and troubleshooting.
 
 ## Options
 

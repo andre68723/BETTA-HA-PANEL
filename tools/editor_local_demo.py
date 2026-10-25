@@ -16,14 +16,18 @@ def all_widgets_fixture(variant):
     states = copy.deepcopy(gallery['states'])
 
     def state(entity, value, **attributes):
-        states.append(dict(entity_id=entity, state=str(value), attributes=attributes))
+        existing = next((item for item in states if item['entity_id'] == entity), None)
+        if existing:
+            existing.update(state=str(value), attributes={**existing.get('attributes', {}), **attributes})
+        else:
+            states.append(dict(entity_id=entity, state=str(value), attributes=attributes))
 
     state('sensor.demo_car_charging_power', 7.4, unit_of_measurement='kW', device_class='power')
     state('sensor.demo_car_remaining_range', 312, unit_of_measurement='km', device_class='distance')
     state('lock.demo_car_doors', 'locked', friendly_name='Fahrzeug verriegeln')
     state('image.demo_robot_map', '2026-10-11T14:30:00+00:00', friendly_name='Reinigungsplan')
     state('script.demo_evening', 'off', friendly_name='Abendprogramm')
-    state('event.demo_doorbell', '2026-10-11T14:30:00+00:00', event_type='pressed', event_types=['pressed'])
+    state('event.demo_doorbell', '2026-10-11T14:30:00+00:00', event_type='pressed', event_types=['pressed'], device_class='doorbell')
     state('sensor.demo_grid_power_signed', 840, unit_of_measurement='W', device_class='power')
     state('sensor.demo_battery_power_signed', -250, unit_of_measurement='W', device_class='power')
     for entity, value in [('grid_import', 1638.2), ('grid_export', 842.1), ('solar_production', 3284.5),
@@ -42,12 +46,12 @@ def all_widgets_fixture(variant):
                      rect=dict(zip(('x', 'y', 'w', 'h'), rect)))
             w.update(options)
             widgets.append(w)
-        icons = ['floorplan', 'light', 'climate', 'room', 'weather', 'dashboard', 'music', 'tv', 'garage', 'sofa']
+        icons = ['floorplan', 'climate', 'room', 'weather', 'music', 'garage']
         pages.append(dict(id=f'test_{len(pages)}', title=page_title, icon=icons[len(pages)], widgets=widgets))
 
     # Keep the layout inside every wide board's 600 px minimum content height.
     # Separate variants exercise mutually exclusive options without invalid combinations.
-    page('Werte', [
+    page('Werte & Diagramme', [
         ('sensor', 'Temperatur', (20, 20, 200, 140), dict(history_popup=True, sensor_show_age=True)),
         ('smooth', 'Füllstand', (240, 20, 150, 240), dict(gauge_color_mode='gradient', gauge_color_low='#3b82f6', gauge_color_high='#ef4444')),
         ('segmented', 'LED-Skala', (410, 20, 150, 240), dict(gauge_segment_count=20)),
@@ -58,67 +62,54 @@ def all_widgets_fixture(variant):
         ('graph_line', 'Geglättet', (620, 340, 280, 220), dict(graph_display_mode='line_smooth', graph_point_count=48)),
         ('graph_line', 'Kurve und Punkte', (920, 340, 280, 220), dict(graph_display_mode='line_smooth_points', graph_point_count=48)),
     ])
-    page('Licht & Regler', [
-        ('light', 'Wohnzimmerlicht', (20, 20, 240, 260), {}),
-        ('button', 'Schalter', (280, 20, 160, 160), dict(button_mode='auto', button_accent_color='#42c9b8')),
-        ('button', 'Play / Pause', (460, 20, 160, 160), dict(entity_id='media_player.demo_music', button_mode='play_pause', button_accent_color='#ffba49')),
-        ('vertical', 'Rollo vertikal', (660, 20, 140, 260), dict(slider_accent_color='#42c9b8', slider_entity_domain='cover')),
-        ('horizontal', 'Rollo horizontal', (840, 20, 340, 120), dict(slider_accent_color='#ffba49', slider_entity_domain='cover')),
-        ('fan', 'Lüfter', (20, 320, 320, 240), {}),
-        ('cover', 'Jalousie', (380, 320, 400, 140), {}),
-    ])
-    page('Klima', [
-        ('heating_default', 'Heizung', (20, 20, 300, 320), dict(secondary_entity_id='sensor.demo_room_temperature')),
-        ('heating_semi_arc', 'Halbkreis', (350, 20, 300, 320), dict(secondary_entity_id='sensor.demo_room_temperature', arc_opening='top')),
-        ('climate', 'Klimaanlage', (680, 20, 340, 280), {}),
+    page('Licht & Klima', [
+        ('light', 'Wohnzimmerlicht', (20, 20, 220, 260), {}),
+        ('heating_default', 'Heizung', (260, 20, 280, 280), dict(secondary_entity_id='sensor.demo_room_temperature')),
+        ('climate', 'Klimaanlage', (560, 20, 320, 280), {}),
+        ('fan', 'Lüfter', (900, 20, 320, 240), {}),
+        ('button', 'Schalter', (20, 340, 160, 140), dict(button_mode='auto', button_accent_color='#42c9b8')),
+        ('vertical', 'Rollo vertikal', (200, 340, 100, 220), dict(slider_accent_color='#42c9b8', slider_entity_domain='cover')),
+        ('horizontal', 'Rollo horizontal', (320, 340, 300, 120), dict(slider_accent_color='#ffba49', slider_entity_domain='cover')),
+        ('cover', 'Jalousie', (650, 340, 340, 140), {}),
     ])
     room = dict(room_controls=True)
     for key in ('room_humidity', 'room_cover', 'room_media_player'):
         samples[key] = copy.deepcopy(samples[key])
         samples[key]['room_entities'].append('fan.demo_fan')
-    page('Räume & Status', [
+    page('Räume & Aktionen', [
         ('room_humidity', 'Raum mit Feuchte', (20, 20, 380, 240), room),
         ('room_cover', 'Raum mit Cover', (440, 20, 380, 240), room),
         ('room_media_player', 'Raum mit Medien', (860, 20, 380, 240), room),
-        ('contact', 'Türkontakt', (20, 300, 300, 120), dict(history_popup=True)),
-        ('binary_sensor', 'Bewegung', (360, 300, 300, 120), dict(display_mode='since', history_popup=True)),
-        ('binary_sensor', 'Türklingel', (700, 300, 300, 120), dict(entity_id='event.demo_doorbell', display_mode='icon', history_popup=True)),
+        ('contact', 'Türkontakt', (20, 300, 220, 100), dict(history_popup=True)),
+        ('binary_sensor', 'Bewegung', (260, 300, 220, 100), dict(display_mode='since', history_popup=True)),
+        ('scene', 'Szene', (500, 300, 220, 100), {}),
+        ('front_door', 'Schloss', (740, 300, 280, 110), dict(lock_confirm=True, history_popup=True)),
+        ('charge_mode', 'Lademodus', (20, 440, 300, 120), {}),
+        ('morning_routine', 'Weckzeit', (350, 440, 300, 120), {}),
+        ('alarm', 'Alarmanlage', (680, 440, 300, 120), {}),
+        (None, 'Freifläche', (1020, 440, 220, 100), {}),
     ])
-    page('Wetter & Solar', [
-        ('weather_now', 'Aktuelles Wetter', (20, 20, 240, 260), {}),
-        ('weather_forecast', 'Wetterbericht', (290, 20, 900, 260), dict(forecast_days=6, show_precipitation=True)),
-        ('solar_forecast', 'Solar horizontal', (20, 300, 580, 280), dict(solar_forecast_bar_max_kwh=60, forecast_days=5)),
-        ('solar_forecast_vertical', 'Solar vertikal', (640, 300, 580, 280), dict(solar_forecast_bar_max_kwh=60, forecast_days=5)),
+    page('Wetter & Energie', [
+        ('weather_now', 'Aktuelles Wetter', (20, 20, 220, 220), {}),
+        ('weather_forecast', 'Wetterbericht', (270, 20, 900, 220), dict(forecast_days=6, show_precipitation=True)),
+        ('solar_forecast', 'Solar horizontal', (20, 280, 380, 280), dict(solar_forecast_bar_max_kwh=60, forecast_days=5)),
+        ('solar_forecast_vertical', 'Solar vertikal', (420, 280, 260, 280), dict(solar_forecast_bar_max_kwh=60, forecast_days=5)),
+        ('energy_last_24_hours', 'Energie mit Batterie', (700, 280, 540, 280), {}),
     ])
-    page('Energie-Widgets', [
-        ('energy_last_24_hours', 'Energie mit Batterie', (20, 20, 600, 250), {}),
-        ('nested_rings', 'Energie konzentrisch', (660, 20, 600, 250), {}),
-        ('energy_price_forecast', 'Energiepreisprognose', (20, 290, 400, 290), {}),
-        ('portfolio', 'Portfolio', (440, 290, 400, 290), dict(parqet_selector=True)),
-        ('stocks_charts', 'Aktien & ETFs', (860, 290, 400, 290), {}),
+    page('Medien & Finanzen', [
+        ('media_player', 'Musik', (20, 20, 340, 360), {}),
+        ('sonos_favorites', 'Sonos-Favoriten', (380, 20, 300, 360), {}),
+        ('portfolio', 'Portfolio', (700, 20, 260, 290), dict(parqet_selector=True)),
+        ('stocks_charts', 'Aktien & ETFs', (980, 20, 280, 290), {}),
+        ('camera', 'Einfahrt', (20, 400, 340, 180), {}),
+        ('todo_list', 'Einkaufsliste', (380, 380, 500, 200), {}),
+        ('energy_price_forecast', 'Energiepreise', (900, 340, 340, 220), {}),
     ])
-    page('Medien', [
-        ('media_player', 'Musik', (20, 20, 500, 420), {}),
-        ('sonos_favorites', 'Sonos-Favoriten', (560, 20, 400, 420), {}),
-    ])
-    page('Geräte', [
-        ('bambu_a1', 'Bambu mit allen Sensoren', (20, 20, 354, 520), {}),
-        ('vacuum', 'Saugroboter mit Extras', (400, 20, 280, 360), dict(secondary_entity_id='image.demo_robot_map', tertiary_entity_id='select.demo_cleaning_mode', default_mode='Auto')),
-        ('camera', 'Einfahrt', (400, 400, 280, 180), {}),
-        ('todo_list', 'Einkaufsliste', (720, 20, 480, 520), {}),
-    ])
-    page('Mobilität', [
-        ('car', 'Auto mit allen Sensoren', (20, 20, 400, 540), dict(secondary_entity_id='sensor.demo_car_charging_power', tertiary_entity_id='sensor.demo_car_remaining_range', lock_entity_id='lock.demo_car_doors')),
-        ('wallbox', 'Wallbox mit allen Sensoren', (460, 20, 600, 540), {}),
-    ])
-    page('Aktionen', [
-        ('scene', 'Szene', (20, 20, 300, 120), {}),
-        ('scene', 'Skript', (350, 20, 300, 120), dict(entity_id='script.demo_evening')),
-        ('front_door', 'Schloss mit Bestätigung', (680, 20, 380, 140), dict(lock_confirm=True, history_popup=True)),
-        ('charge_mode', 'Lademodus', (20, 200, 450, 140), {}),
-        ('morning_routine', 'Weckzeit', (510, 200, 450, 140), {}),
-        (None, 'Freifläche', (20, 390, 300, 140), {}),
-        ('alarm', 'Alarmanlage', (350, 390, 400, 140), {}),
+    page('Geräte & Mobilität', [
+        ('bambu_a1', 'Bambu mit allen Sensoren', (20, 20, 320, 520), {}),
+        ('vacuum', 'Saugroboter mit Extras', (360, 20, 280, 360), dict(secondary_entity_id='image.demo_robot_map', tertiary_entity_id='select.demo_cleaning_mode', default_mode='Auto')),
+        ('car', 'Auto mit allen Sensoren', (660, 20, 260, 540), dict(secondary_entity_id='sensor.demo_car_charging_power', tertiary_entity_id='sensor.demo_car_remaining_range', lock_entity_id='lock.demo_car_doors')),
+        ('wallbox', 'Wallbox mit allen Sensoren', (940, 20, 320, 540), {}),
     ])
     for kind, title in [('house_dashboard', 'Raumübersicht'), ('energy_dashboard', 'Energieseite')]:
         special = copy.deepcopy(next(p for p in gallery['pages'] if p.get('type') == kind))

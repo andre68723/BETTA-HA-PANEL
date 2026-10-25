@@ -6,10 +6,10 @@
 # (config/sdkconfig.defaults.autoupdate_test) that reports an OLDER version than the published release; see docs/development/release.md,
 # "Testing the automatic update".
 #
-#   tools/auto_update_device_test.sh <panel-ip> state        show the panel's automatic update status
-#   tools/auto_update_device_test.sh <panel-ip> install      install the published newer release now (the happy path)
-#   tools/auto_update_device_test.sh <panel-ip> rollback     fake an attempt, then flash a crashing image by hand when asked (the rollback path)
-#   tools/auto_update_device_test.sh <panel-ip> reset        forget the stored attempt and blocked version
+#   scripts/auto_update_device_test.sh <panel-ip> state        show the panel's automatic update status
+#   scripts/auto_update_device_test.sh <panel-ip> install      install the published newer release now (the happy path)
+#   scripts/auto_update_device_test.sh <panel-ip> rollback     fake an attempt, then flash a crashing image by hand when asked (the rollback path)
+#   scripts/auto_update_device_test.sh <panel-ip> reset        forget the stored attempt and blocked version
 #
 # Reads and writes the panel's settings (only ota.auto_install, which it switches on); set BETTA_PASSWORD when the panel has an admin password.
 set -euo pipefail
@@ -73,8 +73,8 @@ rollback)
     echo "before: $(running)"
     post /api/ota/auto-update-test '{"reset":true,"attempt":"v0.9.1-rc1-bad"}' >/dev/null
     echo "attempt stored: $(status_line)"
-    echo "Now flash the crashing image (version v0.9.1-rc1-bad) with tools/ota_flash.sh $ip <image>; the panel should crash, fall back and report rolled_back."
-    echo "Then:  tools/auto_update_device_test.sh $ip state   (after about two minutes; the panel shows a notice after about 90 s)"
+    echo "Now flash the crashing image (version v0.9.1-rc1-bad) with scripts/ota_flash.sh $ip <image>; the panel should crash, fall back and report rolled_back."
+    echo "Then:  scripts/auto_update_device_test.sh $ip state   (after about two minutes; the panel shows a notice after about 90 s)"
     ;;
 *)
     echo "unknown action $action" >&2

@@ -7,18 +7,20 @@ Read only the references needed for the task. Documentation source and navigatio
 
 ## Commands
 
+Direct entry points live in `scripts/`; internal checks, generators and shared modules live in `tools/`.
+
 | Task | Command |
 | --- | --- |
-| Daily checks | `uv run --locked --only-group checks tools/check.sh --changed` |
+| Daily checks | `uv run --locked --only-group checks scripts/check.sh --changed` |
 | Explain selection / fast stage / complete check level | Add `--list` / `--quick` / `--full --force` |
-| Widget overview, all sizes with logs and browser | `tools/test_pages.sh panel4 tab5 paneljc` |
+| Widget overview, all sizes with logs and browser | `scripts/test_pages.sh panel4 tab5 paneljc` |
 | Larger text layout | `python3 tools/check_widget_layout.py --variant tab5 --text-step 2` |
-| One SDL render | `tools/simulator.sh panel4 --fixture <file> --page <id> --style <style> --screenshot <file>` |
+| One SDL render | `scripts/simulator.sh panel4 --fixture <file> --page <id> --style <style> --screenshot <file>` |
 | Gallery / widget guides | `python3 tools/generate_simulator_gallery.py` / `python3 tools/generate_widget_docs.py` |
 | Strict docs | `uv run --locked --only-group docs zensical build --clean --strict` |
 | Documentation examples | `uv run --locked --group screenshots python tools/generate_docs_examples.py` |
-| One firmware variant | `tools/build.sh <variant> build` with ESP-IDF 6.1 active |
-| Explicit all-five build gate | `tools/check.sh --build` with ESP-IDF 6.1 active |
+| One firmware variant | `scripts/build.sh <variant> build` with ESP-IDF 6.1 active |
+| Explicit all-five build gate | `scripts/check.sh --build` with ESP-IDF 6.1 active |
 
 Only the existing check.sh stamp declarations map changed inputs to checks. Unmapped changes force the selected
 level. Logs and warnings remain available on cached runs. No JSON interface or additional dispatcher. SDL checks use the shared fixed test clock;
@@ -78,7 +80,7 @@ Panel10 and paneljc-v2 are compile-checked only; host/SDL success does not estab
   Keep the HTTP task at 14 KiB for screenshots. Follow the memory/watchdog rules in the learnings reference.
 - Preserve board-specific invariants in the hardware/component references, including GPIO23/reset and GT911 probe,
   single ST7703 DMA2D enable, current LVGL rotation/touch pairing and CPU/PPA profile distinctions.
-- Build through tools/build.sh, never bare idf.py. Variant manifests/locks are separate; managed_components and
+- Build through scripts/build.sh, never bare idf.py. Variant manifests/locks are separate; managed_components and
   generated main/idf_component.yml are not primary sources. Build variants serially because dependencies are shared.
 - Source modules should stay focused; review above 800 lines. 2999 is the hard ceiling except existing frozen
   legacy limits in check_source_sizes.py. Generated build-only bundles are not handwritten modules.

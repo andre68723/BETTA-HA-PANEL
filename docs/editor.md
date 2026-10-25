@@ -53,6 +53,11 @@ long press do); a section without options is left out. **Placement** comes last 
 its heading; it starts folded, since the canvas moves and sizes a widget by mouse. A click on a section heading folds it. Optional groups such as the Energy timeline's battery and forecast sensors fold and
 start open when something is set in them. A section with explanations has an info icon behind its heading;
 click it to read them in a popup. Close it with Escape, the Close button or a click outside.
+The device class comes from Home Assistant, for example **Temperature**, **Shutter**, **Speaker** or **Outlet**.
+It describes the selected entity, while **Room**, **Sensor** or **Cover** identifies the widget type.
+**No device class** means HA listed a class-capable entity without a class; domains such as locks and scenes
+do not receive that badge. Classes are informational here; the Sensor widget offers additional number,
+unit and time formats where applicable. Control actions follow the entity's supported features.
 The page inspector has the same form: the kind of page and its title (edit it in place), then **Navigation**
 for the bar icon, **Rooms** on a Room overview, and **Entities** and **Display** on an Energy dashboard, where battery
 and gas/water sensors fold.
@@ -62,9 +67,20 @@ its entities share; the entity ID is in the tooltip. The Energy page's sensors a
 in the settings use the same rows. A click opens the entity search, whose results match the field's allowed entity
 types. The entity that is set stays on top with **Keep**, and the search starts with its ID without the last word,
 which lists the other entities of the same device; typing replaces it. **Remove** clears an optional entity, and a
-typed ID that Home Assistant does not list can be used as it is; it is marked as not found once a completed search
+typed ID can be used only when it meets the field’s domain and metadata filters; it is marked as not found once a completed search
 does not list it. Room
 entities stay a list (choosing a result adds it); the extra field uses an entity already assigned to the card.
+
+Every search popup shows its active domains and field-specific filters, including when no entity matches.
+Fields that accept every entity of their domains say that no additional device-class filter applies.
+Temperature, power, range, battery, monetary and percentage fields use their corresponding measurements;
+Stocks & ETFs and Sonos targets also check their integration. The printer's field searches use its detected
+role assignments. Energy counters require suitable state classes, and electricity prices require a price series.
+Some meanings need your choice: **Monetary** does not distinguish portfolio value from fees, and an energy
+reading alone does not identify a forecast. Those limits are stated in the popup. Existing bindings are preserved.
+The **Entities** info icon explains source requirements, optional bindings and what to check when a chart stays empty.
+A confirmed mismatch shows only a short status; its field details are in that help popup. Missing cached metadata
+alone is not an incompatibility warning: open the entity search to load the source information.
 
 The Wallbox detects its bindings from the selected evcc loadpoint and instance. Its entity rows are read-only;
 with one loadpoint, a new blank widget selects it automatically. Enable missing entities in Home Assistant and
@@ -127,6 +143,8 @@ Saved layouts, language, appearance, text size and colours apply live. If the pa
 upload an image or enter an OTA URL, always for the exact variant of your display. Read the
 [upgrade notes](release-notes.md#upgrading-from-upstream-v082) first: bootloader and partition-table changes
 need USB, see [Install and set up](getting-started.md#update-later).
+
+
 
 ## Restart and crash reports
 

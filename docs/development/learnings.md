@@ -7,7 +7,7 @@ hold the newer widgets. Current variants are in [Display devices](../choose-disp
 ## Devices and flashing
 
 - Flash **one device at a time**; parallel OTA uploads or builds can hang a panel.
-- Pass the image to `tools/ota_flash.sh` explicitly. Without one it takes the newest `build/*/` binary, which is the
+- Pass the image to `scripts/ota_flash.sh` explicitly. Without one it takes the newest `build/*/` binary, which is the
   wrong variant right after another build (the panel refuses it, nothing is written).
 - Opening the USB serial port can reset the board (`idf.py monitor`, pyserial). Read `GET /api/log` (last 32 KB) and
   `GET /api/version` (memory, `cpu.load_percent`, `uptime_s`) over HTTP first.
@@ -25,7 +25,7 @@ hold the newer widgets. Current variants are in [Display devices](../choose-disp
 
 Host tests cover pure logic only; check UI and hardware on the device.
 
-- `GET /api/screenshot.bmp` (`tools/screenshot.sh`) returns the LVGL snapshot, popups included; it is not a physical framebuffer readback.
+- `GET /api/screenshot.bmp` (`scripts/screenshot.sh`) returns the LVGL snapshot, popups included; it is not a physical framebuffer readback.
 - `POST /api/navigate {"page":"<id>"}` switches the page without touch.
 - `POST /api/ui/tap {"widget":"<id>"}` or `{"close":true}` opens and closes a read-only popup (weather, energy
   timeline, room, solar, car, graph; sensor, binary and contact with history). It needs the admin login and cannot
@@ -134,9 +134,9 @@ keep stacks in PSRAM only for tasks that never touch flash. mbedTLS uses PSRAM
   an illegal instruction at `panic_abort` can be deliberate. Save the report metadata from `/api/version` and
   `GET /api/coredump?id=<id>`, then
   `python -m esp_coredump info_corefile -t raw -c core.bin build/<variant>/<app>.elf` with ESP-IDF active, against
-  the ELF of the firmware that ran. `tools/build.sh` keeps each successful build's ELF as
+  the ELF of the firmware that ran. `scripts/build.sh` keeps each successful build's ELF as
   `.local/elf/<variant>/<first 9 hex digits of its SHA256>.elf` (newest 12 per variant); the decoder's error names the
-  SHA the dump needs. A rebuild of the same commit does not match, so flash only images built through `tools/build.sh`.
+  SHA the dump needs. A rebuild of the same commit does not match, so flash only images built through `scripts/build.sh`.
   The two-report archive, PPA operation metadata and RTC marker limitations are in [Crash dumps](../coredump.md).
 
 - **Wallbox session timestamp (paneljc, 2026-10-12):** the saved dump matched ELF `51428e179` and showed

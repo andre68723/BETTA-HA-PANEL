@@ -14,7 +14,7 @@ function renderEntityOptions() {
   const secondaryConfig = secondaryEntityConfigForWidgetType(inspectorType);
   const tertiaryConfig = tertiaryEntityConfigForWidgetType(inspectorType);
   const inspectorOptions = listEntitiesForWidgetType(inspectorType, sliderDomain, buttonMode);
-  const primaryOptions = inspectorOptions.length > 0 ? inspectorOptions : editor.entities;
+  const primaryOptions = inspectorOptions.length > 0 || strictEntitySourceType(inspectorType) ? inspectorOptions : editor.entities;
   setEntityOptionsList(el.entityOptions, primaryOptions.slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS));
 
   setEntityOptionsList(
@@ -363,7 +363,7 @@ function updateInspectorPanels() {
     navWarning.hidden = issue === "";
     navWarning.textContent = issue ? t(`layout.pages.nav_icon_${issue}`, { max: fullNavPages() }) : "";
   }
-  if (heading) heading.textContent = t("layout.pages.inspector_heading", { title: page ? (page.title || page.id) : "" });
+  if (heading && page) heading.textContent = t(isHousePage(page) ? "layout.pages.menu_house" : isEnergyPage(page) ? "layout.pages.menu_energy" : "layout.pages.type_normal");
   const hint = document.getElementById("pageInspectorHint");
   if (hint) hint.hidden = !!page && isFixedPage(page); /* energy and house pages have no tiles to click */
   // Kept in sync with the current selection (not just set once) and left visible while scrolling
@@ -871,6 +871,7 @@ function alarmLoadInspector(widget) {
 }
 
 function renderInspector() {
+  refreshEntitySourceWarning();
   renderEnergyTimelineColors(selectedWidget());
   updateInspectorPanels();
   const widget = selectedWidget();
@@ -1297,6 +1298,7 @@ function renderInspector() {
 
   renderEntityOptions();
   refreshInspectorLayout();
+  refreshEntitySourceWarning(widget);
 }
 
 // "Panel follows": the page chosen in the editor is shown on the panel too (POST /api/navigate), off by default and
@@ -1414,9 +1416,12 @@ function refreshRoomExtraControls(primary, extras, mode, entityId) {
   el.fRoomExtraEntity.disabled = candidates.length === 0;
   if (el.fRoomExtraEntityWrap) el.fRoomExtraEntityWrap.classList.toggle("hidden", current === "default");
   if (el.fRoomExtraHint) {
-    el.fRoomExtraHint.textContent = current !== "default" && candidates.length === 0
-      ? t(`layout.inspector.room_extra_none_${ROOM_EXTRA_NONE_KEYS[current]}`)
-      : t("layout.inspector.room_extra_hint");
+    el.fRoomExtraHint.textContent = t("layout.inspector.room_extra_hint");
+  }
+  if (el.fRoomExtraWarning) {
+    const missing = current !== "default" && candidates.length === 0;
+    el.fRoomExtraWarning.hidden = !missing;
+    el.fRoomExtraWarning.textContent = missing ? t(`layout.inspector.room_extra_none_${ROOM_EXTRA_NONE_KEYS[current]}`) : "";
   }
 }
 
@@ -2373,34 +2378,37 @@ function autoApplyInspector(options = {}) {
   return result;
 }
 
-// A sensor or binary sensor names its device class (and unit) below the main entity: the tiles choose icons, state
-// texts, filters and the Sensor tile's time format from it. The Sensor tile offers the time format for a timestamp
+// Entity metadata names its device class and unit in the Inspector. The Sensor tile offers the time format for a timestamp
 // sensor (device_class timestamp, or a format saved before the entity list was loaded).
-function sensorEntityInfo(entityId) {
+function entityDisplayInfo(entityId) {
   if (!entityId) return {};
-  return editor.entities.find((entity) => entity?.id === entityId) || editor.stateMeta?.get(entityId) || {};
+  const listed = editor.entities.find((entity) => entity?.id === entityId) || {};
+  const live = editor.stateMeta?.get(entityId) || {};
+  return { ...listed, ...live, device_class: live.device_class || listed.device_class || "", unit: live.unit || listed.unit || "" };
 }
 
 function entityHasDeviceClass(entityId) {
-  return /^(sensor|binary_sensor)\./.test(entityId || "");
+  return /^(binary_sensor|button|cover|event|humidifier|media_player|number|sensor|switch|update|valve)\./.test(entityId || "");
 }
 
 // A binary sensor's class can mean something else than a sensor's of the same name (power: on/off, not watts).
 function deviceClassLabel(deviceClass, entityId = "") {
   if (!deviceClass) return "";
   const fallback = t(`device_class.${deviceClass}`, {}, deviceClass);
-  return String(entityId).startsWith("binary_sensor.") ? t(`device_class.binary.${deviceClass}`, {}, fallback) : fallback;
+  const domain = String(entityId).split(".")[0];
+  return t(`device_class.${domain === "binary_sensor" ? "binary" : domain}.${deviceClass}`, {}, fallback);
 }
 
 // "Device class: Temperature \u00B7 Unit: \u00B0C"; "none" only for an entity Home Assistant listed, so a list that is not
 // loaded yet shows nothing rather than a wrong "none".
-// The device class and unit of a sensor or binary sensor as chips below the entity field; "no device class" only
+// The device class and unit as chips in the header; "no device class" only
 // for an entity the panel lists, nothing while its list or state is not loaded.
 function entityClassChips(entityId) {
-  if (!entityHasDeviceClass(entityId)) return [];
   const listed = editor.entities.find((entity) => entity?.id === entityId);
-  const info = listed || editor.stateMeta?.get(entityId);
-  if (!info) return [];
+  if (!listed && !editor.stateMeta?.has(entityId)) return [];
+  const info = entityDisplayInfo(entityId);
+  // Report a supplied class even for a future/custom domain; only class-capable platforms get a "none" badge.
+  if (!entityHasDeviceClass(entityId) && !info.device_class) return [];
   const label = deviceClassLabel(info.device_class || "", entityId);
   if (!label && !listed) return [];
   const chips = [label ? { text: label, title: t("inspector.device_class") }
@@ -2431,7 +2439,7 @@ const SENSOR_NO_UNIT_CHOICE = ["timestamp", "date", "duration", "enum"];
 
 function sensorFormatChoices(widget, entityId) {
   if ((el.fType?.value || widget?.type) !== "sensor" || !entityId.startsWith("sensor.")) return null;
-  const dc = sensorEntityInfo(entityId).device_class || "";
+  const dc = entityDisplayInfo(entityId).device_class || "";
   if (SENSOR_FORMAT_CLASSES[dc]) return SENSOR_FORMAT_CLASSES[dc];
   const saved = widget?.sensor_format;
   if (dc || !saved) return null;
@@ -2440,7 +2448,7 @@ function sensorFormatChoices(widget, entityId) {
 
 function sensorUnitChoices(widget, entityId) {
   if ((el.fType?.value || widget?.type) !== "sensor" || !entityId.startsWith("sensor.")) return null;
-  const info = sensorEntityInfo(entityId);
+  const info = entityDisplayInfo(entityId);
   const dc = info.device_class || "";
   if (SENSOR_UNIT_CLASS_OF[dc]) return SENSOR_UNIT_CLASSES[SENSOR_UNIT_CLASS_OF[dc]];
   if (info.unit && !SENSOR_NO_UNIT_CHOICE.includes(dc)) return SENSOR_UNIT_CLASSES.plain;
@@ -2488,7 +2496,7 @@ function updateSensorEntityInfo(widget = selectedWidget()) {
   fillSensorChoice(el.fSensorFormat, el.fSensorFormatWrap, el.fSensorFormatLabel, format, "format",
     format ? shownWidget.sensor_format || format.values[0] : "", "");
   fillSensorChoice(el.fSensorUnit, el.fSensorUnitWrap, el.fSensorUnitLabel, unit, "unit",
-    shownWidget.sensor_unit || "", sensorEntityInfo(entityId).unit || "");
+    shownWidget.sensor_unit || "", entityDisplayInfo(entityId).unit || "");
 }
 
 // The bar-look choice (smooth/segmented) only means anything for the linear gauge style; the

@@ -5,7 +5,7 @@
 set -u
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 usage() {
-  echo 'usage: tools/check.sh [--quick|--full] [--changed] [--list] [--force] [--verbose] [--keep-going] [--build] [--group web|docs|host|sim-panel4|sim-paneljc|sim-tab5]'
+  echo 'usage: scripts/check.sh [--quick|--full] [--changed] [--list] [--force] [--verbose] [--keep-going] [--build] [--group web|docs|host|sim-panel4|sim-paneljc|sim-tab5]'
 }
 build=0; full=0; quick=0; changed=0; list=0; force=0; verbose=0; keep=0; group=""
 while [ $# -gt 0 ]; do
@@ -26,7 +26,7 @@ status=0; passed=0; cached=0; missing=0; warned=0; selected=0; fallback=0; plann
 logdir="${BETTA_CHECK_LOG_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/betta-check.XXXXXX")}"
 stampdir="build/check-stamps"; mkdir -p "$logdir" "$stampdir"
 rm -f "$logdir"/.files-*
-common="tools/check.sh pyproject.toml uv.lock .gitignore"
+common="scripts/check.sh pyproject.toml uv.lock .gitignore"
 sha() { shasum -a 256 "$@"; }
 # Include tool identities as well as locked inputs; CI never reuses local stamps.
 runtime=$( {
@@ -108,15 +108,15 @@ checks() {
   if in_group web; then
     REQUIRE=node step 'editor JavaScript syntax' 'components/webui/www/js' bash -c 'for f in components/webui/www/js/*.js; do node --check "$f" || exit 1; done'
     REQUIRE=node step 'editor unit tests' 'components/webui tests/webui main tools/editor_local CMakeLists.txt docs/widgets' bash -c 'node --test tests/webui/*.test.mjs'
-    step 'tooling tests' 'tools tests/tools components/webui tests/simulator main/layout' python3 -m unittest discover -s tests/tools -p 'test_*.py'
+    step 'tooling tests' 'tools scripts tests/tools components/webui tests/simulator main/layout' python3 -m unittest discover -s tests/tools -p 'test_*.py'
     SKIP_RC=2 SKIP_WHY='fontTools not installed' step 'font subsets' 'tools/generate_widget_fonts.py main/ui/fonts components/webui/www/styles.css' python3 tools/generate_widget_fonts.py --check
-    step 'source file sizes' 'main components/webui tools tests/host tests/webui tests/tools' python3 tools/check_source_sizes.py
+    step 'source file sizes' 'main components/webui tools scripts tests/host tests/webui tests/tools' python3 tools/check_source_sizes.py
     step 'simulator layout fields' 'main tests/simulator tools/check_simulator_fields.py' python3 tools/check_simulator_fields.py
     step 'test page cases' 'main/layout tools tests/simulator' python3 tools/test_layouts.py check
     step 'gallery freshness' "$sim_inputs docs/img/gallery tools/gallery_freshness.py" python3 tools/gallery_freshness.py
   fi
   if in_group web || in_group docs; then
-    step 'HTML and translation tables' 'components/webui main tools docs README.md AGENTS.md CLAUDE.md .github/workflows' python3 tools/check_web.py
+    step 'HTML and translation tables' 'components/webui main tools scripts docs README.md AGENTS.md CLAUDE.md .github/workflows' python3 tools/check_web.py
     step 'documentation page sizes' 'docs tools/check_source_sizes.py' python3 tools/check_source_sizes.py --docs
   fi
   if ((!quick)); then
@@ -129,7 +129,7 @@ checks() {
       in_group "sim-$variant" || continue
       REQUIRE='cmake sdl2-config' step "simulator regressions $variant" "$sim_inputs" bash -c '
         for r in controls wallbox bambu history energy fonts notification price parqet; do
-          tools/simulator.sh "$0" --regression "$r" || exit 1
+          scripts/simulator.sh "$0" --regression "$r" || exit 1
         done' "$variant"
       for s in $steps; do
         REQUIRE='cmake sdl2-config' step "widget layout $variant step $s" "$sim_inputs" python3 tools/check_widget_layout.py --variant "$variant" --text-step "$s"
@@ -144,12 +144,12 @@ checks() {
   if ((build)) && [ -z "$group" ]; then
     local variant
     for variant in panel4 panel10 paneljc paneljc-v2 tab5; do
-      REQUIRE=idf.py NO_CACHE=1 step "build $variant" 'main components config third_party CMakeLists.txt dependencies.lock dependencies.lock.panel10 dependencies.lock.paneljc dependencies.lock.tab5 tools/build.sh tools/apply_component_patches.py' bash -ec 'tools/build.sh "$0" build; case "$0" in panel4|panel10) want=32MB;; *) want=16MB;; esac; head -1 "build/$0/flash_args" | grep -q -- "--flash-size $want"' "$variant"
+      REQUIRE=idf.py NO_CACHE=1 step "build $variant" 'main components config third_party CMakeLists.txt dependencies.lock dependencies.lock.panel10 dependencies.lock.paneljc dependencies.lock.tab5 scripts/build.sh tools/apply_component_patches.py' bash -ec 'scripts/build.sh "$0" build; case "$0" in panel4|panel10) want=32MB;; *) want=16MB;; esac; head -1 "build/$0/flash_args" | grep -q -- "--flash-size $want"' "$variant"
     done
   fi
 }
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-dummy}" SDL_RENDER_DRIVER="${SDL_RENDER_DRIVER:-software}"
-sim_inputs='main tests/simulator tools/simulator.sh tools/check_widget_layout.py tools/check_readability.py tools/ui_styles.py tools/generate_simulator_gallery.py tools/gallery_content.py tools/widget_cases.py tools/test_layout_cases.json tools/test_layout_entities_demo.json'
+sim_inputs='main tests/simulator scripts/simulator.sh tools/check_widget_layout.py tools/check_readability.py tools/ui_styles.py tools/generate_simulator_gallery.py tools/gallery_content.py tools/widget_cases.py tools/test_layout_cases.json tools/test_layout_entities_demo.json'
 changed_files=()
 # Register inputs first without executing checks; reuse these exact lists for selection.
 checks

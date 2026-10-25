@@ -29,9 +29,9 @@ updater ([adapter policy](https://github.com/andre68723/BETTA-HA-PANEL/blob/main
 ## Build and flash a variant
 
 ```bash
-tools/build.sh panel4 build
-tools/build.sh panel4 -p <port> flash monitor       # exit the monitor with Ctrl+]
-tools/package_release.sh <built-version> panel4     # factory and OTA files plus SHA256SUMS in release/out/<version>/
+scripts/build.sh panel4 build
+scripts/build.sh panel4 -p <port> flash monitor       # exit the monitor with Ctrl+]
+scripts/package_release.sh <built-version> panel4     # factory and OTA files plus SHA256SUMS in release/out/<version>/
 ```
 
 Variants: `panel4`, `panel10`, `paneljc`, `paneljc-v2`, `tab5`. `package_release.sh` checks the version the build
@@ -61,7 +61,7 @@ shasum -a 256 betta86-ha-panel-v0.9.0-panel4.factory.bin
 
 ## Rules for builds and flashing
 
-- **Always go through `tools/build.sh <variant> [idf.py arguments]`.** It passes the full define set, selects target,
+- **Always go through `scripts/build.sh <variant> [idf.py arguments]`.** It passes the full define set, selects target,
   manifest, config overlays and `build/<variant>/`. A bare `idf.py` resets the CMake cache to the root default (panel4,
   32 MB flash), and that image boot-loops on a 16 MB board.
 - The configuration comes from `config/sdkconfig.defaults*` into `build/<variant>/sdkconfig` (git-ignored). Never edit it;
@@ -73,7 +73,7 @@ shasum -a 256 betta86-ha-panel-v0.9.0-panel4.factory.bin
 ## Flash over Wi-Fi
 
 ```bash
-tools/ota_flash.sh <panel-ip> build/paneljc/betta-ha-panel-jc.bin
+scripts/ota_flash.sh <panel-ip> build/paneljc/betta-ha-panel-jc.bin
 ```
 
 Before it uploads, the script refuses an image that is older than a file in `main/`, `components/` or `config/`
@@ -89,7 +89,7 @@ written: a new bootloader or table and the first flash of a blank board need USB
 
 An OTA writes only the app slot, so a new table needs one USB flash. `nvs` (0x9000, 24 KiB), `otadata` and `phy_init`
 have not moved in any table of this fork, so Wi-Fi/HA/MQTT passwords and the admin login survive a flash that leaves
-that range alone: `tools/build.sh <variant> -p <port> flash` does, the combined `*.factory.bin` erases the NVS range.
+that range alone: `scripts/build.sh <variant> -p <port> flash` does, the combined `*.factory.bin` erases the NVS range.
 A `storage` partition that moves or resizes is not found at its new place: the first boot formats an empty LittleFS and
 layout, settings, themes and graph history are gone (it sits at 0xD60000 now). To carry the files over:
 

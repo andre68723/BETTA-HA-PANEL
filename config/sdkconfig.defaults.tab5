@@ -3,7 +3,7 @@
 #
 # Panel variant overlay: M5Stack Tab5 (ESP32-P4 + ESP32-C6, 5" 1280x720). PLANNED: builds, NOT YET RUN ON HARDWARE.
 # Apply together with the common sdkconfig.defaults via
-#   tools/build.sh tab5 build
+#   scripts/build.sh tab5 build
 # Display and touch come from Espressif's m5stack_tab5 BSP (ILI9881C + GT911, or the integrated ST7123/ST7121, depending on the
 # unit); native portrait 720x1280, rotated to landscape by LVGL (display_init_tab5.c). Wi-Fi: ESP-Hosted over SDIO.
 

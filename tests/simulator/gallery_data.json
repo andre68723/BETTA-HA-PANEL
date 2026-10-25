@@ -472,14 +472,16 @@
             "value": 2113.62,
             "weight": 4.0
           }
-        ]
+        ],
+        "device_class": "monetary"
       }
     },
     {
       "entity_id": "sensor.demo_portfolio_gain",
       "state": "8425.1",
       "attributes": {
-        "unit_of_measurement": "EUR"
+        "unit_of_measurement": "EUR",
+        "device_class": "monetary"
       }
     },
     {
@@ -493,7 +495,8 @@
       "entity_id": "sensor.demo_portfolio_dividends",
       "state": "1820.4",
       "attributes": {
-        "unit_of_measurement": "EUR"
+        "unit_of_measurement": "EUR",
+        "device_class": "monetary"
       }
     },
     {
@@ -507,14 +510,17 @@
       "entity_id": "sensor.demo_evcc_energy",
       "state": "12.8",
       "attributes": {
-        "unit_of_measurement": "kWh"
+        "unit_of_measurement": "kWh",
+        "device_class": "energy",
+        "state_class": "total_increasing"
       }
     },
     {
       "entity_id": "sensor.demo_evcc_remaining",
       "state": "13980",
       "attributes": {
-        "unit_of_measurement": "s"
+        "unit_of_measurement": "s",
+        "device_class": "duration"
       }
     },
     {
@@ -556,14 +562,16 @@
       "entity_id": "sensor.demo_evcc_power",
       "state": "7.4",
       "attributes": {
-        "unit_of_measurement": "kW"
+        "unit_of_measurement": "kW",
+        "device_class": "power"
       }
     },
     {
       "entity_id": "sensor.demo_evcc_soc",
       "state": "62.187",
       "attributes": {
-        "unit_of_measurement": "%"
+        "unit_of_measurement": "%",
+        "device_class": "battery"
       }
     },
     {
@@ -596,14 +604,16 @@
       "entity_id": "sensor.demo_printer_nozzle",
       "state": "220",
       "attributes": {
-        "unit_of_measurement": "°C"
+        "unit_of_measurement": "°C",
+        "device_class": "temperature"
       }
     },
     {
       "entity_id": "sensor.demo_printer_bed",
       "state": "65",
       "attributes": {
-        "unit_of_measurement": "°C"
+        "unit_of_measurement": "°C",
+        "device_class": "temperature"
       }
     },
     {
@@ -617,7 +627,8 @@
       "entity_id": "sensor.demo_printer_remaining",
       "state": "22",
       "attributes": {
-        "unit_of_measurement": "min"
+        "unit_of_measurement": "min",
+        "device_class": "duration"
       }
     },
     {
@@ -645,7 +656,8 @@
       "state": "21.8",
       "attributes": {
         "unit_of_measurement": "°C",
-        "friendly_name": "Living room temperature"
+        "friendly_name": "Living room temperature",
+        "device_class": "temperature"
       },
       "display_precision": 1
     },
@@ -653,7 +665,8 @@
       "entity_id": "switch.demo_lamp",
       "state": "on",
       "attributes": {
-        "friendly_name": "Lamp"
+        "friendly_name": "Lamp",
+        "device_class": "outlet"
       }
     },
     {
@@ -662,7 +675,8 @@
       "attributes": {
         "current_position": 42,
         "supported_features": 15,
-        "friendly_name": "Blind"
+        "friendly_name": "Blind",
+        "device_class": "blind"
       }
     },
     {
@@ -670,7 +684,8 @@
       "state": "68",
       "attributes": {
         "unit_of_measurement": "%",
-        "friendly_name": "Humidity"
+        "friendly_name": "Humidity",
+        "device_class": "humidity"
       }
     },
     {
@@ -678,7 +693,8 @@
       "state": "2450",
       "attributes": {
         "unit_of_measurement": "W",
-        "friendly_name": "Power"
+        "friendly_name": "Power",
+        "device_class": "power"
       }
     },
     {
@@ -905,7 +921,8 @@
       "entity_id": "sensor.demo_solar_remaining",
       "state": "25.49",
       "attributes": {
-        "unit_of_measurement": "kWh"
+        "unit_of_measurement": "kWh",
+        "device_class": "energy"
       },
       "display_precision": 2
     },
@@ -913,42 +930,48 @@
       "entity_id": "sensor.demo_solar_today",
       "state": "54.8",
       "attributes": {
-        "unit_of_measurement": "kWh"
+        "unit_of_measurement": "kWh",
+        "device_class": "energy"
       }
     },
     {
       "entity_id": "sensor.demo_solar_tomorrow",
       "state": "53.2",
       "attributes": {
-        "unit_of_measurement": "kWh"
+        "unit_of_measurement": "kWh",
+        "device_class": "energy"
       }
     },
     {
       "entity_id": "sensor.demo_solar_day_3",
       "state": "41.1",
       "attributes": {
-        "unit_of_measurement": "kWh"
+        "unit_of_measurement": "kWh",
+        "device_class": "energy"
       }
     },
     {
       "entity_id": "sensor.demo_solar_day_4",
       "state": "47.4",
       "attributes": {
-        "unit_of_measurement": "kWh"
+        "unit_of_measurement": "kWh",
+        "device_class": "energy"
       }
     },
     {
       "entity_id": "sensor.demo_solar_day_5",
       "state": "41.9",
       "attributes": {
-        "unit_of_measurement": "kWh"
+        "unit_of_measurement": "kWh",
+        "device_class": "energy"
       }
     },
     {
       "entity_id": "sensor.demo_car_battery",
       "state": "67",
       "attributes": {
-        "unit_of_measurement": "%"
+        "unit_of_measurement": "%",
+        "device_class": "battery"
       }
     },
     {
@@ -960,7 +983,8 @@
       "entity_id": "sensor.demo_car_interior_temperature",
       "state": "21",
       "attributes": {
-        "unit_of_measurement": "°C"
+        "unit_of_measurement": "°C",
+        "device_class": "temperature"
       }
     },
     {
@@ -976,14 +1000,16 @@
         "media_duration": 210,
         "media_position": 84,
         "volume_level": 0.42,
-        "is_volume_muted": false
+        "is_volume_muted": false,
+        "device_class": "speaker"
       }
     },
     {
       "entity_id": "media_player.demo_sonos",
       "state": "playing",
       "attributes": {
-        "friendly_name": "Living room Sonos"
+        "friendly_name": "Living room Sonos",
+        "device_class": "speaker"
       }
     },
     {
@@ -1118,7 +1144,8 @@
       "state": "82",
       "attributes": {
         "unit_of_measurement": "%",
-        "friendly_name": "Robot battery"
+        "friendly_name": "Robot battery",
+        "device_class": "battery"
       }
     },
     {
@@ -1680,7 +1707,8 @@
         "price_is_live": false,
         "traded_today": true,
         "unit_of_measurement": "EUR",
-        "friendly_name": "MSCI World"
+        "friendly_name": "MSCI World",
+        "device_class": "monetary"
       }
     },
     {
@@ -1698,7 +1726,8 @@
         "regularMarketPrice": 379.5,
         "regularMarketTime": 1792598400,
         "unit_of_measurement": "EUR",
-        "friendly_name": "Allianz"
+        "friendly_name": "Allianz",
+        "device_class": "monetary"
       }
     },
     {
@@ -1716,7 +1745,8 @@
         "regularMarketPrice": 245.2,
         "regularMarketTime": 1792598400,
         "unit_of_measurement": "USD",
-        "friendly_name": "Apple"
+        "friendly_name": "Apple",
+        "device_class": "monetary"
       }
     },
     {
@@ -1734,7 +1764,8 @@
         "regularMarketPrice": 1234.5,
         "regularMarketTime": 1792598400,
         "unit_of_measurement": "GBp",
-        "friendly_name": "London Demo plc"
+        "friendly_name": "London Demo plc",
+        "device_class": "monetary"
       }
     },
     {
@@ -1753,7 +1784,8 @@
         "price_is_live": false,
         "traded_today": true,
         "unit_of_measurement": "EUR",
-        "friendly_name": "Emerging Markets"
+        "friendly_name": "Emerging Markets",
+        "device_class": "monetary"
       }
     },
     {
@@ -1790,6 +1822,56 @@
         "unit_of_measurement": "W",
         "device_class": "power",
         "friendly_name": "demo evcc home power"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_grid_import",
+      "state": "1250",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "friendly_name": "Grid import"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_grid_export",
+      "state": "835",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "friendly_name": "Grid export"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_solar_production",
+      "state": "4260",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "friendly_name": "Solar production"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_battery_charge",
+      "state": "1650",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "friendly_name": "Battery charge"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_battery_discharge",
+      "state": "1520",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "friendly_name": "Battery discharge"
       }
     }
   ],

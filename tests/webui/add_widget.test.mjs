@@ -10,10 +10,15 @@ test("each entity domain offers the widgets that can show it, best first", () =>
   const { fn, run } = loadEditor();
   const suggest = fn("entityFirstSuggestions");
   // Arrays from the vm context have their own prototype; copy them before a deep comparison.
-  const types = (id, dc) => Array.from(suggest(id, dc), (choice) => choice.type);
-  assert.deepEqual(types("light.lamp"), ["light_tile", "button", "slider"]);
+  const types = (id, dc, meta) => Array.from(suggest(id, dc, meta), (choice) => choice.type);
+  assert.deepEqual(types("light.lamp", "", {capabilities:{dimming:true}}), ["light_tile", "slider"]);
+  assert.deepEqual(types("light.relay", "", {capabilities:{dimming:false}}), ["light_tile"]);
+  assert.deepEqual(types("image.map"), ["camera_tile"]);
   assert.deepEqual(types("climate.ac"), ["heating_tile", "climate_tile"]);
-  assert.deepEqual(types("sensor.power"), ["sensor", "graph"]);
+  assert.deepEqual(types("sensor.power", "power", {unit:"W"}), ["sensor", "graph"]);
+  assert.deepEqual(types("sensor.status", "enum"), ["sensor"]);
+  assert.deepEqual(types("cover.relay", "", {supported_features:3}), ["cover_tile"]);
+  assert.deepEqual(types("cover.position", "", {supported_features:7}), ["cover_tile", "slider"]);
   assert.deepEqual(types("unknown_domain.x"), []);
   const door = suggest("binary_sensor.front", "door");
   assert.equal(door[0].type, "binary_tile");

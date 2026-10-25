@@ -28,7 +28,7 @@ and ß; English stays ASCII apart from °. The checker enforces this; dropped la
 
 ## New widget types
 
-`tools/check.sh --changed` checks every type from `main/layout/widget_types.c` in these places:
+`scripts/check.sh --changed` checks every type from `main/layout/widget_types.c` in these places:
 
 - `factory.create`, `factory.apply_state`, `factory.mark_unavailable`: dispatch in `main/ui/ui_widget_factory.c`.
 - `editor.add`: a plain or picker Add action bound in `js/bind.js`, or one named custom handler it calls.

@@ -760,6 +760,10 @@ static void test_ha_attr_serializers(void)
          "{\"brightness\":128,\"effect_list\":[\"A\",\"B\"],\"unused\":123}", "brightness", "unused"},
         {ha_client_serialize_cover_attrs_compact,
          "{\"current_position\":50,\"unused\":123}", "current_position", "unused"},
+        {ha_client_serialize_cover_attrs_compact,
+         "{\"device_class\":\"shutter\",\"unused\":123}", "device_class", "unused"},
+        {ha_client_serialize_media_player_attrs_compact,
+         "{\"device_class\":\"speaker\",\"unused\":123}", "device_class", "unused"},
         {ha_client_serialize_fan_attrs_compact,
          "{\"percentage\":80,\"unused\":123}", "percentage", "unused"},
         {ha_client_serialize_image_attrs_compact,
@@ -2138,6 +2142,7 @@ static void test_discovery_domains(void)
     CHECK(!ha_discovery_entity_matches("cover_x.garage", "cover"));
     CHECK(ha_discovery_entity_matches("light.a", "nope")); /* unknown domain falls back to light */
     CHECK(ha_discovery_entity_matches("input_boolean.guest", "any"));
+    CHECK(ha_discovery_entity_matches("image.map", "any"));
     CHECK(!ha_discovery_entity_matches("input_boolean.guest", "room"));
     CHECK(ha_discovery_entity_matches("vacuum.robot", "room"));
     CHECK(!ha_discovery_entity_matches("automation.x", "any"));
@@ -2147,7 +2152,7 @@ static void test_discovery_domains(void)
     char jinja[384]; /* as ha_client.c */
     CHECK(ha_discovery_domains_jinja("any", jinja, sizeof(jinja)));
     CHECK(strcmp(jinja, "['sensor','binary_sensor','light','cover','fan','climate','media_player','lock','alarm_control_panel','switch',"
-                        "'input_boolean','weather','vacuum','camera','event','scene','script','button','input_button',"
+                        "'input_boolean','weather','vacuum','camera','image','event','scene','script','button','input_button',"
                         "'todo','select','input_select','input_datetime','time','date','datetime']") == 0);
     CHECK(ha_discovery_domains_jinja("room", jinja, sizeof(jinja)));
     CHECK(strcmp(jinja, "['sensor','binary_sensor','light','cover','fan','climate','media_player','lock','switch',"

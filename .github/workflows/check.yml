@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The groups of tools/check.sh run as parallel jobs: the simulator regressions and the layout at all three text
+        # The groups of scripts/check.sh run as parallel jobs: the simulator regressions and the layout at all three text
         # steps of one variant each, then the host tests and the web checks.
         group: [web, host, sim-panel4, sim-paneljc, sim-tab5]
     steps:
@@ -46,4 +46,4 @@ jobs:
           version: '0.12.21'
           python-version: '3.13'
           enable-cache: false
-      - run: uv run --locked --only-group checks tools/check.sh --group "$CHECK_GROUP"
+      - run: uv run --locked --only-group checks scripts/check.sh --group "$CHECK_GROUP"

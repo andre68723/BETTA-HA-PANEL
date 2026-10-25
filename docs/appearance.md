@@ -48,14 +48,16 @@ level. Those gradients stay meaningful in every style, including Flat and Matte.
 
 ## Button colours
 
-The active theme colour (gold in Classic) marks an **active function or selected option**.
+The theme accent (gold in Classic) marks an **active function, selected option or an explicitly highlighted primary action**.
+The media player's central **Play/Pause** button stays accented while available, including when paused or stopped;
+its symbol shows the next action. Previous and Next stay neutral.
 A selected charging mode stays highlighted even when it is **Off** or the car is not charging.
-Play/Pause, vacuum Start/Pause and printer Pause/Resume are highlighted while the process runs;
+Vacuum Start/Pause and printer Pause/Resume are highlighted while the process runs;
 they become neutral when paused or stopped. Car preconditioning is highlighted while switched on.
 
 Buttons that open a list, adjust a value or trigger a scene stay neutral. Inside a list, the
-selected option is highlighted. A primary action keeps its prominent position without a permanent
-highlight. Unavailable controls are dimmed. The printer's **Abort** action is separate from
+selected option is highlighted. Other primary controls keep their prominent position and follow their state.
+Unavailable controls are dimmed and lose their accent. The printer's **Abort** action is separate from
 Pause/Resume, uses the danger colour and asks for confirmation before ending the print.
 
 ## Optional widget names
@@ -69,6 +71,7 @@ still use the name to identify its entity. The preference applies to every style
 In the layout editor, **Text size** in the header makes all text on the panel
 larger: **Standard**, **Larger** or **Largest**. It applies at once, without a restart, to the dashboard, the
 bars, popups and notifications.
+The info icon beside the selector explains the text sizes and shows their comparison.
 
 Names stay smaller than values, so the hierarchy is kept. A tile that is too small for larger text keeps a
 smaller size instead of overlapping, so a compact sensor may stay at Standard while a wide weather tile

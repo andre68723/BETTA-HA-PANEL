@@ -844,7 +844,7 @@
             <option value="2">Largest</option>
           </select>
           <details id="layoutTextSizeDetails">
-            <summary id="layoutTextSizeInfoBtn" title="Text sizes on this panel" aria-label="Text sizes on this panel">&#9432;</summary>
+            <summary id="layoutTextSizeInfoBtn" class="inspector-info-btn" title="Text sizes on this panel" aria-label="Text sizes on this panel" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></svg></summary>
             <div id="settingsUiTextStepInfo" class="meta no-shorten" aria-live="polite"></div>
           </details>
           <label class="layout-follow-page" id="followPageLabel" title="Show the page chosen here on the panel too">
@@ -1082,6 +1082,8 @@
                     <option value="camera_tile">camera_tile</option>
                     <option value="fan_tile">fan_tile</option>
                   </select>
+                  <div id="entitySourceHint" class="meta hidden"></div>
+                  <div id="entitySourceWarning" class="meta warn no-shorten hidden"></div>
                   <label id="fEntityWrap"><span id="fEntityLabel">Entity</span>
                     <div class="entity-input-row">
                       <input id="fEntity" type="text" list="entityOptions" />
@@ -1214,7 +1216,8 @@
                         <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="room_extra">Search</button>
                       </div>
                     </label>
-                    <div class="meta no-shorten" id="fRoomExtraHint"></div>
+                    <div class="meta" id="fRoomExtraHint"></div>
+                    <div class="meta warn no-shorten" id="fRoomExtraWarning" role="status" hidden></div>
                     <label class="row">
                       <input id="fRoomControls" type="checkbox" />
                       <span id="fRoomControlsLabel">Controls on the card</span>
@@ -1848,6 +1851,7 @@
       </div>
       <div id="lightEntityPickerCurrent" class="entity-picker-current hidden"></div>
       <input id="lightEntityPickerSearch" class="light-picker-search" type="search" placeholder="Search entities" maxlength="63" />
+      <div id="lightEntityPickerFilter" class="meta no-shorten"></div>
       <div id="lightEntityPickerStatus" class="meta"></div>
       <div id="lightEntityPickerProgress" class="entity-picker-progress hidden" aria-hidden="true">
         <div class="entity-picker-progress-track">
@@ -1895,6 +1899,7 @@
         <h2 id="addTileTitle">Add a tile</h2>
         <button id="addTileCloseBtn" class="btn small" type="button">X</button>
       </div>
+      <div id="addTileFilter" class="meta no-shorten"></div>
       <input id="addTileSearch" class="light-picker-search" type="search" placeholder="Search a tile type or a Home Assistant entity" maxlength="63" />
       <div id="addTileTypes" class="add-tile-types">
         <div class="add-tile-group">
@@ -1996,6 +2001,7 @@
   <script src="/js/settings.js"></script>
   <script src="/js/brightness-test.js"></script>
   <script src="/js/update-check.js"></script>
+  <script src="/js/entity-search-rules.js"></script>
   <script src="/js/layout-model.js"></script>
   <script src="/js/pickers.js"></script>
   <script src="/js/readability.js"></script>

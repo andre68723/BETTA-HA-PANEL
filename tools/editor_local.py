@@ -6,14 +6,16 @@ import argparse
 import copy
 import json
 from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from http.server import SimpleHTTPRequestHandler
 from pathlib import Path
 import threading
 import time
 import math
+import sys
+import webbrowser
 from urllib.parse import parse_qs, urlsplit
 
-from generate_docs_examples import WWW, demo_api, fixtures
+from generate_docs_examples import DemoHTTPServer, WWW, demo_api, fixtures
 from generate_simulator_gallery import DATA, GEOMETRY, demo_page, prepare_fixture
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -262,9 +264,22 @@ def build_server(port=8766, variant='paneljc', fixture_path=None, state_path=Non
         do_POST = mutation
         do_DELETE = mutation
 
-    server = ThreadingHTTPServer(('127.0.0.1', port), partial(Handler, directory=str(WWW)))
+    server = DemoHTTPServer(('127.0.0.1', port), partial(Handler, directory=str(WWW)))
     server.local_store = store
     return server
+
+
+def open_browser_on_enter(url):
+    try:
+        input('Press Enter to open the editor in your default browser. Ctrl+C stops the server.\n')
+    except EOFError:
+        return
+    try:
+        opened = webbrowser.open(url)
+    except (webbrowser.Error, OSError):
+        opened = False
+    if not opened:
+        print(f'Could not open the browser. Open {url} manually.', flush=True)
 
 
 def main():
@@ -272,22 +287,28 @@ def main():
     parser.add_argument('--port', type=int, default=8766, help='localhost port (default 8766; 0 chooses a free port)')
     parser.add_argument('--variant', choices=sorted(GEOMETRY), default='paneljc')
     parser.add_argument('--fixture', type=Path, help='layout JSON; optional synthetic states array')
-    parser.add_argument('--demo', choices=('all',), help='all widget types with populated optional bindings; wide boards only')
-    parser.add_argument('--state-file', type=Path, help='local persistence file (default .local/editor-local/<variant>-state.json)')
+    parser.add_argument('--demo', choices=('all', 'compact'),
+                        help='demo layout (default: all widgets on wide boards, compact on panel4); all requires a wide board')
+    parser.add_argument('--state-file', type=Path, help='local persistence file (default: separate per variant and demo)')
     parser.add_argument('--spike', type=Path, help='optional local spike adapter directory')
     parser.add_argument('--ui', choices=('classic', 'spike'), default='classic',
                         help='initial view; spike loads the bundled local prototype unless --spike overrides it')
     parser.add_argument('--reset', action='store_true', help='replace local saved state with the supplied/default fixture')
     args = parser.parse_args()
+    all_widgets = args.demo == 'all' or (args.demo is None and args.fixture is None and args.variant != 'panel4')
     try:
         server = build_server(args.port, args.variant, args.fixture, args.state_file, args.spike, args.ui, args.reset,
-                              all_widgets=args.demo == 'all')
+                              all_widgets=all_widgets)
     except (OSError, ValueError) as error:
         parser.exit(2, f'Cannot start local editor: {error}\n')
     url = f'http://127.0.0.1:{server.server_port}/'
-    print(f'Local editor: {url}?ui={args.ui}', flush=True)
+    print(f'Local editor: {url}', flush=True)
+    if all_widgets:
+        print('Demo: all widget types with optional bindings. Use --reset to reload it instead of a local save.', flush=True)
     if args.spike or args.ui == 'spike': print(f'View switch: {url}?ui=classic / {url}?ui=spike', flush=True)
     print(f'Local saves: {server.local_store.path}\nSources served live; refresh the browser after edits. Ctrl+C stops the server.', flush=True)
+    if sys.stdin.isatty():
+        threading.Thread(target=open_browser_on_enter, args=(url,), daemon=True).start()
     try: server.serve_forever()
     except KeyboardInterrupt: pass
     finally: server.server_close()

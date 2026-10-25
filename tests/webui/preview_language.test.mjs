@@ -46,6 +46,22 @@ test("price preview keeps the interval on its own row and one day toggle on a na
   assert.match(fn("tilePreviewMarkup")({ ...tile, rect: { w: 680, h: 300 } }), /Tomorrow/);
 });
 
+test("wallbox distinguishes a guest assignment from an unplugged vehicle in both languages", () => {
+  const { fn, run } = loadEditor();
+  const widget = { type: "wallbox_evcc", id: "w", rect: { w: 360, h: 460 },
+    evcc_vehicle_entity_id: "select.car", evcc_connected_entity_id: "binary_sensor.connected" };
+  for (const [language, guest, none] of [["en", "Guest vehicle", "No vehicle"], ["de", "Gastfahrzeug", "Kein Fahrzeug"]]) {
+    run(`editor.i18nMap=WEB_I18N_BUILTIN.${language}; editor.states.set('select.car','null'); editor.states.set('binary_sensor.connected','on');`);
+    let markup = fn("evccPreviewMarkup")(widget);
+    assert.ok(markup.includes(guest)); assert.ok(!markup.includes(none));
+    run("editor.states.set('select.car','ev1'); editor.stateMeta.set('select.car',{vehicle_name:'Demo car'})");
+    assert.match(fn("evccPreviewMarkup")(widget), /Demo car/);
+    run("editor.states.set('binary_sensor.connected','off')");
+    markup = fn("evccPreviewMarkup")(widget);
+    assert.ok(markup.includes(none)); assert.ok(!markup.includes(guest));
+  }
+});
+
 test("wallbox headers follow the panel's height threshold and never invent missing power", () => {
   const { fn, run } = loadEditor();
   run("editor.i18nMap = WEB_I18N_BUILTIN.en");

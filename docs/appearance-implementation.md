@@ -50,15 +50,18 @@ not use it to invent another meaning for accent colours. The editor mirrors thes
 | `UI_CONTROL_ACTION` | Neutral action or picker opener | Next, volume +/−, scene, cleaning-mode list |
 | `UI_CONTROL_ACTIVE` | Function on or process running | Playback, vacuum cleaning/returning, printer running, preconditioning |
 | `UI_CONTROL_SELECTED` | Current choice, including an Off option | Charging mode, chart interval, list option |
+| `UI_CONTROL_PRIMARY` | Main action accented independently of state | Media player Play/Pause |
 | `UI_CONTROL_DANGER` | Destructive action | Abort print, separate from Pause/Resume |
 
-Active and selected use the theme's `state_on` accent mixed with the active control surface,
+Primary, active and selected use the theme's `state_on` accent mixed with the active control surface,
 including in Matte. Disabled controls use the neutral surface and muted text; they cannot invoke
 services. Custom accents may replace the active hue, never the condition for activation.
 The shared helper derives foreground contrast and press feedback from the surface.
 
-Primary describes the control's position and size, not a permanent colour: Play/Pause,
-Start/Pause/Resume and On/Off keep one stable position and change their symbol or label.
+Play/Pause, Start/Pause/Resume and On/Off keep one stable position and change their symbol or label.
+The media player's Play/Pause uses `UI_CONTROL_PRIMARY`: it stays accented while available, including
+when paused, idle or off, so the next main action remains easy to find. Its symbol conveys the action;
+the track, progress and card convey playback state. Other primary controls retain their state-based roles.
 Pause/Resume is reversible; destructive abort stays separate. The vacuum primary also pauses
 return movement, so it stays active during return. Stop and Dock are secondary actions.
 Do not highlight Dock merely because a vacuum is docked.
@@ -73,7 +76,7 @@ do not treat unknown as active. Unavailable entities dismiss open action pickers
 The price tile's Today/Tomorrow controls, chart periods and shared PIN-pad confirmation follow the same roles;
 entering or confirming a code is a neutral action, not an active state.
 
-When adding a control, specify its role, active/selected condition and availability; use the shared
+When adding a control, specify its role, primary emphasis or active/selected condition and availability; use the shared
 helper, match the editor preview, and test idle/active/paused or selected/unselected transitions.
 The controls regression checks roles across all built-in themes and appearances, plus real media and
 vacuum state transitions. Printer and wallbox regressions retain command and confirmation checks.

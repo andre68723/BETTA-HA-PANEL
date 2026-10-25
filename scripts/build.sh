@@ -5,13 +5,13 @@
 # Builds one variant with the full define set, so a call can never fall back to the root default
 # (which boot-loops on a 16 MB board). ESP-IDF 6.1 must be in the environment (source its export.sh).
 #
-#   tools/build.sh <variant> [idf.py arguments]      variants: panel4 panel10 paneljc paneljc-v2 tab5
-#   tools/build.sh panel4 build
-#   tools/build.sh paneljc reconfigure build
-#   tools/build.sh paneljc -p /dev/cu.usbmodemXXXX flash
+#   scripts/build.sh <variant> [idf.py arguments]      variants: panel4 panel10 paneljc paneljc-v2 tab5
+#   scripts/build.sh panel4 build
+#   scripts/build.sh paneljc reconfigure build
+#   scripts/build.sh paneljc -p /dev/cu.usbmodemXXXX flash
 #
 # Extra overlay files (for example the betta easter egg) go into EXTRA_DEFAULTS, ';'-separated:
-#   EXTRA_DEFAULTS=config/sdkconfig.defaults.easteregg tools/build.sh paneljc reconfigure build
+#   EXTRA_DEFAULTS=config/sdkconfig.defaults.easteregg scripts/build.sh paneljc reconfigure build
 #
 # The configuration is generated from config/sdkconfig.defaults* into build/<variant>/sdkconfig:
 # delete the build directory to start from a clean configuration.

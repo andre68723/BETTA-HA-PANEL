@@ -5,7 +5,7 @@
   tools/capture_device_pages.py <panel-ip> [--out-dir DIR] [--reference-dir DIR] [--pages id ...]
 
 Navigates with POST /api/navigate, waits for the page to render, then saves the framebuffer with
-tools/screenshot.sh. manifest.json records the firmware commit, the layout hash and, with
+scripts/screenshot.sh. manifest.json records the firmware commit, the layout hash and, with
 --reference-dir, the SHA-256 of the images it is compared with, so an immutable "before" set can be
 verified later. The panel is returned to its first page. Publish the set with
 tools/import_device_captures.py --from <set>.
@@ -66,7 +66,7 @@ def main():
             curl(args.ip, '/api/navigate', {'page': page['id']})
             time.sleep(args.settle)
             image = out / f"{page['id']}.png"
-            subprocess.run([str(REPO / 'tools/screenshot.sh'), args.ip, str(image)], check=True, capture_output=True)
+            subprocess.run([str(REPO / 'scripts/screenshot.sh'), args.ip, str(image)], check=True, capture_output=True)
             if image.suffix != '.png' or not image.exists():
                 sys.exit(f'no PNG converter available, {image} missing')
             captured.append({'id': page['id'], 'title': page.get('title', page['id']), 'image': image.name,

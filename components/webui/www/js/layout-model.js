@@ -144,7 +144,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "weather_tile" || type === "weather_3day") return ["weather"];
   if (type === "todo_list") return ["todo"];
   if (type === "media_player" || type === "sonos_favorites") return ["media_player"];
-  if (type === "vacuum_tile") return ["vacuum"];
+  if (type === "vacuum_tile" || type === "roborock_tile") return ["vacuum"];
   if (type === "cover_tile") return ["cover"];
   if (type === "climate_tile") return ["climate"];
   if (type === "room_tile") return ["sensor", "climate"]; /* the anchor: a temperature sensor or climate entity */
@@ -155,7 +155,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "alarm_tile") return ["alarm_control_panel"];
   if (type === "binary_tile") return ["binary_sensor", "event"];
   if (type === "contact_tile") return ["binary_sensor"];
-  if (type === "camera_tile") return ["camera"];
+  if (type === "camera_tile") return ["camera", "image"];
   if (type === "fan_tile") return ["fan"];
   if (type === "slider") {
     const normalized = normalizeSliderEntityDomain(sliderDomain);
@@ -383,6 +383,82 @@ function suggestVacuumBatterySensor(vacuumId) {
   return best;
 }
 
+function strictEntitySourceType(type) {
+  return type in ENTITY_SEARCH_PRIMARY;
+}
+
+function entitySourceMetadata(entity) {
+  const registered = editor.entities.find(item => item.id === entity?.id) || {};
+  const live = editor.stateMeta.get(entity?.id) || {};
+  const identityFlags = ((registered.search_flags || 0) | (entity?.search_flags || 0)) & (8 | 16 | 32 | 128);
+  return { ...registered, ...entity, ...live,
+    search_flags: identityFlags | (live.search_flags ?? entity?.search_flags ?? registered.search_flags ?? 0),
+    supported_features: live.supported_features ?? entity?.supported_features ?? registered.supported_features,
+    capabilities: live.capabilities || entity?.capabilities || registered.capabilities,
+    has_price_series: live.has_price_series ?? entity?.has_price_series ?? registered.has_price_series,
+    has_solar_forecast: live.has_solar_forecast ?? entity?.has_solar_forecast ?? registered.has_solar_forecast,
+    unit: live.unit || entity?.unit || registered.unit || "",
+    state_class: live.state_class || entity?.state_class || registered.state_class || "",
+    device_class: live.device_class || entity?.device_class || registered.device_class || "" };
+}
+
+function widgetEntitySourceMatches(entity, type, slot = "primary") {
+  if (type === "bambu_printer" && slot !== "primary" && !((entitySourceMetadata(entity).search_flags || 0) & ENTITY_SEARCH_FLAGS.printer)) return false;
+  return entitySearchRoleMatches(entity, widgetEntitySearchRole(type, slot));
+}
+
+// Missing cached metadata is not proof that a saved source is incompatible. Discovery
+// can fill these fields later; eligibility of new search results remains strict.
+function entitySourceMetadataKnown(entity, type, slot) {
+  if (!entity?.id?.startsWith("sensor.")) return true;
+  const meta = entitySourceMetadata(entity), role = widgetEntitySearchRole(type, slot);
+  if (role === "counter") return !!meta.unit && (!!meta.state_class || !["Wh", "kWh", "MWh"].includes(meta.unit));
+  if (role === "price") return typeof meta.has_price_series === "boolean";
+  if (role === "solcast") return typeof meta.has_solar_forecast === "boolean";
+  if (role === "monetary") return !!meta.device_class;
+  return !!meta.unit;
+}
+
+function refreshEntitySourceWarning(widget = selectedWidget()) {
+  const warning = el.entitySourceWarning;
+  if (!warning) return;
+  const invalid = [], pending = [];
+  if (["energy_timeline", "energy_price_forecast", "parqet_portfolio"].includes(widget?.type)) {
+    const fields = [["entity_id", "primary", "layout.inspector.entity_" + widget.type]];
+    if (widget.type === "parqet_portfolio") fields.push(
+      ["secondary_entity_id", "secondary", "layout.inspector.secondary_entity_parqet_portfolio"],
+      ["tertiary_entity_id", "tertiary", "layout.inspector.tertiary_entity_parqet_portfolio"],
+      ["dividends_entity_id", "parqet_dividends", "layout.inspector.parqet_dividends"],
+      ["return_entity_id", "parqet_return", "layout.inspector.parqet_return"]);
+    if (widget.type === "energy_timeline") fields.push(
+      ["secondary_entity_id", "secondary", "layout.inspector.secondary_entity_energy_timeline"],
+      ["tertiary_entity_id", "tertiary", "layout.inspector.tertiary_entity_energy_timeline"],
+      ["battery_charge_entity_id", "etl_charge", "layout.inspector.etl_charge"],
+      ["battery_discharge_entity_id", "etl_discharge", "layout.inspector.etl_discharge"],
+      ["battery_soc_entity_id", "etl_soc", "layout.inspector.etl_soc"],
+      ["forecast_today_entity_id", "etl_forecast", "layout.inspector.etl_forecast"]);
+    if (widget.type === "energy_price_forecast") fields.push(["secondary_entity_id", "secondary", "layout.inspector.secondary_entity_energy_price_forecast"]);
+    for (const [key, slot, label] of fields) {
+      if (!widget[key] || widgetEntitySourceMatches({ id: widget[key] }, widget.type, slot)) continue;
+      const fieldsToCheck = entitySourceMetadataKnown({ id: widget[key] }, widget.type, slot) ? invalid : pending;
+      fieldsToCheck.push(t(label, {}, t("layout.inspector.entity")));
+    }
+  }
+  warning.textContent = invalid.length ? t(invalid.length === 1 ? "entity_source.invalid_summary_one" : "entity_source.invalid_summary_many", { count: invalid.length }) : "";
+  warning.classList.toggle("hidden", !invalid.length);
+  const helpKey = { energy_timeline: "layout.inspector.energy_timeline_hint", energy_price_forecast: "entity_source.price_help",
+    parqet_portfolio: "entity_source.parqet_help" }[widget?.type];
+  const help = widget?.type === "energy_timeline" ? el.energyTimelineHint : el.entitySourceHint;
+  if (el.entitySourceHint) el.entitySourceHint.classList.toggle("hidden", !helpKey || widget?.type === "energy_timeline");
+  if (help && helpKey) {
+    const texts = [t(helpKey)];
+    if (invalid.length) texts.push(t("entity_source.invalid_details", { fields: invalid.join(", ") }));
+    if (pending.length) texts.push(t("entity_source.pending_details", { fields: pending.join(", ") }));
+    const text = texts.join("\n\n");
+    if (help.textContent !== text) help.textContent = text;
+  }
+}
+
 function entityMatchesWidgetType(
   entity,
   type,
@@ -407,37 +483,8 @@ function entityMatchesWidgetType(
   return true;
 }
 
-// Which device classes fit a field: sensors and binary sensors are ranked (or, for room and contact tiles,
-// restricted) by what the widget shows, so a car tile offers battery sensors first and a contact tile only
-// doors and windows. Entities of other domains are never dropped, and the soft rule never drops anything.
-const ENTITY_CLASS_RULES = {
-  room_tile: { primary: { classes: ["temperature"], hard: true } },
-  contact_tile: { primary: { classes: ["door", "window", "opening", "garage_door", "lock"], hard: true } },
-  car_widget: {
-    primary: { classes: ["battery"] },
-    secondary: { classes: ["power"] },
-    tertiary: { classes: ["distance"] },
-  },
-  heating_tile: { secondary: { classes: ["temperature"] } },
-  solar_forecast: {
-    primary: { classes: ["energy"] },
-    solar_today: { classes: ["energy"] },
-    solar_tomorrow: { classes: ["energy"] },
-    solar_day_3: { classes: ["energy"] },
-    solar_day_4: { classes: ["energy"] },
-    solar_day_5: { classes: ["energy"] },
-  },
-};
-
 function applyEntityClassRule(list, type, slot) {
-  const rule = ENTITY_CLASS_RULES[type] && ENTITY_CLASS_RULES[type][slot];
-  if (!rule || !Array.isArray(list)) return list;
-  const constrained = (entity) => /^(sensor|binary_sensor)\./.test(entity.id || "");
-  const matches = (entity) => !constrained(entity) || rule.classes.includes(entity.device_class || "");
-  // The panel's search results carry no device class: an unknown class must not hide an entity, only a known other one does.
-  const known = (entity) => !constrained(entity) || !entity.device_class || rule.classes.includes(entity.device_class);
-  if (rule.hard) return list.filter(known);
-  return [...list.filter(matches), ...list.filter((entity) => !matches(entity))];
+  return Array.isArray(list) ? list.filter(entity => widgetEntitySourceMatches(entity, type, slot)) : list;
 }
 
 function listEntitiesForWidgetType(
@@ -624,7 +671,7 @@ function primaryEntitySource() {
   const sliderDomain = inspectorSliderEntityDomain();
   const buttonMode = inspectorButtonMode();
   const typedOptions = listEntitiesForWidgetType(inspectorType, sliderDomain, buttonMode);
-  return typedOptions.length > 0 ? typedOptions : editor.entities;
+  return typedOptions.length > 0 || strictEntitySourceType(inspectorType) ? typedOptions : editor.entities;
 }
 
 function defaultPrimaryEntityDomain() {
@@ -670,7 +717,7 @@ const INSPECTOR_EXTRA_ENTITY_FIELDS = [
 
 function inspectorEntityPickerTarget(targetKey) {
   const widgetType = inspectorWidgetType();
-  const primaryDomains = allowedEntityDomainsForWidgetType(widgetType, inspectorSliderEntityDomain(), inspectorButtonMode());
+  const primaryDomains = allowedEntityDomainsForWidgetType(inspectorRuleType(), inspectorSliderEntityDomain(), inspectorButtonMode());
   const secondaryConfig = secondaryEntityConfigForWidgetType(widgetType);
   const tertiaryConfig = tertiaryEntityConfigForWidgetType(widgetType);
   const extraTargets = {};
@@ -689,6 +736,7 @@ function inspectorEntityPickerTarget(targetKey) {
   if (widgetType === "room_tile") {
     const extras = roomEntitiesFromInspector();
     extraTargets.room_entities = { input: el.fRoomEntities, domain: "any", append: true,
+      allowedDomains: ["sensor", "binary_sensor", "light", "cover", "fan", "climate", "media_player", "lock", "switch", "vacuum"],
       excludedEntityIds: [el.fEntity?.value, ...extras],
       titleKey: "layout.inspector.room_entities", titleFallback: "Room entities" };
     if (extras.length >= 7) delete extraTargets.room_entities;
@@ -762,14 +810,24 @@ function inspectorEntityPickerTarget(targetKey) {
   return { ...target, slot: targetKey };
 }
 
-function openInspectorEntityPicker(targetKey) {
+async function openInspectorEntityPicker(targetKey) {
   const target = inspectorEntityPickerTarget(targetKey);
   if (!target) return;
+  if (inspectorWidgetType() === "bambu_printer") {
+    const widget = selectedWidget();
+    try { bambuPrinters = await bambuFetchPrinters(); }
+    catch (error) { bambuSetDetectStatus(String(error.message || error)); return; }
+    if (selectedWidget() !== widget) return;
+    const binding = targetKey === "primary" ? "entity_id" : BAMBU_BINDINGS.find(([, field]) => el[field] === target.input)?.[0];
+    const currentPrinter = targetKey !== "primary" && bambuPrinters.find(printer => printer.entities?.entity_id === widget?.entity_id);
+    target.allowedEntityIds = (currentPrinter ? [currentPrinter] : bambuPrinters).map(printer => printer.entities?.[binding]).filter(Boolean);
+    target.restrictionHint = "entity_picker.filter_printer_role";
+  }
   openLightEntityPicker(`inspector_${targetKey}`, {
     inspectorTarget: target,
     configOverride: { ...entityPickerConfigForDomain(target.domain, target.titleKey, target.titleFallback),
       allowedDomains: target.allowedDomains, allowedEntityIds: target.allowedEntityIds,
-      excludedEntityIds: target.excludedEntityIds },
+      excludedEntityIds: target.excludedEntityIds, restrictionHint: target.restrictionHint },
     initialSearch: target.initialSearch || (target.append ? "" : entitySiblingSearch(target.input?.value.trim())),
     resetSearch: true, selectSearch: true,
   });
@@ -849,6 +907,7 @@ function openSettingsTopbarEntityPicker(kind, inputOverride = null) {
   if (inputOverride) target.input = inputOverride;
   if (!target.input || target.input.disabled) return;
   target.slot = "settings";
+  target.ruleType = kind === "weather" ? "weather_tile" : "stock_quotes";
   openLightEntityPicker(`settings_topbar_${kind}`, {
     inspectorTarget: target,
     configOverride: entityPickerConfigForDomain(target.domain, target.titleKey, target.titleFallback),
@@ -861,7 +920,7 @@ function openPageSensorPicker(input) {
   if (!input || input.disabled) return;
   const titleKey = "entity_picker.title_sensor", titleFallback = "Choose Sensor";
   openLightEntityPicker("page_sensor", {
-    inspectorTarget: { input, domain: "sensor", slot: "page", titleKey, titleFallback },
+    inspectorTarget: { input, domain: "sensor", slot: input === el.energyBatterySoc ? "battery" : input === el.energyGas ? "gas" : input === el.energyWater ? "water" : "power", ruleType: "energy_page", titleKey, titleFallback },
     configOverride: entityPickerConfigForDomain("sensor", titleKey, titleFallback),
     initialSearch: entitySiblingSearch(input.value.trim()), resetSearch: true, selectSearch: true,
   });
@@ -1121,10 +1180,17 @@ async function refreshStates() {
       editor.states.set(item.entity_id, item.state);
       try {
         const attrs = JSON.parse(item.attributes_json || "{}");
-        if (attrs.device_class || attrs.unit_of_measurement || attrs.vehicle?.name || typeof attrs.current_temperature === "number" || /^(fan|media_player|cover|select|vacuum|climate)\./.test(item.entity_id)) {
+        {
           editor.stateMeta.set(item.entity_id, {
+            ...entitySearchAttributeMetadata(item.state, attrs),
             device_class: attrs.device_class || "",
             unit: attrs.unit_of_measurement || "",
+            state_class: attrs.state_class || "",
+            has_price_series: !!attrs.pf || (Array.isArray(attrs.data) && attrs.data.length > 1 &&
+              attrs.data.every(row => row && ("start_time" in row || "time_ts" in row) && ("price_per_kwh" in row || "da_cons" in row))) ||
+              (["EUR/kWh", "€/kWh", "EUR/MWh", "€/MWh", "ct/kWh", "c/kWh", "¢/kWh"].includes(attrs.unit_of_measurement) &&
+                [...(Array.isArray(attrs.raw_today) ? attrs.raw_today : []), ...(Array.isArray(attrs.raw_tomorrow) ? attrs.raw_tomorrow : [])].filter(row => row && typeof row.start === "string" && Number.isFinite(row.value)).length > 1),
+            has_solar_forecast: Array.isArray(attrs.detailedForecast) || Array.isArray(attrs.fc_kw),
             vehicle_name: typeof attrs.vehicle?.name === "string" ? attrs.vehicle.name : "",
             current_temperature: typeof attrs.current_temperature === "number" ? attrs.current_temperature : null,
             percentage: typeof attrs.percentage === "number" ? attrs.percentage : null,
@@ -1141,6 +1207,7 @@ async function refreshStates() {
       } catch (_) { /* attributes cut off by the size limit: no meta */ }
     }
     renderCanvas();
+    refreshEntitySourceWarning();
   } catch (_) {
     // Keep previous preview values.
   }

@@ -2,7 +2,7 @@
 // Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
 //
 // Room page import (js/room-import.js): titles, roles and preselection, and the zone packer on every
-// canvas size. Run with `node --test tests/webui/` (tools/check.sh does).
+// canvas size. Run with `node --test tests/webui/` (scripts/check.sh does).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadEditor } from "./load_editor.mjs";

@@ -16,7 +16,7 @@ compile-checked (the maintainer has no such hardware) and need testers.
 | `betta86-ha-panel-<version>-<variant>.ota.bin` | App update for the matching display device and installed partition layout |
 | `SHA256SUMS`, when packaged | Verify the downloaded/generated image hashes |
 
-For local packaging, run `tools/package_release.sh <built-version> <variant>...`
+For local packaging, run `scripts/package_release.sh <built-version> <variant>...`
 with ESP-IDF active. Images land in `release/out/<built-version>/`; see
 [release packaging](../docs/development/release.md#publish-a-release).
 
@@ -35,7 +35,7 @@ Previous versions used: v2.12.12, v2.12.11, v2.11.7 (https://github.com/esphome/
 Important:
 
 - The C6 `network_adapter` firmware is already embedded into the generated factory image `betta86-ha-panel-<version>.factory.bin`.
-- `tools/package_release.sh <version> <variant>...` (macOS/Linux) creates the factory and OTA images from finished builds into `release/out/<version>/` (see [Releases](../docs/development/release.md#publish-a-release)). The former PowerShell packaging script was removed; Windows is not supported.
+- `scripts/package_release.sh <version> <variant>...` (macOS/Linux) creates the factory and OTA images from finished builds into `release/out/<version>/` (see [Releases](../docs/development/release.md#publish-a-release)). The former PowerShell packaging script was removed; Windows is not supported.
 - For flashing/distribution, the factory image is sufficient.
 - For in-app OTA updates, use the packaged `release/out/<version>/betta86-ha-panel-<version>-<variant>.ota.bin`.
 - Keeping `network_adapter_esp32c6*.bin` in the repo is optional and not required for release delivery.

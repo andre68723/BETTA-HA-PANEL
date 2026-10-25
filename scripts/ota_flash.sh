@@ -4,7 +4,7 @@
 #
 # Flash a panel over Wi-Fi: POST the app image to the panel's OTA endpoint.
 #
-#   tools/ota_flash.sh [--allow-stale] <panel-ip> [image.bin]
+#   scripts/ota_flash.sh [--allow-stale] <panel-ip> [image.bin]
 #
 # The image is the plain app binary from the build directory (for paneljc
 # build/paneljc/betta-ha-panel-jc.bin), not the factory image and not
@@ -44,7 +44,7 @@ if [ -n "$newer" ]; then
     echo "image is older than $count source file(s), for example:" >&2
     printf '%s\n' "$newer" | head -n 5 | sed "s|^$root/|  |" >&2
     if [ "$allow_stale" -ne 1 ]; then
-        echo "build again (tools/build.sh <variant> build) or pass --allow-stale" >&2
+        echo "build again (scripts/build.sh <variant> build) or pass --allow-stale" >&2
         exit 3
     fi
     echo "continuing: --allow-stale" >&2

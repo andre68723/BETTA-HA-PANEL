@@ -5,6 +5,20 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { loadEditor } from "./load_editor.mjs";
 
+test("populated page Inspector uses the page type instead of the creation-menu caption", () => {
+  const { run } = loadEditor();
+  run(`
+    globalThis.pageHeading = { textContent: "" };
+    document.getElementById = id => id === "pageInspectorHeading" ? pageHeading : null;
+    editor.layout = { pages: [{ id: "values", title: "Values", widgets: [{ id: "sensor", type: "sensor" }] }] };
+    editor.selectedPageId = "values";
+    editor.selectedWidgetId = null;
+    updateInspectorPanels();
+  `);
+  assert.equal(run('pageHeading.textContent'), run('t("layout.pages.type_normal")'));
+  assert.notEqual(run('pageHeading.textContent'), run('t("layout.pages.menu_normal")'));
+});
+
 function setupInspector(widgetType = "graph", entityId = "sensor.temperature", searchTarget = "", liveHardware = false, liveBrightness = false) {
   const { run } = loadEditor();
   run(`
@@ -136,7 +150,7 @@ test("Energy page and settings entities open the search with their siblings and 
   const run = setupInspector();
   run(`el.energyGas.value = "sensor.gas_meter_total_volume"; openPageSensorPicker(el.energyGas);`);
   assert.equal(run("pickerOptions.initialSearch"), "gas_meter_total");
-  assert.equal(run("pickerOptions.inspectorTarget.slot"), "page");
+  assert.equal(run("pickerOptions.inspectorTarget.slot"), "gas");
   assert.equal(run("removeInspectorEntity(pickerOptions.inspectorTarget)"), true);
   assert.equal(run("el.energyGas.value"), "");
   run(`el.settingsTopbarWeatherEntity.value = "weather.home"; openSettingsTopbarEntityPicker("weather", el.settingsTopbarWeatherEntity);`);
@@ -847,7 +861,8 @@ for (const [type, slot, field, property, id] of searchBindings) {
     const primary = type === "wallbox_evcc" ? "select.mode" : type === "vacuum_tile" ? "vacuum.robot" : "sensor.main";
     const run = setupInspector(type, primary, slot);
     if (type === "wallbox_evcc") run("evccLoadInspector(selectedWidget())");
-    run("searchButton.click()");
+    if (type === "bambu_printer") run(`bambuFetchPrinters=async()=>[{id:'test_printer',entities:{entity_id:'sensor.main',${JSON.stringify(property)}:${JSON.stringify(id)}}}]`);
+    await run("searchButton.click()");
     assert.equal(run("pickerOptions.inspectorTarget.input === el." + field), true);
     assert.equal(run("assignInspectorEntity(pickerOptions.inspectorTarget, 'light.wrong')"), false);
     assert.equal(run(`assignInspectorEntity(pickerOptions.inspectorTarget, ${JSON.stringify(id)})`), true);

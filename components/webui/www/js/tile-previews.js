@@ -5,9 +5,9 @@
 // house page's grid, laid out like ui_house_page.c. Moved out of canvas.js; classic script, loaded before it.
 // tools/compare_editor_previews.py puts them next to the simulator's renderings.
 
-// Mirrors ui_style_action_button(): selected/active use accent, availability alone never does.
-function previewControlClass(active = false, enabled = true, danger = false) {
-  return !enabled ? "control-disabled" : danger ? "control-danger" : active ? "control-active" : "control-action";
+// Mirrors ui_style_action_button(): primary, selected and active controls use accent.
+function previewControlClass(active = false, enabled = true, danger = false, primary = false) {
+  return !enabled ? "control-disabled" : danger ? "control-danger" : primary ? "control-primary" : active ? "control-active" : "control-action";
 }
 
 function previewControlAccentStyle(widget) {
@@ -167,7 +167,7 @@ function carPreviewExtras(widget) {
 function carPreviewRangeText(entityId) {
   const range = carPreviewNumber(entityId, null);
   if (range === null) return "-- km";
-  const unit = editor.entities.find((entity) => entity?.id === entityId)?.unit || "km";
+  const unit = entityDisplayInfo(entityId).unit || "km";
   const factor = { km: 1, m: 0.001, mi: 1.609344 }[unit];
   return factor === undefined ? `${range.toFixed(0)} ${unit}` : `${(range * factor).toFixed(0)} km`;
 }
@@ -225,7 +225,7 @@ function sonosFavoritesPreviewMarkup(widget) {
 // so a power sensor does not read "23.4 °C".
 function previewEntityValue(entityId, sample, format = (value) => value) {
   if (!entityId) return sample;
-  const unit = editor.entities.find((entity) => entity?.id === entityId)?.unit || "";
+  const unit = entityDisplayInfo(entityId).unit || "";
   const raw = editor.states.get(entityId);
   const known = raw !== undefined && raw !== null && raw !== "" && !["unavailable", "unknown"].includes(String(raw));
   return escapeHtml(`${known ? format(String(raw)) : "--"}${unit ? ` ${unit}` : ""}`);
@@ -334,7 +334,7 @@ function previewSensorDate(raw, style) {
 function previewSensorValue(widget) {
   const id = widget.entity_id;
   if (!id) return null;
-  const info = editor.entities.find((entity) => entity?.id === id) || editor.stateMeta?.get(id) || {};
+  const info = entityDisplayInfo(id);
   const raw = String(editor.states.get(id) ?? "");
   if (!raw || ["unavailable", "unknown"].includes(raw)) return null;
   const dc = info.device_class || "";
@@ -400,7 +400,7 @@ function previewEntityState(entityId) {
 // What a room card summarises from the states of its entities (room_evaluate() in w_room.c): the temperature, the
 // humidity and one chip each for windows and doors, lights, presence and low batteries. Without a state the samples apply.
 function roomPreviewSummary(entityId, extraIds) {
-  const info = (id) => editor.entities.find((e) => e?.id === id) || editor.stateMeta?.get(id) || {};
+  const info = (id) => entityDisplayInfo(id);
   const state = (id) => previewEntityState(id);
   const out = { temp: null, hum: null, contacts: 0, open: 0, lights: 0, lightsOn: 0, presence: 0, present: 0, battery: 0,
     switches: 0, switchesOn: 0, covers: 0, coversOpen: 0 };
@@ -630,7 +630,7 @@ function heatingSemiPreview(widget, w, h, opening) {
 
 // A gauge's extra reading (gauge_format_info() in w_gauge.c): a distance in metres from 1 km on reads as kilometres.
 function previewGaugeInfo(entityId) {
-  const info = editor.entities.find((entity) => entity?.id === entityId) || {};
+  const info = entityDisplayInfo(entityId);
   const metres = Number(editor.states.get(entityId));
   if (info.device_class === "distance" && info.unit === "m" && Number.isFinite(metres) && Math.abs(metres) >= 1000) {
     return escapeHtml(`${previewLocalizeNumber((metres / 1000).toFixed(1).replace(/\.0$/, ""))} km`);
@@ -762,7 +762,7 @@ function tilePreviewMarkup(widget) {
       const showCover = h - 28 - (widgetShowsName(widget) ? 22 : 0) - 226 >= 72;
       const extras = w >= 280;
       const playing = previewEntityState(widget.entity_id) === "playing";
-      const controls = previewControlClass(playing, previewControlAvailable(widget.entity_id));
+      const controls = previewControlClass(false, previewControlAvailable(widget.entity_id), false, true);
       const mediaMeta = editor.stateMeta.get(widget.entity_id) || {};
       const available = previewControlAvailable(widget.entity_id), action = previewControlClass(false, available);
       const shuffle = extras && previewSupports(widget.entity_id, 32768);
@@ -1035,7 +1035,7 @@ function tilePreviewMarkup(widget) {
         // The state in the words of the device class (w_binary.c); "since" adds the age, "icon" shows the symbol only, an
         // event its last time. The presence sample remains for a tile without a state yet.
         const raw = previewEntityState(widget.entity_id);
-        const info = editor.entities.find((entity) => entity?.id === widget.entity_id) || editor.stateMeta?.get(widget.entity_id) || {};
+        const info = entityDisplayInfo(widget.entity_id);
         let text = pvText("home");
         if (String(widget.entity_id || "").startsWith("event.")) text = escapeHtml(previewSensorTimestamp(raw, "relative") || raw || "--");
         else if (raw === "on" || raw === "off") text = escapeHtml(previewBinaryStateText(info.device_class || "", raw === "on"));

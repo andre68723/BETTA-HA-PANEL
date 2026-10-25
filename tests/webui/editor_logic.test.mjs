@@ -94,8 +94,8 @@ test("entity search input and suggestions", () => {
     { id: "binary_sensor.motion", device_class: "motion" }, { id: "binary_sensor.door", device_class: "door" },
     { id: "binary_sensor.unknown" },
   ];
-  assert.deepEqual(ids(rule(sensors, "contact_tile", "primary")), ["binary_sensor.door", "binary_sensor.unknown"],
-    "the door look hides a known other class but keeps an unknown one");
+  assert.deepEqual(ids(rule(sensors, "contact_tile", "primary")), ["binary_sensor.door"],
+    "the door look requires a reported contact class");
 });
 
 test("tile previews escape titles, entity ids and states", () => {

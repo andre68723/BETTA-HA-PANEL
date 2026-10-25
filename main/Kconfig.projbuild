@@ -68,7 +68,7 @@ config APP_PANEL_VARIANT_TAB5_1280
     help
         M5Stack Tab5, 5-inch 1280x720 landscape, ESP32-P4 + ESP32-C6 (ESP-Hosted).
         Display and touch come from Espressif's m5stack_tab5 BSP, Wi-Fi from ESP-Hosted over SDIO.
-        Builds with `tools/build.sh tab5 build`; NOT YET RUN ON HARDWARE (docs/hardware.md).
+        Builds with `scripts/build.sh tab5 build`; NOT YET RUN ON HARDWARE (docs/hardware.md).
 
 endchoice
 

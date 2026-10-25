@@ -155,7 +155,7 @@
 #define APP_HA_LIGHT_DISCOVERY_REGISTRY_ENABLED 0
 /* Default discovery path: HA renders compact light pages server-side; the panel fetches them one by one. */
 #define APP_HA_LIGHT_DISCOVERY_TEMPLATE_ENABLED 1
-#define APP_HA_LIGHT_DISCOVERY_PAGE_SIZE 40 /* about 6 KB of JSON, inside the 8 KB fallback payload cap of ha_client.c */
+#define APP_HA_LIGHT_DISCOVERY_PAGE_SIZE 40 /* compact state/source metadata; bounded by the 16 KB payload cap in ha_client.c */
 /* Internal heap an entity-discovery template page waits for before it is sent at once (the
  * values are in ha_client.c). Below it the request still runs after an 8 s wait with 64 KB free and
  * a 24 KB block. The JC panel used to idle at ~100 KB free with a largest internal block of exactly 32 KB,

@@ -29,6 +29,11 @@ WWW = REPO / "components/webui/www"
 INSPECTOR_KINDS = ["sensor", "graph", "gauge", "energy_price_forecast", "parqet_portfolio", "stock_quotes", "room_tile", "energy_timeline"]
 
 
+class DemoHTTPServer(ThreadingHTTPServer):
+    # The editor loads many assets in parallel; a small listen backlog resets some connections.
+    request_queue_size = 128
+
+
 def fixtures():
     data = json.loads(DATA.read_text())
     _, gallery = prepare_fixture(data)
@@ -216,11 +221,54 @@ def render_panels(wide, compact, devices, output, appearance_only=False, setup_o
 def demo_api(fixture):
     """Only public synthetic responses; no credentials, proxy or external calls."""
     layout = {k: v for k, v in fixture.items() if k in ("version", "alerts", "pages")}
-    states = [{**state, "attributes": state.get("attributes", {}),
-               "attributes_json": json.dumps(state.get("attributes", {}))} for state in fixture["states"]]
+    states = []
+    for state in fixture["states"]:
+        attrs = copy.deepcopy(state.get("attributes", {}))
+        # The simulator's compact fixture recipe is expanded by its C adapter.
+        # Give the editor the same real HA list shape rather than a test-only key.
+        recipe = attrs.pop("price_series", None)
+        if isinstance(recipe, dict):
+            from datetime import datetime, timedelta
+            start = datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
+            interval = timedelta(minutes=recipe.get("interval_min", 60))
+            attrs["data"] = [{"start_time": (start + timedelta(days=day) + index * interval).isoformat(), "price_per_kwh": value}
+                             for day, key in enumerate(("today", "tomorrow")) for index, value in enumerate(recipe.get(key, []))]
+        states.append({**state, "attributes": attrs, "attributes_json": json.dumps(attrs)})
+    # Explicit integration metadata for synthetic examples; never inferred in the production editor.
+    integrations = {}
+    for page in fixture.get("pages", []):
+        for widget in page.get("widgets", []):
+            kind = widget.get("type")
+            if kind in ("stock_quotes", "sonos_favorites", "bambu_printer"):
+                for key, value in widget.items():
+                    if key.endswith("entity_id") and isinstance(value, str):
+                        integrations[value] = kind
+                if kind == "stock_quotes":
+                    for value in widget.get("stock_entities", []):
+                        integrations[value] = kind
+
+    def search_flags(state):
+        attrs = state["attributes"]
+        try:
+            import math
+            numeric = int(math.isfinite(float(state["state"])))
+        except (ValueError, TypeError):
+            numeric = 0
+        kind = integrations.get(state["entity_id"])
+        return (numeric | (2 if isinstance(attrs.get("data"), str) and len(attrs["data"]) > 400 and "Wetter" in attrs["data"] else 0)
+                | (4 if isinstance(attrs.get("items"), dict) else 0)
+                | ({"stock_quotes": 8, "sonos_favorites": 16, "bambu_printer": 32}.get(kind, 0))
+                | (64 if isinstance(attrs.get("current_temperature"), (int, float)) else 0)
+                | (128 if kind == "bambu_printer" and {"running", "pause"} <= set(attrs.get("options", [])) else 0))
     entities = [{"id": s["entity_id"], "name": s["attributes"].get("friendly_name", s["entity_id"]),
+                 "search_flags": search_flags(s), "supported_features": s["attributes"].get("supported_features"),
+                 "capabilities": {"dimming": any(mode not in ("onoff", "unknown") for mode in s["attributes"].get("supported_color_modes", []))},
                  "domain": s["entity_id"].split(".")[0], "unit": s["attributes"].get("unit_of_measurement", ""),
-                 "device_class": s["attributes"].get("device_class", ""), "area_id": "living_room",
+                 "device_class": s["attributes"].get("device_class", ""),
+                 "state_class": s["attributes"].get("state_class", ""),
+                 "has_price_series": bool(s["attributes"].get("pf") or s["attributes"].get("raw_today") or
+                                          any("price_per_kwh" in row or "da_cons" in row for row in s["attributes"].get("data", []) if isinstance(row, dict))),
+                 "has_solar_forecast": isinstance(s["attributes"].get("detailedForecast", s["attributes"].get("fc_kw")), list), "area_id": "living_room",
                  "area_name": "Living room"} for s in states]
     # Read the firmware's Dark palette, so the editor preview and LVGL use the same colors.
     source = (REPO / "main/ui/theme/theme_palette.c").read_text().split("k_preset_classic_v1")[0]
@@ -292,7 +340,7 @@ def capture_editor(fixture, output, executable, setup_only=False, hero=False, fi
         do_PUT = do_POST
         do_DELETE = do_POST
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(WWW)))
+    server = DemoHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(WWW)))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
@@ -304,6 +352,7 @@ def capture_editor(fixture, output, executable, setup_only=False, hero=False, fi
             size = {"width": 1440, "height": 900} if hero else {"width": 1536, "height": 864}
             page = browser.new_page(viewport=size, device_scale_factor=1, locale="en-GB")
             page.on("pageerror", lambda error: failures.append(str(error)))
+            page.on("requestfailed", lambda request: failures.append(f"{request.failure}: {request.url}"))
             page.on("console", lambda msg: failures.append(msg.text) if msg.type == "error" else None)
 
             def local_only(route):
@@ -379,10 +428,6 @@ def capture_inspectors(output, executable):
     from playwright.sync_api import sync_playwright
 
     _spec, fixture = prepare_fixture(json.loads(DATA.read_text()))
-    for state in fixture["states"]:
-        attributes = state.setdefault("attributes", {})
-        if attributes.get("unit_of_measurement") == "°C" and not attributes.get("device_class"):
-            attributes["device_class"] = "temperature"  # as Home Assistant reports it, so the class choices show
     responses = demo_api(fixture)
     failures = []
 
@@ -408,7 +453,7 @@ def capture_inspectors(output, executable):
         def do_POST(self):
             self.send_error(405, "Documentation demo is read-only")
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(WWW)))
+    server = DemoHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(WWW)))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
@@ -419,6 +464,7 @@ def capture_inspectors(output, executable):
             browser = p.chromium.launch(**options)
             page = browser.new_page(viewport={"width": 1536, "height": 2400}, device_scale_factor=2, locale="en-GB")
             page.on("pageerror", lambda error: failures.append(str(error)))
+            page.on("requestfailed", lambda request: failures.append(f"{request.failure}: {request.url}"))
             page.route("**/*", lambda route: route.continue_() if urlsplit(route.request.url).hostname == "127.0.0.1"
                        else (failures.append(f"External request: {route.request.url}"), route.abort()))
             for kind in INSPECTOR_KINDS:
@@ -441,7 +487,7 @@ def capture_inspectors(output, executable):
                 try:
                     page.wait_for_function("editor.editorStarted && editor.entities.length > 0", timeout=15000)
                 except Exception as error:
-                    state = page.evaluate("({started: editor.editorStarted, entities: editor.entities.length, status: document.getElementById('status')?.textContent, body: document.body.innerText.slice(0, 500)})")
+                    state = page.evaluate("({url: location.href, started: typeof editor !== 'undefined' && editor.editorStarted, entities: typeof editor !== 'undefined' ? editor.entities.length : 0, status: document.getElementById('status')?.textContent, body: document.body.innerText.slice(0, 500)})")
                     raise RuntimeError(("\n".join(failures) or str(error)) + f"\nEditor state: {state}") from error
                 page.evaluate("(id) => { editor.selectedPageId = 'inspector'; editor.selectedWidgetId = id; renderAll(); }",
                               widget["id"])

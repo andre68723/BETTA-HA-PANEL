@@ -43,6 +43,8 @@
 #include "ha/ha_evcc_lookup.h"
 #include "ha/ha_evcc_sessions.h"
 #include "ha/ha_evcc_value.h"
+#include "ha/ha_evcc_vehicle_names.h"
+#include "ha/ha_entity_source.h"
 #include "ha/ha_room_registry.h"
 #include "ha/ha_model.h"
 #include "ha/ha_ws.h"
@@ -158,7 +160,10 @@ typedef struct {
     char area_id[APP_HA_DISCOVERY_ID_MAX_LEN];
     char device_id[APP_HA_DISCOVERY_ID_MAX_LEN];
     char icon[APP_MAX_ICON_LEN];
-    char device_class[24];
+    char device_class[APP_MAX_NAME_LEN];
+    char unit[APP_MAX_UNIT_LEN], state_class[24];
+    bool has_price_series, has_solar_forecast;
+    ha_entity_search_meta_t search;
     char floor[APP_MAX_NAME_LEN];
     bool prefix_device;
 } ha_light_discovery_pending_item_t;
@@ -169,7 +174,10 @@ typedef struct {
     char room[APP_MAX_NAME_LEN];
     char area_id[APP_HA_DISCOVERY_ID_MAX_LEN];
     char icon[APP_MAX_ICON_LEN];
-    char device_class[24];
+    char device_class[APP_MAX_NAME_LEN];
+    char unit[APP_MAX_UNIT_LEN], state_class[24];
+    bool has_price_series, has_solar_forecast;
+    ha_entity_search_meta_t search;
     char floor[APP_MAX_NAME_LEN];
 } ha_light_discovery_item_t;
 
@@ -1778,6 +1786,10 @@ static void ha_client_light_discovery_finish_locked(int64_t now_ms)
         (void)ha_model_get_entity_name(src->id, dst->name, sizeof(dst->name));
         safe_copy_cstr(dst->icon, sizeof(dst->icon), src->icon);
         safe_copy_cstr(dst->device_class, sizeof(dst->device_class), src->device_class);
+        safe_copy_cstr(dst->unit, sizeof(dst->unit), src->unit);
+        safe_copy_cstr(dst->state_class, sizeof(dst->state_class), src->state_class);
+        dst->has_price_series = src->has_price_series; dst->has_solar_forecast = src->has_solar_forecast;
+        dst->search = src->search;
         safe_copy_cstr(dst->floor, sizeof(dst->floor), src->floor);
 
         const char *area_id = src->area_id;
@@ -1870,6 +1882,14 @@ static esp_err_t ha_client_light_discovery_refresh_from_model(const char *domain
         safe_copy_cstr(dst->id, sizeof(dst->id), src->id);
         safe_copy_cstr(dst->name, sizeof(dst->name), src->name[0] != '\0' ? src->name : src->id);
         safe_copy_cstr(dst->icon, sizeof(dst->icon), src->icon);
+        safe_copy_cstr(dst->device_class, sizeof(dst->device_class), src->device_class);
+        safe_copy_cstr(dst->unit, sizeof(dst->unit), src->unit);
+        safe_copy_cstr(dst->state_class, sizeof(dst->state_class), src->state_class);
+        dst->has_price_series = src->has_price_series;
+        dst->has_solar_forecast = src->has_solar_forecast;
+        dst->search.features_known = true;
+        dst->search.features = src->supported_features;
+        dst->search.dimming = src->supports_dimming;
     }
     if (s_client.light_discovery_count > 1) {
         qsort(s_client.light_discovery_items, s_client.light_discovery_count,
@@ -2722,96 +2742,21 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
         goto fail;
     }
 
-    char template_text[2048] = {0};
-    int template_len = 0;
-    char domains_jinja[384] = "[]"; /* the "any" and "room" domain lists, from ha_discovery_domains.c */
-    (void)ha_discovery_domains_jinja(domain, domains_jinja, sizeof(domains_jinja));
-    if (strcmp(domain, "any") == 0) {
-        /* Add from an entity: every entity a tile can show, matched on id, name and area, with its
-         * device class so the editor can suggest the right tile. */
-        template_len = snprintf(template_text, sizeof(template_text),
-            "{%% set offset = %u %%}"
-            "{%% set limit = %u %%}"
-            "{%% set q = (%s|lower) %%}"
-            "{%% set doms = %s %%}"
-            "{%% set ns = namespace(items=[], total=0) %%}"
-            "{%% for s in states|sort(attribute='entity_id') %%}"
-            "{%% if s.domain in doms %%}"
-            "{%% set room = area_name(s.entity_id) or '' %%}"
-            "{%% set hay = (s.entity_id ~ ' ' ~ s.name ~ ' ' ~ room)|lower %%}"
-            "{%% if q == '' or q in hay %%}"
-            "{%% set idx = ns.total %%}"
-            "{%% set ns.total = ns.total + 1 %%}"
-            "{%% if idx >= offset and idx < offset + limit %%}"
-            "{%% set ns.items = ns.items + [dict(id=s.entity_id, name=s.name, room=room, "
-            "dc=(s.attributes.device_class|default('', true)))] %%}"
-            "{%% endif %%}"
-            "{%% endif %%}"
-            "{%% endif %%}"
-            "{%% endfor %%}"
-            "{{ {'total': ns.total, 'items': ns.items}|to_json }}",
-            (unsigned)offset, (unsigned)page_size, search_literal, domains_jinja);
-    } else if (strcmp(domain, "room") == 0) {
-        /* Room cards (and the editor's per-room widget import): everything that belongs to an
-         * area and can be shown for a room (temperature and humidity sensors, window/door/motion
-         * sensors, lights, covers, fans, climate, media players, locks, switches, vacuums), with
-         * its device class. */
-        template_len = snprintf(template_text, sizeof(template_text),
-            "{%% set offset = %u %%}"
-            "{%% set limit = %u %%}"
-            "{%% set q = (%s|lower) %%}"
-            "{%% set sc = ['temperature','humidity','battery'] %%}"
-            "{%% set bc = ['window','door','opening','garage_door','motion','occupancy','presence','moving','battery'] %%}"
-            "{%% set ns = namespace(items=[], total=0) %%}"
-            "{%% for s in states|sort(attribute='entity_id') %%}"
-            "{%% set d = s.domain %%}"
-            "{%% set dc = s.attributes.device_class|default('', true) %%}"
-            "{%% if (d == 'sensor' and dc in sc) or (d == 'binary_sensor' and dc in bc) or (d not in ['sensor','binary_sensor'] and d in %s) %%}"
-            "{%% set room = area_name(s.entity_id) or '' %%}"
-            "{%% if room != '' and (q == '' or q in room|lower) %%}"
-            "{%% set idx = ns.total %%}"
-            "{%% set ns.total = ns.total + 1 %%}"
-            "{%% if idx >= offset and idx < offset + limit %%}"
-            "{%% set ns.items = ns.items + [dict(id=s.entity_id, name=s.name, room=room, dc=dc, fl=(floor_name(s.entity_id) or ''))] %%}"
-            "{%% endif %%}"
-            "{%% endif %%}"
-            "{%% endif %%}"
-            "{%% endfor %%}"
-            "{{ {'total': ns.total, 'items': ns.items}|to_json }}",
-            (unsigned)offset, (unsigned)page_size, search_literal, domains_jinja);
-    } else {
-        template_len = snprintf(template_text, sizeof(template_text),
-        "{%% set offset = %u %%}"
-        "{%% set limit = %u %%}"
-        "{%% set q = (%s|lower) %%}"
-        "{%% set ns = namespace(items=[], total=0) %%}"
-        "{%% for s in states.%s|sort(attribute='entity_id') %%}"
-        "{%% set room = area_name(s.entity_id) or '' %%}"
-        "{%% set hay = (s.entity_id ~ ' ' ~ s.name ~ ' ' ~ room)|lower %%}"
-        "{%% if q == '' or q in hay %%}"
-        "{%% set idx = ns.total %%}"
-        "{%% set ns.total = ns.total + 1 %%}"
-        "{%% if idx >= offset and idx < offset + limit %%}"
-        "{%% set ns.items = ns.items + [dict(id=s.entity_id, name=s.name, room=room, icon=(s.attributes.icon|default('', true)), "
-        "dc=(s.attributes.device_class|default('', true)))] %%}"
-        "{%% endif %%}"
-        "{%% endif %%}"
-        "{%% endfor %%}"
-        "{{ {'total': ns.total, 'items': ns.items}|to_json }}",
-        (unsigned)offset, (unsigned)page_size, search_literal, domain);
-    }
+    char *template_text = ha_entity_source_template(domain, search_literal, offset, page_size);
     cJSON_free(search_literal);
-    if (template_len <= 0 || (size_t)template_len >= sizeof(template_text)) {
-        err = ESP_ERR_INVALID_SIZE;
+    if (template_text == NULL) {
+        err = ESP_ERR_NO_MEM;
         goto fail;
     }
 
     cJSON *body_root = cJSON_CreateObject();
     if (body_root == NULL) {
+        free(template_text);
         err = ESP_ERR_NO_MEM;
         goto fail;
     }
     cJSON_AddStringToObject(body_root, "template", template_text);
+    free(template_text);
     char *body = cJSON_PrintUnformatted(body_root);
     cJSON_Delete(body_root);
     if (body == NULL) {
@@ -2952,6 +2897,11 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
         (void)ha_client_json_string_value(entry, "room", item.room, sizeof(item.room));
         (void)ha_client_json_string_value(entry, "icon", item.icon, sizeof(item.icon));
         (void)ha_client_json_string_value(entry, "dc", item.device_class, sizeof(item.device_class));
+        (void)ha_client_json_string_value(entry, "u", item.unit, sizeof(item.unit));
+        (void)ha_client_json_string_value(entry, "sc", item.state_class, sizeof(item.state_class));
+        ha_entity_search_parse(entry, &item.search);
+        item.has_price_series = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(entry, "ps"));
+        item.has_solar_forecast = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(entry, "sf"));
         (void)ha_client_json_string_value(entry, "fl", item.floor, sizeof(item.floor));
         ha_client_light_discovery_add_pending_locked(&item);
     }
@@ -4354,6 +4304,10 @@ static bool ha_client_import_state_object(cJSON *state_obj)
         cJSON *friendly_name = cJSON_GetObjectItemCaseSensitive(attributes, "friendly_name");
         cJSON *unit = cJSON_GetObjectItemCaseSensitive(attributes, "unit_of_measurement");
         cJSON *device_class = cJSON_GetObjectItemCaseSensitive(attributes, "device_class");
+        const char *state_class = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(attributes, "state_class"));
+        safe_copy_cstr(entity.state_class, sizeof(entity.state_class), state_class);
+        entity.has_price_series = strncmp(model_state.attributes_json, "{\"pf\":", 6) == 0;
+        entity.has_solar_forecast = cJSON_IsArray(cJSON_GetObjectItemCaseSensitive(attributes, "detailedForecast")) || cJSON_IsArray(cJSON_GetObjectItemCaseSensitive(attributes, "fc_kw"));
         cJSON *icon = cJSON_GetObjectItemCaseSensitive(attributes, "icon");
         cJSON *supported_features = cJSON_GetObjectItemCaseSensitive(attributes, "supported_features");
         if (cJSON_IsString(friendly_name) && friendly_name->valuestring != NULL) {
@@ -6095,6 +6049,12 @@ static void ha_client_task(void *arg)
                 if (err != ESP_OK) ha_evcc_sessions_send_failed(err == ESP_ERR_INVALID_STATE);
             }
         }
+        if (connected && authenticated && ha_evcc_vehicle_names_is_due(now_ms) && !ha_client_heavy_gate_is_busy()) {
+            uint32_t token = ha_client_next_message_id();
+            cJSON *request = ha_evcc_vehicle_names_next_request(token, now_ms);
+            if (request && ha_client_send_command_with_response(request, ha_evcc_vehicle_names_reply, (void *)(uintptr_t)token) != ESP_OK)
+                ha_evcc_vehicle_names_result(token, false, NULL);
+        }
         if (connected && authenticated && ha_evcc_lookup_is_due(now_ms)) {
             cJSON *req = ha_evcc_lookup_next_request(ha_client_next_message_id(), now_ms);
             if (req != NULL && ha_client_send_json(req) != ESP_OK) ha_evcc_lookup_send_failed();
@@ -6111,6 +6071,7 @@ static void ha_client_task(void *arg)
             ha_printer_lookup_cancel();
             ha_evcc_lookup_cancel();
             ha_evcc_sessions_cancel();
+            ha_evcc_vehicle_names_cancel();
         }
         if (connected && authenticated && s_registry_lookup_due) {
             /* new entities of a saved layout: their display precision and integration (a Stocks & ETFs quote) */
@@ -7531,6 +7492,11 @@ esp_err_t ha_client_get_domain_entities_json(const char *domain, const char *sea
             cJSON_AddStringToObject(item, "area_id", src->area_id);
             cJSON_AddStringToObject(item, "icon", src->icon);
             cJSON_AddStringToObject(item, "device_class", src->device_class);
+            cJSON_AddStringToObject(item, "unit", src->unit);
+            cJSON_AddStringToObject(item, "state_class", src->state_class);
+            cJSON_AddBoolToObject(item, "has_price_series", src->has_price_series);
+            cJSON_AddBoolToObject(item, "has_solar_forecast", src->has_solar_forecast);
+            ha_entity_search_json(item, &src->search);
             cJSON_AddStringToObject(item, "floor", src->floor);
             cJSON_AddItemToArray(items, item);
         }

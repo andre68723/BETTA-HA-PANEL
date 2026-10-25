@@ -4,7 +4,7 @@
 #
 # Save what a panel currently shows as a PNG file:
 #
-#   tools/screenshot.sh <panel-ip> [out.png]
+#   scripts/screenshot.sh <panel-ip> [out.png]
 #
 # The firmware serves its rendered LVGL framebuffer as a BMP at
 # /api/screenshot.bmp (about 3 MB on the 10" panel, streamed slowly, so the

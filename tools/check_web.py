@@ -3,7 +3,7 @@
 # Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
 """Static documentation, editor, widget registration and translation checks.
 
-Run by tools/check.sh without a device or ESP-IDF. Failures exit nonzero.
+Run by scripts/check.sh without a device or ESP-IDF. Failures exit nonzero.
 """
 import html.parser
 import gzip

@@ -7,8 +7,10 @@
 #include "host_adapters.h"
 #include "layout/evcc_slots.h"
 #include "ha/ha_evcc_sessions.h"
+#include "ha/ha_evcc_vehicle_names.h"
 #include "ui/ui_evcc_sessions_view.h"
 #include "ui/ui_widget_factory.h"
+#include "ui/ui_i18n.h"
 #include "ui/theme/ui_style.h"
 esp_err_t w_wallbox_evcc_create(const ui_widget_def_t *,lv_obj_t *,ui_widget_instance_t *);
 void w_wallbox_evcc_apply_state(ui_widget_instance_t *,const ha_state_t *);
@@ -92,12 +94,50 @@ int sim_wallbox_regression(void)
     apply(&widget,"select.mode","now",modes);
     sim_host_service_reset(ESP_FAIL); click(widget.obj,"Off"); CHECK(find(widget.obj,"Not confirmed",NULL)); CHECK(!find(widget.obj,"Waiting...",NULL));
     /* Vehicle selection remains enabled with unknown SOC and preserves escaping. */
-    sim_host_service_reset(ESP_OK); click(widget.obj,"Demo car"); click(lv_layer_top(),"A\"B\\C"); sent("select","select_option","select.car","A\"B\\C",0);
+    sim_host_service_reset(ESP_OK); click(widget.obj,"Demo car");
+    /* HA refreshes the same selection repeatedly. Keep the popup and its rows
+     * usable across those updates, including unrelated attribute changes. */
+    lv_obj_t *picker = lv_obj_get_child(lv_layer_top(),0); CHECK(picker);
+    for (int i=0;i<4;i++) {
+        apply(&widget,"select.car","ev1",cars); advance(300);
+        CHECK(lv_obj_get_child_count(lv_layer_top())==1); CHECK(lv_obj_get_child(lv_layer_top(),0)==picker);
+    }
+    apply(&widget,"select.car","ev1","{\"friendly_name\":\"Updated name\",\"options\":[\"null\",\"ev1\",\"A\\\"B\\\\C\"],\"vehicle\":{\"name\":\"Demo car\"}}");
+    CHECK(lv_obj_get_child(lv_layer_top(),0)==picker); CHECK(sim_host_service_calls()->count==0);
+    click(lv_layer_top(),"A\"B\\C"); sent("select","select_option","select.car","A\"B\\C",0);
     apply(&widget,"select.car","A\"B\\C",cars); CHECK(find(widget.obj,"-- %",NULL));
-    click(widget.obj,"Demo car"); sim_host_service_reset(ESP_OK); click(lv_layer_top(),"No vehicle"); sent("select","select_option","select.car","null",0); apply(&widget,"select.car","null",cars);
+    click(widget.obj,"Demo car"); sim_host_service_reset(ESP_OK); click(lv_layer_top(),"Guest vehicle"); sent("select","select_option","select.car","null",0); apply(&widget,"select.car","null",cars);
+    CHECK(find(widget.obj,"Guest vehicle",NULL)); CHECK(!find(widget.obj,"No vehicle",NULL));
+    CHECK(ui_i18n_init("de")==ESP_OK); apply(&widget,"select.car","null",cars);
+    CHECK(find(widget.obj,"Gastfahrzeug",NULL)); click(widget.obj,"Gastfahrzeug");
+    CHECK(find(lv_layer_top(),"Gastfahrzeug",NULL));
+    w_wallbox_evcc_set_visible(&widget,false); w_wallbox_evcc_set_visible(&widget,true);
+    CHECK(ui_i18n_init("en")==ESP_OK); apply(&widget,"select.car","null",cars);
+    /* Guest selection stays usable without SOC. Actual choice/list changes
+     * invalidate captured row indexes instead of sending a stale command. */
+    click(widget.obj,"Guest vehicle"); CHECK(lv_obj_get_child_count(lv_layer_top())==1);
+    apply(&widget,"select.car","null",cars); CHECK(lv_obj_get_child_count(lv_layer_top())==1);
+    apply(&widget,"select.car","ev1",cars); CHECK(lv_obj_get_child_count(lv_layer_top())==0);
+    click(widget.obj,"Demo car");
+    apply(&widget,"select.car","ev1","{\"options\":[\"ev1\",\"null\",\"A\\\"B\\\\C\"],\"vehicle\":{\"name\":\"Demo car\"}}");
+    CHECK(lv_obj_get_child_count(lv_layer_top())==0);
+    click(widget.obj,"Demo car");
+    apply(&widget,"select.car","ev1","{\"options\":[\"ev1\",\"null\"],\"vehicle\":{\"name\":\"Demo car\"}}");
+    CHECK(lv_obj_get_child_count(lv_layer_top())==0);
+    click(widget.obj,"Demo car"); apply(&widget,"select.car","unavailable","{}");
+    CHECK(lv_obj_get_child_count(lv_layer_top())==0);
+    apply(&widget,"select.car","null",cars);
     sim_host_service_reset(ESP_OK); click(widget.obj,"100 %"); lv_obj_t *slider=find(lv_layer_top(),NULL,&lv_slider_class); CHECK(slider);
     lv_slider_set_value(slider,13,LV_ANIM_OFF); lv_obj_send_event(slider,LV_EVENT_VALUE_CHANGED,NULL); CHECK(sim_host_service_calls()->count==0); click(lv_layer_top(),"Apply"); sent("number","set_value","number.target",NULL,85);
     apply(&widget,"number.target","85",bounds); CHECK(find(widget.obj,"85 %",NULL));
+    click(widget.obj,"85 %"); slider=find(lv_layer_top(),NULL,&lv_slider_class); CHECK(slider);
+    lv_slider_set_value(slider,10,LV_ANIM_OFF); lv_obj_send_event(slider,LV_EVENT_VALUE_CHANGED,NULL);
+    for (int i=0;i<4;i++) { apply(&widget,"number.target","85",bounds); CHECK(find(lv_layer_top(),NULL,&lv_slider_class)==slider); CHECK(lv_slider_get_value(slider)==10); }
+    apply(&widget,"number.target","85","{\"min\":20,\"max\":100,\"step\":10,\"unit_of_measurement\":\"%\"}");
+    CHECK(lv_obj_get_child_count(lv_layer_top())==0);
+    apply(&widget,"number.target","85",bounds); click(widget.obj,"85 %");
+    apply(&widget,"number.target","90",bounds); CHECK(lv_obj_get_child_count(lv_layer_top())==0);
+    apply(&widget,"number.target","85",bounds);
     const char *soc_values[]={"0","10","50","80","100","unknown","unavailable","nan","101","-1"};
     for (int i=0;i<10;i++) {
         apply(&widget,"sensor.soc",soc_values[i],"{\"unit_of_measurement\":\"%\"}");
@@ -127,10 +167,27 @@ int sim_wallbox_regression(void)
     const char *legacy="{\"options\":[\"off\",\"pv\",\"minpv\",\"now\"]}";
     apply(&widget,"select.mode","pv",legacy);
     apply(&widget,"select.target","80","{\"options\":[\"0\",\"80\",\"100\"]}");
-    sim_host_service_reset(ESP_OK); click(widget.obj,"pv"); click(lv_layer_top(),"minpv");
+    sim_host_service_reset(ESP_OK); click(widget.obj,"pv");
+    apply(&widget,"select.mode","pv",legacy); CHECK(lv_obj_get_child_count(lv_layer_top())==1);
+    click(lv_layer_top(),"minpv");
     sent("select","select_option","select.mode","minpv",0); apply(&widget,"select.mode","minpv",legacy);
-    sim_host_service_reset(ESP_OK); click(widget.obj,"80 %"); click(lv_layer_top(),"100");
+    sim_host_service_reset(ESP_OK); click(widget.obj,"80 %");
+    apply(&widget,"select.target","80","{\"options\":[\"0\",\"80\",\"100\"]}"); CHECK(lv_obj_get_child_count(lv_layer_top())==1);
+    click(lv_layer_top(),"100");
     sent("select","select_option","select.target","100",0); apply(&widget,"select.target","100","{\"options\":[\"0\",\"80\",\"100\"]}");
+    lv_obj_delete(widget.obj); advance(300);
+    /* HA option translations label every row, even before that car is selected. */
+    CHECK(w_wallbox_evcc_create(&def,lv_screen_active(),&widget)==ESP_OK);
+    cJSON *names_request=ha_evcc_vehicle_names_next_request(91,now); CHECK(names_request); cJSON_Delete(names_request);
+    cJSON *names=cJSON_Parse("{\"resources\":{\"component.evcc_intg.entity.select.vehiclename.state.ev1\":\"Demo #1\",\"component.evcc_intg.entity.select.vehiclename.state.ev4\":\"Demo ID.4\"}}");
+    ha_evcc_vehicle_names_result(91,true,names); cJSON_Delete(names);
+    apply(&widget,"select.mode","smart",modes); apply(&widget,"binary_sensor.connected","on","{}");
+    const char *named_cars="{\"options\":[\"null\",\"ev1\",\"ev4\"]}";
+    apply(&widget,"select.car","null",named_cars); click(widget.obj,"Guest vehicle");
+    CHECK(find(lv_layer_top(),"Demo #1",NULL)); CHECK(find(lv_layer_top(),"Demo ID.4",NULL));
+    CHECK(!find(lv_layer_top(),"ev1",NULL)); CHECK(!find(lv_layer_top(),"ev4",NULL));
+    apply(&widget,"select.car","null",named_cars); CHECK(find(lv_layer_top(),"Demo ID.4",NULL));
+    sim_host_service_reset(ESP_OK); click(lv_layer_top(),"Demo ID.4"); sent("select","select_option","select.car","ev4",0);
     lv_obj_delete(widget.obj); advance(300);
     printf("wallbox regression: %u checks passed\n",checks); return 0;
 }

@@ -9,7 +9,7 @@ variant="${1:-panel4}"
 if (($# > 0)); then shift; fi
 case "$variant" in
     panel4|panel10|paneljc|paneljc-v2|tab5) ;;
-    *) echo "Usage: tools/simulator.sh {panel4|panel10|paneljc|paneljc-v2|tab5} [simulator arguments]" >&2; exit 2 ;;
+    *) echo "Usage: scripts/simulator.sh {panel4|panel10|paneljc|paneljc-v2|tab5} [simulator arguments]" >&2; exit 2 ;;
 esac
 
 if ! command -v cmake >/dev/null 2>&1; then

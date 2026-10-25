@@ -7,11 +7,13 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 from urllib.request import Request, build_opener, ProxyHandler
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools'))
 from editor_local import build_server, demo_responses
+import editor_local
 from editor_local_demo import all_widgets_fixture
 import re
 
@@ -59,8 +61,8 @@ class LocalEditorTest(unittest.TestCase):
         self.assertEqual(json.loads(self.state.read_text())['/api/layout'], layout)
         # HTML view requests must not save or rewrite the persistent state.
         saved = self.state.read_bytes()
-        for view in ('classic', 'spike'):
-            status, html = self.request('/?ui=' + view)
+        for view, path in (('classic', '/?ui=classic'), ('spike', '/?ui=spike'), ('spike', '/')):
+            status, html = self.request(path)
             self.assertEqual(status, 200)
             self.assertIn(b'/__local__/local-editor.js', html)
             self.assertEqual(b'/__local__/spike.js' in html, view == 'spike')
@@ -112,16 +114,36 @@ class LocalEditorTest(unittest.TestCase):
 
 
 class AllWidgetsDemoTest(unittest.TestCase):
+    def test_shared_demo_reports_device_classes_without_capture_only_overrides(self):
+        expected = {
+            'sensor.demo_room_temperature': 'temperature', 'sensor.demo_humidity': 'humidity',
+            'sensor.demo_power': 'power', 'sensor.demo_robot_battery': 'battery',
+            'sensor.demo_car_battery': 'battery', 'sensor.demo_evcc_soc': 'battery',
+            'sensor.demo_evcc_energy': 'energy', 'sensor.demo_evcc_remaining': 'duration',
+            'sensor.demo_printer_nozzle': 'temperature', 'sensor.demo_printer_bed': 'temperature',
+            'sensor.demo_car_interior_temperature': 'temperature',
+            'sensor.demo_solar_today': 'energy', 'sensor.demo_portfolio_value': 'monetary',
+            'binary_sensor.demo_front_door': 'door', 'binary_sensor.demo_motion': 'motion',
+            'cover.demo_blind': 'blind', 'switch.demo_lamp': 'outlet',
+            'media_player.demo_music': 'speaker', 'media_player.demo_sonos': 'speaker',
+        }
+        for all_widgets in (False, True):
+            responses, _ = demo_responses('paneljc', all_widgets=all_widgets)
+            entities = {e['id']: e for e in responses['/api/entities']['items']}
+            for entity_id, device_class in expected.items():
+                self.assertEqual(entities[entity_id]['device_class'], device_class, entity_id)
+            self.assertEqual(entities['sensor.demo_printer_status']['device_class'], '')
+
     def test_all_types_bindings_geometry_and_save_budget(self):
         root = Path(__file__).resolve().parents[2]
         registry = (root / 'main/layout/widget_types.c').read_text().split('s_variant_sizes')[0]
         types = set(re.findall(r'\{"([a-z0-9_]+)",\s*\{', registry)) - {'roborock_tile'}
-        for variant in ('paneljc', 'tab5'):
+        for variant in ('paneljc', 'paneljc-v2', 'panel10', 'tab5'):
             with self.subTest(variant=variant):
                 fixture = all_widgets_fixture(variant)
                 widgets = [w for p in fixture['pages'] for w in p['widgets']]
                 self.assertEqual({w['type'] for w in widgets}, types)
-                self.assertEqual(len(fixture['pages']), 12)
+                self.assertEqual(len(fixture['pages']), 8)
                 # Compact navigation needs a distinct, explicit icon for every page.
                 icons = [page['icon'] for page in fixture['pages']]
                 self.assertEqual(len(set(icons)), len(icons))
@@ -164,11 +186,54 @@ class AllWidgetsDemoTest(unittest.TestCase):
             demo = build_server(port=0, all_widgets=True)
             try:
                 self.assertNotEqual(original.local_store.path, demo.local_store.path)
-                self.assertEqual(len(demo.local_store.seed['/api/layout']['pages']), 12)
+                self.assertEqual(len(demo.local_store.seed['/api/layout']['pages']), 8)
             finally:
                 original.server_close()
                 demo.server_close()
         with self.assertRaises(ValueError): all_widgets_fixture('panel4')
+
+
+class LocalEditorLaunchTest(unittest.TestCase):
+    def test_enter_opens_the_root_url_but_closed_stdin_does_not(self):
+        url = 'http://127.0.0.1:18766/'
+        with patch('builtins.input', return_value=''), patch.object(editor_local.webbrowser, 'open', return_value=True) as browser:
+            editor_local.open_browser_on_enter(url)
+            browser.assert_called_once_with(url)
+        with patch('builtins.input', side_effect=EOFError), patch.object(editor_local.webbrowser, 'open') as browser:
+            editor_local.open_browser_on_enter(url)
+            browser.assert_not_called()
+
+    def test_browser_failure_keeps_a_manual_url_available(self):
+        url = 'http://127.0.0.1:18766/'
+        with patch('builtins.input', return_value=''), patch.object(editor_local.webbrowser, 'open', side_effect=OSError), patch('builtins.print') as output:
+            editor_local.open_browser_on_enter(url)
+            output.assert_called_once_with(f'Could not open the browser. Open {url} manually.', flush=True)
+
+    def test_noninteractive_start_serves_without_waiting_for_input(self):
+        server = Mock(server_port=18766)
+        server.serve_forever.side_effect = KeyboardInterrupt
+        with patch.object(sys, 'argv', ['editor_local.py']), patch.object(editor_local, 'build_server', return_value=server), \
+                patch.object(sys.stdin, 'isatty', return_value=False), patch.object(editor_local.threading, 'Thread') as thread, \
+                patch('builtins.print') as output:
+            editor_local.main()
+            output.assert_any_call('Local editor: http://127.0.0.1:18766/', flush=True)
+            thread.assert_not_called()
+        server.serve_forever.assert_called_once()
+        server.server_close.assert_called_once()
+
+    def test_startup_selects_all_widgets_without_overriding_explicit_layouts(self):
+        cases = [([], True), (['--ui', 'spike'], True), (['--demo', 'compact'], False),
+                 (['--fixture', 'custom.json'], False), (['--variant', 'panel4'], False),
+                 (['--variant', 'tab5'], True), (['--demo', 'all'], True)]
+        for arguments, expected in cases:
+            with self.subTest(arguments=arguments):
+                server = Mock(server_port=18766)
+                server.serve_forever.side_effect = KeyboardInterrupt
+                with patch.object(sys, 'argv', ['editor_local.py', *arguments]), \
+                        patch.object(editor_local, 'build_server', return_value=server) as build, \
+                        patch.object(sys.stdin, 'isatty', return_value=False), patch('builtins.print'):
+                    editor_local.main()
+                    self.assertEqual(build.call_args.kwargs['all_widgets'], expected)
 
 
 if __name__ == '__main__': unittest.main()

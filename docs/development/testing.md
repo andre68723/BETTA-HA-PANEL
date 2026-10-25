@@ -3,11 +3,11 @@
 
 ## Checks without a device
 
-The daily command is `uv run --locked --only-group checks tools/check.sh --changed`.
+The daily command is `uv run --locked --only-group checks scripts/check.sh --changed`.
 Add `--list` to explain its selection, `--quick` for the fast stage, or use `--full --force` for the complete gate.
 The [run levels](tools.md#checks) explain the existing stamp inputs, logs and cache. There is no separate path map.
 
-![Sources go through tools/check.sh; its result feeds the firmware builds, CI and the device checks](../img/development/checks.svg)
+![Sources go through scripts/check.sh; its result feeds the firmware builds, CI and the device checks](../img/development/checks.svg)
 
 - **Host C:** real policies, parsers, stores and workers with injected failures and strict compiler warnings.
   Both panel4/paneljc suites remain complete, including the fixed Tab5 orientation case; hardware APIs are stubbed.
@@ -80,7 +80,7 @@ fixtures for numeric and discrete details.
 
 ## Screenshots
 
-`tools/screenshot.sh <panel-ip> [out.png]` saves what the panel shows (popups and the update screen included) via
+`scripts/screenshot.sh <panel-ip> [out.png]` saves what the panel shows (popups and the update screen included) via
 `GET /api/screenshot.bmp`. Do not give `curl` a short timeout: the image is about 3 MB on the 10-inch panel and a timeout
 truncates it silently.
 
@@ -100,7 +100,7 @@ idle, running, paused, returning, selected Off, alert and unavailable control st
 
 **Simulator**
 
-`tools/test_pages.sh panel4 tab5 paneljc` (`test_layouts.py view`) renders every page with the demo entities and opens an
+`scripts/test_pages.sh panel4 tab5 paneljc` (`test_layouts.py view`) renders every page with the demo entities and opens an
 overview with board, style, text step and language buttons. `--styles`, `--text-steps` and `--languages` choose the
 renders (default: four styles, step 0, German). The launcher builds each requested size, writes
 `${TMPDIR:-/tmp}/betta-test-pages/simulator.log`, then opens the browser; `--no-open` skips opening.

@@ -8,6 +8,7 @@
 #include "ha/ha_client.h"
 #include "ha/ha_evcc_value.h"
 #include "ha/ha_evcc_sessions.h"
+#include "ha/ha_evcc_vehicle_names.h"
 #include "ui/ui_history_popup.h"
 #include "ui/ui_evcc_sessions_view.h"
 #include "layout/evcc_slots.h"
@@ -130,9 +131,11 @@ static void picker_label(void *user, size_t index, char *out, size_t length)
     wallbox_t *ctx = user; const char *value = choices(ctx, ctx->picker_role)->option[index];
     if (ctx->picker_role == EVCC_MODE) value = mode_label(value);
     else if (ctx->picker_role == EVCC_VEHICLE) {
-        if (!strcmp(value, "null")) value = tr("evcc.none", "No vehicle");
+        if (!strcmp(value, "null")) value = tr("evcc.guest", "Guest vehicle");
         else if (!strcmp(value, ctx->raw[EVCC_VEHICLE]) && ctx->vehicle_name[0]) value = ctx->vehicle_name;
     }
+    if (ctx->picker_role == EVCC_VEHICLE && strcmp(value, "null") &&
+        strcmp(value, ctx->vehicle_name) && ha_evcc_vehicle_name(value, out, length)) return;
     snprintf(out, length, "%s", value);
 }
 static void picker_chosen(void *user, size_t index)
@@ -385,7 +388,8 @@ static void render(wallbox_t *ctx)
     int mode_w = (width - 16) / 3;
     lv_obj_set_width(ctx->button[1], mode_w);
     bool disconnected = active && !strcmp(ctx->raw[EVCC_CONNECTED], "off");
-    const char *vehicle = disconnected || !strcmp(ctx->raw[EVCC_VEHICLE], "null") ? tr("evcc.none", "No vehicle") :
+    const char *vehicle = disconnected ? tr("evcc.none", "No vehicle") :
+        !strcmp(ctx->raw[EVCC_VEHICLE], "null") ? tr("evcc.guest", "Guest vehicle") :
         live(ctx->raw[EVCC_VEHICLE]) ? (ctx->vehicle_name[0] ? ctx->vehicle_name : ctx->raw[EVCC_VEHICLE]) : "--";
     lv_point_t measured;
     const lv_font_t *vehicle_font = ui_font_role(UI_TEXT_LABEL);
@@ -550,6 +554,7 @@ esp_err_t w_wallbox_evcc_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     const char *first[] = {def->entity_id, def->secondary_entity_id, def->tertiary_entity_id};
     for (int i = 0; i < EVCC_ROLE_COUNT; i++) snprintf(ctx->entity[i], APP_MAX_ENTITY_ID_LEN, "%s", i < 3 ? first[i] : def->extra_entity_id[i - 3]);
     ctx->target_number = !strncmp(ctx->entity[EVCC_TARGET], "number.", 7); ctx->visible = true; ctx->pending = -1;
+    ha_evcc_vehicle_names_request();
     /* the header in the fields the wallbox does not use otherwise (layout/evcc_slots.h) */
     ctx->header = !strcmp(def->style_variant, "power") ? HEADER_POWER : !strcmp(def->style_variant, "flow") ? HEADER_FLOW : HEADER_OFF;
     ctx->max_kw = def->gauge_max >= EVCC_POWER_MAX_KW_MIN && def->gauge_max <= EVCC_POWER_MAX_KW_MAX ? def->gauge_max : EVCC_POWER_MAX_KW_DEFAULT;
@@ -647,6 +652,20 @@ esp_err_t w_wallbox_evcc_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     if (!ctx->timer) { lv_obj_delete(ctx->card); instance->obj = NULL; instance->ctx = NULL; return ESP_ERR_NO_MEM; }
     return ESP_OK;
 }
+/* Compare only the choices the popup captured. Telemetry and descriptive HA
+ * attributes can refresh without changing a selection's meaning or indexes. */
+static bool same_options(const ha_select_options_t *options, const cJSON *attrs)
+{
+    const cJSON *list = cJSON_GetObjectItemCaseSensitive(attrs, "options");
+    if (options->missing || !cJSON_IsArray(list) || (size_t)cJSON_GetArraySize(list) != options->count) return false;
+    size_t index = 0;
+    const cJSON *item;
+    cJSON_ArrayForEach(item, list) {
+        const char *value = cJSON_GetStringValue(item);
+        if (!value || strcmp(value, options->option[index++])) return false;
+    }
+    return true;
+}
 void w_wallbox_evcc_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
 {
     wallbox_t *ctx = instance->ctx; if (!ctx || !state) return;
@@ -660,26 +679,37 @@ void w_wallbox_evcc_apply_state(ui_widget_instance_t *instance, const ha_state_t
     for (int i = 0; i < EVCC_ROLE_COUNT; i++) if (ctx->entity[i][0] && !strcmp(ctx->entity[i], state->entity_id)) {
         if (i == EVCC_CONNECTED && strcmp(ctx->raw[i], state->state)) { ctx->force_history = !strcmp(ctx->raw[i], "on") && !strcmp(state->state, "off"); ctx->history_requested = false; close_popups(ctx); }
         bool changed_vehicle = i == EVCC_VEHICLE && strcmp(ctx->raw[i], state->state);
-        if ((ctx->picker && ctx->picker_role == i) || (ctx->number_popup && i == EVCC_TARGET)) close_popups(ctx);
+        bool changed_control = strcmp(ctx->raw[i], state->state) != 0;
         snprintf(ctx->raw[i], sizeof(ctx->raw[i]), "%s", state->state);
         cJSON *attrs = cJSON_Parse(state->attributes_json);
         const char *unit = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(attrs, "unit_of_measurement"));
+        changed_control |= strcmp(ctx->unit[i], unit ? unit : "") != 0;
         snprintf(ctx->unit[i], sizeof(ctx->unit[i]), "%s", unit ? unit : "");
-        if (i == EVCC_MODE || i == EVCC_VEHICLE || (i == EVCC_TARGET && !ctx->target_number))
+        if (i == EVCC_MODE || i == EVCC_VEHICLE || (i == EVCC_TARGET && !ctx->target_number)) {
+            changed_control |= !same_options(choices(ctx, i), attrs);
             (void)evcc_select_parse(state->attributes_json, choices(ctx, i));
-        if (i == EVCC_TARGET && ctx->target_number) ctx->bounds = evcc_number_bounds(state->attributes_json, &ctx->min, &ctx->max, &ctx->step);
+        }
+        if (i == EVCC_TARGET && ctx->target_number) {
+            const float min = ctx->min, max = ctx->max, step = ctx->step;
+            ctx->bounds = evcc_number_bounds(state->attributes_json, &ctx->min, &ctx->max, &ctx->step);
+            changed_control |= !ctx->bounds || min != ctx->min || max != ctx->max || step != ctx->step;
+        }
         if (i == EVCC_VEHICLE) {
             const char *name = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(cJSON_GetObjectItemCaseSensitive(attrs, "vehicle"), "name"));
-            snprintf(ctx->vehicle_name, sizeof(ctx->vehicle_name), "%s", strcmp(state->state, "null") && name ? name : "");
+            name = strcmp(state->state, "null") && name ? name : "";
+            changed_control |= strcmp(ctx->vehicle_name, name) != 0;
+            snprintf(ctx->vehicle_name, sizeof(ctx->vehicle_name), "%s", name);
             if (changed_vehicle) { ctx->raw[EVCC_SOC][0] = 0; ctx->raw[EVCC_EFFECTIVE][0] = 0; }
         }
         cJSON_Delete(attrs);
+        if (changed_control && ((ctx->picker && ctx->picker_role == i) || (ctx->number_popup && i == EVCC_TARGET))) close_popups(ctx);
         if (ctx->pending == i) {
             float a, b;
             bool matched = i == EVCC_TARGET && ctx->target_number ? evcc_number(ctx->expected, &a) && evcc_number(state->state, &b) && fabsf(a - b) < 0.001f : !strcmp(state->state, ctx->expected);
             if (matched || !live(state->state)) { ctx->pending = -1; ctx->notice = !matched; ctx->started = lv_tick_get(); }
         }
     }
+    if ((ctx->picker && !usable(ctx, ctx->picker_role)) || (ctx->number_popup && !usable(ctx, EVCC_TARGET))) close_popups(ctx);
     render(ctx);
 }
 void w_wallbox_evcc_mark_unavailable(ui_widget_instance_t *instance)

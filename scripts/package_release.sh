@@ -4,7 +4,7 @@
 #
 # Package release images from existing builds:
 #
-#   tools/package_release.sh <version> <variant>...      e.g.  tools/package_release.sh v0.9.0-rc3 panel4 paneljc
+#   scripts/package_release.sh <version> <variant>...      e.g.  scripts/package_release.sh v0.9.0-rc3 panel4 paneljc
 #
 # For each variant it writes into release/out/<version>/ (git-ignored):
 #   betta86-ha-panel-<version>-<variant>.factory.bin   bootloader, partition table, app and C6 firmware for address 0x0 (USB flash;
@@ -14,7 +14,7 @@
 # and a SHA256SUMS file. The names are what the update check looks for (`betta86-ha-panel-*-<variant>.ota.bin`).
 #
 # Needs ESP-IDF 6.1 in the environment (esptool) and a finished build of every variant that reports <version>:
-#   (edit BETTAOS_RELEASE_VERSION in CMakeLists.txt, or BETTA_VERSION=<version>)  tools/build.sh <variant> reconfigure build
+#   (edit BETTAOS_RELEASE_VERSION in CMakeLists.txt, or BETTA_VERSION=<version>)  scripts/build.sh <variant> reconfigure build
 # The script refuses a build whose version differs, so a stale build cannot ship under a new name.
 # It does not publish anything; see docs/development/release.md ("Publishing a release candidate").
 set -euo pipefail
@@ -36,7 +36,7 @@ mkdir -p "$out"
 
 for variant in "$@"; do
     build="$root/build/$variant"
-    [ -f "$build/flash_args" ] || { echo "no build for $variant ($build/flash_args missing): run tools/build.sh $variant build" >&2; exit 1; }
+    [ -f "$build/flash_args" ] || { echo "no build for $variant ($build/flash_args missing): run scripts/build.sh $variant build" >&2; exit 1; }
     built=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['project_version'])" "$build/project_description.json")
     if [ "$built" != "$version" ]; then
         echo "build/$variant reports $built, not $version: rebuild it with the right version first" >&2

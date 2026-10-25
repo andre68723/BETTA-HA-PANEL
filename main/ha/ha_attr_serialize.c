@@ -346,6 +346,7 @@ bool ha_client_serialize_media_player_attrs_compact(cJSON *src_attrs, char *out_
     }
 
     bool any = false;
+    any |= ha_client_copy_attr_dup(compact, "device_class", src_attrs, "device_class"); /* Inspector metadata */
     any |= ha_client_copy_attr_dup(compact, "supported_features", src_attrs, "supported_features"); /* the room card gates Play/Pause */
     cJSON *volume_level = cJSON_GetObjectItemCaseSensitive(src_attrs, "volume_level");
     if (cJSON_IsNumber(volume_level)) {
@@ -737,8 +738,7 @@ bool ha_client_serialize_vacuum_attrs_compact(cJSON *src_attrs, char *out_json, 
     return fits;
 }
 
-/* Only current_position and supported_features are read anywhere (w_cover.c, and w_slider.c for a
- * cover-domain slider); inventoried before adding this, see the truncation-plan development note. */
+/* Position and features drive cover controls; device_class also reaches the editor's metadata badge. */
 bool ha_client_serialize_cover_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size)
 {
     if (!cJSON_IsObject(src_attrs) || out_json == NULL || out_json_size == 0) {
@@ -751,6 +751,7 @@ bool ha_client_serialize_cover_attrs_compact(cJSON *src_attrs, char *out_json, s
     }
 
     bool any = false;
+    any |= ha_client_copy_attr_dup(compact, "device_class", src_attrs, "device_class");
     any |= ha_client_copy_attr_dup(compact, "current_position", src_attrs, "current_position");
     any |= ha_client_copy_attr_dup(compact, "supported_features", src_attrs, "supported_features");
 

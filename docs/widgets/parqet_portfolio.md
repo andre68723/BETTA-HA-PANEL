@@ -22,6 +22,8 @@ Shows a **Parqet portfolio** from its `sensor.*` entities: total value, gain, XI
 
 The **[Parqet Companion integration](https://github.com/cubinet-code/ha-parqet-companion)** (HACS) for a portfolio you track on [Parqet](https://www.parqet.com). The panel only talks to Home Assistant; setting up the integration is described by its own project.
 
+Search filters amounts by **Monetary** device class and XIRR/return by **%**; choose the corresponding financial metric.
+
 The sensors report one **interval**, set in the integration's options (default Max). The largest holdings come from the attribute `top_holdings` of the total value sensor (five entries). The integration disables its detailed sensors by default; only the unrealised return in percent is useful here: enable *Unrealised return (gross)* in its entity settings.
 
 ## Options

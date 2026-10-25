@@ -38,6 +38,12 @@ cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -Dtime=host_test_time 
   tests/host/test_main.c tests/host/test_energy_timeline_colors.c tests/host/test_sensor_value.c tests/host/test_quote.c main/ha/ha_quote.c main/ui/theme/matte_title.c main/ui/theme/ui_style_registry.c main/settings/brightness_model.c main/settings/settings_restart.c main/settings/settings_validate.c main/layout/layout_validate.c main/layout/bambu_printer_slots.c main/layout/evcc_slots.c main/layout/layout_orientation.c main/layout/widget_types.c main/util/atomic_file.c tests/host/flash_gate_stub.c main/util/cover_scale.c main/drivers/display_policy.c main/util/json_util.c main/util/cover_guard.c main/util/boot_guard.c main/util/entity_id.c main/util/distance_units.c main/util/iso_time.c main/util/room_extra.c main/util/ota_health.c main/util/auto_update.c main/util/sha256_soft.c main/util/auto_update_state.c main/util/user_activity.c main/ui/nav_layout.c main/util/reboot_log.c main/util/net_watchdog.c main/util/ui_watchdog.c main/util/ota_chip_rev.c main/util/history_feed_policy.c main/util/chart_scale.c main/ha/energy_timeline_model.c main/util/url_decode.c main/util/notification_parse.c main/ui/notification_text.c main/util/chime_synth.c main/ha/ha_attrs_compact.c main/ha/ha_attr_serialize.c main/ha/ha_price_series.c main/ha/ha_history_stats.c main/ha/ha_layout_entities.c main/ha/ha_display_precision.c main/ha/ha_discovery_domains.c main/ha/ha_registry_discovery.c main/ha/ha_auth_state.c main/ha/ha_select_options.c main/ha/ha_control_options.c main/ha/ha_datetime_value.c main/ha/ha_timestamp_format.c main/ha/ha_sensor_value.c main/ha/ha_history_reduce.c main/ha/ha_lock_state.c main/ha/ha_alarm_state.c main/ha/ha_room_registry.c main/ui/widgets/weather_value_parse.c main/ui/widgets/weather_condition_icon.c main/net/wifi_signal_level.c main/net/setup_passphrase.c main/net/update_check_parse.c "${cjson_sources[@]}" \
   "${cjson_libs[@]}" -lm -o "$out/test_host"
 
+# Entity picker discovery: bounded production queries and capability metadata.
+cc -std=gnu11 -Wall -Wextra -Werror -g -I main "${cjson_flags[@]}" \
+  tests/host/test_entity_search.c main/ha/ha_entity_source.c main/ha/ha_discovery_domains.c \
+  "${cjson_sources[@]}" "${cjson_libs[@]}" -o "$out/test_entity_search"
+"$out/test_entity_search"
+
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main \
   tests/host/test_display_preview.c main/drivers/display_policy.c main/settings/brightness_model.c \
   -o "$out/test_display_preview"
@@ -270,7 +276,7 @@ cc -std=gnu11 -Wall -Wextra -Werror -g -I tests/host/storage_stubs -I main \
 
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/host/stubs "${variant_flags[@]}" "${cjson_flags[@]}" \
   -DHA_EVCC_SESSIONS_TEST_HOOKS=1 -Dtime=ha_evcc_sessions_test_time \
-  tests/host/test_evcc.c tests/host/test_evcc_sessions.c main/ha/ha_evcc_sessions.c main/util/iso_time.c main/layout/layout_validate.c main/ha/ha_timestamp_format.c main/ha/ha_sensor_value.c main/ha/ha_datetime_value.c main/ha/ha_alarm_state.c main/layout/widget_types.c main/layout/layout_orientation.c main/util/entity_id.c main/util/room_extra.c main/util/chime_synth.c main/layout/bambu_printer_slots.c main/ha/ha_layout_entities.c main/ha/ha_evcc_lookup.c main/ha/ha_evcc_value.c main/layout/evcc_slots.c main/ha/ha_select_options.c \
+  tests/host/test_evcc.c tests/host/test_evcc_sessions.c main/ha/ha_evcc_sessions.c main/ha/ha_evcc_vehicle_names.c main/util/iso_time.c main/layout/layout_validate.c main/ha/ha_timestamp_format.c main/ha/ha_sensor_value.c main/ha/ha_datetime_value.c main/ha/ha_alarm_state.c main/layout/widget_types.c main/layout/layout_orientation.c main/util/entity_id.c main/util/room_extra.c main/util/chime_synth.c main/layout/bambu_printer_slots.c main/ha/ha_layout_entities.c main/ha/ha_evcc_lookup.c main/ha/ha_evcc_value.c main/layout/evcc_slots.c main/ha/ha_select_options.c \
   "${cjson_sources[@]}" "${cjson_libs[@]}" -lm -o "$out/test_evcc"
 
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/host/stubs "${variant_flags[@]}" "${cjson_flags[@]}" \

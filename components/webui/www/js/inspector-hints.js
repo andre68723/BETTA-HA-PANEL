@@ -284,6 +284,8 @@ function shortenInspectorHints() {
     if (button.hidden !== hidden) button.hidden = hidden;
     button.title = t(inspectorHelpTopic()?.page ? "inspector.help.about_page" : "inspector.help.about"); button.setAttribute("aria-label", button.title);
   }
+  // Hint wrapping also runs after layout refresh, so update the section icons in the same pass.
+  refreshInspectorSectionHelp();
 }
 
 function bindInspectorHints() {

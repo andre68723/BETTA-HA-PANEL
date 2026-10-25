@@ -52,7 +52,7 @@ an LVGL or widget pointer. Page hiding/deletion closes owned full-screen views.
   cancellation inside a read, mailbox contention and buffer/reference cleanup.
 - `node --test tests/webui/*.test.mjs`: real Inspector editing events,
   enable/disable, save/reload, camera discovery binding and backup preservation.
-- `tools/simulator.sh panel4 --regression controls`: Camera snapshot defaults,
+- `scripts/simulator.sh panel4 --regression controls`: Camera snapshot defaults,
   repeated frame replacement, foreground views, hide/sleep and owner deletion.
   The Bambu regression covers Status → Live camera and owner teardown.
 

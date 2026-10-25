@@ -396,11 +396,11 @@ body:is([data-ui-style="glow"], [data-ui-style="glass"]) #canvas .tp-media .tp-v
 body[data-ui-style] #canvas .widget-box :is(.tp-btns span, .tp-vol span, .tp-vac-select, .tp-vac-btns span,
   .tp-semi-btn, .tp-clim-mid span, .tp-clim-chips i, .tp-chips i, .tp-room-btn, .tp-icon-circle,
   .car-x-btn, .bambu-preview-buttons span, .evcc-modes span, .evcc-control,
-  .control-action, .control-active, .control-danger, .control-disabled, .control-alert) {
+  .control-action, .control-active, .control-primary, .control-danger, .control-disabled, .control-alert) {
   background: var(--control-fill, var(--pv-control-bg, #202830)); color: var(--control-text, var(--pv-control-fg, #fff));
   border-color: var(--pv-border); background-image: none;
 }
-body[data-ui-style] #canvas .widget-box :is(.control-active, .tp-chips i.on) {
+body[data-ui-style] #canvas .widget-box :is(.control-active, .control-primary, .tp-chips i.on) {
   --control-fill: var(--pv-control-active-bg, #b7cbd8); --control-text: var(--pv-control-active-fg, #101418);
   border-color: var(--pv-border); background-image: none;
 }

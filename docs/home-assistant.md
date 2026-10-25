@@ -54,6 +54,14 @@ Other details come from the entity's own integration: a vacuum's map image, a ca
 media player's cover art only appear when those attributes exist. The built-in cameras of the JC and Tab5 panels sense
 light and movement and need no integration.
 
+## Device classes
+
+Home Assistant's [device classes](https://www.home-assistant.io/integrations/homeassistant/#device-class)
+describe more than sensors: covers can be shutters or blinds, media players speakers or TVs, and switches outlets.
+The editor shows the reported class without changing it. A class does not add controls the entity cannot perform;
+the panel uses the entity's supported features. Sensor number, unit and time formats are documented in the
+[Sensor guide](widgets/sensor.md).
+
 ## Energy and rooms
 
 ### Energy dashboard page

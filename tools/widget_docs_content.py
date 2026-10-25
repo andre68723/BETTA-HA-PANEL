@@ -115,12 +115,13 @@ WIDGETS = {
         "entities": [("Grid import · kWh", "`sensor.*`", True), ("Grid export · kWh", "`sensor.*`", False),
                      ("Solar production · kWh", "`sensor.*`", False), ("Battery charge and discharge · kWh", "`sensor.*`", False),
                      ("State of charge · %", "`sensor.*`", False), ("Solcast sensor", "`sensor.*`", False)],
-        "requirements": "Cumulative counters in kWh (state class `total` or `total_increasing`) from your meter, inverter or battery "
+        "requirements": "Cumulative counters in Wh, kWh or MWh (state class `total` or `total_increasing`) from your meter, inverter or battery "
                         "integrations, and Home Assistant's **[Recorder](https://www.home-assistant.io/integrations/recorder/)** with their "
                         "long-term statistics (enabled by default).",
         "options": [("Look", "nested rings with values, or rings in a row with the timeline below"),
                     ("Colors (Appearance)", "the six flow colours, as swatches or HEX; **Reset to defaults** restores them")],
-        "panel": ["A wider card shows more details.",
+        "panel": ["Search offers cumulative energy counters; the battery SOC and Solcast fields use their own filters. Counters also need Recorder statistics. The Entities info icon explains the requirements and troubleshooting; confirmed incompatible sources get a short status.",
+                  "A wider card shows more details.",
                   "A tap opens a popup with the measured counters and the estimated mix."],
     },
     "fan_tile": {
@@ -186,7 +187,8 @@ WIDGETS = {
         "entities": [("Media player", "`media_player.*`", True)],
         "requirements": None,
         "options": [],
-        "panel": ["The volume bar is a drag slider; minus, plus and play/pause act directly."],
+        "panel": ["The volume bar is a drag slider; minus, plus and play/pause act directly.",
+                  "The central Play/Pause button stays in the accent colour while available, including when paused or stopped. Its symbol shows the next action; Previous and Next stay neutral."],
     },
     "parqet_portfolio": {
         "summary": "Shows a **Parqet portfolio** from its `sensor.*` entities: total value, gain, XIRR, dividends and the largest holdings.",
@@ -196,6 +198,7 @@ WIDGETS = {
         "requirements": "The **[Parqet Companion integration](https://github.com/cubinet-code/ha-parqet-companion)** (HACS) for a portfolio "
                         "you track on [Parqet](https://www.parqet.com). The panel only talks to Home Assistant; setting up the integration is "
                         "described by its own project.\n\n"
+                        "Search filters amounts by **Monetary** device class and XIRR/return by **%**; choose the corresponding financial metric.\n\n"
                         "The sensors report one **interval**, set in the integration's options (default Max). The largest holdings come from "
                         "the attribute `top_holdings` of the total value sensor (five entries). The integration disables its detailed sensors "
                         "by default; only the unrealised return in percent is useful here: enable *Unrealised return (gross)* in its entity settings.",
@@ -232,7 +235,7 @@ WIDGETS = {
     "energy_price_forecast": {
         "summary": "Shows **electricity prices** for today or tomorrow from a price `sensor.*` as bars, with the current interval's price and the next cheap window.",
         "entities": [("Price sensor", "`sensor.*` with a price list", True), ("Average sensor (EUR/kWh)", "`sensor.*`", False)],
-        "requirements": None,
+        "requirements": "Choose the price-list sensor, not a scalar current price or CO₂ reading. Open the Inspector’s **Entities** info icon for supported data, average-reference precedence and troubleshooting.",
         "options": [("Average (fixed, EUR/kWh; empty = calculated)", "a fixed average instead of the day's own; an average sensor replaces it too"),
                     ("Show selector buttons on the tile", "Today/Tomorrow buttons, one toggle on a narrow tile; off (default) shows the 24 hours around now"),
                     ("Cheap times (shade and name the cheapest hours)", "shades the cheap windows and names the next one"),

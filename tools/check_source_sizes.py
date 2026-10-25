@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE_DIRS = ("main", "components/webui", "tools", "tests/host", "tests/webui", "tests/tools")
+SOURCE_DIRS = ("main", "components/webui", "tools", "scripts", "tests/host", "tests/webui", "tests/tools")
 SOURCE_SUFFIXES = {".c", ".h", ".js", ".mjs", ".py", ".css", ".html"}
 WARN_LINES = 800
 MAX_LINES = 2999

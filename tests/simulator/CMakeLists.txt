@@ -122,6 +122,7 @@ add_executable(betta-widget-sim
     "${REPO_ROOT}/main/ui/ui_option_picker.c"
     "${REPO_ROOT}/main/ha/ha_select_options.c"
     "${REPO_ROOT}/main/ha/ha_evcc_value.c"
+    "${REPO_ROOT}/main/ha/ha_evcc_vehicle_names.c"
     "${REPO_ROOT}/main/ha/ha_evcc_sessions.c"
     "${REPO_ROOT}/main/ha/ha_control_options.c"
     "${REPO_ROOT}/main/ha/ha_datetime_value.c"

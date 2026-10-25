@@ -4,15 +4,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { loadEditor } from "./load_editor.mjs";
 
-test("media primary and one-shot transport controls distinguish playback from availability", () => {
+test("media primary stays accented across playback states while one-shot controls stay neutral", () => {
   const { run, fn } = loadEditor();
   const widget = { type: "media_player", entity_id: "media_player.test", rect: { w: 300, h: 300 } };
   const render = fn("tilePreviewMarkup");
-  for (const state of ["playing", "paused", "idle", "unavailable"]) {
+  for (const state of ["playing", "paused", "idle", "off", "unknown", "unavailable"]) {
     run(`editor.states.set("media_player.test", ${JSON.stringify(state)});`);
-    assert.match(render(widget), new RegExp(`tp-primary control-${state === "playing" ? "active" : state === "unavailable" ? "disabled" : "action"}`));
+    const available = !["unknown", "unavailable"].includes(state);
+    const html = render(widget);
+    assert.match(html, new RegExp(`tp-primary control-${available ? "primary" : "disabled"}`));
+    assert.ok(html.includes(state === "playing" ? "\u23F8" : "\u23F5"));
     const stop = render({ ...widget, type: "button", button_mode: "stop" });
-    assert.doesNotMatch(stop, /control-active/);
+    assert.doesNotMatch(stop, /control-active|control-primary/);
   }
 });
 
@@ -87,7 +90,7 @@ test("missing bindings never produce an active or destructive control", () => {
     const html = render({ type, entity_id: "sensor.missing", precond_entity_id: "switch.missing",
       pause_entity_id: "button.missing", resume_entity_id: "button.missing", stop_entity_id: "button.missing",
       rect: { w: 320, h: 360 } });
-    assert.doesNotMatch(html, /control-active|control-danger/, type);
+    assert.doesNotMatch(html, /control-active|control-primary|control-danger/, type);
   }
 });
 
@@ -103,7 +106,7 @@ test("unavailable media does not retain selected shuffle or repeat glyphs", () =
   const { run, fn } = loadEditor();
   run('editor.states.set("media_player.test", "unavailable"); editor.stateMeta.set("media_player.test", {shuffle: true, repeat: "all"});');
   const html = fn("tilePreviewMarkup")({ type: "media_player", entity_id: "media_player.test", rect: { w: 340, h: 360 } });
-  assert.doesNotMatch(html, /control-selected-icon|control-active/);
+  assert.doesNotMatch(html, /control-selected-icon|control-active|control-primary/);
   assert.ok((html.match(/control-disabled/g) || []).length >= 5);
 });
 

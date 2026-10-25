@@ -26,9 +26,9 @@ cJSON v1.7.19 on the first configure (network needed) into `build/simulator/`. L
 ## Run
 
 ```bash
-tools/simulator.sh panel4                                   # tests/simulator/demo.json
-tools/simulator.sh panel4 --fixture <file> --page <id> --theme classic_v1 --style flat --language de
-SDL_VIDEODRIVER=dummy tools/simulator.sh panel4 --fixture <file> --page <id> --screenshot out.bmp --exit-after-ms 500
+scripts/simulator.sh panel4                                   # tests/simulator/demo.json
+scripts/simulator.sh panel4 --fixture <file> --page <id> --theme classic_v1 --style flat --language de
+SDL_VIDEODRIVER=dummy scripts/simulator.sh panel4 --fixture <file> --page <id> --screenshot out.bmp --exit-after-ms 500
 ```
 
 - Geometry is the first argument: `panel4`, `panel10`, `paneljc`, `paneljc-v2` or `tab5` (1280 × 720 landscape,
@@ -48,7 +48,7 @@ SDL_VIDEODRIVER=dummy tools/simulator.sh panel4 --fixture <file> --page <id> --s
 
 ## Test pages
 
-`tools/test_pages.sh panel4 tab5 paneljc` builds all three sizes, checks and renders the catalog,
+`scripts/test_pages.sh panel4 tab5 paneljc` builds all three sizes, checks and renders the catalog,
 logs the run and opens the overview. Options, topic coverage, clock and device-loading limits have
 one reference: [Test layouts](development/testing.md#test-layouts).
 
@@ -92,5 +92,5 @@ changes only images whose widget changed; `--variant paneljc|tab5` renders the h
   todo have no gallery image. Unsupported types are reported and skipped.
 - The top bar and navigation are the firmware's `ui_pages.c` fed by `tests/simulator/pages_stubs.c` (Wi-Fi and Home
   Assistant show as connected). The navigation lists at most `APP_MAX_PAGES` pages, ending at the selected one.
-- States are a snapshot and can differ from a device screenshot (`tools/screenshot.sh <ip>`). Check on the panel before
+- States are a snapshot and can differ from a device screenshot (`scripts/screenshot.sh <ip>`). Check on the panel before
   claiming hardware behaviour.

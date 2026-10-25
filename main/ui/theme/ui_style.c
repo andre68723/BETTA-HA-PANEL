@@ -93,6 +93,7 @@ lv_color_t ui_style_control_fill(ui_control_role_t role, bool enabled, lv_color_
     switch (role) {
     case UI_CONTROL_ACTIVE:
     case UI_CONTROL_SELECTED:
+    case UI_CONTROL_PRIMARY:
         return lv_color_mix(accent, lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_ACTIVE), 180);
     case UI_CONTROL_DANGER:
         return lv_color_mix(lv_color_hex(APP_UI_COLOR_ERROR), idle, 70);

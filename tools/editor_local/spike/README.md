@@ -4,23 +4,24 @@
 Run from the repository root:
 
 ```bash
-python3 tools/editor_local.py --ui spike
+scripts/editor_local.sh --ui spike
 ```
 
-For the complete Inspector test demo, use a separate port:
+The complete Inspector test demo is the default. To use a separate port:
 
 ```bash
-python3 tools/editor_local.py --ui spike --demo all --port 8767
+scripts/editor_local.sh --ui spike --port 8767
 ```
 
-This wide-board demo has 45 widgets covering all 30 canonical types on ten topic pages,
+This wide-board demo has 44 widgets covering all 34 canonical types on six topic pages,
 plus Room overview and Energy. Optional sensor bindings, room members, forecast days,
 printer actions and wallbox bindings are populated with synthetic entities. Variants cover
 all graph modes, gauge shapes, solar orientations and room extras. Long IDs exercise wrapping.
 Printer/loadpoint discovery also returns synthetic candidates. Its default save file is separate
-from the regular demo; `--reset` resets only the chosen file. Small panel4 geometry is not supported.
+from the compact demo (`--demo compact`); `--reset` resets only the chosen file. Small panel4 geometry is not supported.
 
-Open the printed localhost URL. The View selector switches between the classic editor and the prototype,
+Press Enter in the terminal to open the printed localhost URL in the default browser. The startup view needs no URL parameter.
+The View selector switches between the classic editor and the prototype,
 transferring unsaved layout edits and selection. Save writes only the local state file; Export downloads JSON.
 Undo/Redo uses the same bounded layout history as the classic editor; it resets when switching or successfully reloading. Use `--variant` to choose another board geometry.
 

@@ -241,9 +241,9 @@ class CheckRunnerTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             folder = Path(folder)
             repo = Path(workspace) if workspace else folder / "repo"
-            for directory in ("tools", "main/ui/fonts", "components/webui/www/js", "tests/webui", "docs"):
+            for directory in ("tools", "scripts", "main/ui/fonts", "components/webui/www/js", "tests/webui", "docs"):
                 (repo / directory).mkdir(parents=True, exist_ok=True)
-            shutil.copy2(root / "tools/check.sh", repo / "tools/check.sh")
+            shutil.copy2(root / "scripts/check.sh", repo / "scripts/check.sh")
             for name in ("pyproject.toml", "uv.lock", ".gitignore"):
                 shutil.copy2(root / name, repo / name)
             (repo / "tools/cache-input").write_text(probe)
@@ -271,7 +271,7 @@ class CheckRunnerTest(unittest.TestCase):
                 for name in ("bash", "dirname", "mkdir", "head", "rm"):
                     (bindir / name).symlink_to(shutil.which(name))
             env["PATH"] = str(bindir) + ("" if no_node else ":" + str(root / ".venv/bin") + ":" + os.environ["PATH"])
-            return subprocess.run(["bash", str(repo / "tools/check.sh"), *arguments], cwd=folder,
+            return subprocess.run(["bash", str(repo / "scripts/check.sh"), *arguments], cwd=folder,
                                   env=env, capture_output=True, text=True)
 
     def test_help_invalid_arguments_and_no_json_interface(self):
@@ -359,7 +359,7 @@ class CheckRunnerTest(unittest.TestCase):
 
     def test_script_line_budget(self):
         root = Path(__file__).resolve().parents[2]
-        self.assertLessEqual(len((root / "tools/check.sh").read_text().splitlines()), 191)
+        self.assertLessEqual(len((root / "scripts/check.sh").read_text().splitlines()), 191)
 
 
 class SizeCheckerTest(unittest.TestCase):

@@ -85,14 +85,15 @@ void ui_style_apply_card(lv_obj_t *card);
  * outline (Flat and Glow). Sets the default and pressed states. */
 void ui_style_button(lv_obj_t *btn, lv_color_t bg, lv_color_t border, lv_color_t pressed_bg);
 
-/* Semantic controls (docs/appearance-implementation.md): primary is layout, not a colour.
- * Only a running/on control or the selected option carries the active accent.
+/* Semantic controls (docs/appearance-implementation.md): an explicit primary role
+ * keeps the accent independent of state, as on the media player's Play/Pause.
  * Openers, one-shot actions and value +/- stay neutral; abort uses danger. */
 typedef enum {
     UI_CONTROL_ACTION,
     UI_CONTROL_ACTIVE,
     UI_CONTROL_SELECTED,
     UI_CONTROL_DANGER,
+    UI_CONTROL_PRIMARY,
 } ui_control_role_t;
 lv_color_t ui_style_control_fill(ui_control_role_t role, bool enabled, lv_color_t accent);
 lv_color_t ui_style_control_color(ui_control_role_t role, bool enabled);

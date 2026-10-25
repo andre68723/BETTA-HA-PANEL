@@ -102,6 +102,9 @@ esp_err_t api_entities_get_handler(httpd_req_t *req)
         cJSON_AddStringToObject(it, "domain", items[i].domain);
         cJSON_AddStringToObject(it, "unit", items[i].unit);
         cJSON_AddStringToObject(it, "device_class", items[i].device_class);
+        cJSON_AddStringToObject(it, "state_class", items[i].state_class);
+        cJSON_AddBoolToObject(it, "has_price_series", items[i].has_price_series);
+        cJSON_AddBoolToObject(it, "has_solar_forecast", items[i].has_solar_forecast);
         cJSON_AddNumberToObject(it, "supported_features", (double)items[i].supported_features);
         cJSON *capabilities = cJSON_CreateObject();
         if (capabilities != NULL) {

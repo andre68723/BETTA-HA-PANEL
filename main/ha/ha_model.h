@@ -17,6 +17,9 @@ typedef struct {
     char domain[APP_MAX_NAME_LEN];
     char unit[APP_MAX_UNIT_LEN];
     char device_class[APP_MAX_NAME_LEN];
+    char state_class[24];
+    bool has_price_series;
+    bool has_solar_forecast;
     uint32_t supported_features;
     bool supports_dimming;
     bool supports_color;

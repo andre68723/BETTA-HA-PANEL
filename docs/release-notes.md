@@ -21,14 +21,15 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 | [Stocks & ETFs](widgets/stock_quotes.md) | <span class="release-status release-status--new">New</span> | Up to eight Yahoo Finance or Easy Stock quotes as a list or as charts with period buttons (1D to 1Y). A tap opens the details with a chart; the top bar's stock item opens its price history. |
 | [Sensor](widgets/sensor.md) | <span class="release-status release-status--changed">Changed</span> | The value follows the device class: local time, dates, durations, scaled units, currency with the entity's display precision, readable states and the decimal comma. |
 | [Wallbox](widgets/wallbox.md) | <span class="release-status release-status--changed">Changed</span> | An optional header shows charging power or the site's energy flow; loadpoint discovery fills the site sensors. |
-| [Media player](widgets/media_player.md), [Vacuum](widgets/vacuum_tile.md), [Bambu printer](widgets/bambu_printer.md) | <span class="release-status release-status--changed">Changed</span> | The theme colour means active or selected; controls follow the running state, unavailable entities block stale actions, and the printer's Stop is labelled Abort. |
+| [Media player](widgets/media_player.md), [Vacuum](widgets/vacuum_tile.md), [Bambu printer](widgets/bambu_printer.md) | <span class="release-status release-status--changed">Changed</span> | Media Play/Pause stays accented while available, including when paused or stopped. Other controls highlight active states or selections; unavailable entities block stale actions, and the printer's Stop is labelled Abort. |
 | [Car](widgets/car_widget.md), [Gauge](widgets/gauge.md), [Contact](widgets/contact_tile.md), [Solar forecast](widgets/solar_forecast.md) | <span class="release-status release-status--changed">Changed</span> | Layout fixes for larger text and narrow tiles. |
 
 ### Fixes
 
 - **Energy day totals:** the Energy page in Home Assistant Energy mode uses the full local day on daylight-saving changes; the request could omit hours before.
 - **Names and larger text:** light, empty, camera, car, Sonos and media player tiles keep their name on one line; with larger text, lock, sensor, car, gauge, to-do, slider and weather tiles drop or move elements instead of overlapping.
-- **Wallbox:** choosing the energy flow in the Inspector fills the site sensors; idle timers no longer redraw the card; a wallbox beside a price tile keeps its own text size.
+- **Wallbox:** unchanged HA refreshes keep vehicle, mode and target popups open; `null` is shown as Guest vehicle while connected, and the list uses HA's vehicle names. Choosing the energy flow in the Inspector fills the site sensors; idle timers no longer redraw the card; a wallbox beside a price tile keeps its own text size.
+- **Entity search:** all widget fields share explicit domain and source rules with matching popup hints, including domain-only fields. Numeric and measurement fields, quote/Sonos integrations and printer role assignments are checked. Creation and Inspector searches agree; page/settings searches no longer inherit a selected widget’s filters. Portfolio amounts use Monetary sensors and returns use percentages. Energy counters require suitable state classes, prices require a series, and confirmed invalid saved sources retain a short Inspector status. Detailed requirements and affected fields are in the Entities info popup; missing cached metadata alone no longer causes a false warning.
 - **Printer:** the Bambu step is shown in the panel language.
 - **History and price data:** large stock layouts keep all history registrations, requests no longer replace each other, and malformed timestamps or values are rejected instead of shown.
 - **Recovery:** a failed C6 incident write is retried, and JC touch scanning starts only after the display binding succeeded.
@@ -36,7 +37,8 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 ### Panel and editor
 
 - **Panel:** vacuum states and firmware-update progress follow the panel language; on the 10-inch JC panel short taps are no longer lost.
-- **Inspector:** one order for every widget (header, Entities, Display, Controls, Placement); entities are rows that open the search; explanations open from info icons; the header names a sensor's device class and unit.
+- **Inspector:** one order for every widget (header, Entities, Display, Controls, Placement); entities are rows that open the search; explanations open from info icons, including the text-size help; the header names the main entity's device class and unit.
+- **Entity metadata:** the Inspector also shows cover, media-player, switch and other reported device classes; live attributes fill incomplete entity-list metadata. Room extra-field explanations use section help, while missing-entity warnings stay visible.
 - **Preview:** text roles, fixed 10-inch layouts and visible elements follow the panel more closely; overlapping tiles are marked.
 - **Device status:** Settings → Device → Device status shows the Wi-Fi coprocessor's memory and the last incident.
 - **Language:** the theme editor, time-zone choices and setup hints follow the selected language.
@@ -391,7 +393,7 @@ style; text and symbols use the same fonts throughout. See
 
 - **Text size setting:** Text size in the Layout header (Standard, Larger, Largest) applies and saves at once without a restart. Text asks for a role (small notes, names, values,
   prominent and large readings); the size follows the role, the board (the Tab5 starts one step above the Panel4, the 10-inch boards use the Panel4's sizes) and the user's step.
-  A tile too small for larger text keeps a smaller one (calibrated from the layout fixtures), and `tools/check.sh` renders every variant at all three steps.
+  A tile too small for larger text keeps a smaller one (calibrated from the layout fixtures), and `scripts/check.sh` renders every variant at all three steps.
 
 - **Notification emoji:** notification titles, messages and action labels show supported monochrome emoji (about 180 faces, reactions, weather, alerts, device states and arrows);
   joined emoji, flags, keycaps and unsupported emoji appear as `[Emoji]`, and the text always fits its buffer without splitting a character or an emoji sequence (a text that is too long is cut before the whole emoji). The notification card draws a selected set of 37 emoji in color (list in [Notifications](notifications.md#emoji)); every other emoji stays monochrome.
@@ -563,7 +565,7 @@ style; text and symbols use the same fonts throughout. See
     **OTA rollback protection:** a freshly installed image must run 60 s with the panel's own HTTP server answering
       and Wi-Fi (or the setup access point) up before it is marked valid; a reset earlier returns to the previous image
       (`ota_image_state` in `/api/version`). It needs a bootloader built with the option, so flash the bootloader over USB
-      once per panel. NVS credentials survive `tools/build.sh <variant> -p <port> flash`;
+      once per panel. NVS credentials survive `scripts/build.sh <variant> -p <port> flash`;
       layout/settings files survive only if LittleFS stays in place or is migrated
       as described above. A panel with an
       older bootloader installs new images by OTA exactly as before, without rollback protection.
@@ -709,7 +711,7 @@ refetch retains them. Use [the ESP-IDF 6.1 build instructions](development/build
       with audio and camera functions and their validation status.
       Device guides share manufacturer references and labelled illustrations with a short flashing-connector instruction. Public demo
       screenshots come from the LVGL simulator and the current editor against an offline
-      API. `tools/editor_local.py` serves the current editor with synthetic data and local saves, without flashing. Zensical builds the documentation with uv and locked dependencies; CI validates
+      API. `scripts/editor_local.sh` serves the current editor with synthetic data and local saves, without flashing. Zensical builds the documentation with uv and locked dependencies; CI validates
       pull requests and publishes `main` to GitHub Pages in the maintainer's fork.
       The unused upstream screenshots are retired from the published tree; the
       unchanged original BETTA OS logo lives in `docs/img/brand/` with attribution.

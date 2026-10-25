@@ -191,7 +191,7 @@ SPECIAL_PAGES = [
      {"Domain": "n/a -- the editor can import this page's rooms from every Home Assistant "
                 "area/floor in one click",
       "Options": "room cards grouped by floor, editable afterwards, up to 32 rooms",
-      "Interaction": "tap a room card for its popup (see Room card above)",
+      "Interaction": "tap a room card for its popup (see Room above)",
       "Notes": "the preview shows rooms and floors as the editor's import from Home Assistant areas "
                "lays them out, with example names -- a real import shows your own areas"}),
     ("gallery_energy", "energy_dashboard", "Energy dashboard",
@@ -267,7 +267,7 @@ ROW_DISPLAY_NAME = {
     "button": "Button", "scene_tile": "Scene", "select_tile": "Select", "lock_tile": "Lock", "alarm_tile": "Alarm", "datetime_tile": "Date/Time", "slider": "Slider", "cover_tile": "Cover",
     "light_tile": "Light", "fan_tile": "Fan", "climate_tile": "Climate", "heating_tile": "Heating",
     "media_player": "Media player", "sonos_favorites": "Sonos favorites", "contact_tile": "Contact",
-    "binary_tile": "Binary sensor", "room_tile": "Room card", "vacuum_tile": "Vacuum", "energy_timeline": "Energy timeline",
+    "binary_tile": "Binary sensor", "room_tile": "Room", "vacuum_tile": "Vacuum", "energy_timeline": "Energy timeline",
     "camera_tile": "Camera", "todo_list": "Todo list",
 }
 

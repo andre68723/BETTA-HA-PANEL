@@ -99,10 +99,12 @@ static void semantic_controls_test(void)
             const lv_color_t active = lv_obj_get_style_bg_color(btn, LV_PART_MAIN);
             ui_style_action_button(btn, text, UI_CONTROL_SELECTED, true);
             CHECK(same_color(active, lv_obj_get_style_bg_color(btn, LV_PART_MAIN)));
+            ui_style_action_button(btn, text, UI_CONTROL_PRIMARY, true);
+            CHECK(same_color(active, lv_obj_get_style_bg_color(btn, LV_PART_MAIN)));
             ui_style_action_button(btn, text, UI_CONTROL_ACTION, true);
             const lv_color_t idle = lv_obj_get_style_bg_color(btn, LV_PART_MAIN);
             CHECK(!same_color(active, idle));
-            ui_style_action_button(btn, text, UI_CONTROL_ACTIVE, false);
+            ui_style_action_button(btn, text, UI_CONTROL_PRIMARY, false);
             CHECK(same_color(idle, lv_obj_get_style_bg_color(btn, LV_PART_MAIN)));
             CHECK(lv_obj_has_state(btn, LV_STATE_DISABLED));
             ui_style_action_button(btn, text, UI_CONTROL_ACTION, true);
@@ -128,11 +130,23 @@ static void process_primary_test(void)
     lv_obj_t *pause = label(widget.obj, APP_SYMBOL_PAUSE);
     CHECK(pause != NULL);
     const lv_color_t running = lv_obj_get_style_bg_color(lv_obj_get_parent(pause), LV_PART_MAIN);
-    snprintf(state.state, sizeof(state.state), "paused");
-    ui_widget_factory_apply_state(&widget, &state);
-    lv_obj_t *play = label(widget.obj, APP_SYMBOL_PLAY);
-    CHECK(play != NULL);
-    CHECK(!same_color(running, lv_obj_get_style_bg_color(lv_obj_get_parent(play), LV_PART_MAIN)));
+    lv_obj_t *next = label(widget.obj, APP_SYMBOL_NEXT);
+    CHECK(next != NULL);
+    const lv_color_t secondary = lv_obj_get_style_bg_color(lv_obj_get_parent(next), LV_PART_MAIN);
+    CHECK(!same_color(running, secondary));
+    const char *states[] = {"paused", "idle", "off", "unavailable", "paused", "playing"};
+    for (size_t i = 0; i < sizeof(states) / sizeof(states[0]); i++) {
+        snprintf(state.state, sizeof(state.state), "%s", states[i]);
+        ui_widget_factory_apply_state(&widget, &state);
+        lv_obj_t *symbol = label(widget.obj, strcmp(states[i], "playing") == 0 ? APP_SYMBOL_PAUSE : APP_SYMBOL_PLAY);
+        CHECK(symbol != NULL);
+        const bool available = strcmp(states[i], "unavailable") != 0;
+        CHECK(same_color(running, lv_obj_get_style_bg_color(lv_obj_get_parent(symbol), LV_PART_MAIN)) == available);
+        CHECK((lv_obj_get_style_opa(lv_obj_get_parent(symbol), LV_PART_MAIN) == LV_OPA_COVER) == available);
+        next = label(widget.obj, APP_SYMBOL_NEXT);
+        CHECK(next != NULL);
+        CHECK(same_color(secondary, lv_obj_get_style_bg_color(lv_obj_get_parent(next), LV_PART_MAIN)));
+    }
     lv_obj_delete(widget.obj);
 }
 

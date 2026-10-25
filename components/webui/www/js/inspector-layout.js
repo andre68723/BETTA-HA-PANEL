@@ -98,7 +98,7 @@ function initInspectorLayout() {
     input.addEventListener("change", () => refreshInspectorEntityRows());
     entityRows.push({ input, button, field, caption, role, shorten });
   };
-  for (const input of document.querySelectorAll("#inspectorSection .entity-input-row input[type=text]")) {
+  for (const input of document.querySelectorAll("#inspectorSection .entity-input-row :is(input[type=text], select)")) {
     const search = input.closest(".entity-input-row").querySelector("[data-inspector-entity-target]");
     if (search) entityRow(input, () => search.click(), true);
   }
@@ -137,7 +137,7 @@ function initInspectorLayout() {
   const houseOptions = byId("housePageOptions");
   follow(houseOptions, [byId("houseInfo"), byId("houseImportBtn"), byId("houseStatus"), byId("houseRoomList")], "page_rooms");
   // Entities: what the tile reads or controls, including where its data comes from.
-  move("entities", label(el.fEntity), label(el.fSecondaryEntity), label(el.fTertiaryEntity), byId("parqetEntities"));
+  move("entities", byId("entitySourceHint"), byId("entitySourceWarning"), label(el.fEntity), label(el.fSecondaryEntity), label(el.fTertiaryEntity), byId("parqetEntities"));
   follow(byId("vacuumOptions"), [label(el.fVacuumBattery)], "entities");
   follow(byId("roomEntitiesFields"), [label(el.fRoomEntities), byId("fRoomEntitiesHint")], "entities");
   move("entities", byId("carExtraFields"), byId("evccFields"), byId("bambuFields"), byId("energyTimelineFields"), byId("stockEntities"));
@@ -148,7 +148,7 @@ function initInspectorLayout() {
   follow(byId("priceOptions"), [label(el.fPriceAverage)], "entities");
   // Display: what the tile shows.
   move("display", label(el.fShowName), byId("binaryOptions"));
-  follow(byId("roomEntitiesFields"), [label(el.fRoomExtraMode), byId("fRoomExtraEntityWrap"), byId("fRoomExtraHint")], "display");
+  follow(byId("roomEntitiesFields"), [label(el.fRoomExtraMode), byId("fRoomExtraEntityWrap"), byId("fRoomExtraHint"), byId("fRoomExtraWarning")], "display");
   follow(byId("solarForecastFields"), [label(el.fSolarForecastBarMax)], "display");
   follow(byId("buttonOptions"), [label(el.fButtonAccentColor)], "display");
   move("display", byId("sliderOptions"), byId("graphOptions"), byId("solarForecastStyleOptions"), byId("gaugeOptions"),
@@ -237,6 +237,15 @@ function inspectorSectionHelpRows(section) {
     .filter(row => inspectorNodeShown(row, section));
 }
 
+function refreshInspectorSectionHelp() {
+  if (!inspectorLayout) return;
+  for (const node of Object.values(inspectorLayout.sections)) {
+    const help = node.querySelector(":scope > summary > .inspector-sec-help"), hidden = !inspectorSectionHelpRows(node).length;
+    if (help.hidden !== hidden) help.hidden = hidden;
+    help.title = t("inspector.help"); help.setAttribute("aria-label", `${t("inspector.help")}: ${node.querySelector(".inspector-sec-label").textContent}`);
+  }
+}
+
 function refreshInspectorLayout() {
   if (!inspectorLayout) return;
   const ui = inspectorLayout, widget = selectedWidget();
@@ -315,12 +324,8 @@ function refreshInspectorLayout() {
   for (const name of INSPECTOR_SECTIONS) ui.sections[name].hidden = !widget || !inspectorSectionHasField(ui.sections[name]);
   for (const name of ui.pageSections) ui.sections[name].hidden = !selectedPage() || !inspectorSectionHasField(ui.sections[name]);
   const pageHeading = document.getElementById("pageInspectorHeading"), page = selectedPage();
-  if (pageHeading && page) pageHeading.textContent = t(isHousePage(page) ? "layout.pages.menu_house" : isEnergyPage(page) ? "layout.pages.menu_energy" : "layout.pages.menu_normal");
-  for (const node of Object.values(ui.sections)) {
-    const help = node.querySelector(":scope > summary > .inspector-sec-help"), hidden = !inspectorSectionHelpRows(node).length;
-    if (help.hidden !== hidden) help.hidden = hidden;
-    help.title = t("inspector.help"); help.setAttribute("aria-label", `${t("inspector.help")}: ${node.querySelector(".inspector-sec-label").textContent}`);
-  }
+  if (pageHeading && page) pageHeading.textContent = t(isHousePage(page) ? "layout.pages.menu_house" : isEnergyPage(page) ? "layout.pages.menu_energy" : "layout.pages.type_normal");
+  refreshInspectorSectionHelp();
   ui.position.hidden = !widget;
   refreshInspectorSearchButtons(ui.root.closest("aside"));
   scheduleInspectorReflow();

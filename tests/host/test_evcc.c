@@ -6,6 +6,7 @@
 #include <string.h>
 #include "ha/ha_evcc_lookup.h"
 #include "ha/ha_evcc_value.h"
+#include "ha/ha_evcc_vehicle_names.h"
 #include "layout/evcc_slots.h"
 #include "layout/layout_validate.h"
 #include "ha/ha_layout_entities.h"
@@ -63,6 +64,21 @@ static void lookup(bool number_first)
 void test_evcc_sessions(void);
 int main(void)
 {
+    /* Names are display-only and HA's raw IDs remain the service options. */
+    ha_evcc_vehicle_names_request(); CHECK(ha_evcc_vehicle_names_is_due(0));
+    cJSON *names_cmd=ha_evcc_vehicle_names_next_request(41,0); CHECK(names_cmd);
+    CHECK(!strcmp(str(names_cmd,"type"),"frontend/get_translations")); cJSON_Delete(names_cmd);
+    cJSON *names=cJSON_Parse("{\"resources\":{\"component.evcc_intg.entity.select.vehiclename.state.null\":\"-none-\",\"component.evcc_intg.entity.select.vehiclename.state.ev1\":\"Demo #1\",\"component.evcc_intg.entity.select.vehiclename.state.ev4\":\"Demo ID.4\"}}");
+    char name[APP_MAX_NAME_LEN];
+    ha_evcc_vehicle_names_result(40,true,names); CHECK(!ha_evcc_vehicle_name("ev1",name,sizeof(name)));
+    ha_evcc_vehicle_names_result(41,true,names); CHECK(ha_evcc_vehicle_name("ev1",name,sizeof(name))); CHECK(!strcmp(name,"Demo #1"));
+    CHECK(ha_evcc_vehicle_name("ev4",name,sizeof(name))); CHECK(!strcmp(name,"Demo ID.4")); CHECK(!ha_evcc_vehicle_name("null",name,sizeof(name)));
+    CHECK(!ha_evcc_vehicle_names_is_due(299999)); CHECK(ha_evcc_vehicle_names_is_due(300000));
+    names_cmd=ha_evcc_vehicle_names_next_request(42,300000); CHECK(names_cmd); cJSON_Delete(names_cmd);
+    ha_evcc_vehicle_names_result(42,false,NULL); CHECK(ha_evcc_vehicle_name("ev4",name,sizeof(name)));
+    ha_evcc_vehicle_names_cancel(); CHECK(ha_evcc_vehicle_names_is_due(300001));
+    names_cmd=ha_evcc_vehicle_names_next_request(43,300001); CHECK(names_cmd); cJSON_Delete(names_cmd);
+    ha_evcc_vehicle_names_cancel(); ha_evcc_vehicle_names_result(43,true,names); cJSON_Delete(names);
     float value, lo, hi, step; char stem[96], out[1280]; size_t role;
     CHECK(evcc_registry_site_role("sensor.evcc_home_power", "evcc_intg.evcc_home_power", &role) && role == EVCC_SITE_HOME);
     CHECK(!evcc_registry_site_role("sensor.lp_power", "evcc_intg.evcc_stellplatz_pv_power", &role)); /* a loadpoint stem */

@@ -3,7 +3,7 @@
 
 The gallery (docs/gallery.md, docs/img/gallery/) is rendered by the SDL simulator from the widgets' production sources.
 generate_simulator_gallery.py records a hash of every input in docs/img/gallery/sources.json; gallery_freshness.py
-(part of tools/check.sh) lists the inputs that changed since. A changed input does not always change a picture, so this
+(part of scripts/check.sh) lists the inputs that changed since. A changed input does not always change a picture, so this
 only warns; `generate_simulator_gallery.py --stamp-only` records the new state without rendering.
 """
 import argparse

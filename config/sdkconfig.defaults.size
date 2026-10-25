@@ -1,5 +1,5 @@
 # Opt-in size overlay, not part of any default build (same pattern as sdkconfig.defaults.easteregg):
-#   EXTRA_DEFAULTS=config/sdkconfig.defaults.size tools/build.sh paneljc reconfigure build   (delete the build dir first)
+#   EXTRA_DEFAULTS=config/sdkconfig.defaults.size scripts/build.sh paneljc reconfigure build   (delete the build dir first)
 # Measured 2026-09-29 on paneljc: 0x62280 bytes (about 402 KiB) smaller than -Og, the app slot goes from 7 % to 15 % free.
 # Not regression-tested on a device: -Os changes timing and makes debugging harder, and silent assertions drop the
 # file/expression text of a failed assert from the panic output.

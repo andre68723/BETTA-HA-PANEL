@@ -26,12 +26,12 @@ import subprocess
 import tempfile
 import threading
 from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from http.server import SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from check_widget_layout import CASES, case_fixture
-from generate_docs_examples import DATA, REPO, TOP_BAR_H, WWW, build_simulator, demo_api, prepare_fixture
+from generate_docs_examples import DemoHTTPServer, DATA, REPO, TOP_BAR_H, WWW, build_simulator, demo_api, prepare_fixture
 
 SHEET_HEIGHT = 1500
 
@@ -59,7 +59,7 @@ def serve(responses):
             self.end_headers()
             self.wfile.write(body)
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(WWW)))
+    server = DemoHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(WWW)))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
 

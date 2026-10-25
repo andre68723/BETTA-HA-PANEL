@@ -3,14 +3,14 @@
 # Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
 #
 # Deletes build directories and old packaged releases to free disk space. Each firmware build directory takes about
-# 300-500 MB; tools/build.sh recreates one from config/ in a few minutes.
+# 300-500 MB; scripts/build.sh recreates one from config/ in a few minutes.
 #
-#   tools/clean.sh <variant>...     delete build/<variant> (panel4 panel10 paneljc paneljc-v2 tab5)
-#   tools/clean.sh --unowned        delete the variants that are only compile-checked here
+#   scripts/clean.sh <variant>...     delete build/<variant> (panel4 panel10 paneljc paneljc-v2 tab5)
+#   scripts/clean.sh --unowned        delete the variants that are only compile-checked here
 #                                   (panel10, paneljc-v2); keeps panel4 and paneljc
-#   tools/clean.sh --all            delete every build directory, including build/simulator
-#   tools/clean.sh --release [N]    in release/out/ keep the N newest version folders (default 3), delete the rest
-#   tools/clean.sh --list           show the build directories and the release folders with their sizes
+#   scripts/clean.sh --all            delete every build directory, including build/simulator
+#   scripts/clean.sh --release [N]    in release/out/ keep the N newest version folders (default 3), delete the rest
+#   scripts/clean.sh --list           show the build directories and the release folders with their sizes
 #
 # managed_components/ and dependencies.lock* are kept: they are shared by all variants and would
 # otherwise be downloaded again on the next build.
@@ -28,7 +28,7 @@ remove() {
   fi
 }
 
-# release/out/<version>/ is written by tools/package_release.sh and never pruned by it; keep the newest N by
+# release/out/<version>/ is written by scripts/package_release.sh and never pruned by it; keep the newest N by
 # modification time. The C6 adapter firmware in release/ stays.
 prune_release() {
   local keep="${1:-3}"

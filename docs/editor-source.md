@@ -3,6 +3,7 @@
 # Web editor source
 
 User guide: [Use the web editor](editor.md). This page covers the source.
+Field-by-field domain and eligibility contracts: [Entity search rules](development/entity-search.md).
 
 Plain HTML, CSS and JavaScript in `components/webui/www/`, no framework. For development serve that directory:
 `index.html` loads the modules in order. The firmware build generates an `index.html` that loads one ordered bundle
@@ -35,6 +36,7 @@ www/js/translations.js loading and applying translations, language files
 www/js/settings.js    settings pages: Wi-Fi, OTA, device status, alerts, backup, security, saving
 www/js/brightness-test.js  temporary brightness tests: shared controls, serialized requests and device countdown
 www/js/update-check.js the panel's daily firmware update check: banner, OTA URL, its two settings
+www/js/entity-search-rules.js search eligibility by field and the rules shown in each picker
 www/js/layout-model.js layout model, entity domains and suggestions, loading layout and entities
 www/js/pickers.js     entity pickers, the "+ Widget" dialog (widget types and entity search)
 www/js/readability.js panel4 role sizes, day-count and gauge-width hints for the previews (after pickers, before canvas)
@@ -65,7 +67,7 @@ boundaries; `tools/check_web.py` checks order, syntax, fingerprinted names and g
 2. Add it to `WEBUI_JS_SOURCES` in `components/webui/CMakeLists.txt` and to the `<script>` list in `www/index.html` in
    the same position. A stylesheet goes into `WEBUI_CSS_SOURCES` and the `<link>` block the same way (order is cascade
    order; style files come after `styles.css` and `css/editor-refinements.css`).
-3. `tools/check.sh` fails when the lists, tags and `www/js/` disagree or the bundle breaks, and runs the editor tests
+3. `scripts/check.sh` fails when the lists, tags and `www/js/` disagree or the bundle breaks, and runs the editor tests
    (`node --test tests/webui/*.test.mjs`). `load_editor.mjs` loads the scripts into a Node `vm` context with a small DOM
    stub and derives production order from `index.html`, excluding only the browser bootstrap `main.js`.
    Handwritten sources warn above 800 lines and fail above 2,999.
@@ -75,27 +77,37 @@ boundaries; `tools/check_web.py` checks order, syntax, fingerprinted names and g
 Run the current editor against synthetic data, without a panel, Home Assistant or ESP-IDF:
 
 ```bash
-python3 tools/editor_local.py
+scripts/editor_local.sh
 ```
 
-Open `http://127.0.0.1:8766/`. Sources are served directly from `components/webui/www/`; refresh after edits.
-Only Python's standard library is needed. Save writes `.local/editor-local/paneljc-state.json`; Export downloads
+The shell entry point starts `tools/editor_local.py` and forwards all arguments and signals.
+Once the server starts, press Enter in the terminal to open the default browser, or open the printed URL manually
+(`http://127.0.0.1:8766/` by default). No `ui` parameter is needed; `/` uses the view chosen at startup.
+Sources are served directly from `components/webui/www/`; refresh after edits.
+Only Python's standard library is needed. The default wide-board demo contains every widget type, optional
+bindings and house/energy pages on eight pages. Save writes `.local/editor-local/paneljc-all-widgets-state.json`; Export downloads
 JSON. The local toolbar identifies the test environment. Ctrl+C stops the server.
 
 - `--variant panel4|panel10|paneljc|paneljc-v2|tab5` selects geometry, page limits and text-role metadata.
 - `--fixture path/to/layout.json` replaces the demo layout; an optional `states` array supplies synthetic readings.
   Layout-only files use the demo states, so unknown bindings show missing readings.
-- `--demo all` supplies every widget type, optional bindings and house/energy pages on 12 pages;
-  use a wide variant (`paneljc` or `tab5`) and a separate state file for this review layout.
+- `--demo all` explicitly selects the default all-widgets layout for wide variants.
+  `--demo compact` selects the smaller example with its own save file. Panel4 defaults to compact;
+  its small geometry does not support the all-widgets layout.
 - `--state-file path` isolates saves; an existing save takes precedence over the fixture.
   `--reset` replaces that save with the supplied/default fixture. The default save file is separate per variant.
 - `--port 0` selects a free port, printed on startup; the default is 8766.
+- Non-interactive starts print the URL without waiting for keyboard input or opening a browser.
 - `--ui spike` opens the bundled local prototype and enables the **View** selector for comparison with Classic.
   `--spike path/to/adapter` overrides its sources (`spike.css`, `widget-icons.js`, `spike.js`).
 
 Both views share the editor sources and API. The local view selector transfers the in-memory layout and selection
 through session storage, including unsaved edits, without saving to the API. Both views use the shared layout history, which resets
 on a view change. View preferences and transfer data never enter layout JSON.
+
+The demo reuses widget templates and synthetic states from the Gallery and documentation examples, with its own
+page arrangement and extra bindings for Inspector testing. Documentation captures are generated separately;
+existing local saves retain their edits until an explicit `--reset`.
 
 The API serves local fixtures and accepts local layout/UI-setting saves only. Device commands, firmware uploads,
 network setup and HA service calls are unavailable. Brightness tests are explicitly labelled as local simulations; their transient state is not saved. There is no device proxy; external connections are blocked by
@@ -121,6 +133,29 @@ Home Assistant and back without saving. Check for console errors and the generat
 [Checks and device tests](development/testing.md).
 
 ## Rules for the editor
+
+Entity searches expose unit, state class and source flags through both `/api/entities` and the on-demand discovery API.
+Energy timeline fields distinguish cumulative counters, battery SOC and Solcast data; price sources require a supported
+time/price list. Keep the popup, autocomplete and local demo metadata aligned. Empty filtered results must never fall
+back to all sensors. The popup explains its domains, hard restrictions and soft ranking separately from loading status;
+saved incompatible bindings remain visible with a warning.
+
+Device-class metadata is shared by the Inspector and previews through `entityDisplayInfo()`, which merges the entity
+list with live state attributes. A missing field in either response must not mask a class or unit from the other.
+The class badge supports HA's class-capable platforms and preserves unknown reported class names. Locks and scenes
+without a class do not get a misleading "none" badge. Domain-specific labels distinguish binary Power from sensor
+Power, and cover classes such as Blind from numeric measurements.
+
+| Use | Device-class effect |
+| --- | --- |
+| Sensor widget | Timestamp/date/duration format; monetary, temperature and power/energy unit choices; enum labels |
+| Binary/contact widgets | State words, contact drawing and alert category; events use their trigger timestamp |
+| Gauge and room readings | Numeric values retain their units; distance extras scale metres to kilometres; room summaries classify temperature, humidity, battery and contacts |
+| Controls | Class is descriptive; actions and optional controls follow domain, supported features and state |
+
+Do not copy Sensor format controls to actor widgets: a cover's position and a player's volume are percentages,
+not the entity's class value. Unsupported domains do not gain widget controls just because they report a class.
+The shared Gallery fixture supplies explicit classes; documentation captures must not patch them independently.
 
 - **Little scrolling.** At about 80-90 % of a desktop screen, finding a widget, editing its main fields and saving must
   not need trips between distant regions. Review Device and Layout at that size when adding controls; group or fold long,

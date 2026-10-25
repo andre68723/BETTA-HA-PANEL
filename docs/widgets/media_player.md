@@ -25,6 +25,7 @@ No options beyond the entities; the controls follow what the entity supports.
 ## On the panel
 
 - The volume bar is a drag slider; minus, plus and play/pause act directly.
+- The central Play/Pause button stays in the accent colour while available, including when paused or stopped. Its symbol shows the next action; Previous and Next stay neutral.
 
 ## Size
 

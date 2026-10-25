@@ -144,9 +144,9 @@ Everything about one room in a single card.
 
 <div class="grid cards" markdown>
 
--   [![Room card](../img/gallery/room_humidity_glow.png)](room_tile.md)
+-   [![Room](../img/gallery/room_humidity_glow.png)](room_tile.md)
 
-    **[Room card](room_tile.md)**
+    **[Room](room_tile.md)**
 
     Groups a **room's values and controls** in one card, with a popup for its entities; any domain, filled from a Home Assistant area or by hand.
 

@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md -->
-# Scripts in tools/
+# Scripts and tools
 
-[tools/README.md](https://github.com/andre68723/BETTA-HA-PANEL/blob/main/tools/README.md) is the script inventory.
+[scripts/README.md](https://github.com/andre68723/BETTA-HA-PANEL/blob/main/scripts/README.md) lists the manually invoked shell entry points.
+[tools/README.md](https://github.com/andre68723/BETTA-HA-PANEL/blob/main/tools/README.md) lists internal checks, generators and shared modules.
 The [simulator](../simulator.md#test-pages), [test layouts](testing.md#test-layouts) and [build guide](build.md) cover
 their task-specific commands. There is no additional dispatcher.
 
@@ -10,7 +11,7 @@ their task-specific commands. There is no additional dispatcher.
 The daily command is:
 
 ```bash
-uv run --locked --only-group checks tools/check.sh --changed
+uv run --locked --only-group checks scripts/check.sh --changed
 ```
 
 Use `--list` when the selection needs explanation, `--quick` for the fast stage and `--full --force` for the complete gate.
@@ -20,7 +21,7 @@ Use `--list` when the selection needs explanation, `--quick` for the fast stage 
 | `--quick` | Syntax, Node and Python tooling tests, HTML/translations, sizes and catalog/metadata checks; no SDL or C compilation |
 | Standard | Quick responsibilities plus host tests for panel4/paneljc and simulator regressions/layout at text step 0 on all three sizes |
 | `--full` | Standard plus Larger/Largest layout checks; CI always forces the full coverage of its selected group |
-| Explicit `--build` | All five firmware variants; for one board use `tools/build.sh <variant> build` |
+| Explicit `--build` | All five firmware variants; for one board use `scripts/build.sh <variant> build` |
 
 `--changed` selects from each step's stamp inputs, including common runner/lock/tool metadata. There is no second
 path-to-check table. It includes staged, unstaged, deleted, moved and non-ignored untracked paths relative to HEAD.

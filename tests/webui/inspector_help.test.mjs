@@ -110,6 +110,31 @@ test("wallbox height warning remains directly visible rather than moving into a 
   assert.equal(run("root.querySelector('button')"), null);
 });
 
+test("room extra explanation opens in help while missing-entity warnings stay visible", () => {
+  const run = setup();
+  run(`const originalClosest=hint.closest.bind(hint);
+    hint.closest=selector=>selector==='#inspectorSection .inspector-sec' ? root : originalClosest(selector);
+    hint.id='fRoomExtraHint'; hint.className='meta';
+    hint.textContent=t('layout.inspector.room_extra_hint'); shortenHint(hint);
+    globalThis.helpRow=hint.parentElement; helpRow.querySelector('button').onclick(click);
+    globalThis.dialog=document.body.querySelector('dialog');`);
+  assert.equal(run("helpRow.dataset.genericHint"), "true");
+  assert.equal(run("hint.classList.contains('inspector-help-content')"), true);
+  assert.equal(run("dialog.textContent.includes('**')"), false);
+  run(`globalThis.warning=node('div'); warning.id='fRoomExtraWarning'; warning.className='meta warn no-shorten';
+    root.append(warning); warning.textContent=t('layout.inspector.room_extra_none_humidity'); shortenHint(warning);`);
+  assert.equal(run("warning.parentElement"), run("root"));
+});
+
+test("wrapping dynamic hints refreshes section info buttons without another widget edit", () => {
+  const run = setup();
+  run(`document.querySelector=()=>root;
+    globalThis.sectionRefreshes=0;refreshInspectorSectionHelp=()=>{sectionRefreshes++;};
+    hint.textContent=full;shortenInspectorHints();`);
+  assert.equal(run("sectionRefreshes"), 1);
+  assert.equal(run("hint.parentElement.dataset.genericHint"), "true");
+});
+
 test("Popup paragraphs preserve authored line breaks and complete entity IDs", () => {
   const run = setup();
   assert.deepEqual(Array.from(run(`inspectorHelpParagraphs("First line.\\nSecond line.\\n\\nNext paragraph.")`)), ["First line.\nSecond line.", "Next paragraph."]);
@@ -195,3 +220,29 @@ test("every built-in widget overview contains emphasis and preserves its documen
     }
   }
 });
+
+for (const language of ['en', 'de']) for (const type of ['energy_timeline', 'energy_price_forecast', 'parqet_portfolio']) {
+  test(`${type} source requirements open behind info with practical context (${language})`, () => {
+    const run = setup();
+    run(`editor.i18nLanguage=${JSON.stringify(language)};editor.i18nMap=WEB_I18N_BUILTIN[${JSON.stringify(language)}];
+      el.entitySourceWarning=node('div');el.entitySourceWarning.className='meta warn no-shorten';
+      el.entitySourceWarning.classList.toggle=(name,hidden)=>{el.entitySourceWarning.hidden=hidden};
+      el.entitySourceHint=hint;hint.id='entitySourceHint';
+      el.entitySourceHint.classList.toggle=()=>{};
+      el.energyTimelineHint=hint;
+      refreshEntitySourceWarning({type:${JSON.stringify(type)}});
+      shortenHint(hint);globalThis.row=hint.parentElement;row.querySelector('button').onclick(click);
+      globalThis.dialog=document.body.querySelector('dialog');`);
+    assert.equal(run("dialog.open"), true);
+    assert.ok(run("dialog.querySelectorAll('h4').length") >= 3, "structured context rather than an unexplained attribute list");
+    assert.equal(run("el.entitySourceWarning.textContent"), "", "requirements do not become an inline warning");
+    const text = run("dialog.textContent");
+    if (type === 'energy_timeline') {
+      assert.match(text, /Recorder/); assert.match(text, /total_increasing/); assert.match(text, /detailedForecast/);
+      assert.match(text, /state-of-charge|Ladestand/);
+    } else if (type === 'energy_price_forecast') {
+      assert.match(text, /CO₂/); assert.match(text, /EUR\/kWh/); assert.match(text, /raw_today/);
+      assert.match(text, /If no prices|Wenn keine Preise/);
+    } else { assert.match(text, /Monetary|Geldbetrag/); assert.match(text, /fees|Gebühren/); assert.match(text, /XIRR/); }
+  });
+}

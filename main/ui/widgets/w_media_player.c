@@ -412,7 +412,7 @@ static void mp_apply_visual(w_mp_ctx_t *ctx)
      * dark control_surface's theme mix came out, unlike the play button below (already correct,
      * via this same formula under its own local name). */
     lv_color_t control_text = ctx->unavailable ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED) : ui_style_button_icon_color(control_surface);
-    lv_color_t play_bg = ui_style_control_fill(ctx->is_playing ? UI_CONTROL_ACTIVE : UI_CONTROL_ACTION, !ctx->unavailable, accent);
+    lv_color_t play_bg = ui_style_control_fill(UI_CONTROL_PRIMARY, !ctx->unavailable, accent);
     lv_color_t play_border = control_border;
     lv_color_t play_text = ctx->unavailable ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED) : ui_style_button_icon_color(play_bg);
     lv_color_t slider_knob = ctx->unavailable

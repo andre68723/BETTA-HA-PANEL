@@ -326,7 +326,7 @@ def main():
 
     for v in variants:
         if lock_seems_stale(v):
-            print("warning: %s does not match the %r manifest -- run tools/build.sh %s reconfigure build "
+            print("warning: %s does not match the %r manifest -- run scripts/build.sh %s reconfigure build "
                   "before comparing component versions" % (VARIANTS[v][0], v, v), file=sys.stderr)
 
     cache, result = {}, {"variants": {}}

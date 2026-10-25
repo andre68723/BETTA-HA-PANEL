@@ -7,14 +7,14 @@ below are relative to the repository root; the working rules for contributors an
 
 ```bash
 source ~/esp/esp-idf-v6.1/export.sh      # ESP-IDF 6.1 with the ESP32-P4 toolchain
-tools/build.sh panel4 build              # one variant, always through this wrapper
-uv run --locked --only-group checks tools/check.sh --changed  # daily checks
+scripts/build.sh panel4 build              # one variant, always through this wrapper
+uv run --locked --only-group checks scripts/check.sh --changed  # daily checks
 ```
 
 [Build and flash](development/build.md) has the full setup. Updates and rollback are in
 [Releases, OTA and rollback](development/release.md), what runs without a device in
 [Checks and device tests](development/testing.md), vendored and patched dependencies in
-[Components and patches](development/components.md); [Scripts in tools/](development/tools.md) says which script does what. [Code conventions](development/conventions.md) and
+[Components and patches](development/components.md); [Scripts and tools](development/tools.md) says which script does what. [Code conventions](development/conventions.md) and
 [Working practices](development/learnings.md) collect the rules and what went wrong on real devices.
 
 Subsystems have their own references: the [web editor source](editor-source.md), [appearance](appearance-implementation.md),

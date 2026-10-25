@@ -41,6 +41,7 @@ function entityPickerConfig(widgetType = editor.lightPicker.widgetType) {
   return {
     widgetType: normalizedWidgetType,
     ...ENTITY_PICKER_CONFIGS[normalizedWidgetType],
+    ...entityPickerCreationDomains(normalizedWidgetType),
   };
 }
 
@@ -76,6 +77,7 @@ function entityPickerConfigForDomain(domain, titleKey = "entity_picker.title_ent
   }
   return {
     ...base,
+    allowedDomains: undefined,
     domain,
     titleKey,
     titleFallback,
@@ -88,6 +90,22 @@ function entityPickerAllowedItems(items, config) {
     (!config.allowedDomains?.length || config.allowedDomains.includes(item.id.split(".")[0])) &&
     (!config.allowedEntityIds || config.allowedEntityIds.includes(item.id)) &&
     !config.excludedEntityIds?.includes(item.id));
+}
+
+function entityPickerFilterHint(config, type, slot = "primary") {
+  const domains = config.allowedDomains?.length ? config.allowedDomains : [config.domain || "any"];
+  const parts = [domains.includes("any") ? t("entity_picker.filter_any") :
+    domains.includes("room") ? t("entity_picker.filter_room") :
+      t("entity_picker.filter_domains", { domains: domains.map(domain => domain + ".*").join(", ") })];
+  const role = widgetEntitySearchRole(type, slot);
+  if (config.restrictionHint === "entity_picker.filter_printer_role") parts.push(t(config.restrictionHint));
+  else {
+    parts.push(t(`entity_picker.rule_${role}`));
+    if (type === "bambu_printer" && slot !== "primary") parts.push(t("entity_picker.filter_bambu"));
+    if (config.allowedEntityIds) parts.push(t(config.restrictionHint || "entity_picker.filter_assigned"));
+  }
+  if (config.excludedEntityIds?.length) parts.push(t("entity_picker.filter_excluded"));
+  return parts.join(" ");
 }
 
 function entityPickerItemsLabel(config = entityPickerConfig()) {
@@ -125,6 +143,13 @@ function normalizeEntityPickerItems(items, domain) {
       area_id: String(item.area_id || ""),
       icon: String(item.icon || ""),
       device_class: String(item.device_class || ""),
+      unit: String(item.unit || ""),
+      state_class: String(item.state_class || ""),
+      has_price_series: item.has_price_series === true,
+      has_solar_forecast: item.has_solar_forecast === true,
+      search_flags: Number(item.search_flags) || 0,
+      supported_features: typeof item.supported_features === "number" ? item.supported_features : null,
+      capabilities: item.capabilities,
       floor: String(item.floor || ""),
     }));
 }
@@ -143,13 +168,25 @@ function mergeEntityPickerItemsIntoEntities(items, domain) {
   if (!Array.isArray(items) || !items.length) return;
   const byId = new Map(editor.entities.map((entity) => [entity.id, entity]));
   for (const item of items) {
-    if (!item?.id || byId.has(item.id)) continue;
+    if (!item?.id) continue;
+    const existing = byId.get(item.id);
+    if (existing) {
+      Object.assign(existing, { search_flags: item.search_flags ?? existing.search_flags,
+        supported_features: item.supported_features ?? existing.supported_features, capabilities: item.capabilities || existing.capabilities, unit: item.unit || existing.unit, state_class: item.state_class || existing.state_class,
+        device_class: item.device_class || existing.device_class,
+        has_price_series: item.has_price_series ?? existing.has_price_series,
+        has_solar_forecast: item.has_solar_forecast ?? existing.has_solar_forecast });
+      continue;
+    }
     const entity = {
       id: item.id,
       name: item.name || item.id,
       domain: domain === "room" ? item.id.split(".")[0] : domain,
       icon: item.icon || "",
-      capabilities: {},
+      capabilities: item.capabilities || {},
+      search_flags: item.search_flags || 0, supported_features: item.supported_features,
+      unit: item.unit || "", state_class: item.state_class || "", device_class: item.device_class || "",
+      has_price_series: item.has_price_series === true, has_solar_forecast: item.has_solar_forecast === true,
     };
     editor.entities.push(entity);
     byId.set(item.id, entity);
@@ -280,18 +317,19 @@ function renderLightEntityPicker(data = {}) {
   const searchReady = entityPickerSearchReady(config);
   const liveSearch = entityPickerLiveSearchEnabled(config);
   const inspectorTarget = editor.lightPicker.inspectorTarget;
+  const ruleType = inspectorTarget ? inspectorTarget.ruleType ?? inspectorRuleType() :
+    (config.displayMode === "door" ? "contact_tile" : (config.widgetType || editor.lightPicker.widgetType));
+  const ruleSlot = inspectorTarget?.slot || "primary";
   const sourceItems = Object.prototype.hasOwnProperty.call(data, "items")
     ? data.items
     : editor.lightPicker.items;
   const cachedItems = normalizeEntityPickerItems(sourceItems, domain);
   let items = entityPickerAllowedItems(cachedItems, config);
-  if (domain !== "room") {
+  if (domain !== "room" && config.restrictionHint !== "entity_picker.filter_printer_role") {
     // Rank (or restrict) the list by device class for the field being filled, like the inspector suggestions.
-    const ruleType = inspectorTarget
-      ? inspectorRuleType()
-      : (config.displayMode === "door" ? "contact_tile" : (editor.lightPicker.widgetType || config.widgetType));
-    items = applyEntityClassRule(items, ruleType, inspectorTarget ? inspectorTarget.slot || "primary" : "primary");
+    items = applyEntityClassRule(items, ruleType, ruleSlot);
   }
+  if (el.lightEntityPickerFilter) el.lightEntityPickerFilter.textContent = entityPickerFilterHint(config, ruleType, ruleSlot);
 
   if (el.lightEntityPickerTitle) {
     el.lightEntityPickerTitle.textContent = t(config.titleKey, {}, config.titleFallback);
@@ -312,7 +350,7 @@ function renderLightEntityPicker(data = {}) {
     const typed = search.toLowerCase();
     el.lightEntityPickerUseIdBtn.textContent = t("entity_picker.use_id", { id: typed });
     el.lightEntityPickerUseIdBtn.classList.toggle("hidden", !inspectorTarget || !/^[a-z0-9_]+\.[a-z0-9_]+$/.test(typed)
-      || items.some(item => item.id === typed));
+      || items.some(item => item.id === typed) || (strictEntitySourceType(ruleType) && !widgetEntitySourceMatches({ id: typed }, ruleType, ruleSlot)));
   }
   renderEntityPickerCurrent(inspectorTarget);
   if (el.lightEntityPickerRefreshBtn) {
@@ -322,9 +360,9 @@ function renderLightEntityPicker(data = {}) {
     el.lightEntityPickerSearch.value = editor.lightPicker.search;
   }
 
+  editor.lightPicker.items = items;
   if (items.length > 0 || data.status === "ready" || data.status === "refreshing") {
     // Cache the unfiltered response: another field may allow different domains or Room candidates.
-    editor.lightPicker.items = items;
     if (data.status === "ready" || data.status === "refreshing") {
       editor.lightPicker.itemsByDomain[cacheKey] = cachedItems;
       editor.lightPicker.truncatedByDomain[cacheKey] = data.truncated === true;
@@ -505,7 +543,7 @@ async function fetchLightEntityPicker(options = {}) {
 const ENTITY_FIRST_DOOR_CLASSES = ["door", "window", "opening", "garage_door", "lock"];
 
 // Tile choices for an entity, best first. Each: { key, type, displayMode?, sliderDomain? }.
-function entityFirstSuggestions(entityId, deviceClass) {
+function entityFirstDomainSuggestions(entityId, deviceClass) {
   const domain = String(entityId).split(".")[0];
   const dc = String(deviceClass || "");
   switch (domain) {
@@ -547,6 +585,7 @@ function entityFirstSuggestions(entityId, deviceClass) {
     case "fan":
       return [{ key: "fan", type: "fan_tile" }];
     case "camera":
+    case "image":
       return [{ key: "camera", type: "camera_tile" }];
     case "vacuum":
       return [{ key: "vacuum", type: "vacuum_tile" }];
@@ -559,6 +598,13 @@ function entityFirstSuggestions(entityId, deviceClass) {
     default:
       return [];
   }
+}
+
+function entityFirstSuggestions(entityId, deviceClass, metadata = {}) {
+  const entity = { id: entityId, device_class: deviceClass || "", ...metadata };
+  return entityFirstDomainSuggestions(entityId, deviceClass).filter(choice =>
+    entityMatchesWidgetType(entity, choice.type, choice.sliderDomain) &&
+    widgetEntitySourceMatches(entity, choice.displayMode === "door" ? "contact_tile" : choice.type));
 }
 
 function entityFirstAddTile(item, choice) {
@@ -592,7 +638,7 @@ function entityFirstRow(item) {
   row.appendChild(text);
   const chips = document.createElement("div");
   chips.className = "entity-first-chips";
-  const choices = entityFirstSuggestions(item.id, item.device_class);
+  const choices = entityFirstSuggestions(item.id, item.device_class, item);
   for (const choice of choices) {
     const chip = document.createElement("button");
     chip.type = "button";
@@ -624,7 +670,7 @@ function renderEntityPickerCurrent(target) {
   const id = target && !target.append ? (target.input?.value || "").trim() : "";
   box.classList.toggle("hidden", !id);
   if (!id) { if (el.lightEntityPickerRemoveBtn && box.contains(el.lightEntityPickerRemoveBtn)) box.after(el.lightEntityPickerRemoveBtn); return; }
-  const info = sensorEntityInfo(id), state = editor.states?.get(id);
+  const info = entityDisplayInfo(id), state = editor.states?.get(id);
   const name = info.name && info.name !== id ? info.name : id;
   const dc = entityHasDeviceClass(id) ? deviceClassLabel(info.device_class, id) : "";
   if (!box.firstChild) {
@@ -722,6 +768,8 @@ function openAddTileDialog() {
   if (el.addTileSearch) el.addTileSearch.value = "";
   if (el.addTileResults) el.addTileResults.textContent = "";
   if (el.addTileSearchStatus) el.addTileSearchStatus.textContent = "";
+  const hint = document.getElementById("addTileFilter");
+  if (hint) hint.textContent = t("add_tile.filter");
   filterAddTileTypes("");
   const types = document.getElementById("addTileTypes");
   if (types) sortItemsAlphabetically(types, "add-tile-type", "add-tile-group");
@@ -768,7 +816,7 @@ async function runAddTileSearch() {
       return;
     }
     if (seq !== addTileSearchSeq) return;
-    const items = normalizeEntityPickerItems(data.items, "any");
+    const items = normalizeEntityPickerItems(data.items, "any").filter(item => entityFirstSuggestions(item.id, item.device_class, item).length);
     results.textContent = "";
     for (const item of items.slice(0, ADD_TILE_MAX_RESULTS)) results.appendChild(entityFirstRow(item));
     if (data.pending !== true) {

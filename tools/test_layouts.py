@@ -10,7 +10,7 @@
   tools/test_layouts.py restore <panel-ip> [--force]
   tools/test_layouts.py status <panel-ip>
 
-check (part of tools/check.sh) needs no simulator: every widget type and enumerated value has a case, and every
+check (part of scripts/check.sh) needs no simulator: every widget type and enumerated value has a case, and every
 board's layouts fit its pages, 32 KB and canvas without overlaps.
 
 The suites are in tools/test_layout_cases.json: widgets at their 10-inch size with "{role}" entities. generate places
@@ -598,7 +598,7 @@ def status(ip):
 
 
 def check_catalogue():
-    """Fast check for tools/check.sh, without rendering: every widget type and validated value has a case, and every
+    """Fast check for scripts/check.sh, without rendering: every widget type and validated value has a case, and every
     board's layouts stay within its pages and the 32 KB limit with no tile outside the canvas or on another."""
     problems = [f"no case: {item}" for item in coverage(all_suites())]
     from gallery_content import build_spec

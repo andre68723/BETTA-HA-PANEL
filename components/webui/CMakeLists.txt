@@ -20,6 +20,7 @@ set(WEBUI_JS_SOURCES
     js/settings.js
     js/brightness-test.js
     js/update-check.js
+    js/entity-search-rules.js
     js/layout-model.js
     js/pickers.js
     js/readability.js

@@ -408,7 +408,7 @@ if (el.addBambuPrinterBtn) {
   }
   document.querySelectorAll("[data-inspector-entity-target]").forEach((button) => {
     button.addEventListener("click", () => {
-      openInspectorEntityPicker(button.dataset.inspectorEntityTarget || "");
+      return openInspectorEntityPicker(button.dataset.inspectorEntityTarget || "");
     });
   });
   bindInspectorAutoApply(el.fTitle, ["input"], { softEntityValidation: true });

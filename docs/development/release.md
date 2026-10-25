@@ -6,7 +6,7 @@
 - `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`: a fresh OTA image starts as "pending verify". `util/ota_validate.c` marks it
   valid after 60 s of uptime with the HTTP server answering and Wi-Fi connected (or the setup AP up); a reset before that
   boots the previous image. `ota_image_state` in `/api/version` shows the state.
-- The bootloader is not part of an OTA: flash it once over USB (`tools/build.sh <variant> -p <port> flash`, see
+- The bootloader is not part of an OTA: flash it once over USB (`scripts/build.sh <variant> -p <port> flash`, see
   [Changing the partition table](build.md#changing-the-partition-table)). An old bootloader still takes OTA images but has
   no rollback (`ota_image_state: new`); `bootloader.rollback` in `/api/version` and Settings → Device show which one a
   panel has. Bootloader only:
@@ -29,7 +29,7 @@ rolled back before. The attempt must be committed to NVS before the download sta
 
 A pre-release tag (`v0.9.1-rc1`) is compared as a whole version; a plain `v0.9.0` compares the core and
 falls back to the upload time, so give test releases an `-rcN` suffix. Images carry their version in `BETTAOS_RELEASE_VERSION`;
-a test build uses `BETTA_VERSION=v0.9.1-rc1 tools/build.sh <variant> reconfigure build`. `POST /api/ota/check` runs the
+a test build uses `BETTA_VERSION=v0.9.1-rc1 scripts/build.sh <variant> reconfigure build`. `POST /api/ota/check` runs the
 daily check now.
 
 ## Publish a release
@@ -37,8 +37,8 @@ daily check now.
 Nothing publishes automatically, and nothing is pushed or released without the owner's request.
 
 1. Set the reported version: `BETTAOS_RELEASE_VERSION` in the root `CMakeLists.txt`, or `BETTA_VERSION=<v>` for one build.
-2. `tools/build.sh <variant> reconfigure build` for each board.
-3. `tools/package_release.sh <version> <variant>...` writes `betta86-ha-panel-<version>-<variant>.factory.bin` and
+2. `scripts/build.sh <variant> reconfigure build` for each board.
+3. `scripts/package_release.sh <version> <variant>...` writes `betta86-ha-panel-<version>-<variant>.factory.bin` and
    `.ota.bin` plus `SHA256SUMS` into `release/out/<version>/` (the update check looks for that name).
 4. `gh release create <version> -R andre68723/BETTA-HA-PANEL --target <commit> --notes-file <notes>
    release/out/<version>/*.bin release/out/<version>/SHA256SUMS`, with `--prerelease` for a test version. `--target` must
@@ -46,7 +46,7 @@ Nothing publishes automatically, and nothing is pushed or released without the o
 5. Check: enable "Include pre-releases", `POST /api/ota/check`, read `update` in `GET /api/ota/status`. Install a changed
    partition table over USB first.
 
-Packaged versions stay in `release/out/` (git-ignored) until `tools/clean.sh --release [N]` removes all but the newest N.
+Packaged versions stay in `release/out/` (git-ignored) until `scripts/clean.sh --release [N]` removes all but the newest N.
 
 ## Test the automatic update
 
@@ -55,8 +55,8 @@ release): `POST /api/ota/auto-update-test` with `{"force":true}`, `{"reset":true
 must report an older version than the release:
 
 ```bash
-EXTRA_DEFAULTS=config/sdkconfig.defaults.autoupdate_test BETTA_VERSION=v0.9.1-rc1 tools/build.sh <variant> reconfigure build
-tools/auto_update_device_test.sh <ip> install|rollback|state|reset
+EXTRA_DEFAULTS=config/sdkconfig.defaults.autoupdate_test BETTA_VERSION=v0.9.1-rc1 scripts/build.sh <variant> reconfigure build
+scripts/auto_update_device_test.sh <ip> install|rollback|state|reset
 ```
 
 `install` must end with `result: installed`; with the old bootloader the state is `wait_no_rollback`. `rollback` stores

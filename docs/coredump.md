@@ -74,7 +74,7 @@ curl -X POST -H 'Content-Type: application/json' \
 ## Matching ELF and backtrace
 
 The exact ELF that ran at the crash is required. Rebuilding the same commit does not
-reproduce it reliably. `tools/build.sh` archives the newest 12 successful ELFs per
+reproduce it reliably. `scripts/build.sh` archives the newest 12 successful ELFs per
 variant under `.local/elf/<variant>/<first-9-SHA256-digits>.elf`; compare the recorded
 `elf_sha256` before decoding. Preserve older ELFs separately when keeping reports longer.
 The currently running build in `/api/version` can differ from an archived report's build.

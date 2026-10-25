@@ -208,8 +208,9 @@ def panel_details(kind):
                   "- **Off** requests stop through the loadpoint mode entity. **Smart** and **Fast** send the exact HA options `smart` and "
                   "`now`. Older mode options use a picker. A request stays pending until Home Assistant confirms the entity state; the "
                   "Charging status reports whether the charger is actually charging.",
-                  "- **Vehicle** changes this loadpoint's car assignment, including No vehicle. It remains usable when the SOC is missing. "
-                  "Names are displayed when supplied by Home Assistant; the raw selection value is sent unchanged.",
+                  "- **Vehicle** changes this loadpoint's car assignment, including **Guest vehicle** (the HA option `null`). It remains usable when the SOC is missing. "
+                  "Names for all choices come from Home Assistant's option translations; the raw selection value is sent unchanged. "
+                  "Repeated HA refreshes keep the picker open; a changed selection, options or availability dismisses it.",
                   "- **Target SOC** opens a slider using the number entity's minimum, maximum and step. **Apply** sends one value. A "
                   "select fallback shows the complete reported options when no number binding is available.",
                   "- Missing or invalid values show `-- %`. Unavailable or disabled controls cannot issue commands. With no cable connected, "
