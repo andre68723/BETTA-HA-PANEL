@@ -157,6 +157,8 @@ static esp_err_t ui_widget_factory_create_inner(const ui_widget_def_t *def, lv_o
     snprintf(out_instance->forecast_day_3_entity_id, sizeof(out_instance->forecast_day_3_entity_id), "%s", def->forecast_day_3_entity_id);
     snprintf(out_instance->forecast_day_4_entity_id, sizeof(out_instance->forecast_day_4_entity_id), "%s", def->forecast_day_4_entity_id);
     snprintf(out_instance->forecast_day_5_entity_id, sizeof(out_instance->forecast_day_5_entity_id), "%s", def->forecast_day_5_entity_id);
+    snprintf(out_instance->forecast_day_6_entity_id, sizeof(out_instance->forecast_day_6_entity_id), "%s", def->forecast_day_6_entity_id);
+    snprintf(out_instance->forecast_day_7_entity_id, sizeof(out_instance->forecast_day_7_entity_id), "%s", def->forecast_day_7_entity_id);
     out_instance->solar_forecast_bar_max_kwh = def->solar_forecast_bar_max_kwh;
     snprintf(out_instance->solar_forecast_bar_orientation, sizeof(out_instance->solar_forecast_bar_orientation), "%s", def->solar_forecast_bar_orientation);
     snprintf(out_instance->slider_direction, sizeof(out_instance->slider_direction), "%s", def->slider_direction);

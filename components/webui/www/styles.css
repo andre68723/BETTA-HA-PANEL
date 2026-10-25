@@ -918,7 +918,7 @@ textarea {
   height: 100%;
 }
 
-/* Today: the part of the total already produced is dimmed, the remaining part stays bright. */
+/* Today: the remaining part is the bright start of the bar, the part of the total already produced is dimmed at its end. */
 .solar-preview-hbar i,
 .solar-preview-vbar i {
   position: relative;
@@ -932,18 +932,18 @@ textarea {
 }
 
 .solar-preview-hbar i u {
-  inset: 0 auto 0 0;
+  inset: 0 0 0 auto;
   width: var(--split, 0%);
 }
 
 .solar-preview-vbar i u {
-  inset: auto 0 0 0;
+  inset: 0 0 auto 0;
   height: var(--split, 0%);
 }
 
 .solar-preview.vertical .solar-preview-body {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr));
   gap: 6px;
   align-items: stretch;
 }

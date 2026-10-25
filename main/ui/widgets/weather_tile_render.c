@@ -133,9 +133,14 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
     weather_copy_text(rows[0].day, sizeof(rows[0].day), ui_i18n_get("weather.today", "Today"));
 
     const lv_coord_t gap = 6;
+    /* With a "Visible days" count the cards sit on the shared day grid, which w_solar_forecast.c shares for "Line up days with the
+     * weather tile": its outer width less 14 px each side, uncapped. The fixed-text boards pad this card by 16 px, not 14. */
+    const bool dated = ctx->forecast_days >= 0;
+    const lv_coord_t grid_w = dated && !readable ? lv_obj_get_width(card) - 28 : cw;
+    const lv_coord_t grid_x0 = dated && !readable ? 14 - lv_obj_get_style_pad_left(card, LV_PART_MAIN) : 0;
     int count = (int)((cw + gap) / (54 + gap));
-    if (count > WEATHER_COLS_MAX) {
-        count = WEATHER_COLS_MAX;
+    if (count > WEATHER_COLS_LEGACY_MAX) {
+        count = WEATHER_COLS_LEGACY_MAX;
     }
     if (count > WEATHER_3DAY_ROWS) {
         count = WEATHER_3DAY_ROWS;
@@ -143,7 +148,7 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
     if (count < 3) {
         count = 3;
     }
-    if (ctx->forecast_days >= 0) count = ui_day_grid_count(cw, ctx->forecast_days, WEATHER_COLS_MAX);
+    if (dated) count = ui_day_grid_count(grid_w, ctx->forecast_days, WEATHER_COLS_MAX);
     if (ctx->forecast_days >= 0) {
         weather_3day_row_t dated[WEATHER_3DAY_ROWS]; memcpy(dated, rows, sizeof(dated));
         for (int i = 0; i < count; i++) {
@@ -166,12 +171,12 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
     if (valid_days > 0 && valid_days < count) {
         count = valid_days;
     }
-    lv_coord_t col_w = (cw - gap * (count - 1)) / count;
-    if (!readable && col_w > 96) {
+    lv_coord_t col_w = (grid_w - gap * (count - 1)) / count;
+    if (!readable && !dated && col_w > 96) {
         col_w = 96;
     }
     const lv_coord_t total_w = col_w * count + gap * (count - 1);
-    const lv_coord_t x0 = (cw - total_w) / 2;
+    const lv_coord_t x0 = dated ? grid_x0 : (cw - total_w) / 2; /* the grid is left-aligned: a pixel remainder must not shift the columns */
     /* Below both the icon and the temperature/condition block next to it. */
     const lv_coord_t text_bottom = block_y + temp_h + (inline_head ? 0 : line_gap + meta_h);
     const lv_coord_t free_y = (text_bottom > head_y + icon_px ? text_bottom : head_y + icon_px) + 10;

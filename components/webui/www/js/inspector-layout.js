@@ -142,7 +142,7 @@ function initInspectorLayout() {
   follow(byId("roomEntitiesFields"), [label(el.fRoomEntities), byId("fRoomEntitiesHint")], "entities");
   move("entities", byId("carExtraFields"), byId("evccFields"), byId("bambuFields"), byId("energyTimelineFields"), byId("stockEntities"));
   follow(byId("solarForecastFields"), [byId("fSolarForecastTodayLabel"), byId("fSolarForecastTomorrowLabel"),
-    byId("fSolarForecastDay3Label"), byId("fSolarForecastDay4Label"), byId("fSolarForecastDay5Label")].map(label), "entities");
+    byId("fSolarForecastDay3Label"), byId("fSolarForecastDay4Label"), byId("fSolarForecastDay5Label"), byId("fSolarForecastDay6Label"), byId("fSolarForecastDay7Label")].map(label), "entities");
   follow(byId("sliderOptions"), [label(el.fSliderEntityDomain)], "entities");
   follow(byId("graphOptions"), [label(el.fGraphHaHistory), byId("fGraphHaHistoryHint")], "entities");
   follow(byId("priceOptions"), [label(el.fPriceAverage)], "entities");

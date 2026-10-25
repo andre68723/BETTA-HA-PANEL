@@ -2,7 +2,7 @@
 
 # Solar forecast
 
-Compares the **predicted solar production** from `sensor.*` forecasts for today and the next four days.
+Compares the **predicted solar production** from `sensor.*` forecasts for today and the next six days.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/solar_forecast_glow.png"><img src="../img/gallery/solar_forecast_glow.png" alt="Solar forecast, Glow style" loading="lazy" width="350" height="310" style="width: 280px"></a></figure>
@@ -14,7 +14,7 @@ Compares the **predicted solar production** from `sensor.*` forecasts for today 
 | --- | --- |
 | Remaining today (sensor) | `sensor.*` |
 | Today forecast *(optional)* | `sensor.*` |
-| Tomorrow, Day 3–5 forecast *(optional)* | `sensor.*` |
+| Tomorrow, Day 3–7 forecast *(optional)* | `sensor.*` |
 
 ## Requirements
 
@@ -30,7 +30,7 @@ Sensors that forecast the solar production per day, for example from **[Solcast 
 
 ## On the panel
 
-- Today's row carries two readings: its bar and value are the day's total (**Today forecast**); the part still to come (**Remaining today**) is the bright end of the bar over the dimmed total, so the dim start reads as already produced. This needs both sensors; in the example 25 of 55 kWh are still to come.
+- Today's row carries two readings: its bar and value are the day's total (**Today forecast**); the part still to come (**Remaining today**) is the bright start of the bar over the dimmed total, so the dimmed end reads as already produced. This needs both sensors; in the example 25 of 55 kWh are still to come.
 - With **Line up days with the weather tile** the header shows **Rest** and the remaining kWh.
 - Tap today's bar to see a compact **Solar forecast today** popup with **Total** and **Remaining**. Future days do not open a popup. It closes with **×** or after a minute.
 

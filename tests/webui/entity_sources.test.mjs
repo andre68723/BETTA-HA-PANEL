@@ -188,7 +188,7 @@ test("every widget and every named entity search has translated rules, also when
   for (const type of primaryTypes) for (const slot of ["secondary", "tertiary"]) {
     if (fn(slot === "secondary" ? "secondaryEntityConfigForWidgetType" : "tertiaryEntityConfigForWidgetType")(type).enabled) fields.push([type, slot]);
   }
-  for (const slot of ["solar_today", "solar_tomorrow", "solar_day_3", "solar_day_4", "solar_day_5"]) fields.push(["solar_forecast", slot]);
+  for (const slot of ["solar_today", "solar_tomorrow", "solar_day_3", "solar_day_4", "solar_day_5", "solar_day_6", "solar_day_7"]) fields.push(["solar_forecast", slot]);
   fields.push(["room_tile", "room_entities"], ["room_tile", "room_extra"]);
   run(`el.lightEntityPickerRooms={innerHTML:'',appendChild(){}};
     el.lightEntityPickerStatus={textContent:''};el.lightEntityPickerFilter={textContent:''}`);

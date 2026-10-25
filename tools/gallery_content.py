@@ -62,6 +62,8 @@ GALLERY_ROLE_PATHS = {
     'solar_day_3': 'solar_forecast.day_3',
     'solar_day_4': 'solar_forecast.day_4',
     'solar_day_5': 'solar_forecast.day_5',
+    'solar_day_6': 'solar_forecast.day_6',
+    'solar_day_7': 'solar_forecast.day_7',
     'car_battery': 'car_widget.entity_id',
     'car_precond': 'car_widget.precond_entity_id',
     'car_interior': 'car_widget.interior_temp_entity_id',

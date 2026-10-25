@@ -60,6 +60,8 @@ const DEFAULT_SOLCAST_ENTITIES = {
   day3: "sensor.solcast_pv_forecast_prognose_tag_3",
   day4: "sensor.solcast_pv_forecast_prognose_tag_4",
   day5: "sensor.solcast_pv_forecast_prognose_tag_5",
+  day6: "sensor.solcast_pv_forecast_prognose_tag_6",
+  day7: "sensor.solcast_pv_forecast_prognose_tag_7",
 };
 const DEFAULT_SONOS_FAVORITES_SENSOR = "sensor.sonos_favorites";
 const ENERGY_PAGE_TYPE = "energy_dashboard";

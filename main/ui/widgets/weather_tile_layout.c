@@ -4,7 +4,7 @@
  */
 #include "ui/widgets/weather_tile_internal.h"
 
-static int weather_3day_visible_rows(lv_obj_t *card, lv_coord_t rows_top)
+static int weather_3day_visible_rows(lv_obj_t *card, lv_coord_t rows_top, int max_rows)
 {
     if (card == NULL) {
         return 2;
@@ -27,8 +27,8 @@ static int weather_3day_visible_rows(lv_obj_t *card, lv_coord_t rows_top)
     if (fit < 2) {
         fit = 2;
     }
-    if (fit > WEATHER_3DAY_ROWS) {
-        fit = WEATHER_3DAY_ROWS;
+    if (fit > max_rows) {
+        fit = max_rows;
     }
     return fit;
 }
@@ -55,7 +55,8 @@ void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *ctx, lv_
     if (rows_top < WEATHER_3DAY_ROWS_TOP) {
         rows_top = WEATHER_3DAY_ROWS_TOP;
     }
-    const int visible = weather_3day_visible_rows(card, rows_top);
+    /* Layouts saved before "Visible days" keep their six rows. */
+    const int visible = weather_3day_visible_rows(card, rows_top, ctx->forecast_days < 0 ? WEATHER_COLS_LEGACY_MAX : WEATHER_3DAY_ROWS);
     lv_coord_t rows_bottom = card_h - WEATHER_3DAY_ROWS_BOTTOM_PAD;
     lv_coord_t used_h = (lv_coord_t)(visible * row_h + (visible - 1) * row_gap);
     if (used_h > (rows_bottom - rows_top)) {

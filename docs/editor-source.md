@@ -193,7 +193,7 @@ The shared Gallery fixture supplies explicit classes; documentation captures mus
   `/api/version` reports this as `text.adaptive`, `previewTextAdaptive()` reads it and `#canvas.text-fixed` carries
   the 10-inch rules in `css/preview-roles.css`. Line heights come from `previewLineHeight()` (the panel's metrics table).
 - **Readability** (`js/readability.js`, `css/readability.css`) mirrors the panel4 role sizes in 720 × 600 previews.
-  Weather offers auto or 1-6 days, aligned solar auto or 1-5; Save does not resize tiles or enable rain. Gauge width
+  Weather and aligned solar offer auto or 1-7 days; Save does not resize tiles or enable rain. Gauge width
   hints measure state, range and unit at 38 px and are suggestions.
 - **Sound** has its own settings page; the test plays at the selected volume and bypasses enable and night mute. Boards
   without audio hide it.

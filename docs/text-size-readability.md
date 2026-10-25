@@ -58,11 +58,11 @@ retained. On the 4-inch class (panel4, Tab5) nothing is below 20 px and `tools/c
 (it also reports the overlaps the larger text causes).
 
 Weather retains the existing number of days unless `forecast_days` is chosen.
-Use 0 for measured auto or 1..6 explicitly (columns including today: up to five future days plus today). Fewer wider columns are an optional
+Use 0 for measured auto or 1..7 explicitly (columns including today: up to six future days plus today). Weather and solar share this grid and its width, so "Line up days with the weather tile" holds for every count. Fewer wider columns are an optional
 trade-off; they make room for low temperatures and configured rain. Long weather
 reports remain in detail. Narrow columns may use the short weekday instead of
 “Today”. Solar's `align_forecast: true` (vertical bars only) puts Rest in the header and aligns up to
-five dated columns with weather. Give both tiles equal x/width and day count.
+seven dated columns with weather. Give both tiles equal x/width and day count.
 The Solar detail popup retains every configured daily reading.
 
 Design basis: the active area of the 4B display is 71.93 x 71.93 mm (Waveshare specification; not the 86.5 mm module

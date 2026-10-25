@@ -281,6 +281,8 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("fSolarForecastDay3Label", "layout.inspector.solar_day_3");
   setTextById("fSolarForecastDay4Label", "layout.inspector.solar_day_4");
   setTextById("fSolarForecastDay5Label", "layout.inspector.solar_day_5");
+  setTextById("fSolarForecastDay6Label", "layout.inspector.solar_day_6");
+  setTextById("fSolarForecastDay7Label", "layout.inspector.solar_day_7");
   setTextById("fEtlStyleLabel", "layout.inspector.etl_style");
   setTextById("fEtlStyleRows", "layout.inspector.etl_style_rows");
   setTextById("fEtlStyleNested", "layout.inspector.etl_style_nested");

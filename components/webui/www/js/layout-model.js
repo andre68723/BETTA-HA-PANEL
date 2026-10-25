@@ -802,6 +802,18 @@ function inspectorEntityPickerTarget(targetKey) {
       titleKey: "layout.inspector.solar_day_5",
       titleFallback: "Day 5 forecast",
     },
+    solar_day_6: {
+      input: el.fSolarForecastDay6,
+      domain: "sensor",
+      titleKey: "layout.inspector.solar_day_6",
+      titleFallback: "Day 6 forecast",
+    },
+    solar_day_7: {
+      input: el.fSolarForecastDay7,
+      domain: "sensor",
+      titleKey: "layout.inspector.solar_day_7",
+      titleFallback: "Day 7 forecast",
+    },
   };
   const target = targets[targetKey];
   if (!target?.input || target.input.disabled || !target.domain) {

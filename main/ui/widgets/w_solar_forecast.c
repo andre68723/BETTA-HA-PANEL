@@ -22,8 +22,9 @@
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
 
-#define SOLAR_FORECAST_ROWS 6
-#define SOLAR_FORECAST_DAY_ROWS 5
+#define SOLAR_FORECAST_ROWS 8
+#define SOLAR_FORECAST_DAY_ROWS 7
+#define SOLAR_MIN_COLUMN_W 34 /* the narrowest vertical-bar column */
 
 #define SOLAR_TITLE_FONT ui_font_role(UI_TEXT_LABEL)
 #define SOLAR_ROW_FONT ui_font_role(UI_TEXT_LABEL)
@@ -197,9 +198,9 @@ static void solar_day_label(int forecast_index, char *dst, size_t dst_size)
     }
 
     static const char *const fallback_keys[] = {
-        "solar.today", "solar.tomorrow", "solar.day_3", "solar.day_4", "solar.day_5",
+        "solar.today", "solar.tomorrow", "solar.day_3", "solar.day_4", "solar.day_5", "solar.day_6", "solar.day_7",
     };
-    static const char *const fallback_texts[] = {"Heute", "Morgen", "Tag 3", "Tag 4", "Tag 5"};
+    static const char *const fallback_texts[] = {"Heute", "Morgen", "Tag 3", "Tag 4", "Tag 5", "Tag 6", "Tag 7"};
     if (forecast_index >= 0 && forecast_index < SOLAR_FORECAST_DAY_ROWS) {
         snprintf(dst, dst_size, "%s", ui_i18n_get(fallback_keys[forecast_index], fallback_texts[forecast_index]));
     } else {
@@ -257,7 +258,7 @@ static void solar_place_rest_bar(w_solar_forecast_ctx_t *ctx, int index, bool ve
     }
     lv_obj_set_hidden(row->rest_bar, false);
     lv_bar_set_orientation(row->rest_bar, vertical ? LV_BAR_ORIENTATION_VERTICAL : LV_BAR_ORIENTATION_HORIZONTAL);
-    lv_bar_set_range(row->rest_bar, 100, 0); /* fills from the end of the total */
+    lv_bar_set_range(row->rest_bar, 0, 100); /* fills from the start of the total: what is still to come is the bright start */
     lv_obj_set_style_bg_grad_dir(row->rest_bar, vertical ? LV_GRAD_DIR_VER : LV_GRAD_DIR_HOR, LV_PART_INDICATOR);
     lv_obj_set_size(row->rest_bar, vertical ? thickness : len, vertical ? len : thickness);
     lv_obj_align(row->rest_bar, LV_ALIGN_TOP_LEFT, x, vertical ? y + bar_h - len : y);
@@ -320,7 +321,7 @@ static void solar_render(w_solar_forecast_ctx_t *ctx)
     bool common_unit = true;
     for (int i = 1; i < SOLAR_FORECAST_ROWS; i++)
         if (strcmp(ctx->units[0], ctx->units[i])) common_unit = false;
-    const int visible_rows = ctx->vertical_bars && ctx->aligned ? ui_day_grid_count(lv_obj_get_content_width(ctx->card) - 28, ctx->forecast_days, 5) : solar_visible_rows(ctx->card);
+    int visible_rows = ctx->vertical_bars && ctx->aligned ? ui_day_grid_count(lv_obj_get_content_width(ctx->card) - 28, ctx->forecast_days, SOLAR_FORECAST_DAY_ROWS) : solar_visible_rows(ctx->card);
     lv_coord_t card_w = lv_obj_get_width(ctx->card);
     lv_coord_t content_w = card_w - 28;
 #if UI_TEXT_ADAPTIVE
@@ -328,6 +329,14 @@ static void solar_render(w_solar_forecast_ctx_t *ctx)
 #endif
     if (content_w < 120) {
         content_w = 120;
+    }
+    /* Without sensors for days 6 and 7 an automatic tile keeps the five days it always showed instead of adding empty rows. */
+    if (ctx->forecast_days <= 0 && ctx->entity_ids[6][0] == '\0' && ctx->entity_ids[7][0] == '\0' && visible_rows > 5) {
+        visible_rows = 5;
+    }
+    /* More columns than fit at the narrowest column width would run over the card (aligned grids follow the weather tile). */
+    if (ctx->vertical_bars && !ctx->aligned && visible_rows > content_w / SOLAR_MIN_COLUMN_W) {
+        visible_rows = content_w / SOLAR_MIN_COLUMN_W > 0 ? content_w / SOLAR_MIN_COLUMN_W : 1;
     }
     lv_coord_t label_w = content_w / 5;
     if (label_w < 50) {
@@ -385,15 +394,23 @@ static void solar_render(w_solar_forecast_ctx_t *ctx)
         lv_coord_t chart_h = card_h - chart_top - day_h - value_h - bottom_pad;
         if (chart_h < 20) chart_h = 20;
         lv_coord_t slot_w = ctx->aligned ? ui_day_grid_width(content_w, visible_rows) : content_w / visible_rows;
-        if (slot_w < 34) {
-            slot_w = 34;
+        if (slot_w < SOLAR_MIN_COLUMN_W) {
+            slot_w = SOLAR_MIN_COLUMN_W;
         }
+#if UI_TEXT_ADAPTIVE
+        /* The compact boards' columns are narrow: the bar takes about two thirds of its column, up to 72 px, so the margins
+         * beside it stay small. */
+        lv_coord_t bar_w = slot_w * 62 / 100;
+        const lv_coord_t bar_w_max = 72;
+#else
         lv_coord_t bar_w = slot_w / 2;
+        const lv_coord_t bar_w_max = 42;
+#endif
         if (bar_w < 16) {
             bar_w = 16;
         }
-        if (bar_w > 42) {
-            bar_w = 42;
+        if (bar_w > bar_w_max) {
+            bar_w = bar_w_max;
         }
 
         for (int i = 0; i < SOLAR_FORECAST_ROWS; i++) {
@@ -609,6 +626,8 @@ esp_err_t w_solar_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, 
     snprintf(ctx->entity_ids[3], sizeof(ctx->entity_ids[3]), "%s", def->forecast_day_3_entity_id);
     snprintf(ctx->entity_ids[4], sizeof(ctx->entity_ids[4]), "%s", def->forecast_day_4_entity_id);
     snprintf(ctx->entity_ids[5], sizeof(ctx->entity_ids[5]), "%s", def->forecast_day_5_entity_id);
+    snprintf(ctx->entity_ids[6], sizeof(ctx->entity_ids[6]), "%s", def->forecast_day_6_entity_id);
+    snprintf(ctx->entity_ids[7], sizeof(ctx->entity_ids[7]), "%s", def->forecast_day_7_entity_id);
     for (int i = 0; i < SOLAR_FORECAST_ROWS; i++) {
         snprintf(ctx->units[i], sizeof(ctx->units[i]), "%s", "kWh");
     }

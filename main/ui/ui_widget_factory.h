@@ -49,6 +49,8 @@ typedef struct {
     char forecast_day_3_entity_id[APP_MAX_ENTITY_ID_LEN];
     char forecast_day_4_entity_id[APP_MAX_ENTITY_ID_LEN];
     char forecast_day_5_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_day_6_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_day_7_entity_id[APP_MAX_ENTITY_ID_LEN];
     float solar_forecast_bar_max_kwh;
     char solar_forecast_bar_orientation[APP_MAX_UI_OPTION_LEN];
     char slider_direction[APP_MAX_UI_OPTION_LEN];
@@ -66,7 +68,7 @@ typedef struct {
     char arc_opening[APP_MAX_UI_OPTION_LEN];
     char display_mode[APP_MAX_UI_OPTION_LEN]; /* binary_tile: "" (text + since), "icon" or "since" */
     char default_mode[48]; /* vacuum_tile: cleaning program (option of the mode select) set before Start */
-    int forecast_days; /* weather/solar: -1 legacy, 0 measured auto, 1..6 (solar max 5) */
+    int forecast_days; /* weather/solar: -1 legacy, 0 measured auto, 1..7 */
     bool align_forecast; /* solar: dated columns with Rest in the header */
     bool show_precipitation; /* weather_3day: rain chance and amount, default true */
     bool room_controls; /* room_tile: a control row (lights, switches, covers) when the card is large enough, default false */
@@ -120,6 +122,8 @@ typedef struct {
     char forecast_day_3_entity_id[APP_MAX_ENTITY_ID_LEN];
     char forecast_day_4_entity_id[APP_MAX_ENTITY_ID_LEN];
     char forecast_day_5_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_day_6_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char forecast_day_7_entity_id[APP_MAX_ENTITY_ID_LEN];
     float solar_forecast_bar_max_kwh;
     char solar_forecast_bar_orientation[APP_MAX_UI_OPTION_LEN];
     char slider_direction[APP_MAX_UI_OPTION_LEN];

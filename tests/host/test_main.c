@@ -253,8 +253,11 @@ static void test_layout(void)
     expect_valid("legacy forecast", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",%s", forecast_rect));
     expect_valid("auto forecast", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":0,%s", forecast_rect));
     expect_valid("six days", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":6,%s", forecast_rect));
+    expect_valid("seven days", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":7,%s", forecast_rect));
+    expect_valid("solar seven days with day 6 and 7", W("\"type\":\"solar_forecast\",\"entity_id\":\"sensor.a\",\"forecast_day_6_entity_id\":\"sensor.d6\",\"forecast_day_7_entity_id\":\"sensor.d7\",\"forecast_days\":7,%s", forecast_rect));
+    expect_invalid("solar day 7 needs a sensor", W("\"type\":\"solar_forecast\",\"entity_id\":\"sensor.a\",\"forecast_day_7_entity_id\":\"light.d7\",%s", forecast_rect), "forecast_day_7_entity_id");
     expect_invalid("fractional days", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":2.5,%s", forecast_rect), "forecast_days");
-    expect_invalid("too many days", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":7,%s", forecast_rect), "forecast_days");
+    expect_invalid("too many days", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":8,%s", forecast_rect), "forecast_days");
     expect_invalid("string days", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":\"auto\",%s", forecast_rect), "forecast_days");
     expect_invalid("bad alignment", W("\"type\":\"solar_forecast\",\"entity_id\":\"sensor.a\",\"align_forecast\":1,%s", forecast_rect), "align_forecast");
     /* Binary tile: door look, and the legacy contact tile. */
@@ -847,13 +850,13 @@ static void test_ha_attr_serializers(void)
 
     cJSON *seven = cJSON_CreateObject();
     cJSON *seven_items = cJSON_AddArrayToObject(seven, "forecast");
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 8; i++) {
         cJSON *day = cJSON_CreateObject();
         cJSON_AddNumberToObject(day, "temperature", i);
         cJSON_AddItemToArray(seven_items, day);
     }
     found = ha_client_find_compact_weather_forecast(seven, "weather.home");
-    CHECK_INT(cJSON_GetArraySize(found), 6);
+    CHECK_INT(cJSON_GetArraySize(found), 7);
     cJSON_Delete(found);
     cJSON_Delete(seven);
 
@@ -955,7 +958,7 @@ static void test_ha_layout_entities(void)
     const char *widget_keys[] = {
         "entity_id", "secondary_entity_id", "tertiary_entity_id",
         "forecast_today_entity_id", "forecast_tomorrow_entity_id", "forecast_day_3_entity_id",
-        "forecast_day_4_entity_id", "forecast_day_5_entity_id", "precond_entity_id",
+        "forecast_day_4_entity_id", "forecast_day_5_entity_id", "forecast_day_6_entity_id", "forecast_day_7_entity_id", "precond_entity_id",
         "lock_entity_id", "interior_temp_entity_id",
     };
     layout = cJSON_CreateObject();
@@ -973,7 +976,7 @@ static void test_ha_layout_entities(void)
     cJSON *room_entities = cJSON_AddArrayToObject(widget, "room_entities");
     cJSON_AddItemToArray(room_entities, cJSON_CreateString("sensor.room_extra"));
     ha_layout_entities_collect(layout, &set);
-    CHECK_INT((int)set.count, 12);
+    CHECK_INT((int)set.count, 14);
     for (size_t i = 0; i < sizeof(widget_keys) / sizeof(widget_keys[0]); i++) {
         char entity_id[32];
         snprintf(entity_id, sizeof(entity_id), "sensor.slot_%u", (unsigned)i);

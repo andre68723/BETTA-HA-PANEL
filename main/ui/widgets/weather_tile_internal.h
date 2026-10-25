@@ -67,7 +67,7 @@
  * big temp -> meta -> forecast rows. */
 #define WEATHER_3DAY_SUBMETA_FONT ui_font_role(UI_TEXT_META)
 
-#define WEATHER_3DAY_MAX_FORECAST 5
+#define WEATHER_3DAY_MAX_FORECAST 6
 #define WEATHER_3DAY_ROWS (1 + WEATHER_3DAY_MAX_FORECAST)
 #define WEATHER_3DAY_ROW_HEIGHT 44
 #define WEATHER_3DAY_ROW_GAP 4
@@ -158,7 +158,8 @@ typedef struct {
     int precip_prob;
 } weather_3day_row_t;
 
-#define WEATHER_COLS_MAX 6
+#define WEATHER_COLS_MAX 7
+#define WEATHER_COLS_LEGACY_MAX 6 /* layouts saved before "Visible days" keep their six columns */
 
 /* One column of the horizontal forecast view. */
 typedef struct {

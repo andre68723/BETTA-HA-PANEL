@@ -329,6 +329,8 @@
           "forecast_day_3_entity_id": "sensor.c",
           "forecast_day_4_entity_id": "sensor.d",
           "forecast_day_5_entity_id": "sensor.e",
+          "forecast_day_6_entity_id": "sensor.f",
+          "forecast_day_7_entity_id": "sensor.g",
           "solar_forecast_bar_orientation": "horizontal",
           "solar_forecast_bar_max_kwh": 20
         }

@@ -84,6 +84,8 @@ function solarPreviewRows(widget) {
     { label: previewWeekday(2).slice(0, 2), entityId: widget.forecast_day_3_entity_id },
     { label: previewWeekday(3).slice(0, 2), entityId: widget.forecast_day_4_entity_id },
     { label: previewWeekday(4).slice(0, 2), entityId: widget.forecast_day_5_entity_id },
+    { label: previewWeekday(5).slice(0, 2), entityId: widget.forecast_day_6_entity_id },
+    { label: previewWeekday(6).slice(0, 2), entityId: widget.forecast_day_7_entity_id },
   ];
   const values = rows.map((row) => solarPreviewValue(row.entityId));
   const configuredMax = Number(widget.solar_forecast_bar_max_kwh);
@@ -101,15 +103,19 @@ function solarPreviewMarkup(widget) {
   const orientation = normalizeSolarForecastBarOrientation(widget.solar_forecast_bar_orientation);
   const allRows = solarPreviewRows(widget);
   // solar_visible_rows(): 30 px rows (on the 10-inch boards as tall as the LABEL line) with 3 px gaps from y 54, at least
-  // three and at most five.
+  // three and at most seven (five while no sensor is set for day 6 or 7, as before those slots existed).
   const rowH = previewTextAdaptive() ? 30 : Math.max(30, previewLineHeight(textRoleSize("label", 24)));
-  const fitting = clamp(Math.floor(((Number(widget.rect && widget.rect.h) || 310) - 68 + 3) / (rowH + 3)), 3, 5);
+  const fitting = clamp(Math.floor(((Number(widget.rect && widget.rect.h) || 310) - 68 + 3) / (rowH + 3)), 3, 7);
   // The remaining reading shares today's row: the part of today's total that is still to come stays bright, the rest is dimmed.
   const rest = allRows[0].value;
   const today = allRows[1].value;
-  const days = allRows.slice(1);
   const aligned = widget.align_forecast === true && orientation === "vertical"; // as w_solar_forecast.c: columns only
-  const rows = aligned ? days.slice(0, forecastPreviewCount(widget, 5)) : orientation === "vertical" ? days : days.slice(0, fitting);
+  // w_solar_forecast.c keeps five days for an automatic tile without day 6 or 7 sensors; an explicit day count is honoured.
+  const lateSensors = Boolean(widget.forecast_day_6_entity_id || widget.forecast_day_7_entity_id);
+  const days = allRows.slice(1, lateSensors || widget.forecast_days > 0 ? undefined : 6);
+  const columnCap = Math.max(1, Math.floor(((Number(widget.rect && widget.rect.w) || 0) - 28) / 34)); // narrowest column
+  const rows = aligned ? days.slice(0, forecastPreviewCount(widget, 7))
+    : orientation === "vertical" ? days.slice(0, columnCap) : days.slice(0, fitting);
   const rowMarkup = rows.map((row) => {
     const split = row === allRows[1] && rest !== null && today !== null && today > 0
       ? ` style="--split:${100 - clamp(Math.round((rest * 100) / today), 0, 100)}%"` : "";
@@ -137,7 +143,7 @@ function solarPreviewMarkup(widget) {
     <div class="solar-preview ${orientation}">
       ${widgetNamePreview(widget, "div", 'class="solar-preview-title"')}
       <div class="solar-preview-unit">${aligned ? `${escapeHtml(t("preview.solar.rest"))} ${escapeHtml(solarPreviewFormatValue(allRows[0].value))}` : "kWh"}</div>
-      <div class="solar-preview-body">${rowMarkup}</div>
+      <div class="solar-preview-body" style="--cols:${Math.max(1, rows.length)}">${rowMarkup}</div>
     </div>
     <div class="resize-handle"></div>
   `;
@@ -724,9 +730,9 @@ function tilePreviewMarkup(widget) {
     case "weather_3day": {
       const cols = forecastPreviewCount(widget);
       const current = previewWeatherCondition(widget);
-      const days = [t("preview.weather.today"), ...[1, 2, 3, 4, 5].map(previewWeekday)];
-      const rainValues = [["5 %", "0 mm"], ["20 %", "0.2 mm"], ["80 %", "6.5 mm"], ["40 %", "1.4 mm"], ["10 %", "0 mm"], ["0 %", "0 mm"]];
-      const conditions = [editor.states.get(widget.entity_id) || "partlycloudy", "sunny", "rainy", "sunny", "partlycloudy", "sunny"];
+      const days = [t("preview.weather.today"), ...[1, 2, 3, 4, 5, 6].map(previewWeekday)];
+      const rainValues = [["5 %", "0 mm"], ["20 %", "0.2 mm"], ["80 %", "6.5 mm"], ["40 %", "1.4 mm"], ["10 %", "0 mm"], ["0 %", "0 mm"], ["30 %", "0.8 mm"]];
+      const conditions = [editor.states.get(widget.entity_id) || "partlycloudy", "sunny", "rainy", "sunny", "partlycloudy", "sunny", "cloudy"];
       // The 10-inch boards (weather_tile_render.c without UI_TEXT_ADAPTIVE): a large icon with temperature and a two-line
       // condition, the report beside them, cards at most 96 px wide whose height decides the low and rain lines.
       // A short tile gets a one-line header with a 40 px icon and the temperature in META.

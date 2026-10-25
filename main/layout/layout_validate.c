@@ -317,6 +317,8 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
     cJSON *forecast_day_3_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_day_3_entity_id");
     cJSON *forecast_day_4_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_day_4_entity_id");
     cJSON *forecast_day_5_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_day_5_entity_id");
+    cJSON *forecast_day_6_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_day_6_entity_id");
+    cJSON *forecast_day_7_entity_id = cJSON_GetObjectItemCaseSensitive(widget, "forecast_day_7_entity_id");
     cJSON *solar_forecast_bar_max_kwh = cJSON_GetObjectItemCaseSensitive(widget, "solar_forecast_bar_max_kwh");
     cJSON *solar_forecast_bar_orientation = cJSON_GetObjectItemCaseSensitive(widget, "solar_forecast_bar_orientation");
     cJSON *gauge_min = cJSON_GetObjectItemCaseSensitive(widget, "gauge_min");
@@ -804,8 +806,8 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
     if (cJSON_IsString(type) && type->valuestring &&
         (!strcmp(type->valuestring, "weather_3day") || !strcmp(type->valuestring, "solar_forecast"))) {
         cJSON *days = cJSON_GetObjectItemCaseSensitive(widget, "forecast_days");
-        if (days != NULL && (!cJSON_IsNumber(days) || days->valuedouble != days->valueint || days->valueint < 0 || days->valueint > 6)) {
-            snprintf(msg, sizeof(msg), "widget %s: forecast_days must be an integer from 0 (auto) to 6", cJSON_IsString(id) ? id->valuestring : "?");
+        if (days != NULL && (!cJSON_IsNumber(days) || days->valuedouble != days->valueint || days->valueint < 0 || days->valueint > 7)) {
+            snprintf(msg, sizeof(msg), "widget %s: forecast_days must be an integer from 0 (auto) to 7", cJSON_IsString(id) ? id->valuestring : "?");
             layout_validation_add(result, msg);
         }
         cJSON *aligned = cJSON_GetObjectItemCaseSensitive(widget, "align_forecast");
@@ -828,6 +830,8 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
             forecast_day_3_entity_id,
             forecast_day_4_entity_id,
             forecast_day_5_entity_id,
+            forecast_day_6_entity_id,
+            forecast_day_7_entity_id,
         };
         const char *forecast_keys[] = {
             "forecast_today_entity_id",
@@ -835,6 +839,8 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
             "forecast_day_3_entity_id",
             "forecast_day_4_entity_id",
             "forecast_day_5_entity_id",
+            "forecast_day_6_entity_id",
+            "forecast_day_7_entity_id",
         };
         for (size_t i = 0; i < sizeof(forecast_entities) / sizeof(forecast_entities[0]); i++) {
             const cJSON *item = forecast_entities[i];

@@ -662,7 +662,7 @@ static ui_widget_def_t *ui_runtime_def_scratch(void)
 /* Every entity a widget shows, once each, primary first: primary, secondary, tertiary, the extras
  * (room card list, car tile) and the forecast slots (solar forecast). One list for routing, the
  * initial state and the refresh, so a new entity slot is added in one place. */
-#define UI_RUNTIME_MAX_WIDGET_ENTITIES (3 + UI_WIDGET_EXTRA_ENTITIES + 5)
+#define UI_RUNTIME_MAX_WIDGET_ENTITIES (3 + UI_WIDGET_EXTRA_ENTITIES + 7)
 
 static size_t ui_runtime_widget_entity_ids(const ui_widget_instance_t *w, const char **out, size_t max_out)
 {
@@ -678,6 +678,8 @@ static size_t ui_runtime_widget_entity_ids(const ui_widget_instance_t *w, const 
     candidates[n++] = w->forecast_day_3_entity_id;
     candidates[n++] = w->forecast_day_4_entity_id;
     candidates[n++] = w->forecast_day_5_entity_id;
+    candidates[n++] = w->forecast_day_6_entity_id;
+    candidates[n++] = w->forecast_day_7_entity_id;
     size_t count = 0;
     for (size_t i = 0; i < n && count < max_out; i++) {
         if (candidates[i][0] == '\0') {
@@ -840,6 +842,8 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     cJSON *forecast_day_3_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_day_3_entity_id");
     cJSON *forecast_day_4_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_day_4_entity_id");
     cJSON *forecast_day_5_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_day_5_entity_id");
+    cJSON *forecast_day_6_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_day_6_entity_id");
+    cJSON *forecast_day_7_entity_id = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_day_7_entity_id");
     cJSON *solar_forecast_bar_max_kwh = cJSON_GetObjectItemCaseSensitive(widget_json, "solar_forecast_bar_max_kwh");
     cJSON *solar_forecast_bar_orientation = cJSON_GetObjectItemCaseSensitive(widget_json, "solar_forecast_bar_orientation");
     cJSON *sensor_show_age = cJSON_GetObjectItemCaseSensitive(widget_json, "sensor_show_age");
@@ -951,6 +955,12 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     }
     if (cJSON_IsString(forecast_day_5_entity_id) && forecast_day_5_entity_id->valuestring != NULL) {
         snprintf(out->forecast_day_5_entity_id, sizeof(out->forecast_day_5_entity_id), "%s", forecast_day_5_entity_id->valuestring);
+    }
+    if (cJSON_IsString(forecast_day_6_entity_id) && forecast_day_6_entity_id->valuestring != NULL) {
+        snprintf(out->forecast_day_6_entity_id, sizeof(out->forecast_day_6_entity_id), "%s", forecast_day_6_entity_id->valuestring);
+    }
+    if (cJSON_IsString(forecast_day_7_entity_id) && forecast_day_7_entity_id->valuestring != NULL) {
+        snprintf(out->forecast_day_7_entity_id, sizeof(out->forecast_day_7_entity_id), "%s", forecast_day_7_entity_id->valuestring);
     }
     if (strcmp(out->type, "car_widget") == 0) {
         /* Optional extras of the car tile: pre-conditioning, lock / door status, interior temperature
@@ -1089,6 +1099,8 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
         char *const site[EVCC_SITE_COUNT] = {out->forecast_today_entity_id, out->forecast_tomorrow_entity_id,
                                              out->forecast_day_3_entity_id, out->forecast_day_4_entity_id};
         out->forecast_day_5_entity_id[0] = '\0';
+        out->forecast_day_6_entity_id[0] = '\0';
+        out->forecast_day_7_entity_id[0] = '\0';
         evcc_header_from_json(widget_json, out->style_variant, sizeof(out->style_variant), &out->gauge_max, site);
     }
     /* A binary tile in the "door" look is drawn by the door / window contact renderer. */

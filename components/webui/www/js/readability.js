@@ -14,7 +14,7 @@ function readabilityTextWidth(text, pixels) {
   context.font = `500 ${pixels}px "BETTA Poppins"`;
   return Math.ceil(context.measureText(text).width);
 }
-function forecastPreviewCount(widget, maximum = 6) {
+function forecastPreviewCount(widget, maximum = 7) {
   const width = Math.max(1, Number(widget.rect?.w || 0) - 28);
   if (Number.isInteger(widget.forecast_days)) {
     if (widget.forecast_days > 0) return clamp(widget.forecast_days, 1, maximum);
@@ -22,7 +22,7 @@ function forecastPreviewCount(widget, maximum = 6) {
     const required = readabilityTextWidth("-12°", valueSize) + readabilityTextWidth("-18°", valueSize) + 26;
     return clamp(Math.floor((width + 6) / required), 1, maximum);
   }
-  return clamp(Math.floor((width + 6) / 60), 3, maximum);
+  return clamp(Math.floor((width + 6) / 60), 3, Math.min(maximum, 6)); // layouts saved before "Visible days" keep six columns
 }
 // Solar columns follow the weather's day grid only with vertical bars; with horizontal bars the options have no effect and
 // stay hidden (their saved values are kept, the panel ignores them).
@@ -66,7 +66,7 @@ function renderReadabilityInspector(widget) {
 function saveReadabilityFields(widget) {
   const days = document.getElementById("fForecastDays");
   const aligned = document.getElementById("fAlignForecast");
-  if (["weather_3day", "solar_forecast"].includes(widget.type) && days?.value !== "" && days) widget.forecast_days = clamp(Number(days.value), 0, 6);
+  if (["weather_3day", "solar_forecast"].includes(widget.type) && days?.value !== "" && days) widget.forecast_days = clamp(Number(days.value), 0, 7);
   else delete widget.forecast_days;
   if (widget.type === "solar_forecast" && aligned?.checked) widget.align_forecast = true;
   else delete widget.align_forecast;

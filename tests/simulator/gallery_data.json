@@ -32,7 +32,9 @@
       "tomorrow": "sensor.demo_solar_tomorrow",
       "day_3": "sensor.demo_solar_day_3",
       "day_4": "sensor.demo_solar_day_4",
-      "day_5": "sensor.demo_solar_day_5"
+      "day_5": "sensor.demo_solar_day_5",
+      "day_6": "sensor.demo_solar_day_6",
+      "day_7": "sensor.demo_solar_day_7"
     },
     "car_widget": {
       "entity_id": "sensor.demo_car_battery",
@@ -961,6 +963,22 @@
     {
       "entity_id": "sensor.demo_solar_day_5",
       "state": "41.9",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "device_class": "energy"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_solar_day_6",
+      "state": "36.7",
+      "attributes": {
+        "unit_of_measurement": "kWh",
+        "device_class": "energy"
+      }
+    },
+    {
+      "entity_id": "sensor.demo_solar_day_7",
+      "state": "20.4",
       "attributes": {
         "unit_of_measurement": "kWh",
         "device_class": "energy"

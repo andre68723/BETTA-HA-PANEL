@@ -291,9 +291,9 @@ WIDGETS = {
         "panel": ["Drag or tap the bar to set the value directly."],
     },
     "solar_forecast": {
-        "summary": "Compares the **predicted solar production** from `sensor.*` forecasts for today and the next four days.",
+        "summary": "Compares the **predicted solar production** from `sensor.*` forecasts for today and the next six days.",
         "entities": [("Remaining today (sensor)", "`sensor.*`", True), ("Today forecast", "`sensor.*`", False),
-                     ("Tomorrow, Day 3–5 forecast", "`sensor.*`", False)],
+                     ("Tomorrow, Day 3–7 forecast", "`sensor.*`", False)],
         "requirements": "Sensors that forecast the solar production per day, for example from "
                         "**[Solcast PV Forecast](https://github.com/BJReplay/ha-solcast-solar)**; any integration that provides them works. "
                         "The editor suggests Solcast entity ids as examples.",
@@ -301,7 +301,7 @@ WIDGETS = {
                     ("Bar max (kWh)", "the value of a full bar"),
                     ("Line up days with the weather tile", "vertical bars only: the columns use the weather forecast's day grid, so a solar tile with the same left edge, width and day count puts each day under its weather day")],
         "panel": ["Today's row carries two readings: its bar and value are the day's total (**Today forecast**); the part still "
-                  "to come (**Remaining today**) is the bright end of the bar over the dimmed total, so the dim start reads as "
+                  "to come (**Remaining today**) is the bright start of the bar over the dimmed total, so the dimmed end reads as "
                   "already produced. This needs both sensors; in the example 25 of 55 kWh are still to come.",
                   "With **Line up days with the weather tile** the header shows **Rest** and the remaining kWh.",
                   "Tap today's bar to see a compact **Solar forecast today** popup with **Total** and **Remaining**. Future days do not open a popup. It closes with **×** or after a minute."],

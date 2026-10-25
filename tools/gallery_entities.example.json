@@ -15,7 +15,9 @@
     "tomorrow": "sensor.your_solar_forecast_tomorrow",
     "day_3": "sensor.your_solar_forecast_day_3",
     "day_4": "sensor.your_solar_forecast_day_4",
-    "day_5": "sensor.your_solar_forecast_day_5"
+    "day_5": "sensor.your_solar_forecast_day_5",
+    "day_6": "sensor.your_solar_forecast_day_6",
+    "day_7": "sensor.your_solar_forecast_day_7"
   },
   "car_widget": {
     "entity_id": "sensor.your_car_battery_or_soc_sensor",

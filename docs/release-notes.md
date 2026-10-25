@@ -26,6 +26,9 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 
 ### Fixes
 
+- **Solar bars on the compact boards:** vertical bars take about two thirds of their column (up to 72 px) instead of half (up to 42 px), so the margins beside them are narrower on the 4-inch and Tab5 boards; the 10-inch boards are unchanged.
+- **Seven forecast days:** Weather offers up to seven days including today and Solar gets **Day 6** and **Day 7** forecast fields, so both can show a week (Visible days 1-7). Layouts saved before keep their six weather columns and five solar days. With a Visible-days count the weather cards sit on the shared day grid, so **Line up days with the weather tile** holds for every count on the 10-inch boards (it was off with few days, where the cards were capped at 96 px). A long forecast leaves less room in the attribute budget: the detail-popup readings are dropped first so the forecast stays.
+- **Solar today:** the remaining part is now the bright start of today's bar and the part already produced is dimmed at its end.
 - **Car preconditioning:** the button shows **Sending...** after the call until the climate, switch or input boolean changes between on and off, then returns to its normal look; a missing answer ends it after 60 seconds and taps in between are ignored. A cloud-backed car can take tens of seconds to report the new mode.
 - **Price forecast:** the Inspector restores the saved Today/Tomorrow selector checkbox. Identical price/average updates and idle timer ticks no longer redraw the tile; changed data and interval/day boundaries still update it.
 - **Stocks and graphs:** identical normalized quote updates and unchanged graph samples no longer redraw the tiles. Changed quote metadata and later graph samples still update, including equal values at a new timestamp.

@@ -427,6 +427,8 @@ if (el.addBambuPrinterBtn) {
   bindInspectorAutoApply(el.fSolarForecastDay3, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSolarForecastDay4, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSolarForecastDay5, ["change", "blur"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSolarForecastDay6, ["change", "blur"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fSolarForecastDay7, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fRoomEntities, ["change", "blur"], { softEntityValidation: true });
   // Expand the default window before applying the Recorder selection to the model.
   el.fGraphHaHistory?.addEventListener("change", () => {

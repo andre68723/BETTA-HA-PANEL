@@ -975,7 +975,7 @@ test("Every Inspector entity input has a Search button", () => {
   const html = fs.readFileSync("components/webui/www/index.html", "utf8");
   const entityInputs = [...html.matchAll(/<input\b[^>]*id="(f[^" ]+)"[^>]*list="[^"]*Options"[^>]*>/g)].map(match=>match[1]);
   entityInputs.push("fRoomEntities", "fRoomExtraEntity");
-  assert.equal(entityInputs.length, 51);
+  assert.equal(entityInputs.length, 53);
   for (const id of entityInputs) {
     const row = new RegExp(`<div class="entity-input-row">\\s*<(?:input|textarea|select)\\b[^>]*id="${id}"[^>]*>[\\s\\S]*?data-inspector-entity-target="[^"]+"[\\s\\S]*?</div>`);
     assert.match(html, row, `${id} lacks a Search button`);

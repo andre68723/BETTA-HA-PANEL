@@ -194,6 +194,8 @@ void ha_layout_entities_collect(cJSON *root, ha_layout_entity_set_t *set)
                 ha_layout_collect_field(widget, "forecast_day_3_entity_id", set);
                 ha_layout_collect_field(widget, "forecast_day_4_entity_id", set);
                 ha_layout_collect_field(widget, "forecast_day_5_entity_id", set);
+                ha_layout_collect_field(widget, "forecast_day_6_entity_id", set);
+                ha_layout_collect_field(widget, "forecast_day_7_entity_id", set);
                 ha_layout_collect_field(widget, "precond_entity_id", set);
                 ha_layout_collect_field(widget, "battery_soc_entity_id", set); /* energy timeline: live state of charge */
                 ha_layout_collect_field(widget, "lock_entity_id", set);

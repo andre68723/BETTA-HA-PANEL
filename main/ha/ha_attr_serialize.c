@@ -16,7 +16,7 @@
 
 #include "app_config.h"
 
-static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6;
+static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 7;
 
 static bool ha_client_copy_attr_dup(cJSON *dst_obj, const char *dst_key, cJSON *src_obj, const char *src_key)
 {
@@ -97,6 +97,21 @@ static cJSON *ha_client_build_compact_forecast_array(cJSON *src_forecast)
     }
 
     return dst_forecast;
+}
+
+/* Seven forecast days leave little of the attribute budget: drop the detail-popup readings (least useful first)
+ * until the object fits, instead of losing the whole forecast. Caller frees with cJSON_free(). */
+static char *ha_client_print_weather_fitting(cJSON *attrs, size_t out_size)
+{
+    static const char *const droppable[] = {"visibility_unit", "visibility", "pressure_unit", "pressure",
+                                            "wind_speed_unit", "wind_bearing", "wind_speed"};
+    char *json = cJSON_PrintUnformatted(attrs);
+    for (size_t i = 0; json != NULL && strlen(json) >= out_size && i < sizeof(droppable) / sizeof(droppable[0]); i++) {
+        cJSON_free(json);
+        cJSON_DeleteItemFromObjectCaseSensitive(attrs, droppable[i]);
+        json = cJSON_PrintUnformatted(attrs);
+    }
+    return json;
 }
 
 static void ha_client_compact_weather_forecast(cJSON *dst_attrs, cJSON *src_attrs)
@@ -261,7 +276,7 @@ bool ha_client_serialize_weather_attrs_compact(cJSON *src_attrs, char *out_json,
         return false;
     }
 
-    char *compact_json = cJSON_PrintUnformatted(compact);
+    char *compact_json = ha_client_print_weather_fitting(compact, out_json_size);
     cJSON_Delete(compact);
     if (compact_json == NULL) {
         return false;
@@ -1052,7 +1067,7 @@ bool ha_client_append_compact_forecast_to_attrs_json(char *attrs_json, size_t at
     cJSON_DeleteItemFromObjectCaseSensitive(attrs, "forecast");
     cJSON_AddItemToObject(attrs, "forecast", forecast);
 
-    char *merged_json = cJSON_PrintUnformatted(attrs);
+    char *merged_json = ha_client_print_weather_fitting(attrs, attrs_json_size);
     cJSON_Delete(attrs);
     if (merged_json == NULL) {
         return false;

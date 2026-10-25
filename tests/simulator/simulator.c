@@ -244,6 +244,8 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     copy_field(def->forecast_day_3_entity_id, sizeof(def->forecast_day_3_entity_id), json, "forecast_day_3_entity_id");
     copy_field(def->forecast_day_4_entity_id, sizeof(def->forecast_day_4_entity_id), json, "forecast_day_4_entity_id");
     copy_field(def->forecast_day_5_entity_id, sizeof(def->forecast_day_5_entity_id), json, "forecast_day_5_entity_id");
+    copy_field(def->forecast_day_6_entity_id, sizeof(def->forecast_day_6_entity_id), json, "forecast_day_6_entity_id");
+    copy_field(def->forecast_day_7_entity_id, sizeof(def->forecast_day_7_entity_id), json, "forecast_day_7_entity_id");
     copy_field(def->slider_direction, sizeof(def->slider_direction), json, "slider_direction");
     copy_field(def->slider_accent_color, sizeof(def->slider_accent_color), json, "slider_accent_color");
     copy_field(def->button_accent_color, sizeof(def->button_accent_color), json, "button_accent_color");
@@ -309,6 +311,8 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
         char *const site[EVCC_SITE_COUNT] = {def->forecast_today_entity_id, def->forecast_tomorrow_entity_id,
                                              def->forecast_day_3_entity_id, def->forecast_day_4_entity_id};
         def->forecast_day_5_entity_id[0] = '\0';
+        def->forecast_day_6_entity_id[0] = '\0';
+        def->forecast_day_7_entity_id[0] = '\0';
         evcc_header_from_json(json, def->style_variant, sizeof(def->style_variant), &def->gauge_max, site);
     }
     if (strcmp(def->type, "bambu_printer") == 0) {
@@ -382,6 +386,8 @@ static void init_instance(const ui_widget_def_t *def, ui_widget_instance_t *out)
     COPY(forecast_day_3_entity_id);
     COPY(forecast_day_4_entity_id);
     COPY(forecast_day_5_entity_id);
+    COPY(forecast_day_6_entity_id);
+    COPY(forecast_day_7_entity_id);
     COPY(solar_forecast_bar_orientation);
     COPY(slider_direction);
     COPY(slider_accent_color);
@@ -419,6 +425,7 @@ static bool widget_uses_entity(const ui_widget_def_t *def, const char *entity_id
         def->entity_id, def->secondary_entity_id, def->tertiary_entity_id,
         def->forecast_today_entity_id, def->forecast_tomorrow_entity_id,
         def->forecast_day_3_entity_id, def->forecast_day_4_entity_id, def->forecast_day_5_entity_id,
+        def->forecast_day_6_entity_id, def->forecast_day_7_entity_id,
     };
     for (size_t i = 0; i < sizeof(ids) / sizeof(ids[0]); i++) {
         if (ids[i][0] != '\0' && strcmp(ids[i], entity_id) == 0) {

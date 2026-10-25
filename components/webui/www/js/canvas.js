@@ -1010,6 +1010,8 @@ function renderInspector() {
       el.fSolarForecastDay3,
       el.fSolarForecastDay4,
       el.fSolarForecastDay5,
+      el.fSolarForecastDay6,
+      el.fSolarForecastDay7,
       el.fSolarForecastBarMax,
     ]) {
       if (input) input.value = "";
@@ -1028,6 +1030,8 @@ function renderInspector() {
   if (el.fSolarForecastDay3) el.fSolarForecastDay3.value = widget.forecast_day_3_entity_id || "";
   if (el.fSolarForecastDay4) el.fSolarForecastDay4.value = widget.forecast_day_4_entity_id || "";
   if (el.fSolarForecastDay5) el.fSolarForecastDay5.value = widget.forecast_day_5_entity_id || "";
+  if (el.fSolarForecastDay6) el.fSolarForecastDay6.value = widget.forecast_day_6_entity_id || "";
+  if (el.fSolarForecastDay7) el.fSolarForecastDay7.value = widget.forecast_day_7_entity_id || "";
   bambuLoadInspector(widget); evccLoadInspector(widget); stockLoadInspector(widget);
   if (el.fCarPrecond) el.fCarPrecond.value = widget.precond_entity_id || "";
   if (el.fCarLock) el.fCarLock.value = widget.lock_entity_id || "";
@@ -1915,6 +1919,8 @@ function addWidget(type, options = {}) {
     widget.forecast_day_3_entity_id = DEFAULT_SOLCAST_ENTITIES.day3;
     widget.forecast_day_4_entity_id = DEFAULT_SOLCAST_ENTITIES.day4;
     widget.forecast_day_5_entity_id = DEFAULT_SOLCAST_ENTITIES.day5;
+    widget.forecast_day_6_entity_id = DEFAULT_SOLCAST_ENTITIES.day6;
+    widget.forecast_day_7_entity_id = DEFAULT_SOLCAST_ENTITIES.day7;
     widget.solar_forecast_bar_orientation = DEFAULT_SOLAR_FORECAST_BAR_ORIENTATION;
   }
   if (type === "car_widget") {
@@ -2041,6 +2047,11 @@ function applyInspector(options = {}) {
     widget.forecast_day_3_entity_id = el.fSolarForecastDay3?.value.trim() ?? "";
     widget.forecast_day_4_entity_id = el.fSolarForecastDay4?.value.trim() ?? "";
     widget.forecast_day_5_entity_id = el.fSolarForecastDay5?.value.trim() ?? "";
+    // Days 6 and 7 are stored only when set: a layout without them keeps its five days.
+    for (const [key, input] of [["forecast_day_6_entity_id", el.fSolarForecastDay6], ["forecast_day_7_entity_id", el.fSolarForecastDay7]]) {
+      const value = input?.value.trim() ?? "";
+      if (value) widget[key] = value; else delete widget[key];
+    }
     widget.solar_forecast_bar_orientation = normalizeSolarForecastBarOrientation(el.fSolarForecastBarOrientation?.value);
     const barMax = Number(el.fSolarForecastBarMax?.value);
     if (Number.isFinite(barMax) && barMax > 0) {
@@ -2055,6 +2066,8 @@ function applyInspector(options = {}) {
     delete widget.forecast_day_3_entity_id;
     delete widget.forecast_day_4_entity_id;
     delete widget.forecast_day_5_entity_id;
+    delete widget.forecast_day_6_entity_id;
+    delete widget.forecast_day_7_entity_id;
     delete widget.solar_forecast_bar_max_kwh;
     delete widget.solar_forecast_bar_orientation;
   }

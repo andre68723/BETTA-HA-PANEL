@@ -174,7 +174,7 @@ Forecasts, solar production and the energy balance.
 
     **[Solar forecast](solar_forecast.md)**
 
-    Compares the **predicted solar production** from `sensor.*` forecasts for today and the next four days.
+    Compares the **predicted solar production** from `sensor.*` forecasts for today and the next six days.
 
 -   [![Energy price forecast](../img/gallery/energy_price_forecast_glow.png)](energy_price_forecast.md)
 
