@@ -363,8 +363,18 @@ static void pq_layout(w_pq_ctx_t *ctx)
     if (tabs) {
         const char *names[2] = {ui_i18n_get("parqet.performance", "Performance"), ui_i18n_get("parqet.holdings", "Holdings")};
         lv_coord_t x = pad;
+        /* A narrow tile or larger text (German names at text step 2) can need more than the row has: the longer tab gives way, the
+         * label clips instead of reaching outside the tile. */
+        lv_coord_t tab_w[2] = {pq_text_w(names[0], meta) + 16, pq_text_w(names[1], meta) + 16};
+        const lv_coord_t room = w - 2 * pad - gap;
+        if (tab_w[0] + tab_w[1] > room) {
+            const lv_coord_t half = room / 2;
+            if (tab_w[0] <= half) tab_w[1] = room - tab_w[0];
+            else if (tab_w[1] <= half) tab_w[0] = room - tab_w[1];
+            else tab_w[0] = tab_w[1] = half;
+        }
         for (int i = 0; i < 2; i++) {
-            const lv_coord_t cw = pq_text_w(names[i], meta) + 16;
+            const lv_coord_t cw = tab_w[i];
             lv_label_set_text(ctx->tab[i], names[i]);
             lv_obj_set_size(ctx->tab[i], cw, chip_h);
             lv_obj_align(ctx->tab[i], LV_ALIGN_TOP_LEFT, x, y);

@@ -281,6 +281,9 @@ body:is([data-ui-style="glow"], [data-ui-style="glass"]) #canvas .tp-media .tp-v
 #canvas .evcc-preview { gap: 4px; padding: 10px 12px; }
 #canvas .evcc-preview small { margin-bottom: 0; }
 #canvas .tp-stock-section > small { color: var(--pv-muted); }
+#canvas .tp-stock-card .tp-stock-row { font-size: var(--label); }
+#canvas .tp-stock-card .tp-stock-row small { font-size: var(--meta); color: var(--pv-muted); opacity: 1; }
+#canvas .tp-stock-card .tp-stock-row em { font-size: var(--meta); min-width: 0; }
 #canvas .tp-stock-section > small em { font-style: normal; }
 /* the list's prices and changes fall back to META when they leave less than three name characters (w_stock_quotes.c) */
 @container (max-width: 440px) { #canvas .tp-stock-row b, #canvas .tp-stock-row em { font-size: var(--meta); } }
@@ -427,3 +430,15 @@ body[data-ui-style] #canvas .widget-box .control-selected-icon { --control-text:
 #canvas .tp-price-days em.control-active { opacity: 1; }
 
 body[data-ui-style] #canvas .widget-box .control-alert { --control-fill: var(--pv-control-danger, #db4437); --control-text: var(--pv-control-error-fg, #fff); }
+
+/* Current weather with the optional horizontal hourly strip. */
+.tp-weather-hourly { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.tp-weather-hourly .tp-name { flex: none; }
+.tp-weather-hourly-head { display: flex; flex: none; gap: 12px; align-items: flex-start; }
+.tp-weather-hourly-head > i { display: flex; flex: none; align-items: center; justify-content: center; font-size: 56px; font-style: normal; }
+.tp-weather-hourly-head > div { min-width: 0; display: flex; flex-direction: column; }
+.tp-weather-hourly-head b { font-size: var(--r-value); line-height: 1.5; }
+.tp-weather-hourly small { font-size: var(--r-meta); line-height: 1.5; white-space: nowrap; }
+.tp-weather-hours { display: flex; gap: 8px; overflow-x: auto; min-height: 0; padding-top: 8px; border-top: 1px solid var(--card-border, #586575); }
+.tp-weather-hour { flex: 0 0 max(76px, calc(var(--r-meta) * 4.5)); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.tp-weather-hour > i { font-style: normal; font-size: 32px; line-height: 1; }

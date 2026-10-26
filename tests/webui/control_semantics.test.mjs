@@ -147,6 +147,9 @@ test("day and chart-period selections share the active role", () => {
   }
   const stock = fn("tilePreviewMarkup")({ type: "stock_quotes", stock_view: "chart", stock_period: "1y", rect: { w: 380, h: 330 } });
   assert.equal((stock.match(/control-active/g) || []).length, 1);
+  const grid = fn("tilePreviewMarkup")({ type: "stock_quotes", stock_view: "grid", stock_period: "1y", rect: { w: 380, h: 330 } });
+  assert.equal((grid.match(/control-active/g) || []).length, 1);
+  assert.match(grid, /tp-stock-card/);
 });
 
 test("alarm and lock alerts remain distinct from active and selected controls", () => {

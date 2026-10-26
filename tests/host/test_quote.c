@@ -211,7 +211,23 @@ bool test_quote(void)
     /* The precision of the source, between 2 and 4 digits. */
     Q_CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_EASY_STOCK, "25.145", "{}", &q) && ha_quote_price_decimals(&q) == 3);
     Q_CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_EASY_STOCK, "25", "{}", &q) && ha_quote_price_decimals(&q) == 2);
-    Q_CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_EASY_STOCK, "0.123456", "{}", &q) && ha_quote_price_decimals(&q) == 4);
+    Q_CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_EASY_STOCK, "0.123456", "{}", &q) && ha_quote_price_decimals(&q) == 6);
+
+    Q_CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_EASY_STOCK, "4.35e-06",
+        "{\"traded_today\":false,\"previous_close\":0.000004,\"change\":0.00000035,\"change_pct\":8.75}", &q));
+    Q_CHECK(q.has_traded_today && !q.traded_today && q.has_change_pct && q.change_pct == 8.75);
+    Q_CHECK(q.price_decimals == 8 && ha_quote_price_decimals(&q) == 8);
+    char small[48];
+    ha_quote_format_number(small, sizeof(small), q.price, ha_quote_price_decimals(&q), true, false);
+    Q_CHECK(strcmp(small, "0,00000435") == 0);
+    Q_CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_EASY_STOCK, "0.00000435", "{\"traded_today\":true}", &q));
+    Q_CHECK(q.has_traded_today && q.traded_today && ha_quote_price_decimals(&q) == 8);
+    Q_CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_EASY_STOCK, "1e-30", "{\"traded_today\":\"false\"}", &q));
+    Q_CHECK(!q.has_traded_today);
+    ha_quote_format_number(small, sizeof(small), q.price, ha_quote_price_decimals(&q), false, false);
+    Q_CHECK(strcmp(small, "1e-30") == 0);
+    Q_CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_EASY_STOCK, "2.5241234e+1", "{}", &q));
+    Q_CHECK(q.price_decimals == 6 && ha_quote_price_decimals(&q) == 4);
 
     char text[48];
     ha_quote_format_number(text, sizeof(text), 13361.4, 2, true, false);

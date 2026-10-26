@@ -3,10 +3,12 @@
  *
  * Stocks & ETFs (stock_quotes): up to eight market quotes of Yahoo Finance or Easy Stock sensors (ha/ha_quote.h), mixed in
  * any order. entity_id is the first quote, extra_entity_id[0 .. 6] the others. The provider of each comes from its registry
- * entry; a sensor of another integration is named as such instead of being read. Two views (display_mode):
+ * entry; a sensor of another integration is named as such instead of being read. Three views (display_mode):
  *   list   rows of name (and, with stock_ticker, the symbol), price and the last session's change;
  *   chart  a section per quote: price, the change over the chosen period against its reference, and a small chart; one
- *          row of period buttons (1D, 1W, 30D, YTD, 1Y, option stock_selector, on by default) applies to every chart of the tile.
+ *          row of period buttons (1D, 1W, 30D, YTD, 1Y, option stock_selector, on by default) applies to every chart of the tile;
+ *   grid   one card per quote in two columns (one when the tile is narrow): name (and symbol), price, the period change
+ *          and a small chart, with the same period buttons. Cards that do not fit scroll.
  * stock_period is the charts' first period and the one the detail popup opens with; stock_delta shows the change in
  * percent, as an amount or both. Rows scroll when they do not fit; a tap (not a drag) opens the detail popup.
  * Histories come from ui/quote_history_feed.c, only for charts on screen.
@@ -61,7 +63,9 @@ typedef struct {
     ha_quote_change_t change;
     int64_t cover_from;                 /* the first value's time, for a partial history */
     uint16_t point_count;
-    ha_quote_point_t point[QS_SPARK_MAX];
+    ha_quote_point_t point[QS_SPARK_MAX]; /* reduced source, retained across quote changes */
+    uint16_t plot_count;
+    ha_quote_point_t plot[QS_SPARK_MAX + 3];
 
     lv_obj_t *row;                      /* a button: the tap target */
     lv_obj_t *name;
@@ -77,6 +81,7 @@ typedef struct w_qs_ctx {
     char title[APP_MAX_NAME_LEN];
     bool show_name;
     bool chart;
+    bool grid;                          /* cards in columns; shares the history feed and period buttons with the chart view */
     bool ticker;
     bool selector;                      /* chart view: the period buttons (stock_selector) */
     qs_delta_t delta_mode;
@@ -89,6 +94,16 @@ typedef struct w_qs_ctx {
     lv_obj_t *chip[HA_QUOTE_PERIOD_COUNT];
     lv_obj_t *list;
 } w_qs_ctx_t;
+
+#define QS_CARD_PAD 8
+#define QS_SPARK_MIN 28
+#define QS_SPARK_MAX_H 90
+
+/* The views that read a history per quote. */
+static bool qs_history(const w_qs_ctx_t *ctx)
+{
+    return ctx->chart || ctx->grid;
+}
 
 static const char *const QS_PERIOD_KEY[HA_QUOTE_PERIOD_COUNT] = {
     "stock.period.1d", "stock.period.1w", "stock.period.30d", "stock.period.ytd", "stock.period.1y"};
@@ -183,7 +198,7 @@ static void qs_name_text(const qs_item_t *it, char *out, size_t cap)
 static void qs_spark_draw_cb(lv_event_t *e)
 {
     qs_item_t *it = (qs_item_t *)lv_event_get_user_data(e);
-    if (it == NULL || it->point_count < 2) return;
+    if (it == NULL || it->plot_count < 2) return;
     lv_obj_t *obj = lv_event_get_target(e);
     lv_layer_t *layer = lv_event_get_layer(e);
     lv_area_t area;
@@ -191,8 +206,8 @@ static void qs_spark_draw_cb(lv_event_t *e)
     const int w = lv_area_get_width(&area), h = lv_area_get_height(&area);
     if (w < 8 || h < 6) return;
     float lo = INFINITY, hi = -INFINITY;
-    for (uint16_t i = 0; i < it->point_count; i++) {
-        const float v = it->point[i].v;
+    for (uint16_t i = 0; i < it->plot_count; i++) {
+        const float v = it->plot[i].v;
         if (!isfinite(v)) continue;
         lo = fminf(lo, v);
         hi = fmaxf(hi, v);
@@ -209,7 +224,7 @@ static void qs_spark_draw_cb(lv_event_t *e)
         hi = mid + min_span * 0.5f;
     }
     const float span = hi - lo > 0.0f ? hi - lo : 1.0f;
-    const int64_t t0 = it->point[0].t, t1 = it->point[it->point_count - 1].t;
+    const int64_t t0 = it->plot[0].t, t1 = it->plot[it->plot_count - 1].t;
     const double tspan = t1 > t0 ? (double)(t1 - t0) : 1.0;
     lv_draw_line_dsc_t line;
     lv_draw_line_dsc_init(&line);
@@ -232,12 +247,12 @@ static void qs_spark_draw_cb(lv_event_t *e)
         ref.p2.y = y;
         lv_draw_line(layer, &ref);
     }
-    for (uint16_t i = 0; i + 1 < it->point_count; i++) {
-        const float a = it->point[i].v, b = it->point[i + 1].v;
+    for (uint16_t i = 0; i + 1 < it->plot_count; i++) {
+        const float a = it->plot[i].v, b = it->plot[i + 1].v;
         if (!isfinite(a) || !isfinite(b)) continue; /* a gap stays a gap */
-        line.p1.x = area.x1 + (int32_t)((double)(it->point[i].t - t0) / tspan * (double)(w - 1));
+        line.p1.x = area.x1 + (int32_t)((double)(it->plot[i].t - t0) / tspan * (double)(w - 1));
         line.p1.y = area.y2 - 1 - (int32_t)((a - lo) / span * (float)(h - 3) + 0.5f);
-        line.p2.x = area.x1 + (int32_t)((double)(it->point[i + 1].t - t0) / tspan * (double)(w - 1));
+        line.p2.x = area.x1 + (int32_t)((double)(it->plot[i + 1].t - t0) / tspan * (double)(w - 1));
         line.p2.y = area.y2 - 1 - (int32_t)((b - lo) / span * (float)(h - 3) + 0.5f);
         lv_draw_line(layer, &line);
     }
@@ -404,6 +419,144 @@ static int qs_layout_row_chart(w_qs_ctx_t *ctx, qs_item_t *it, int y, int w, int
     return row_h;
 }
 
+/* ---- the card view ---- */
+
+/* The period change of a card: its text and colour; false while the history is loading, missing or failed. */
+static bool qs_card_delta(const w_qs_ctx_t *ctx, const qs_item_t *it, char *out, size_t cap, uint32_t *color)
+{
+    if (qs_status_text(it) != NULL || it->feed_status == QUOTE_FEED_LOADING || it->feed_status == QUOTE_FEED_FAILED ||
+        it->feed_status == QUOTE_FEED_EMPTY || !it->has_change)
+        return false;
+    char pct[32], amount[48];
+    qs_pct_text(it->change.change_pct, pct, sizeof(pct));
+    qs_amount_text(&it->quote, it->change.change, amount, sizeof(amount));
+    if (ctx->delta_mode == QS_DELTA_ABSOLUTE) snprintf(out, cap, "%s", amount);
+    else if (ctx->delta_mode == QS_DELTA_BOTH) snprintf(out, cap, "%s  %s", amount, pct);
+    else snprintf(out, cap, "%s", pct);
+    *color = qs_sign_color(true, it->change.change);
+    return true;
+}
+
+/* What a card says in place of a chart while there is none. */
+static const char *qs_card_message(const qs_item_t *it)
+{
+    switch (it->feed_status) {
+    case QUOTE_FEED_LOADING: return ui_i18n_get("history.loading", "Loading history...");
+    case QUOTE_FEED_FAILED: return ui_i18n_get("stock.history_failed", "History not available");
+    default: return ui_i18n_get("stock.history_empty", "No history for this period");
+    }
+}
+
+static void qs_layout_card(w_qs_ctx_t *ctx, qs_item_t *it, int x, int y, int cw, int ch, int spark_h, bool stacked)
+{
+    const int label_h = qs_line_h(UI_TEXT_LABEL), meta_h = qs_line_h(UI_TEXT_META);
+    const int inner = cw - 2 * QS_CARD_PAD;
+    qs_place(it->row, x, y, cw, ch);
+    char text[96];
+    qs_name_text(it, text, sizeof(text));
+    qs_set_text(it->name, text);
+    int name_w = inner;
+    lv_obj_set_hidden(it->ticker, !(ctx->ticker && it->quote.symbol[0] != '\0'));
+    if (ctx->ticker && it->quote.symbol[0] != '\0') {
+        qs_set_text(it->ticker, it->quote.symbol);
+        int tw = qs_text_w(it->quote.symbol, ui_font_role(UI_TEXT_META)) + 2;
+        if (tw > inner / 3) tw = inner / 3;
+        qs_place(it->ticker, QS_CARD_PAD + inner - tw, QS_CARD_PAD + (label_h - meta_h) / 2, tw, meta_h);
+        lv_obj_set_style_text_align(it->ticker, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+        name_w = inner - tw - QS_GAP;
+    }
+    qs_place(it->name, QS_CARD_PAD, QS_CARD_PAD, name_w, label_h);
+
+    const char *status = qs_status_text(it);
+    const bool known = status == NULL;
+    const int price_y = QS_CARD_PAD + label_h + 2;
+    if (known) qs_price_text(&it->quote, text, sizeof(text));
+    qs_set_text(it->price, known ? text : status);
+    lv_obj_set_style_text_color(it->price, lv_color_hex(known ? APP_UI_COLOR_TEXT_PRIMARY : APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
+    lv_obj_set_style_text_align(it->price, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+    lv_obj_set_hidden(it->delta2, true);
+    /* a quote that cannot be read says why, smaller, and shows neither change nor chart */
+    const bool message = !known && strcmp(status, "--") != 0;
+    ui_text_set(it->price, message ? UI_TEXT_META : UI_TEXT_LABEL, true);
+    qs_place(it->price, QS_CARD_PAD, price_y + (message ? (label_h - meta_h) / 2 : 0), inner, message ? meta_h : label_h);
+    if (message || !known) {
+        lv_obj_set_hidden(it->delta, true);
+        lv_obj_set_hidden(it->sub, true);
+        lv_obj_set_hidden(it->spark, true);
+        return;
+    }
+    char delta[96];
+    uint32_t color = APP_UI_COLOR_TEXT_SOFT;
+    const bool numeric = qs_card_delta(ctx, it, delta, sizeof(delta), &color);
+    const int spark_y = price_y + label_h + (stacked ? meta_h : 0) + 4;
+    lv_obj_set_hidden(it->delta, !numeric);
+    if (numeric) {
+        qs_set_text(it->delta, delta);
+        lv_obj_set_style_text_color(it->delta, lv_color_hex(color), LV_PART_MAIN);
+        lv_obj_set_style_text_font(it->delta, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
+        if (stacked) {
+            lv_obj_set_style_text_align(it->delta, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+            qs_place(it->delta, QS_CARD_PAD, price_y + label_h, inner, meta_h);
+        } else {
+            const int dw = qs_text_w(delta, ui_font_role(UI_TEXT_META)) + 2;
+            lv_obj_set_style_text_align(it->delta, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+            qs_place(it->delta, QS_CARD_PAD + inner - dw, price_y + (label_h - meta_h) / 2 + 2, dw, meta_h);
+        }
+    }
+    /* the price takes the line up to the change */
+    if (numeric && !stacked) {
+        const int dw = qs_text_w(delta, ui_font_role(UI_TEXT_META)) + 2;
+        qs_place(it->price, QS_CARD_PAD, price_y, inner - dw - QS_GAP, label_h);
+    }
+    const bool chart_ok = numeric && it->plot_count >= 2;
+    lv_obj_set_hidden(it->spark, !chart_ok);
+    lv_obj_set_hidden(it->sub, chart_ok);
+    if (chart_ok) {
+        qs_place(it->spark, QS_CARD_PAD, spark_y, inner, spark_h);
+        lv_obj_invalidate(it->spark);
+    } else {
+        qs_set_text(it->sub, qs_card_message(it));
+        lv_obj_set_style_text_align(it->sub, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+        qs_place(it->sub, QS_CARD_PAD, spark_y, inner, meta_h);
+    }
+}
+
+static void qs_layout_cards(w_qs_ctx_t *ctx, int list_w, int list_h)
+{
+    const int label_h = qs_line_h(UI_TEXT_LABEL), meta_h = qs_line_h(UI_TEXT_META);
+    const lv_font_t *label = ui_font_role(UI_TEXT_LABEL), *meta = ui_font_role(UI_TEXT_META);
+    char text[96], delta[96];
+    uint32_t color;
+    int price_w = qs_text_w("0.000,00 \xE2\x82\xAC", label), delta_w = qs_text_w("+00,00 %", meta);
+    for (int i = 0; i < ctx->count; i++) {
+        const qs_item_t *it = &ctx->item[i];
+        if (qs_status_text(it) == NULL) {
+            qs_price_text(&it->quote, text, sizeof(text));
+            const int pw = qs_text_w(text, label);
+            if (pw > price_w) price_w = pw;
+        }
+        if (qs_card_delta(ctx, it, delta, sizeof(delta), &color)) {
+            const int dw = qs_text_w(delta, meta);
+            if (dw > delta_w) delta_w = dw;
+        }
+    }
+    /* two columns once each can hold the widest price and a readable name; otherwise one */
+    const int min_col = price_w + 2 * QS_CARD_PAD + 8 > 9 * label_h ? price_w + 2 * QS_CARD_PAD + 8 : 9 * label_h;
+    const int cols = ctx->count > 1 && list_w >= 2 * min_col + QS_GAP ? 2 : 1;
+    const int cw = (list_w - (cols - 1) * QS_GAP) / cols;
+    /* the change moves under the price for every card when it does not fit beside the widest one */
+    const bool stacked = price_w + QS_GAP + delta_w + 2 * QS_CARD_PAD + 2 > cw;
+    const int rows = (ctx->count + cols - 1) / cols;
+    const int text_h = 2 * QS_CARD_PAD + 2 * label_h + 4 + (stacked ? meta_h : 0);
+    int spark_h = rows > 0 ? (list_h - (rows - 1) * QS_GAP) / rows - text_h : QS_SPARK_MIN;
+    if (spark_h < QS_SPARK_MIN) spark_h = QS_SPARK_MIN;
+    if (spark_h > QS_SPARK_MAX_H) spark_h = QS_SPARK_MAX_H;
+    const int ch = text_h + (spark_h > meta_h ? spark_h : meta_h);
+    for (int i = 0; i < ctx->count; i++) {
+        qs_layout_card(ctx, &ctx->item[i], (i % cols) * (cw + QS_GAP), (i / cols) * (ch + QS_GAP), cw, ch, spark_h, stacked);
+    }
+}
+
 /* The widest price and change of the list in a text role (a reading's status counts as a price). */
 static void qs_number_widths(const w_qs_ctx_t *ctx, ui_text_role_t role, int *price_w, int *delta_w)
 {
@@ -437,7 +590,7 @@ static void qs_layout(w_qs_ctx_t *ctx)
         qs_place(ctx->title_label, QS_PAD, y, inner_w, meta_h);
         y += meta_h + 4;
     }
-    const bool buttons = ctx->chart && ctx->selector;
+    const bool buttons = qs_history(ctx) && ctx->selector;
     for (int p = 0; p < HA_QUOTE_PERIOD_COUNT; p++) lv_obj_set_hidden(ctx->chip[p], !buttons);
     if (buttons) {
         /* the period buttons share the width; the chosen one is filled */
@@ -455,6 +608,10 @@ static void qs_layout(w_qs_ctx_t *ctx)
     qs_place(ctx->list, QS_PAD - 4, y, inner_w + 8, h - y - QS_PAD + 4);
     const int list_w = inner_w + 8;
 
+    if (ctx->grid) {
+        qs_layout_cards(ctx, list_w, (int)lv_obj_get_height(ctx->list));
+        return;
+    }
     if (!ctx->chart) {
         /* One column width for every price and every change, so the numbers line up. Numbers are never cut: when they do
          * not fit beside a few letters of the name, they take the smaller text. */
@@ -488,6 +645,27 @@ static void qs_layout(w_qs_ctx_t *ctx)
     }
 }
 
+static void qs_update_plot(qs_item_t *it)
+{
+    it->plot_count = it->point_count;
+    memcpy(it->plot, it->point, it->point_count * sizeof(*it->point));
+    if (it->ctx->period == HA_QUOTE_PERIOD_1D) {
+        it->plot_count = (uint16_t)ha_quote_day_plot(it->plot, it->plot_count, QS_SPARK_MAX + 3,
+                                                   (int64_t)time(NULL), &it->quote);
+        it->has_change = ha_quote_day_change(&it->quote, &it->change);
+        if (!it->has_change && it->quote.available) {
+            for (uint16_t i = 0; i < it->plot_count; i++) {
+                const double base = it->plot[i].v;
+                if (!isfinite(base) || base <= 0.0) continue;
+                it->change = (ha_quote_change_t){.base = base, .base_t = it->plot[i].t, .end = it->quote.price,
+                    .change = it->quote.price - base, .change_pct = (it->quote.price - base) / base * 100.0};
+                it->has_change = it->plot_count > i + 1;
+                break;
+            }
+        }
+    }
+}
+
 static void qs_refresh(w_qs_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->card == NULL) return;
@@ -505,12 +683,18 @@ static void qs_feed_cb(void *user, quote_feed_status_t status, const ha_quote_se
     it->feed_status = status;
     it->has_change = false;
     it->point_count = 0;
-    if (status == QUOTE_FEED_READY && series != NULL) {
+    if ((status == QUOTE_FEED_READY || (status == QUOTE_FEED_EMPTY && it->ctx->period == HA_QUOTE_PERIOD_1D)) && series != NULL) {
         it->kind = series->kind;
         it->partial = series->partial;
         it->cover_from = series->count > 0 ? series->point[0].t : 0;
         it->point_count = (uint16_t)ha_quote_series_reduce(series, it->point, QS_SPARK_MAX);
         it->has_change = ha_quote_series_period_change(series, &it->quote, &it->change);
+    }
+    if (status == QUOTE_FEED_READY || status == QUOTE_FEED_EMPTY) {
+        qs_update_plot(it);
+        if (it->ctx->period == HA_QUOTE_PERIOD_1D && it->plot_count >= 2) it->feed_status = QUOTE_FEED_READY;
+    } else {
+        it->plot_count = 0;
     }
     qs_refresh(it->ctx);
 }
@@ -541,6 +725,7 @@ static void qs_chip_clicked(lv_event_t *e)
         for (int i = 0; i < ctx->count; i++) {
             ctx->item[i].feed_status = QUOTE_FEED_LOADING;
             ctx->item[i].point_count = 0;
+            ctx->item[i].plot_count = 0;
             ctx->item[i].has_change = false;
             qs_feed_update(&ctx->item[i]);
         }
@@ -591,9 +776,15 @@ static void qs_item_create(w_qs_ctx_t *ctx, qs_item_t *it, const char *entity_id
     lv_obj_set_scrollable(it->spark, false);
     lv_obj_set_clickable(it->spark, false);
     lv_obj_add_event_cb(it->spark, qs_spark_draw_cb, LV_EVENT_DRAW_POST_END, it);
-    if (ctx->chart) {
+    if (qs_history(ctx)) {
         it->feed = quote_history_feed_register(it->row, false, qs_feed_cb, it);
         lv_obj_set_style_text_align(it->delta, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+    }
+    if (ctx->grid) {
+        /* a card: the style's control surface, so all four styles draw it */
+        lv_obj_set_style_radius(it->row, ui_style_radius(10), LV_PART_MAIN);
+        ui_style_button_auto(it->row, ui_style_control_bg(lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE)),
+                             lv_color_hex(APP_UI_COLOR_CARD_BORDER));
     }
 }
 
@@ -604,6 +795,7 @@ esp_err_t w_stock_quotes_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     if (ctx == NULL) return ESP_ERR_NO_MEM;
     ctx->show_name = !def->hide_name;
     ctx->chart = strcmp(def->display_mode, "chart") == 0;
+    ctx->grid = strcmp(def->display_mode, "grid") == 0;
     ctx->ticker = def->stock_ticker;
     ctx->selector = def->stock_selector;
     ctx->delta_mode = strcmp(def->stock_delta, "absolute") == 0 ? QS_DELTA_ABSOLUTE
@@ -668,6 +860,7 @@ static bool qs_quote_equal(const ha_quote_t *a, const ha_quote_t *b)
         a->has_prev_close == b->has_prev_close && a->prev_close == b->prev_close &&
         a->market == b->market && a->has_quote_time == b->has_quote_time && a->quote_time == b->quote_time &&
         a->has_live == b->has_live && a->price_is_live == b->price_is_live &&
+        a->has_traded_today == b->has_traded_today && a->traded_today == b->traded_today &&
         strcmp(a->currency, b->currency) == 0 && strcmp(a->symbol, b->symbol) == 0 &&
         strcmp(a->name, b->name) == 0 && strcmp(a->long_name, b->long_name) == 0;
 }
@@ -705,6 +898,7 @@ void w_stock_quotes_apply_state(ui_widget_instance_t *instance, const ha_state_t
                 it->change = c;
             }
         }
+        if (it->feed_status == QUOTE_FEED_READY || it->feed_status == QUOTE_FEED_EMPTY) qs_update_plot(it);
         qs_feed_update(it);
         changed = true;
     }

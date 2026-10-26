@@ -758,6 +758,15 @@ function tilePreviewMarkup(widget) {
     }
     case "weather_tile": {
       const current = previewWeatherCondition(widget);
+      if (widget.weather_hourly === true) {
+        const meta = textRoleSize("meta", 20), value = textRoleSize("value", 32);
+        const innerH = h - 28, titleH = widgetShowsName(widget) ? Math.round(meta * 1.5) + 6 : 0;
+        const large = w - 28 >= 400 && innerH >= titleH + 112 + meta * 3 + 72;
+        const icon = large ? 112 : 64, headH = Math.max(icon, Math.round((value + meta) * 1.5) + 4);
+        const iconHour = innerH - titleH - headH - 8 >= meta * 3 + 64 ? 48 : 24;
+        const cols = Array.from({length: 24}, (_, i) => `<div class="tp-weather-hour"><small>${String((10+i)%24).padStart(2,"0")}:00</small><i style="height:${iconHour}px">${current.icon}</i><small>${12+i%4}°C</small></div>`).join("");
+        return `<div class="tp tp-weather-hourly">${name('div', 'class="tp-name"')}<div class="tp-weather-hourly-head" style="height:${headH}px"><i style="width:${icon}px;height:${icon}px">${current.icon}</i><div><b>21.5 °C</b><small>${current.text}</small></div></div><div class="tp-weather-hours">${cols}</div></div>${handle}`;
+      }
       const extras = h >= 200 ? `<div class="tp-weather-extras"><small>${escapeHtml(t("preview.weather.low"))} 12°C</small><small>0.8 mm</small></div><small class="tp-weather-hum">${escapeHtml(t("preview.weather.humidity"))} 38 %</small>` : "";
       return `<div class="tp tp-weather${h < 222 ? " tp-weather-short" : ""}">${name('div', 'class="tp-name"')}
         <div class="tp-weather-main"><i class="tp-big">${current.icon}</i><b>21.5 °C</b></div><small>${current.text}</small>${extras}</div>${handle}`;

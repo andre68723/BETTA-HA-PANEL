@@ -116,6 +116,7 @@ def prepare_fixture(data, variant="panel4"):
     if demo is not None:
         fixture["pages"].append(demo)
     fixture["states"] = data["states"]
+    fixture["weather_hourly"] = data.get("weather_hourly", {})
     fixture["parqet_perf"] = data.get("parqet_perf", [])
     for state in fixture["states"]:
         picture = state.get("attributes", {}).get("entity_picture", "")

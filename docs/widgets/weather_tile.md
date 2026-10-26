@@ -2,7 +2,7 @@
 
 # Weather (now)
 
-Shows the **current conditions** of a `weather.*` entity, its temperature and the extra readings the provider supplies.
+Shows the **current conditions** of a `weather.*` entity, with optional hourly forecasts and a detail popup for readings and the DWD weather report.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/weather_now_glow.png"><img src="../img/gallery/weather_now_glow.png" alt="Weather (now), Glow style" loading="lazy" width="220" height="240" style="width: 176px"></a></figure>
@@ -13,27 +13,39 @@ Shows the **current conditions** of a `weather.*` entity, its temperature and th
 | Entity | Domains |
 | --- | --- |
 | Weather | `weather.*` |
+| DWD weather report *(optional)* | `sensor.*` |
 
 ## Requirements
 
-None beyond the entities.
+Current conditions need a weather entity. **Show hourly forecast** needs that provider's hourly forecasts; daily forecasts are not substituted. The optional German report needs the **[DWD Weather integration](https://github.com/FL550/dwd_weather)** and its separate *Weather report* sensor; enable it in Home Assistant if it is disabled.
 
 ## Options
 
 | Option | Effect |
 | --- | --- |
+| Show hourly forecast | off by default; adds a horizontal strip of up to 24 upcoming hours with time, condition and temperature |
+| DWD weather report | optional sensor, shown in the detail popup |
 | Show name | off by default, to leave room for the conditions |
 
 ## On the panel
 
-- Today's low and precipitation when there is room; the same Meteocons as the forecast.
-- UV, pressure and other extras appear only when the provider supplies them.
-- Read-only.
+- A tap opens today's details: temperatures, the available humidity, pressure, wind and visibility, and the optional DWD report.
+- With hourly forecasts, scroll horizontally for later hours; scrolling does not open the popup. Times use the panel's time zone.
+- Hourly forecasts are fetched only while the tile is visible and refreshed every 15 minutes. A missing hourly forecast is shown explicitly; current conditions remain available.
+- Without the hourly strip, today's low and precipitation appear when there is room. The tile uses the same Meteocons as the daily forecast.
+- Close details with the close button or a tap outside; they also close automatically after one minute.
+
+## Variants
+
+<div class="widget-previews">
+<figure><a href="../img/gallery/weather_hourly_forecast_glow.png"><img src="../img/gallery/weather_hourly_forecast_glow.png" alt="Weather hourly forecast, Glow style" loading="lazy" width="680" height="360" style="width: 544px"></a>
+<figcaption>Weather hourly forecast</figcaption></figure>
+</div>
 
 ## Size
 
 - Minimum: **220 × 200 px**.
-- Maximum: **480 px × 480 px**, capped by the display's dashboard area.
+- Maximum: **dashboard width × dashboard height**, capped by the display's dashboard area.
 
 The minimum is a validation limit, not a recommended size. [Choose your display](../choose-display.md) lists the dashboard geometry; [Widget anatomy](../widget-anatomy.md) explains spacing and touch targets.
 

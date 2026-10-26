@@ -2,7 +2,7 @@
 
 # Stocks & ETFs
 
-Shows **up to eight quotes** of Yahoo Finance or Easy Stock `sensor.*` entities as a list or as charts, with the last session's change and a detail view over five periods.
+Shows **up to eight quotes** of Yahoo Finance or Easy Stock `sensor.*` entities as a list, as charts or as tiles, with the last session's change and a detail view over five periods.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/stocks_list_glow.png"><img src="../img/gallery/stocks_list_glow.png" alt="Stocks list, Glow style" loading="lazy" width="380" height="280" style="width: 304px"></a></figure>
@@ -19,16 +19,37 @@ Shows **up to eight quotes** of Yahoo Finance or Easy Stock `sensor.*` entities 
 
 One of two integrations from HACS, or both mixed: **[Yahoo Finance](https://github.com/iprak/yahoofinance)** (`iprak/yahoofinance`) or **[Easy Stock](https://github.com/derspe/ha-easy-stock)**. The panel reads from Home Assistant's entity registry which integration a sensor belongs to; a sensor of another integration shows **Not a quote**. Easy Stock's daily closes come from the integration's own history endpoint; for Yahoo Finance, longer periods use Home Assistant's statistics, so they exist only since Home Assistant records the sensor.
 
+### Choose an integration
+
+**The main difference for ETF charts is historical backfill. Easy Stock downloads up to one year of daily closes when the sensor is first set up, including prices from before the sensor existed. A new ETF sensor can therefore show a 1Y chart immediately, as far back as Yahoo has data for that symbol.** In BETTA, Yahoo Finance's longer charts use Home Assistant statistics collected since recording began; installing the sensor does not backfill the preceding year.
+
+Choose **Easy Stock** for a new setup that needs historical ETF charts. Keep **Yahoo Finance** if you already use it or want its sensor currency conversion and pre/post-market options. Both use Yahoo Finance upstream; mixing them does not provide independent market data.
+
+| In BETTA | Easy Stock | Yahoo Finance (`iprak/yahoofinance`) |
+| --- | --- | --- |
+| Setup | Home Assistant UI, one asset per entry | Symbols in YAML |
+| History before sensor creation | **Yes: up to one year of daily closes is downloaded at setup** | **No backfill for BETTA's HA-statistics charts; history starts with recording** |
+| 1D | Today's Recorder data; explicit no-trading flag gives a flat 0% chart | Today's Recorder data against the previous close; no no-trading flag |
+| 1W | Home Assistant hourly means (trend) | Home Assistant hourly means (trend) |
+| 30D, YTD, 1Y | Daily closes from the integration, as far back as its history reaches | Home Assistant daily/weekly means (trend), only since recording began |
+| Currency | Sensor's native currency; Lovelace card conversion does not change BETTA | Sensor currency, including configured conversion; mismatched session changes are omitted |
+
+Both can share one tile. Neither supplies an exchange real-time guarantee. The panel refreshes histories every 15 minutes; quote freshness also depends on the integration's polling interval. For 1D, keep Recorder enabled for the sensors. Easy Stock's Lovelace card settings do not configure the panel.
+
+A 1Y chart shows price change, not a total return with reinvested distributions. If the close before the period is missing, BETTA marks the history as shorter and uses the first available close as its starting point.
+
+Integration setup and options: [Easy Stock](https://github.com/derspe/ha-easy-stock#setup) · [Yahoo Finance](https://github.com/iprak/yahoofinance#configuration).
+
 ## Options
 
 | Option | Effect |
 | --- | --- |
 | Quote 1 to 8 | the quotes in their order; ↑ moves a quote up, an emptied row closes the gap |
-| View | **List**: name, price and the last session's change; **Charts**: a small chart per quote |
+| View | **List**: name, price and the last session's change; **Charts**: a small chart per quote; **Tiles**: a card per quote with name, price, the period change and a chart, in two columns on a wide tile and one on a narrow one |
 | Period | 1 day, 1 week, 30 days, year to date or 1 year: the charts' first period and the one the details open with |
 | Change | percent, amount, or both |
-| Show the symbol | the ticker under the name (list) or after it (charts) |
-| Show selector buttons on the tile | on by default, charts only: the period buttons **1D, 1W, 30D, YTD, 1Y**; off shows the period above |
+| Show the symbol | the ticker under the name (list), after it (charts) or beside it (tiles) |
+| Show selector buttons on the tile | on by default, charts and tiles: the period buttons **1D, 1W, 30D, YTD, 1Y**; off shows the period above |
 
 <a href="../img/examples/inspector-stock_quotes.png"><img src="../img/examples/inspector-stock_quotes.png" alt="Inspector of the Stocks &amp; ETFs widget" loading="lazy" width="340" height="573"></a>
 
@@ -36,9 +57,10 @@ One of two integrations from HACS, or both mixed: **[Yahoo Finance](https://gith
 
 ## On the panel
 
-- The price is the sensor's state with its currency; pence stay pence (GBp). A change that does not belong to the shown price (a converted or after-hours price) is left out, a missing change shows `--`.
-- Rows scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market state, the time of the quote and of the last update in Home Assistant, and a chart over **1D, 1W, 30D, YTD, 1Y**.
-- Every chart names its source: **Closes** (Easy Stock, against the close before the period), **Recorded** (a day of Home Assistant's records, against the previous close) or Home Assistant's daily, weekly or hourly means, whose change is a **trend**, not a market return. A shorter history says from when it starts.
+- The price is the sensor's state with its currency; pence stay pence (GBp). A change that does not belong to the shown price (a converted or after-hours price) is left out, a missing change shows `--`. Prices below 1 retain up to eight significant digits.
+- Rows and tiles scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market state, the time of the quote and of the last update in Home Assistant, and a chart over **1D, 1W, 30D, YTD, 1Y**.
+- Every chart names its source: **Closes** (Easy Stock, against the close before the period), **Recorded** (a day of Home Assistant's records from local midnight, against the previous close) or Home Assistant's daily, weekly or hourly means, whose change is a **trend**, not a market return. A shorter history says from when it starts.
+- **1D means today**, from local midnight to now in the panel's time zone. Keep the panel and Home Assistant in the same time zone. When Easy Stock explicitly reports no trading today, the 1D chart is flat at 0%; the list keeps the last session's change. Without that attribute, including Yahoo Finance, 1D uses the previous close as its reference.
 - Charts are fetched only for a page on screen, one at a time, and refreshed every 15 minutes.
 
 ## Variants
@@ -48,6 +70,8 @@ One of two integrations from HACS, or both mixed: **[Yahoo Finance](https://gith
 <figcaption>Stocks list (symbol, both changes)</figcaption></figure>
 <figure><a href="../img/gallery/stocks_charts_glow.png"><img src="../img/gallery/stocks_charts_glow.png" alt="Stocks charts, Glow style" loading="lazy" width="380" height="330" style="width: 304px"></a>
 <figcaption>Stocks charts</figcaption></figure>
+<figure><a href="../img/gallery/stocks_tiles_glow.png"><img src="../img/gallery/stocks_tiles_glow.png" alt="Stocks tiles, Glow style" loading="lazy" width="700" height="330" style="width: 560px"></a>
+<figcaption>Stocks tiles</figcaption></figure>
 </div>
 
 ## Size

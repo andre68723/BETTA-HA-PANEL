@@ -31,6 +31,7 @@ static unsigned checks;
 static uint32_t now;
 #define CHECK(c) do { checks++; if (!(c)) { fprintf(stderr, "Controls regression line %d: %s\n", __LINE__, #c); exit(1); } } while (0)
 static uint32_t tick(void) { return now; }
+static void weather_delay(uint32_t ms) { now += ms; lv_timer_handler(); }
 static void advance(void) { now += 100; lv_timer_handler(); sim_popup_contract_check(); }
 static lv_obj_t *label(lv_obj_t *root, const char *text)
 {
@@ -352,6 +353,15 @@ static void vacuum_test(void)
     CHECK(same_color(idle, lv_obj_get_style_bg_color(primary, LV_PART_MAIN)));
     apply(&widget, false, "vacuum.test", "returning", attrs);
     CHECK(!same_color(idle, lv_obj_get_style_bg_color(primary, LV_PART_MAIN)));
+    /* A Home press that cannot be sent says so instead of doing nothing; the next state replaces the notice. */
+    apply(&widget, false, "vacuum.test", "cleaning", attrs);
+    sim_host_service_reset(ESP_ERR_INVALID_STATE);
+    phase = "vacuum home not sent";
+    click(widget.obj, APP_SYMBOL_HOME);
+    CHECK(label(widget.obj, "Home Assistant not connected") != NULL);
+    CHECK(label(widget.obj, "Returning") == NULL);
+    apply(&widget, false, "vacuum.test", "cleaning", attrs);
+    CHECK(label(widget.obj, "Home Assistant not connected") == NULL);
     apply(&widget, false, "vacuum.test", "docked", attrs);
     sim_host_service_reset(ESP_OK);
     phase = "vacuum initial fan";
@@ -485,6 +495,8 @@ int sim_controls_regression(void)
     sim_host_set_online(true);
     phase = "semantic roles"; semantic_controls_test();
     phase = "popup contracts"; sim_popup_contract_regression();
+    void sim_weather_now_regression(void (*delay)(uint32_t));
+    sim_weather_now_regression(weather_delay);
     phase = "media primary"; process_primary_test();
     phase = "fan selection"; fan_selection_test();
     phase = "picker roles"; picker_roles_test();

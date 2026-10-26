@@ -37,7 +37,7 @@ function stockLoadInspector(widget) {
   STOCK_FIELDS.forEach((key, index) => {
     if (el[key]) el[key].value = typeof more[index] === "string" ? more[index] : "";
   });
-  if (el.fStockView) el.fStockView.value = isStock && widget.stock_view === "chart" ? "chart" : "list";
+  if (el.fStockView) el.fStockView.value = isStock && ["chart", "grid"].includes(widget.stock_view) ? widget.stock_view : "list";
   if (el.fStockPeriod) el.fStockPeriod.value = isStock && STOCK_PERIODS.includes(widget.stock_period) ? widget.stock_period : "30d";
   if (el.fStockDelta) el.fStockDelta.value = isStock && ["absolute", "both"].includes(widget.stock_delta) ? widget.stock_delta : "percent";
   if (el.fStockTicker) el.fStockTicker.checked = isStock && widget.stock_ticker === true;
@@ -46,9 +46,9 @@ function stockLoadInspector(widget) {
   stockRefreshRows();
 }
 
-// The period buttons exist only in the chart view; the saved choice is kept while the list view hides the control.
+// The period buttons exist only in the chart and tile views; the saved choice is kept while the list view hides the control.
 function stockSyncSelectorRow() {
-  if (el.fStockSelectorRow) el.fStockSelectorRow.hidden = el.fStockView?.value !== "chart";
+  if (el.fStockSelectorRow) el.fStockSelectorRow.hidden = !["chart", "grid"].includes(el.fStockView?.value);
 }
 
 // Writes the quotes in order without gaps and the options that differ from the defaults; another type keeps none.
@@ -124,7 +124,7 @@ function stockPreviewMarkup(widget, name, height) {
   const quotes = (ids.length ? ids : ["sensor.demo"]).map(quote);
   const delta = widget.stock_delta === "absolute" ? "absolute" : widget.stock_delta === "both" ? "both" : "percent";
   const amountOf = q => q.price * q.change / 100;
-  if (widget.stock_view === "chart") {
+  if (widget.stock_view === "chart" || widget.stock_view === "grid") {
     const period = STOCK_PERIODS.includes(widget.stock_period) ? widget.stock_period : "30d";
     const chips = widget.stock_selector === false ? "" : STOCK_PERIODS.map(code => `<em class="${previewControlClass(code === period)}">${escapeHtml(t(`layout.option.stock_period_short.${code}`))}</em>`).join("");
     const sections = quotes.map((q, i) => {
@@ -140,6 +140,21 @@ function stockPreviewMarkup(widget, name, height) {
         <small><em class="${sign(q.change)}">${escapeHtml(change)}</em> ${escapeHtml(since)}</small>
         <svg class="tp-stock-spark ${sign(q.change)}" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${points}"/></svg></div>`;
     }).join("");
+    if (widget.stock_view === "grid") {
+      // One card per quote in two columns, one when the tile is narrow (w_stock_quotes.c).
+      const cards = quotes.map((q, i) => {
+        const change = delta === "absolute" ? `${number(amountOf(q), 2, true)} ${q.currency}` : delta === "both"
+          ? `${number(amountOf(q), 2, true)} ${q.currency}  ${number(q.change, 2, true)} %` : `${number(q.change, 2, true)} %`;
+        const points = Array.from({ length: 24 }, (_, k) => {
+          const y = 50 - q.change * 6 * (k / 23) + 8 * Math.sin(k / 3 + i);
+          return `${(k / 23 * 100).toFixed(1)},${Math.max(4, Math.min(96, y)).toFixed(1)}`;
+        }).join(" ");
+        return `<div class="tp-stock-card"><div class="tp-stock-row"><span>${escapeHtml(q.name)}</span>${widget.stock_ticker ? `<small>${escapeHtml(q.symbol)}</small>` : ""}</div>
+          <div class="tp-stock-row"><b>${number(q.price, 2)} ${escapeHtml(q.currency)}</b><em class="${sign(q.change)}">${escapeHtml(change)}</em></div>
+          <svg class="tp-stock-spark ${sign(q.change)}" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${points}"/></svg></div>`;
+      }).join("");
+      return `<div class="tp tp-stock">${name("div", 'class="tp-name"')}${chips ? `<div class="tp-stock-chips">${chips}</div>` : ""}<div class="tp-stock-grid">${cards}</div></div>`;
+    }
     return `<div class="tp tp-stock">${name("div", 'class="tp-name"')}${chips ? `<div class="tp-stock-chips">${chips}</div>` : ""}<div class="tp-stock-list">${sections}</div></div>`;
   }
   const rows = quotes.map(q => {

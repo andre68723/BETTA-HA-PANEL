@@ -83,7 +83,7 @@ bool ha_quote_period_start(ha_quote_period_t period, int64_t now, int64_t *out)
     int y, m, d;
     civil_from_days(today, &y, &m, &d);
     switch (period) {
-    case HA_QUOTE_PERIOD_1D: *out = now - DAY_S; return true;
+    case HA_QUOTE_PERIOD_1D: *out = day_start(today); return true;
     case HA_QUOTE_PERIOD_1W: *out = now - 7 * DAY_S; return true;
     case HA_QUOTE_PERIOD_30D: *out = day_start(today - 30); return true;
     case HA_QUOTE_PERIOD_YTD: *out = day_start(days_from_civil(y, 1, 1)); return true;
@@ -279,9 +279,53 @@ bool ha_quote_series_change(const ha_quote_series_t *series, bool has_current, d
     return true;
 }
 
+bool ha_quote_day_change(const ha_quote_t *quote, ha_quote_change_t *out)
+{
+    if (quote == NULL || out == NULL || !quote->available) return false;
+    const bool flat = quote->has_traded_today && !quote->traded_today;
+    const double base = flat ? quote->price : quote->prev_close;
+    if ((!flat && !quote->has_prev_close) || base <= 0.0) return false;
+    *out = (ha_quote_change_t){.base = base, .end = quote->price, .from_reference = !flat,
+                              .change = quote->price - base, .change_pct = (quote->price - base) / base * 100.0};
+    return true;
+}
+
+size_t ha_quote_day_plot(ha_quote_point_t *point, size_t count, size_t cap, int64_t now, const ha_quote_t *quote)
+{
+    int64_t start;
+    if (point == NULL || quote == NULL || cap < 4 || !ha_quote_period_start(HA_QUOTE_PERIOD_1D, now, &start)) return count;
+    if (quote->available && quote->has_traded_today && !quote->traded_today) {
+        point[0] = (ha_quote_point_t){.t = start, .v = (float)quote->price};
+        point[1] = (ha_quote_point_t){.t = now, .v = (float)quote->price};
+        return 2;
+    }
+    size_t n = 0;
+    bool has_value = false;
+    for (size_t i = 0; i < count && n < cap - 3; i++) {
+        if (point[i].t >= start && point[i].t <= now) {
+            has_value |= isfinite(point[i].v);
+            point[n++] = point[i];
+        }
+    }
+    if (!has_value) n = 0;
+    ha_quote_change_t change;
+    if (ha_quote_day_change(quote, &change)) {
+        /* Anchor the previous close at midnight and the first recorded value; the open can jump. */
+        const int64_t first = n > 0 ? point[0].t : now;
+        const size_t anchors = n > 0 ? 2 : 1;
+        memmove(point + anchors, point, n * sizeof(*point));
+        point[0] = (ha_quote_point_t){.t = start, .v = (float)change.base};
+        if (anchors == 2) point[1] = (ha_quote_point_t){.t = first, .v = (float)change.base};
+        n += anchors;
+    }
+    if (quote->available) point[n++] = (ha_quote_point_t){.t = now, .v = (float)quote->price};
+    return n;
+}
+
 bool ha_quote_series_period_change(const ha_quote_series_t *series, const ha_quote_t *quote, ha_quote_change_t *out)
 {
     if (series == NULL || quote == NULL || out == NULL) return false;
+    if (series->period == HA_QUOTE_PERIOD_1D && ha_quote_day_change(quote, out)) return true;
     const bool ok = ha_quote_series_change(series, quote->available, quote->price, out);
     if (series->kind != HA_QUOTE_SERIES_STATES || !quote->has_prev_close || !quote->available || quote->prev_close <= 0.0) return ok;
     out->base = quote->prev_close;

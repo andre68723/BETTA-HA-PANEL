@@ -76,11 +76,19 @@ static void quote_collapse_spaces(char *text)
 
 static int quote_state_decimals(const char *state)
 {
-    const char *dot = strchr(state, '.');
-    if (dot == NULL) return 0;
+    const char *p = state;
+    while (*p && *p != '.' && *p != 'e' && *p != 'E') p++;
     int n = 0;
-    for (const char *p = dot + 1; *p >= '0' && *p <= '9'; p++) n++;
-    return n > 6 ? 6 : n;
+    if (*p == '.') {
+        for (p++; *p >= '0' && *p <= '9'; p++) n++;
+    }
+    if (*p == 'e' || *p == 'E') {
+        const long exponent = strtol(p + 1, NULL, 10);
+        if (exponent < -18) return 18;
+        if (exponent > n) return 0;
+        n -= (int)exponent;
+    }
+    return n > 18 ? 18 : n;
 }
 
 static ha_quote_market_t quote_market(const char *state)
@@ -171,6 +179,9 @@ bool ha_quote_parse(ha_quote_provider_t provider, const char *state, const char 
             out->quote_time = (int64_t)at;
         }
     } else {
+        const cJSON *traded = cJSON_GetObjectItemCaseSensitive(attrs, "traded_today");
+        out->has_traded_today = cJSON_IsBool(traded);
+        out->traded_today = cJSON_IsTrue(traded);
         const cJSON *live = cJSON_GetObjectItemCaseSensitive(attrs, "price_is_live");
         if (cJSON_IsBool(live)) {
             out->has_live = true;
@@ -185,7 +196,15 @@ void ha_quote_format_number(char *out, size_t cap, double value, int decimals, b
 {
     if (out == NULL || cap == 0) return;
     if (decimals < 0) decimals = 0;
-    if (decimals > 6) decimals = 6;
+    if (decimals > 18) decimals = 18;
+    if ((decimals == 18 && value != 0.0 && fabs(value) < 0.5e-18) || fabs(value) >= 1e15) {
+        snprintf(out, cap, plus && value > 0.0 ? "+%.8g" : "%.8g", value);
+        if (german) {
+            char *dot = strchr(out, '.');
+            if (dot != NULL) *dot = ',';
+        }
+        return;
+    }
     char digits[48];
     snprintf(digits, sizeof(digits), "%.*f", decimals, fabs(value));
     /* -0.004 at two digits is zero, not "-0.00" */
@@ -217,6 +236,11 @@ const char *ha_quote_currency_sign(const char *currency)
 int ha_quote_price_decimals(const ha_quote_t *quote)
 {
     if (quote == NULL) return 2;
+    int cap = 4;
+    const double price = fabs(quote->price);
+    if (price > 0.0 && price < 1.0) {
+        cap = (int)fmin(18.0, 7.0 - floor(log10(price)));
+    }
     const int digits = quote->price_decimals;
-    return digits < 2 ? 2 : digits > 4 ? 4 : digits;
+    return digits < 2 ? 2 : digits > cap ? cap : digits;
 }

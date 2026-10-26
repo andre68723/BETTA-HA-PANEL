@@ -43,6 +43,7 @@ bool weather_now_render(lv_obj_t *card, lv_obj_t *condition, lv_obj_t *temp, lv_
         lv_obj_set_style_text_color(view->low, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), 0);
         lv_obj_set_style_text_color(view->precip, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), 0);
     }
+    weather_now_hide(view); /* newly created optional labels must not retain LVGL's default Text */
     int icon_size = large ? WEATHER_ICON_LARGE_PX : WEATHER_ICON_SMALL_PX;
     bool short_tile = height < 190;
     /* below the one-line name, also when larger text makes its line taller */

@@ -7,6 +7,7 @@
 #include "cJSON.h"
 #include "host_adapters.h"
 #include "ha/ha_display_precision.h"
+#include "ha/ha_quote.h"
 #include "ui/ui_widget_factory.h"
 #include "ui/ui_history_popup.h"
 #include "ui/text_font.h"
@@ -62,19 +63,20 @@ static lv_obj_t *find_text(lv_obj_t *root, const char *text)
 }
 static void stock_cases(void)
 {
-    char ids[1][APP_MAX_ENTITY_ID_LEN] = {"sensor.refresh_quote"};
-    CHECK(ha_display_precision_set_wanted((const char *)ids, 1));
+    char ids[2][APP_MAX_ENTITY_ID_LEN] = {"sensor.refresh_quote", "sensor.refresh_easy"};
+    CHECK(ha_display_precision_set_wanted((const char *)ids, 2));
     cJSON *request = ha_display_precision_next_request(871, 0);
     CHECK(request != NULL);
     cJSON_Delete(request);
-    cJSON *reply = cJSON_Parse("{\"sensor.refresh_quote\":{\"platform\":\"yahoofinance\"}}");
+    cJSON *reply = cJSON_Parse("{\"sensor.refresh_quote\":{\"platform\":\"yahoofinance\"},\"sensor.refresh_easy\":{\"platform\":\"easy_stock\"}}");
     CHECK(ha_display_precision_handle_result(871, true, reply, NULL));
     cJSON_Delete(reply);
-    for (int charts = 0; charts < 2; charts++) {
+    static const char *const views[] = {"", "chart", "grid"};
+    for (int view = 0; view < 3; view++) {
         ui_widget_def_t def = {.w = 650, .h = 400, .stock_selector = true};
         strcpy(def.type, "stock_quotes");
         strcpy(def.entity_id, ids[0]);
-        if (charts) strcpy(def.display_mode, "chart");
+        strcpy(def.display_mode, views[view]);
         ui_widget_instance_t widget = {0};
         CHECK(ui_widget_factory_create(&def, lv_screen_active(), &widget) == ESP_OK);
         ha_state_t state = {0};
@@ -105,6 +107,54 @@ static void stock_cases(void)
         lv_obj_delete(widget.obj);
         advance();
     }
+    /* Easy Stock's trade flag changes the day chart, even when the price stays put. */
+    ui_widget_def_t def = {.w = 650, .h = 400, .stock_selector = true};
+    strcpy(def.type, "stock_quotes");
+    strcpy(def.entity_id, ids[1]);
+    strcpy(def.display_mode, "chart");
+    strcpy(def.stock_period, "1d");
+    ui_widget_instance_t widget = {0};
+    CHECK(ui_widget_factory_create(&def, lv_screen_active(), &widget) == ESP_OK);
+    ha_state_t state = {0};
+    strcpy(state.entity_id, ids[1]);
+    strcpy(state.state, "110");
+    strcpy(state.attributes_json, "{\"symbol\":\"TEST\",\"currency\":\"USD\",\"previous_close\":100,\"change\":10,\"change_pct\":10,\"traded_today\":false}");
+    apply(&widget, &state);
+    CHECK(find_text(widget.obj, "0.00 %") != NULL);
+    probe(&widget);
+    apply(&widget, &state);
+    CHECK(draws == 0);
+    strcpy(state.attributes_json, "{\"symbol\":\"TEST\",\"currency\":\"USD\",\"previous_close\":100,\"change\":10,\"change_pct\":10,\"traded_today\":true}");
+    apply(&widget, &state);
+    CHECK(find_text(widget.obj, "+10.00 %") != NULL);
+    strcpy(state.attributes_json, "{\"symbol\":\"TEST\",\"currency\":\"USD\",\"previous_close\":100,\"change\":10,\"change_pct\":10,\"traded_today\":false}");
+    apply(&widget, &state);
+    CHECK(find_text(widget.obj, "0.00 %") != NULL);
+    ui_widget_def_t list_def = def;
+    list_def.display_mode[0] = '\0';
+    ui_widget_instance_t list = {0};
+    CHECK(ui_widget_factory_create(&list_def, lv_screen_active(), &list) == ESP_OK);
+    apply(&list, &state);
+    CHECK(find_text(list.obj, "+10.00 %") != NULL);
+    lv_obj_delete(list.obj);
+    ha_quote_t quote;
+    CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_EASY_STOCK, state.state, state.attributes_json, &quote));
+    ui_history_popup_open_quote(state.entity_id, HA_QUOTE_PROVIDER_EASY_STOCK, &quote, HA_QUOTE_PERIOD_1D);
+    advance();
+    CHECK(find_text(lv_layer_top(), "Recorded  \xC2\xB7  0.00 $  0.00 %") != NULL);
+    lv_obj_send_event(lv_obj_get_child(lv_layer_top(), 0), LV_EVENT_CLICKED, NULL);
+    advance();
+    strcpy(state.state, "4.35e-06");
+    strcpy(state.attributes_json, "{\"symbol\":\"TEST\",\"currency\":\"USD\",\"previous_close\":0.000004,\"traded_today\":true}");
+    apply(&widget, &state);
+    CHECK(find_text(widget.obj, "0.00000435 $") != NULL);
+    CHECK(ha_quote_parse(HA_QUOTE_PROVIDER_EASY_STOCK, state.state, state.attributes_json, &quote));
+    ui_history_popup_open_quote(state.entity_id, HA_QUOTE_PROVIDER_EASY_STOCK, &quote, HA_QUOTE_PERIOD_1D);
+    advance();
+    lv_obj_send_event(lv_obj_get_child(lv_layer_top(), 0), LV_EVENT_CLICKED, NULL);
+    advance();
+    lv_obj_delete(widget.obj);
+    advance();
 }
 static void graph_cases(void)
 {

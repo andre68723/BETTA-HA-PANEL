@@ -1,0 +1,262 @@
+{
+ "version": 1,
+ "pages": [
+  {
+   "id": "weather_hourly",
+   "title": "Hourly weather",
+   "widgets": [
+    {
+     "id": "weather_hours",
+     "type": "weather_tile",
+     "entity_id": "weather.demo_outdoor",
+     "secondary_entity_id": "sensor.demo_weather_report",
+     "weather_hourly": true,
+     "rect": {
+      "x": 10,
+      "y": 10,
+      "w": 680,
+      "h": 330
+     }
+    },
+    {
+     "id": "weather_compact",
+     "type": "weather_tile",
+     "entity_id": "weather.demo_outdoor",
+     "secondary_entity_id": "sensor.demo_weather_report",
+     "rect": {
+      "x": 10,
+      "y": 350,
+      "w": 220,
+      "h": 220
+     }
+    },
+    {
+     "id": "weather_small_hours",
+     "type": "weather_tile",
+     "entity_id": "weather.demo_outdoor",
+     "weather_hourly": true,
+     "rect": {
+      "x": 250,
+      "y": 350,
+      "w": 220,
+      "h": 220
+     }
+    },
+    {
+     "id": "weather_hours_missing",
+     "type": "weather_tile",
+     "entity_id": "weather.hourly_missing",
+     "weather_hourly": true,
+     "rect": {
+      "x": 490,
+      "y": 350,
+      "w": 220,
+      "h": 220
+     }
+    }
+   ]
+  }
+ ],
+ "states": [
+  {
+   "entity_id": "weather.demo_outdoor",
+   "state": "sunny",
+   "attributes": {
+    "temperature": 23.3,
+    "temperature_unit": "°C",
+    "humidity": 38,
+    "precipitation_unit": "mm",
+    "forecast": [
+     {
+      "date_offset_days": 0,
+      "condition": "sunny",
+      "temperature": 25,
+      "templow": 13,
+      "precipitation_probability": 5,
+      "precipitation": 0
+     },
+     {
+      "date_offset_days": 1,
+      "condition": "partlycloudy",
+      "temperature": 22,
+      "templow": 11,
+      "precipitation_probability": 20,
+      "precipitation": 0.2
+     },
+     {
+      "date_offset_days": 2,
+      "condition": "rainy",
+      "temperature": 17,
+      "templow": 10,
+      "precipitation_probability": 80,
+      "precipitation": 6.5
+     },
+     {
+      "date_offset_days": 3,
+      "condition": "cloudy",
+      "temperature": 19,
+      "templow": 9,
+      "precipitation_probability": 40,
+      "precipitation": 1.4
+     },
+     {
+      "date_offset_days": 4,
+      "condition": "sunny",
+      "temperature": 23,
+      "templow": 8,
+      "precipitation_probability": 10,
+      "precipitation": 0
+     }
+    ]
+   }
+  },
+  {
+   "entity_id": "sensor.demo_weather_report",
+   "state": "Sunny and mild",
+   "attributes": {
+    "s": "Sunny today, rain moving in overnight. Cooler and unsettled mid-week, dry again by the weekend.",
+    "d": {
+     "0": "Mostly sunny, light wind.",
+     "1": "Sunny, a few clouds later.",
+     "2": "Clouds thicken, rain from the evening.",
+     "3": "Rain, heavy at times, 15 to 18 degrees.",
+     "4": "Cloudy with showers, cooler.",
+     "5": "Sunny spells, dry.",
+     "6": "Sunny and mild."
+    }
+   }
+  },
+  {
+   "entity_id": "weather.hourly_missing",
+   "state": "cloudy",
+   "attributes": {
+    "temperature": 11,
+    "temperature_unit": "°C"
+   }
+  }
+ ],
+ "weather_hourly": {
+  "weather.demo_outdoor": [
+   {
+    "datetime": "2026-10-15T11:00:00+00:00",
+    "condition": "partlycloudy",
+    "temperature": 12
+   },
+   {
+    "datetime": "2026-10-15T12:00:00+00:00",
+    "condition": "sunny",
+    "temperature": 13
+   },
+   {
+    "datetime": "2026-10-15T13:00:00+00:00",
+    "condition": "cloudy",
+    "temperature": 14
+   },
+   {
+    "datetime": "2026-10-15T14:00:00+00:00",
+    "condition": "rainy",
+    "temperature": 15
+   },
+   {
+    "datetime": "2026-10-15T15:00:00+00:00",
+    "condition": "partlycloudy",
+    "temperature": 12
+   },
+   {
+    "datetime": "2026-10-15T16:00:00+00:00",
+    "condition": "sunny",
+    "temperature": 13
+   },
+   {
+    "datetime": "2026-10-15T17:00:00+00:00",
+    "condition": "cloudy",
+    "temperature": 14
+   },
+   {
+    "datetime": "2026-10-15T18:00:00+00:00",
+    "condition": "rainy",
+    "temperature": 15
+   },
+   {
+    "datetime": "2026-10-15T19:00:00+00:00",
+    "condition": "partlycloudy",
+    "temperature": 12
+   },
+   {
+    "datetime": "2026-10-15T20:00:00+00:00",
+    "condition": "sunny",
+    "temperature": 13
+   },
+   {
+    "datetime": "2026-10-15T21:00:00+00:00",
+    "condition": "cloudy",
+    "temperature": 14
+   },
+   {
+    "datetime": "2026-10-15T22:00:00+00:00",
+    "condition": "rainy",
+    "temperature": 15
+   },
+   {
+    "datetime": "2026-10-15T23:00:00+00:00",
+    "condition": "partlycloudy",
+    "temperature": 12
+   },
+   {
+    "datetime": "2026-10-16T00:00:00+00:00",
+    "condition": "sunny",
+    "temperature": 13
+   },
+   {
+    "datetime": "2026-10-16T01:00:00+00:00",
+    "condition": "cloudy",
+    "temperature": 14
+   },
+   {
+    "datetime": "2026-10-16T02:00:00+00:00",
+    "condition": "rainy",
+    "temperature": 15
+   },
+   {
+    "datetime": "2026-10-16T03:00:00+00:00",
+    "condition": "partlycloudy",
+    "temperature": 12
+   },
+   {
+    "datetime": "2026-10-16T04:00:00+00:00",
+    "condition": "sunny",
+    "temperature": 13
+   },
+   {
+    "datetime": "2026-10-16T05:00:00+00:00",
+    "condition": "cloudy",
+    "temperature": 14
+   },
+   {
+    "datetime": "2026-10-16T06:00:00+00:00",
+    "condition": "rainy",
+    "temperature": 15
+   },
+   {
+    "datetime": "2026-10-16T07:00:00+00:00",
+    "condition": "partlycloudy",
+    "temperature": 12
+   },
+   {
+    "datetime": "2026-10-16T08:00:00+00:00",
+    "condition": "sunny",
+    "temperature": 13
+   },
+   {
+    "datetime": "2026-10-16T09:00:00+00:00",
+    "condition": "cloudy",
+    "temperature": 14
+   },
+   {
+    "datetime": "2026-10-16T10:00:00+00:00",
+    "condition": "rainy",
+    "temperature": 15
+   }
+  ]
+ }
+}

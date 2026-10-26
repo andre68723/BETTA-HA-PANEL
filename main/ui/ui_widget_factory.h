@@ -33,7 +33,7 @@
 #define UI_PARQET_EXTRA_DIVIDENDS 0
 #define UI_PARQET_EXTRA_RETURN 1 /* JSON key return_entity_id: the unrealised return in percent */
 /* Stocks & ETFs: entity_id is the first quote, extra_entity_id[0 .. 6] the others (JSON array stock_entities); the view is
- * display_mode ("list" or "chart", JSON key stock_view). */
+ * display_mode ("list", "chart" or "grid", JSON key stock_view). */
 #define UI_STOCK_MAX_QUOTES 8
 
 typedef struct {
@@ -70,6 +70,7 @@ typedef struct {
     char default_mode[48]; /* vacuum_tile: cleaning program (option of the mode select) set before Start */
     int forecast_days; /* weather/solar: -1 legacy, 0 measured auto, 1..7 */
     bool align_forecast; /* solar: dated columns with Rest in the header */
+    bool weather_hourly; /* weather_tile: optional real hourly forecast strip, default false */
     bool show_precipitation; /* weather_3day: rain chance and amount, default true */
     bool room_controls; /* room_tile: a control row (lights, switches, covers) when the card is large enough, default false */
     float gauge_min; /* gauge: bottom of the bar's range, default 0 */

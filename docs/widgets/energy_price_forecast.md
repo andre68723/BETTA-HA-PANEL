@@ -24,7 +24,7 @@ Choose the price-list sensor, not a scalar current price or CO₂ reading. Open 
 | Option | Effect |
 | --- | --- |
 | Average (fixed, EUR/kWh; empty = calculated) | a fixed average instead of the day's own; an average sensor replaces it too |
-| Show selector buttons on the tile | Today/Tomorrow buttons, one toggle on a narrow tile; off (default) shows the 24 hours around now |
+| Show selector buttons on the tile | Today/Tomorrow buttons, one toggle on a narrow tile; off (default) shows the 24 hours around now, starting at the first price of the list when the sensor drops yesterday's prices |
 | Cheap times (shade and name the cheapest hours) | shades the cheap windows and names the next one |
 | Line instead of filled bars | a stepped line |
 

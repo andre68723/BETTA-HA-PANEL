@@ -177,7 +177,7 @@ function expectedDomainForWidgetType(
 }
 
 function secondaryEntityConfigForWidgetType(type) {
-  if (type === "weather_3day") {
+  if (type === "weather_3day" || type === "weather_tile") {
     return {
       enabled: true,
       domain: "sensor",

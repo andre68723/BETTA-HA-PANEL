@@ -15,6 +15,7 @@ const ENTITY_SEARCH_PRIMARY = {
 };
 const ENTITY_SEARCH_SLOTS = {
   heating_tile: { secondary: "temperature" },
+  weather_tile: { secondary: "report" },
   weather_3day: { secondary: "report" },
   sonos_favorites: { secondary: "favorites" },
   vacuum_tile: { secondary: "domain", tertiary: "domain", vacuum_battery: "battery" },

@@ -14,4 +14,6 @@
 typedef void (*ha_history_cb_t)(uint32_t generation, ha_history_snapshot_t *snapshot, esp_err_t status);
 
 esp_err_t ha_history_request(const char *entity_id, bool numeric, uint32_t generation, ha_history_cb_t callback);
+/* Quote view only: local midnight to now, including 23/25-hour days. */
+esp_err_t ha_history_request_today(const char *entity_id, uint32_t generation, ha_history_cb_t callback);
 void ha_history_snapshot_free(ha_history_snapshot_t *snapshot);

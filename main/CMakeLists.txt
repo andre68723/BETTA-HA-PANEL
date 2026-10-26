@@ -285,6 +285,8 @@ idf_component_register(
         "ui/widgets/weather_value_parse.c"
         "ui/widgets/weather_condition_icon.c"
         "ui/widgets/weather_now_view.c"
+        "ui/widgets/weather_hourly.c"
+        "ha/ha_weather_hourly.c"
         "ui/widgets/w_solar_forecast.c"
         "ui/widgets/w_energy_price_forecast.c"
         "ui/widgets/w_parqet_portfolio.c"

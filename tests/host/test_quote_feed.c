@@ -32,7 +32,8 @@ lv_timer_t *lv_timer_create(lv_timer_cb_t cb, uint32_t period, void *user) {
     (void)cb; (void)period; (void)user; timers++; return calloc(1, sizeof(lv_timer_t));
 }
 void lv_timer_delete(lv_timer_t *t) { timers--; free(t); }
-esp_err_t ha_history_request(const char *id, bool numeric, uint32_t gen, ha_history_cb_t cb) {
+esp_err_t ha_history_request_today(const char *id, uint32_t gen, ha_history_cb_t cb) {
+    const bool numeric = true;
     (void)id; assert(numeric); sends++; generation = gen; response = cb; return ESP_OK;
 }
 esp_err_t ha_history_request_week(const char *id, const char *unit, bool cls, const char *device,

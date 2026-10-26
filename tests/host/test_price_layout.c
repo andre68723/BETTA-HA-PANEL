@@ -90,8 +90,30 @@ static bool valid(const char *entity, int w, int h)
     return layout_validate_json(json, &result);
 }
 
+static void test_weather_options(void)
+{
+    const char *head = "{\"version\":1,\"pages\":[{\"id\":\"p\",\"widgets\":[{\"id\":\"w\",\"type\":\"weather_tile\",\"entity_id\":\"weather.test\",";
+    const char *tail = "\"rect\":{\"x\":0,\"y\":0,\"w\":680,\"h\":360}}]}]}";
+    const char *cases[] = {"\"weather_hourly\":true,\"secondary_entity_id\":\"sensor.report\",", "\"weather_hourly\":false,", "\"weather_hourly\":1,", "\"weather_hourly\":\"true\",", "\"secondary_entity_id\":\"light.test\","};
+    char json[1024];
+    layout_validation_result_t result;
+    for (unsigned i = 0; i < 5; i++) {
+        snprintf(json, sizeof(json), "%s%s%s", head, cases[i], tail);
+        CHECK(layout_validate_json(json, &result) == (i < 2));
+    }
+    snprintf(json, sizeof(json), "%s%s%s", head, cases[0], tail);
+    cJSON *layout = cJSON_Parse(json);
+    char ids[4][APP_MAX_ENTITY_ID_LEN];
+    ha_layout_entity_set_t set = {.ids = (char *)ids, .capacity = 4};
+    ha_layout_entities_collect(layout, &set);
+    CHECK(set.count == 2);
+    CHECK(!strcmp(ids[0], "weather.test") && !strcmp(ids[1], "sensor.report"));
+    cJSON_Delete(layout);
+}
+
 int main(void)
 {
+    test_weather_options();
     CHECK(widget_type_known("energy_price_forecast"));
     CHECK(widget_type_supports_name("energy_price_forecast"));
     const widget_size_limits_t limits = widget_type_size_limits("energy_price_forecast");

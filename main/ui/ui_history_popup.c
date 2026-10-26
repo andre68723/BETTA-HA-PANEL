@@ -1053,7 +1053,7 @@ static const char *quote_kind_text(ha_quote_series_kind_t kind)
 }
 
 typedef struct {
-    ha_quote_point_t point[QUOTE_PLOT_MAX];
+    ha_quote_point_t point[QUOTE_PLOT_MAX + 3];
     size_t count;
 } quote_plot_t;
 
@@ -1094,7 +1094,7 @@ static void quote_received(void *user, quote_feed_status_t status, const ha_quot
                                                      status == QUOTE_FEED_FAILED ? "History not available" : "No history for this period"));
         return;
     }
-    if (status == QUOTE_FEED_EMPTY) {
+    if (status == QUOTE_FEED_EMPTY && (popup->period != HA_QUOTE_PERIOD_1D || !popup->quote.available)) {
         lv_label_set_text(popup->status, ui_i18n_get("stock.history_empty", "No history for this period"));
         return;
     }
@@ -1111,6 +1111,8 @@ static void quote_received(void *user, quote_feed_status_t status, const ha_quot
             else snprintf(when, sizeof(when), "%s", ui_i18n_get("stock.prev_close", "prev. close"));
             if (c.base_t != 0 && strchr(when, ' ') != NULL) *strchr(when, ' ') = '\0'; /* a close is a day */
             snprintf(change, sizeof(change), "  \xC2\xB7  %s  %s  %s %s (%s)", amount, pct, ui_i18n_get("stock.since", "since"), base, when);
+        } else if (series->kind == HA_QUOTE_SERIES_STATES) {
+            snprintf(change, sizeof(change), "  \xC2\xB7  %s  %s", amount, pct);
         } else {
             snprintf(change, sizeof(change), "  \xC2\xB7  %s %s", ui_i18n_get("stock.trend", "trend"), pct);
         }
@@ -1128,6 +1130,10 @@ static void quote_received(void *user, quote_feed_status_t status, const ha_quot
     quote_plot_t *plot = ui_calloc_prefer_psram(1, sizeof(*plot));
     if (plot == NULL) return;
     plot->count = ha_quote_series_reduce(series, plot->point, QUOTE_PLOT_MAX);
+    if (series->period == HA_QUOTE_PERIOD_1D) {
+        plot->count = ha_quote_day_plot(plot->point, plot->count, QUOTE_PLOT_MAX + 3,
+                                        (int64_t)time(NULL), &popup->quote);
+    }
     float lowest = INFINITY, highest = -INFINITY;
     for (size_t i = 0; i < plot->count; i++) {
         if (!isfinite(plot->point[i].v)) continue;

@@ -201,6 +201,8 @@ def main():
                         "connectivity_ha": json.loads((REPO / "tests/simulator/connectivity_ha.json").read_text()),
                         "connectivity_wifi": json.loads((REPO / "tests/simulator/connectivity_wifi.json").read_text()),
                         }
+            fixtures["weather_hourly"] = json.loads((REPO / "tests/simulator/weather_hourly.json").read_text())
+            fixtures["stock_precision"] = json.loads((REPO / "tests/simulator/stock_precision.json").read_text())
             if args.variant == "panel4":  # the readability fixtures use panel4's 720x600 pages and its role sizes
                 fixtures["readability"] = json.loads((REPO / "tests/simulator/readability.json").read_text())
                 for kind in ("numeric", "state"):

@@ -454,7 +454,18 @@ void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_val
         return;
     }
 
+    ctx->available = available && values != NULL;
+    if (ctx->available) {
+        ctx->last_values = *values;
+        weather_build_3day_rows(values, ctx->render_rows);
+    } else {
+        memset(ctx->render_rows, 0, sizeof(ctx->render_rows));
+    }
     weather_now_hide(&ctx->now_view);
+    if (ctx->show_hourly && weather_hourly_render(card, ctx, values)) {
+        weather_hide_lottie(ctx);
+        return;
+    }
     if (available && values != NULL) {
         weather_now_data_t now = {
             .hide_name = ctx->hide_name, .has_temp = values->has_temp, .temp = values->temp, .unit = values->unit,

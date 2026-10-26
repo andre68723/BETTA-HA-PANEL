@@ -106,6 +106,22 @@ esp_err_t ha_client_call_service(const char *domain, const char *service, const 
     return s_service_result;
 }
 
+static bool s_response_capture, s_response_sync_failure;
+static ha_client_response_cb_t s_response_cb;
+static void *s_response_user;
+void sim_host_response_mode(bool capture, bool synchronous_failure)
+{
+    s_response_capture = capture;
+    s_response_sync_failure = synchronous_failure;
+}
+void sim_host_response_deliver(bool success, cJSON *result)
+{
+    ha_client_response_cb_t cb = s_response_cb;
+    void *user = s_response_user;
+    s_response_cb = NULL; s_response_user = NULL;
+    if (cb) cb(success, result, user);
+}
+
 esp_err_t ha_client_call_service_with_response(const char *domain, const char *service,
                                                 const char *target_entity_id, const char *json_service_data,
                                                 ha_client_response_cb_t cb, void *user)
@@ -114,8 +130,11 @@ esp_err_t ha_client_call_service_with_response(const char *domain, const char *s
     (void)service;
     (void)target_entity_id;
     (void)json_service_data;
-    (void)cb;
-    (void)user;
+    if (s_response_sync_failure) { cb(false, NULL, user); return ESP_FAIL; }
+    if (s_response_capture && s_response_cb == NULL) {
+        s_response_cb = cb; s_response_user = user;
+        return ESP_OK;
+    }
     return ESP_FAIL;
 }
 

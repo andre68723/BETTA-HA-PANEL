@@ -281,7 +281,7 @@ static esp_err_t start(int slot)
     const int64_t now = (int64_t)time(NULL);
     switch (e->period) {
     case HA_QUOTE_PERIOD_1D:
-        return ha_history_request(e->entity_id, true, e->generation, on_snapshot);
+        return ha_history_request_today(e->entity_id, e->generation, on_snapshot);
     case HA_QUOTE_PERIOD_1W:
         return ha_history_request_week(e->entity_id, "", false, "", e->generation, on_week);
     default:

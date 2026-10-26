@@ -39,7 +39,7 @@ typedef enum {
 typedef struct ha_quote {
     bool available;                     /* the state is a finite price */
     double price;
-    int price_decimals;                 /* digits after the point in the state (source precision), 0 .. 6 */
+    int price_decimals;                 /* digits after the point in the state (source precision), 0 .. 18 */
     char currency[HA_QUOTE_CURRENCY_LEN]; /* "EUR", "USD", "GBp" (pence, kept as it is) or "" */
     bool has_change;
     double change;                      /* last session, in the currency of the price */
@@ -55,6 +55,8 @@ typedef struct ha_quote {
     int64_t quote_time;                 /* UTC epoch seconds */
     bool has_live;                      /* Easy Stock price_is_live */
     bool price_is_live;
+    bool has_traded_today;              /* Easy Stock: absent stays unknown, not false */
+    bool traded_today;
 } ha_quote_t;
 
 /* Registry platform -> provider. NULL is a pending lookup, "" a failed one. */
@@ -74,5 +76,5 @@ void ha_quote_format_number(char *out, size_t cap, double value, int decimals, b
 /* The sign shown after a price: "€" for EUR, "$" for USD, otherwise the currency code ("GBp", "CHF"). */
 const char *ha_quote_currency_sign(const char *currency);
 
-/* Digits a price is shown with: its source precision, at least 2 and at most 4. */
+/* Source precision, at least 2; up to 4 for prices >= 1, eight significant digits below 1 (max 18 decimals). */
 int ha_quote_price_decimals(const ha_quote_t *quote);

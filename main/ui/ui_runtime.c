@@ -900,6 +900,7 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     cJSON *forecast_days = cJSON_GetObjectItemCaseSensitive(widget_json, "forecast_days");
     out->forecast_days = cJSON_IsNumber(forecast_days) ? forecast_days->valueint : -1;
     out->align_forecast = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "align_forecast"));
+    out->weather_hourly = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "weather_hourly"));
     out->show_precipitation = true;
     cJSON *show_precip = cJSON_GetObjectItemCaseSensitive(widget_json, "show_precipitation");
     if (cJSON_IsBool(show_precip)) {

@@ -63,6 +63,7 @@ A fixture is the layout's `pages` plus `states`. Get the pages from an authentic
  "attributes": {"unit_of_measurement": "kW"}, "display_precision": 2, "age_seconds": 240}
 ```
 
+- `weather_hourly` at the fixture root maps weather entity IDs to real-shaped hourly forecast arrays (`datetime`, `temperature`, `condition`); these service replies stay outside the state-attribute buffer.
 - `display_precision` (0-6, optional) feeds the firmware's precision cache; without it the raw state shows.
 - `age_seconds` (optional) drives the freshness text.
 - `frame` freezes the top bar: `date` (dd.mm.yyyy), `time` (HH:MM), `weather_temperature`, `weather_condition` (for

@@ -35,7 +35,7 @@ function widgetSizeLimitsForCanvas(type) {
     case "heating_tile":
       return { minW: 220, minH: 200, maxW: 480, maxH: 480 };
     case "weather_tile":
-      return { minW: 220, minH: 200, maxW: 480, maxH: 480 };
+      return { minW: 220, minH: 200, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "weather_3day":
       return { minW: 260, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "solar_forecast":
@@ -494,6 +494,8 @@ bambuFields: document.getElementById("bambuFields"),
   fSensorUnitWrap: document.getElementById("fSensorUnitWrap"),
   fSensorUnitLabel: document.getElementById("fSensorUnitLabel"),
   fEntityClass: document.getElementById("fEntityClass"),
+  weatherNowOptions: document.getElementById("weatherNowOptions"),
+  fWeatherHourly: document.getElementById("fWeatherHourly"),
   weatherForecastOptions: document.getElementById("weatherForecastOptions"),
   fWeatherShowPrecip: document.getElementById("fWeatherShowPrecip"),
   fForecastDays: document.getElementById("fForecastDays"),

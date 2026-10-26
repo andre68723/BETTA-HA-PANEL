@@ -1,0 +1,119 @@
+{
+ "version": 1,
+ "pages": [
+  {
+   "id": "stock_precision",
+   "title": "Stock precision and idle day",
+   "widgets": [
+    {
+     "id": "stock_edge_0",
+     "type": "stock_quotes",
+     "title": "Small prices",
+     "entity_id": "sensor.tiny_scientific",
+     "stock_delta": "both",
+     "stock_entities": [
+      "sensor.tiny_decimal"
+     ],
+     "rect": {
+      "x": 12,
+      "y": 12,
+      "w": 342,
+      "h": 276
+     }
+    },
+    {
+     "id": "stock_edge_1",
+     "type": "stock_quotes",
+     "title": "Small price today",
+     "entity_id": "sensor.tiny_scientific",
+     "stock_view": "chart",
+     "stock_period": "1d",
+     "rect": {
+      "x": 366,
+      "y": 12,
+      "w": 342,
+      "h": 276
+     }
+    },
+    {
+     "id": "stock_edge_2",
+     "type": "stock_quotes",
+     "title": "Last session",
+     "entity_id": "sensor.idle_quote",
+     "stock_delta": "both",
+     "stock_entities": [],
+     "rect": {
+      "x": 12,
+      "y": 300,
+      "w": 342,
+      "h": 276
+     }
+    },
+    {
+     "id": "stock_edge_3",
+     "type": "stock_quotes",
+     "title": "No trading today",
+     "entity_id": "sensor.idle_quote",
+     "stock_view": "chart",
+     "stock_period": "1d",
+     "rect": {
+      "x": 366,
+      "y": 300,
+      "w": 342,
+      "h": 276
+     }
+    }
+   ]
+  }
+ ],
+ "states": [
+  {
+   "entity_id": "sensor.tiny_scientific",
+   "state": "4.35e-06",
+   "platform": "easy_stock",
+   "attributes": {
+    "symbol": "TINY_SCIENTIFIC",
+    "friendly_name": "Tiny Scientific",
+    "currency": "USD",
+    "previous_close": 4e-06,
+    "change": 3.5000000000000004e-07,
+    "change_pct": 8.75,
+    "price_is_live": false,
+    "traded_today": true,
+    "market_state": "CLOSED"
+   }
+  },
+  {
+   "entity_id": "sensor.tiny_decimal",
+   "state": "0.00000435",
+   "platform": "easy_stock",
+   "attributes": {
+    "symbol": "TINY_DECIMAL",
+    "friendly_name": "Tiny Decimal",
+    "currency": "USD",
+    "previous_close": 4e-06,
+    "change": 3.5000000000000004e-07,
+    "change_pct": 8.75,
+    "price_is_live": false,
+    "traded_today": true,
+    "market_state": "CLOSED"
+   }
+  },
+  {
+   "entity_id": "sensor.idle_quote",
+   "state": "110",
+   "platform": "easy_stock",
+   "attributes": {
+    "symbol": "IDLE_QUOTE",
+    "friendly_name": "Idle Quote",
+    "currency": "USD",
+    "previous_close": 100,
+    "change": 10.0,
+    "change_pct": 10.0,
+    "price_is_live": false,
+    "traded_today": false,
+    "market_state": "CLOSED"
+   }
+  }
+ ]
+}

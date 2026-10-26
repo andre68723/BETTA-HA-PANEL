@@ -135,6 +135,15 @@ static void pf_update(w_pf_ctx_t *ctx)
          * the coming hours (into tomorrow once published) to its right. */
         const int64_t step = ctx->has_series && ctx->series.interval_s > 0 ? ctx->series.interval_s : 3600;
         ctx->day_start_s = ctx->now_s - ctx->now_s % step + step / 2 - 12 * 3600;
+        /* A list that starts with today (the price sensors drop yesterday) leaves the left of that window empty while the late hours at its
+         * right are cut off: let the window begin at the first priced interval instead. The running interval stays inside it, because that
+         * start lies less than 12 hours before now. */
+        for (int i = 0; i < ctx->series.count; i++) {
+            if (ctx->series.price[i] == HA_PRICE_MISSING) continue;
+            const int64_t first_s = ha_price_slot_start(&ctx->series, i);
+            if (ctx->day_start_s < first_s && first_s <= ctx->now_s) ctx->day_start_s = first_s;
+            break;
+        }
         ctx->day_end_s = ctx->day_start_s + 24 * 3600;
     }
     if (ctx->day_start_s < 0 || ctx->day_end_s <= ctx->day_start_s) {

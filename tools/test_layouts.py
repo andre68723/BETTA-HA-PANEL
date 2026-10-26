@@ -301,7 +301,7 @@ def demo_states(board):
         for key in ("parqet_perf", "graph_history"):
             if key in fixture:
                 extra.setdefault(key, fixture[key])
-    return list(states.values()), dict(extra, parqet_perf=gallery.get("parqet_perf", extra.get("parqet_perf", [])))
+    return list(states.values()), dict(extra, weather_hourly=gallery.get("weather_hourly", {}), parqet_perf=gallery.get("parqet_perf", extra.get("parqet_perf", [])))
 
 
 STYLES = ("flat", "glow", "glass", "matte")

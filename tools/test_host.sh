@@ -81,6 +81,12 @@ cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/host/stubs \
   "${cjson_sources[@]}" "${cjson_libs[@]}" -lm -o "$out/test_price_series"
 TZ=Europe/Berlin "$out/test_price_series"
 
+# Hourly weather: bounded real forecast samples, exact entity, invalid data and repeated DST hour.
+cc -std=gnu11 -Wall -Wextra -Werror -g -I main "${cjson_flags[@]}" \
+  tests/host/test_weather_hourly.c main/ha/ha_weather_hourly.c main/util/iso_time.c \
+  "${cjson_sources[@]}" "${cjson_libs[@]}" -lm -o "$out/test_weather_hourly"
+"$out/test_weather_hourly"
+
 # Stocks & ETFs histories: Easy Stock's reply, periods with their reference, Home Assistant sources, change and reduction.
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/host/stubs \
   -DCONFIG_IDF_TARGET_ESP32P4=1 "${cjson_flags[@]}" \

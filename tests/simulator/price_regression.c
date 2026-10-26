@@ -156,12 +156,38 @@ static void calendar_cases(void)
     fresh_screen();
 }
 
+/* Without the day buttons the tile shows 24 hours around now. A list that starts with today (yesterday dropped out of the sensor) used to
+ * leave the left of that window empty and cut the evening off at the right (issue #1, 2026-10-27): at 02:00 the window now begins at 00:00. */
+static void window_cases(void)
+{
+    const time_t saved = sim_clock_fixed() ? time(NULL) : 0;
+    sim_clock_set(1792022400); /* 2026-10-15 02:00 Berlin, midnight 1792015200 */
+    CHECK(day_start(time(NULL), 0) == 1792015200);
+    fresh_screen();
+    ui_widget_def_t def = {.w = 700, .h = 400, .price_selector = false, .price_cheap_times = true};
+    strcpy(def.type, "energy_price_forecast");
+    strcpy(def.entity_id, "sensor.price");
+    strcpy(def.title, "Price");
+    ui_widget_instance_t widget = {0};
+    CHECK(ui_widget_factory_create(&def, lv_screen_active(), &widget) == ESP_OK);
+    lv_obj_update_layout(widget.obj);
+    cJSON *attrs = list_attrs(1); /* today only: 00:00 to 24:00 */
+    apply_attrs(&widget, "sensor.price", "0.2", attrs);
+    CHECK(find_prefix(widget.obj, "02:00-03:00") != NULL); /* the running interval is inside the window */
+    CHECK(find_prefix(widget.obj, "min 12,0  max 23,5") != NULL); /* the whole day; the old window (14:30 yesterday to 14:30 today) ended at 14:00: max 20,0 */
+    cJSON_Delete(attrs);
+    lv_obj_delete(widget.obj);
+    sim_clock_set(saved);
+    fresh_screen();
+}
+
 int sim_price_regression(void)
 {
     sim_host_set_online(true);
     setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
     tzset();
     calendar_cases();
+    window_cases();
     ui_widget_def_t def = {.w = 700, .h = 400, .price_selector = true, .price_cheap_times = true};
     strcpy(def.type, "energy_price_forecast");
     strcpy(def.entity_id, "sensor.price");

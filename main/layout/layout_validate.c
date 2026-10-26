@@ -404,7 +404,12 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         layout_validation_add(result, msg);
     }
 
-    if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "weather_3day") == 0 &&
+    cJSON *hourly = cJSON_GetObjectItemCaseSensitive(widget, "weather_hourly");
+    if (hourly != NULL && (!cJSON_IsBool(hourly) || !cJSON_IsString(type) || strcmp(type->valuestring, "weather_tile") != 0)) {
+        layout_validation_add(result, "weather_hourly must be a boolean on weather_tile");
+    }
+
+    if (cJSON_IsString(type) && type->valuestring != NULL && (strcmp(type->valuestring, "weather_3day") == 0 || strcmp(type->valuestring, "weather_tile") == 0) &&
         cJSON_IsString(secondary_entity_id) && secondary_entity_id->valuestring != NULL &&
         secondary_entity_id->valuestring[0] != '\0') {
         /* Optional DWD weather report sensor. */
@@ -493,7 +498,7 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
             }
         }
         static const char *const choices[][6] = {
-            {"stock_view", "list", "chart", NULL},
+            {"stock_view", "list", "chart", "grid", NULL},
             {"stock_period", "1d", "1w", "30d", "ytd", "1y"},
             {"stock_delta", "percent", "absolute", "both", NULL},
         };

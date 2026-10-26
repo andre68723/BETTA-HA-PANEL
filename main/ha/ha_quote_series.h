@@ -79,7 +79,7 @@ typedef enum {
 bool ha_quote_period_from_code(const char *code, ha_quote_period_t *out);
 const char *ha_quote_period_code(ha_quote_period_t period);
 
-/* The period's start before now: 24 or 168 hours back; for 30D, YTD and 1Y a local midnight (30 days back, January 1,
+/* The period's start: local midnight for 1D, 168 hours back for 1W; for 30D, YTD and 1Y a local midnight (30 days back, January 1,
  * the same date a year back). False without a valid clock. */
 bool ha_quote_period_start(ha_quote_period_t period, int64_t now, int64_t *out);
 
@@ -116,6 +116,11 @@ bool ha_quote_series_change(const ha_quote_series_t *series, bool has_current, d
  * states starts at the quote's previous close when it has one (the session's reference; base_t is 0 then). */
 struct ha_quote;
 bool ha_quote_series_period_change(const ha_quote_series_t *series, const struct ha_quote *quote, ha_quote_change_t *out);
+
+/* Today's return (zero when Easy Stock explicitly reports no trading) and a plot from local midnight to now.
+ * day_plot edits a reduced copy, with three spare slots for the baseline and current price. */
+bool ha_quote_day_change(const struct ha_quote *quote, ha_quote_change_t *out);
+size_t ha_quote_day_plot(ha_quote_point_t *point, size_t count, size_t cap, int64_t now, const struct ha_quote *quote);
 
 /* At most max points for a small chart, keeping the lowest and highest value of every reduced interval and every gap. */
 size_t ha_quote_series_reduce(const ha_quote_series_t *series, ha_quote_point_t *out, size_t max);

@@ -141,6 +141,8 @@ typedef struct w_rr_ctx {
     size_t robot_trail_count;
 
     char state_text[48];
+    char restore_text[48];      /* state_text while a failed command's notice replaces it */
+    int64_t notice_until_ms;    /* 0: no notice shown */
     char detail_text[160];
     char fan_speed[HA_CONTROL_OPTION_LEN];
     ha_control_options_t fan_options;
@@ -1278,6 +1280,7 @@ static void w_rr_style_control(lv_obj_t *btn, lv_obj_t *label, ui_control_role_t
 }
 
 static esp_err_t w_rr_call_vacuum_simple(const char *service, const char *entity_id);
+static void w_rr_command_failed(w_rr_ctx_t *ctx, const char *what, esp_err_t err);
 
 static void w_rr_style_stop_button(w_rr_ctx_t *ctx)
 {
@@ -1635,7 +1638,7 @@ static void w_rr_stop_event_cb(lv_event_t *event)
     }
     esp_err_t err = w_rr_call_vacuum_simple("stop", ctx->entity_id);
     if (err != ESP_OK) {
-        ESP_LOGW(W_RR_TAG, "stop failed (%s): %s", ctx->entity_id, esp_err_to_name(err));
+        w_rr_command_failed(ctx, "stop", err);
     }
 }
 
@@ -1676,6 +1679,20 @@ static esp_err_t w_rr_call_vacuum_simple(const char *service, const char *entity
     char payload[160];
     snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\"}", entity_id);
     return ha_client_call_service("vacuum", service, payload);
+}
+
+#define W_RR_NOTICE_MS 3000
+
+/* A command that could not be sent says so in the state line for a few seconds, then the real state returns. */
+static void w_rr_command_failed(w_rr_ctx_t *ctx, const char *what, esp_err_t err)
+{
+    ESP_LOGW(W_RR_TAG, "%s failed (%s): %s", what, ctx->entity_id, esp_err_to_name(err));
+    if (ctx->notice_until_ms == 0) strlcpy(ctx->restore_text, ctx->state_text, sizeof(ctx->restore_text));
+    const char *text = err == ESP_ERR_INVALID_STATE ? ui_i18n_get("roborock.not_connected", "Home Assistant not connected")
+                                                    : ui_i18n_get("roborock.send_failed", "Command not sent");
+    snprintf(ctx->state_text, sizeof(ctx->state_text), "%s", text);
+    ctx->notice_until_ms = w_rr_now_ms() + W_RR_NOTICE_MS;
+    w_rr_apply_visual(ctx);
 }
 
 /* The cleaning-mode popup is the shared option picker (ui_option_picker.c). */
@@ -1791,8 +1808,10 @@ static void w_rr_start_event_cb(lv_event_t *event)
     }
     esp_err_t err = w_rr_call_vacuum_simple(should_pause ? "pause" : "start", ctx->entity_id);
     if (err != ESP_OK) {
+        w_rr_command_failed(ctx, should_pause ? "pause" : "start", err);
         return;
     }
+    ctx->notice_until_ms = 0;
 
     if (should_pause) {
         ctx->active_clean = false;
@@ -1818,9 +1837,12 @@ static void w_rr_dock_event_cb(lv_event_t *event)
     if (ctx == NULL || ctx->unavailable) {
         return;
     }
-    if (w_rr_call_vacuum_simple("return_to_base", ctx->entity_id) != ESP_OK) {
+    const esp_err_t err = w_rr_call_vacuum_simple("return_to_base", ctx->entity_id);
+    if (err != ESP_OK) {
+        w_rr_command_failed(ctx, "return_to_base", err);
         return;
     }
+    ctx->notice_until_ms = 0;
     ctx->active_clean = false;
     ctx->paused = false;
     ctx->returning = true;
@@ -1954,6 +1976,7 @@ static void w_rr_apply_primary_state(w_rr_ctx_t *ctx, const ha_state_t *state)
     if (ctx->fan_popup != NULL) ui_option_picker_close(ctx->fan_popup);
     ha_control_options_parse(state->attributes_json, "fan_speed_list", "fan_speed", &ctx->fan_options);
     ctx->detail_text[0] = '\0';
+    ctx->notice_until_ms = 0; /* a new state replaces a failed command's notice */
 
     if (ctx->charging && (ctx->robot_position.valid || ctx->robot_trail_count > 0 || ctx->position_failed)) {
         ctx->robot_position = (w_rr_position_t){0};
@@ -2148,6 +2171,11 @@ static void w_rr_tick_cb(lv_timer_t *timer)
     w_rr_drain_pending_position(ctx);
 
     int64_t now = w_rr_now_ms();
+    if (ctx->notice_until_ms != 0 && now >= ctx->notice_until_ms) {
+        ctx->notice_until_ms = 0;
+        strlcpy(ctx->state_text, ctx->restore_text, sizeof(ctx->state_text));
+        w_rr_apply_visual(ctx);
+    }
     if (w_rr_has_map_entity(ctx) && ctx->popup_map_panel != NULL && ctx->popup_map_request_pending &&
         !ctx->popup_map_request_inflight) {
         w_rr_request_popup_map(ctx);

@@ -211,7 +211,7 @@ WIDGETS = {
                   "A gain or dividends sensor in another currency than the total value, or a percentage sensor without `%`, is left out and the line says **Unit differs**."],
     },
     "stock_quotes": {
-        "summary": "Shows **up to eight quotes** of Yahoo Finance or Easy Stock `sensor.*` entities as a list or as charts, with the last session's change and a detail view over five periods.",
+        "summary": "Shows **up to eight quotes** of Yahoo Finance or Easy Stock `sensor.*` entities as a list, as charts or as tiles, with the last session's change and a detail view over five periods.",
         "entities": [("Quote 1", "`sensor.*` of Yahoo Finance or Easy Stock", True), ("Quote 2 to 8", "`sensor.*` of Yahoo Finance or Easy Stock", False)],
         "requirements": "One of two integrations from HACS, or both mixed: **[Yahoo Finance](https://github.com/iprak/yahoofinance)** "
                         "(`iprak/yahoofinance`) or **[Easy Stock](https://github.com/derspe/ha-easy-stock)**. The panel reads from Home "
@@ -219,18 +219,21 @@ WIDGETS = {
                         "**Not a quote**. Easy Stock's daily closes come from the integration's own history endpoint; for Yahoo Finance, "
                         "longer periods use Home Assistant's statistics, so they exist only since Home Assistant records the sensor.",
         "options": [("Quote 1 to 8", "the quotes in their order; ↑ moves a quote up, an emptied row closes the gap"),
-                    ("View", "**List**: name, price and the last session's change; **Charts**: a small chart per quote"),
+                    ("View", "**List**: name, price and the last session's change; **Charts**: a small chart per quote; **Tiles**: a card per quote with name, price, the period change and a chart, in two columns on a wide tile and one on a narrow one"),
                     ("Period", "1 day, 1 week, 30 days, year to date or 1 year: the charts' first period and the one the details open with"),
                     ("Change", "percent, amount, or both"),
-                    ("Show the symbol", "the ticker under the name (list) or after it (charts)"),
-                    ("Show selector buttons on the tile", "on by default, charts only: the period buttons **1D, 1W, 30D, YTD, 1Y**; off shows the period above")],
+                    ("Show the symbol", "the ticker under the name (list), after it (charts) or beside it (tiles)"),
+                    ("Show selector buttons on the tile", "on by default, charts and tiles: the period buttons **1D, 1W, 30D, YTD, 1Y**; off shows the period above")],
         "panel": ["The price is the sensor's state with its currency; pence stay pence (GBp). A change that does not belong to the shown price "
-                  "(a converted or after-hours price) is left out, a missing change shows `--`.",
-                  "Rows scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market "
+                  "(a converted or after-hours price) is left out, a missing change shows `--`. Prices below 1 retain up to eight significant digits.",
+                  "Rows and tiles scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market "
                   "state, the time of the quote and of the last update in Home Assistant, and a chart over **1D, 1W, 30D, YTD, 1Y**.",
                   "Every chart names its source: **Closes** (Easy Stock, against the close before the period), **Recorded** (a day of "
-                  "Home Assistant's records, against the previous close) or Home Assistant's daily, weekly or hourly means, whose change "
+                  "Home Assistant's records from local midnight, against the previous close) or Home Assistant's daily, weekly or hourly means, whose change "
                   "is a **trend**, not a market return. A shorter history says from when it starts.",
+                  "**1D means today**, from local midnight to now in the panel's time zone. Keep the panel and Home Assistant in the same time zone. "
+                  "When Easy Stock explicitly reports no trading today, the 1D chart is flat at 0%; the list keeps the last session's change. "
+                  "Without that attribute, including Yahoo Finance, 1D uses the previous close as its reference.",
                   "Charts are fetched only for a page on screen, one at a time, and refreshed every 15 minutes."],
     },
     "energy_price_forecast": {
@@ -238,7 +241,7 @@ WIDGETS = {
         "entities": [("Price sensor", "`sensor.*` with a price list", True), ("Average sensor (EUR/kWh)", "`sensor.*`", False)],
         "requirements": "Choose the price-list sensor, not a scalar current price or CO₂ reading. Open the Inspector’s **Entities** info icon for supported data, average-reference precedence and troubleshooting.",
         "options": [("Average (fixed, EUR/kWh; empty = calculated)", "a fixed average instead of the day's own; an average sensor replaces it too"),
-                    ("Show selector buttons on the tile", "Today/Tomorrow buttons, one toggle on a narrow tile; off (default) shows the 24 hours around now"),
+                    ("Show selector buttons on the tile", "Today/Tomorrow buttons, one toggle on a narrow tile; off (default) shows the 24 hours around now, starting at the first price of the list when the sensor drops yesterday's prices"),
                     ("Cheap times (shade and name the cheapest hours)", "shades the cheap windows and names the next one"),
                     ("Line instead of filled bars", "a stepped line")],
         "panel": ["One bar per interval in cent per kWh: green below the average, orange above it; past intervals dimmed, the running one outlined.",
@@ -363,11 +366,18 @@ WIDGETS = {
                   "With the report, a tap on the temperature shows the full text; a wide header shows a summary (about 150 × 40 px free)."],
     },
     "weather_tile": {
-        "summary": "Shows the **current conditions** of a `weather.*` entity, its temperature and the extra readings the provider supplies.",
-        "entities": [("Weather", "`weather.*`", True)],
-        "requirements": None,
-        "options": [("Show name", "off by default, to leave room for the conditions")],
-        "panel": ["Today's low and precipitation when there is room; the same Meteocons as the forecast.",
-                  "UV, pressure and other extras appear only when the provider supplies them.", "Read-only."],
+        "summary": "Shows the **current conditions** of a `weather.*` entity, with optional hourly forecasts and a detail popup for readings and the DWD weather report.",
+        "entities": [("Weather", "`weather.*`", True), ("DWD weather report", "`sensor.*`", False)],
+        "requirements": "Current conditions need a weather entity. **Show hourly forecast** needs that provider's hourly forecasts; "
+                        "daily forecasts are not substituted. The optional German report needs the **[DWD Weather integration](https://github.com/FL550/dwd_weather)** "
+                        "and its separate *Weather report* sensor; enable it in Home Assistant if it is disabled.",
+        "options": [("Show hourly forecast", "off by default; adds a horizontal strip of up to 24 upcoming hours with time, condition and temperature"),
+                    ("DWD weather report", "optional sensor, shown in the detail popup"),
+                    ("Show name", "off by default, to leave room for the conditions")],
+        "panel": ["A tap opens today's details: temperatures, the available humidity, pressure, wind and visibility, and the optional DWD report.",
+                  "With hourly forecasts, scroll horizontally for later hours; scrolling does not open the popup. Times use the panel's time zone.",
+                  "Hourly forecasts are fetched only while the tile is visible and refreshed every 15 minutes. A missing hourly forecast is shown explicitly; current conditions remain available.",
+                  "Without the hourly strip, today's low and precipitation appear when there is room. The tile uses the same Meteocons as the daily forecast.",
+                  "Close details with the close button or a tap outside; they also close automatically after one minute."],
     },
 }

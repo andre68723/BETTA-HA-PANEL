@@ -306,7 +306,7 @@ static void test_layout(void)
     /* Stocks & ETFs: up to eight sensors, its options. */
     const char *stock_rect = "\"rect\":{\"x\":0,\"y\":0,\"w\":300,\"h\":200}";
     expect_valid("stock quotes list", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_entities\":"
-        "[\"sensor.b\",\"sensor.c\"],\"stock_view\":\"chart\",\"stock_period\":\"ytd\",\"stock_delta\":\"both\","
+        "[\"sensor.b\",\"sensor.c\"],\"stock_view\":\"grid\",\"stock_period\":\"ytd\",\"stock_delta\":\"both\","
         "\"stock_ticker\":true,%s", stock_rect));
     expect_invalid("stock quotes nine", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_entities\":"
         "[\"sensor.b\",\"sensor.c\",\"sensor.d\",\"sensor.e\",\"sensor.f\",\"sensor.g\",\"sensor.h\",\"sensor.i\"],%s", stock_rect),
@@ -315,7 +315,7 @@ static void test_layout(void)
         "[\"light.b\"],%s", stock_rect), "stock_entities");
     expect_invalid("stock quotes period", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_period\":\"max\",%s",
         stock_rect), "stock_period");
-    expect_invalid("stock quotes view", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_view\":\"grid\",%s",
+    expect_invalid("stock quotes view", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_view\":\"tiles\",%s",
         stock_rect), "stock_view");
     expect_invalid("stock quotes ticker", W("\"type\":\"stock_quotes\",\"entity_id\":\"sensor.a\",\"stock_ticker\":1,%s",
         stock_rect), "stock_ticker");

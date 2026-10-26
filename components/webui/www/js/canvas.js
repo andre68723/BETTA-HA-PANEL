@@ -70,7 +70,7 @@ function renderEntityOptions() {
     el.fSecondaryEntityLabel.textContent = t(secondaryConfig.labelKey, {}, secondaryConfig.labelFallback);
   }
   if (el.weatherReportHint) {
-    el.weatherReportHint.classList.toggle("hidden", inspectorType !== "weather_3day");
+    el.weatherReportHint.classList.toggle("hidden", !["weather_tile", "weather_3day"].includes(inspectorType));
     el.weatherReportHint.textContent = t("layout.inspector.weather_report_hint");
   }
   if (el.sonosFavoritesHint) {
@@ -1160,6 +1160,8 @@ function renderInspector() {
     el.gaugeOptions.classList.toggle("hidden", !isGauge);
   }
   updateGaugeBarStyleVisibility();
+  if (el.weatherNowOptions) el.weatherNowOptions.classList.toggle("hidden", widget.type !== "weather_tile");
+  if (el.fWeatherHourly) el.fWeatherHourly.checked = widget.type === "weather_tile" && widget.weather_hourly === true;
   if (el.weatherForecastOptions) {
     el.weatherForecastOptions.classList.toggle("hidden", widget.type !== "weather_3day");
   }
@@ -2139,6 +2141,8 @@ function applyInspector(options = {}) {
   } else {
     delete widget.show_precipitation; // default: shown
   }
+  if (widgetType === "weather_tile" && el.fWeatherHourly?.checked) widget.weather_hourly = true;
+  else delete widget.weather_hourly;
   saveReadabilityFields(widget);
   if (widgetSupportsName(widgetType) && el.fShowName && el.fShowName.checked !== widgetNameDefault(widgetType)) {
     widget.show_name = el.fShowName.checked; // only a deviation from the type's default is stored

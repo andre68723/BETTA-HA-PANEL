@@ -273,6 +273,7 @@ for (const [input, type, entity, property, firstChecked, firstValue, secondValue
   ["fStockTicker", "stock_quotes", "sensor.quote_a", "stock_ticker", true, true, undefined],
   ["fShowName", "sensor", "sensor.temperature", "show_name", false, false, undefined],
   ["fSensorShowAge", "sensor", "sensor.temperature", "sensor_show_age", false, false, undefined],
+  ["fWeatherHourly", "weather_tile", "weather.home", "weather_hourly", true, true, undefined],
   ["fWeatherShowPrecip", "weather_3day", "weather.home", "show_precipitation", false, false, undefined],
   ["fAlignForecast", "solar_forecast", "sensor.solar", "align_forecast", true, true, undefined],
 ]) {
@@ -396,7 +397,8 @@ test("stock quotes: add, reorder, remove a quote and the options through Inspect
   assert.equal(run("JSON.stringify(selectedWidget().stock_entities)"), JSON.stringify(["sensor.quote_c", "sensor.quote_b"]));
   run("stockMoveUp(1)"); // and above the first: it becomes the primary entity
   assert.equal(run("selectedWidget().entity_id"), "sensor.quote_c");
-  run('el.fStockView.value = "chart"; el.fStockView.dispatch("change")');
+  run('el.fStockView.value = "grid"; el.fStockView.dispatch("change")');
+  assert.equal(run("el.fStockSelectorRow.hidden"), false); // the period buttons belong to the tile view too
   run('el.fStockPeriod.value = "ytd"; el.fStockPeriod.dispatch("change")');
   run('el.fStockDelta.value = "both"; el.fStockDelta.dispatch("change")');
   run('el.fStockTicker.checked = true; el.fStockTicker.dispatch("change")');
@@ -404,13 +406,20 @@ test("stock quotes: add, reorder, remove a quote and the options through Inspect
   const saved = JSON.parse(run("JSON.stringify(savedLayout.pages[0].widgets[0])"));
   assert.equal(saved.entity_id, "sensor.quote_c");
   assert.deepEqual(saved.stock_entities, ["sensor.quote_a", "sensor.quote_b"]);
-  assert.equal(saved.stock_view, "chart");
+  assert.equal(saved.stock_view, "grid");
   assert.equal(saved.stock_period, "ytd");
   assert.equal(saved.stock_delta, "both");
   assert.equal(saved.stock_ticker, true);
   run("editor.layout = savedLayout; renderInspector()");
   assert.equal(run("el.fStock1.value"), "sensor.quote_a");
+  assert.equal(run("el.fStockView.value"), "grid");
+  assert.equal(run("el.fStockDelta.value"), "both");
+  assert.equal(run("el.fStockTicker.checked"), true);
   assert.equal(run("el.fStockPeriod.value"), "ytd");
+  // switching the view keeps the quotes and the shared options
+  run('el.fStockView.value = "chart"; el.fStockView.dispatch("change"); el.fStockView.value = "grid"; el.fStockView.dispatch("change")');
+  assert.equal(run("JSON.stringify(selectedWidget().stock_entities)"), JSON.stringify(["sensor.quote_a", "sensor.quote_b"]));
+  assert.equal(run("selectedWidget().stock_delta"), "both");
   // an emptied row closes the gap; the defaults are not written
   run('el.fStock1.value = ""; el.fStock1.dispatch("change")');
   run('el.fStockView.value = "list"; el.fStockView.dispatch("change"); el.fStockPeriod.value = "30d"; el.fStockPeriod.dispatch("change")');

@@ -1696,6 +1696,7 @@
                       <select id="fStockView">
                         <option value="list" id="fStockViewList">List</option>
                         <option value="chart" id="fStockViewChart">Charts</option>
+                        <option value="grid" id="fStockViewGrid">Tiles</option>
                       </select>
                     </label>
                     <label><span id="fStockPeriodLabel">Period</span>
@@ -1793,6 +1794,10 @@
                     </label>
                     <label class="row"><input id="fAlignForecast" type="checkbox" /><span id="fAlignForecastLabel">Line up days with the weather tile</span></label>
                     <div class="meta" id="fReadabilityHint"></div>
+                  </div>
+                  <div id="weatherNowOptions" class="slider-options hidden">
+                    <label class="row"><input id="fWeatherHourly" type="checkbox" /><span id="fWeatherHourlyLabel">Show hourly forecast</span></label>
+                    <div id="fWeatherHourlyHint" class="meta"></div>
                   </div>
                   <div id="weatherForecastOptions" class="slider-options hidden">
                     <label class="row">

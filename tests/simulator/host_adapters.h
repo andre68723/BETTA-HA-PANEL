@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ha/ha_model.h"
+#include "cJSON.h"
 #include "ha/ha_energy_model.h"
 #include "ha/ha_camera_stream.h"
 
@@ -27,3 +28,7 @@ const sim_service_calls_t *sim_host_service_calls(void);
 /* Values the slider widget handed to ui_bindings_set_slider_value(): how many, and the last one (-1 before any). */
 unsigned sim_host_slider_sets(void);
 int sim_host_slider_last(void);
+
+/* Script weather detail replies for popup ownership/error-path regressions. */
+void sim_host_response_mode(bool capture, bool synchronous_failure);
+void sim_host_response_deliver(bool success, cJSON *result);

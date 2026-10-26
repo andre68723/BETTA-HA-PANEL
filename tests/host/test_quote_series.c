@@ -47,7 +47,7 @@ static void test_periods(void)
 
     const int64_t now = local_epoch(2026, 10, 21, 15, 30);
     int64_t start;
-    CHECK(ha_quote_period_start(HA_QUOTE_PERIOD_1D, now, &start) && start == now - 86400);
+    CHECK(ha_quote_period_start(HA_QUOTE_PERIOD_1D, now, &start) && start == local_epoch(2026, 10, 21, 0, 0));
     CHECK(ha_quote_period_start(HA_QUOTE_PERIOD_30D, now, &start) && start == local_epoch(2026, 9, 21, 0, 0));
     CHECK(ha_quote_period_start(HA_QUOTE_PERIOD_YTD, now, &start) && start == local_epoch(2026, 1, 1, 0, 0));
     CHECK(ha_quote_period_start(HA_QUOTE_PERIOD_1Y, now, &start) && start == local_epoch(2025, 10, 21, 0, 0));
@@ -56,6 +56,41 @@ static void test_periods(void)
     /* across the DST change the start is still the local midnight */
     CHECK(ha_quote_period_start(HA_QUOTE_PERIOD_30D, local_epoch(2026, 11, 10, 8, 0), &start) && start == local_epoch(2026, 10, 11, 0, 0));
     CHECK(!ha_quote_period_start(HA_QUOTE_PERIOD_30D, 1000, &start)); /* no clock */
+}
+
+static void test_quote_day(void)
+{
+    ha_quote_t q = {.available = true, .price = 110, .has_prev_close = true, .prev_close = 100,
+                    .has_traded_today = true, .traded_today = false};
+    const int64_t now = local_epoch(2026, 10, 25, 23, 30);
+    int64_t start;
+    CHECK(ha_quote_period_start(HA_QUOTE_PERIOD_1D, now, &start));
+    CHECK(now - start == 24 * 3600 + 1800); /* autumn's 25-hour day */
+    CHECK(ha_quote_period_start(HA_QUOTE_PERIOD_1D, local_epoch(2026, 3, 29, 23, 30), &start));
+    CHECK(start == local_epoch(2026, 3, 29, 0, 0));
+    start = local_epoch(2026, 10, 25, 0, 0);
+    ha_quote_point_t points[8] = {{.t = start - 100, .v = 90}, {.t = start + 3600, .v = 105}};
+    ha_quote_series_t series = {.kind = HA_QUOTE_SERIES_STATES, .period = HA_QUOTE_PERIOD_1D};
+    ha_quote_change_t c;
+    CHECK(ha_quote_series_period_change(&series, &q, &c) && c.change_pct == 0 && c.base == 110);
+    size_t n = ha_quote_day_plot(points, 2, 8, now, &q);
+    CHECK(n == 2 && points[0].t == start && points[1].t == now && points[0].v == points[1].v);
+    q.traded_today = true;
+    points[0] = (ha_quote_point_t){.t = start - 100, .v = 90};
+    points[1] = (ha_quote_point_t){.t = start + 3600, .v = 105};
+    n = ha_quote_day_plot(points, 2, 8, now, &q);
+    CHECK(n == 4 && points[0].t == start && points[0].v == 100 && points[1].t == points[2].t);
+    CHECK(points[1].v == 100 && points[2].v == 105 && points[3].t == now && points[3].v == 110);
+    CHECK(ha_quote_series_period_change(&series, &q, &c) && c.change_pct == 10);
+    q.has_traded_today = false; /* Yahoo and older Easy Stock keep the previous-close reference. */
+    CHECK(ha_quote_series_period_change(&series, &q, &c) && c.change_pct == 10);
+    n = ha_quote_day_plot(points, 0, 8, now, &q);
+    CHECK(n == 2 && points[0].v == 100 && points[1].v == 110);
+    points[0] = (ha_quote_point_t){.t = start, .v = NAN};
+    n = ha_quote_day_plot(points, 1, 8, now, &q);
+    CHECK(n == 2 && points[0].t == start && points[1].t == now);
+    q.available = false;
+    CHECK(!ha_quote_day_change(&q, &c));
 }
 
 static void test_easy_reply(void)
@@ -207,6 +242,7 @@ static void test_reduce(void)
 int main(void)
 {
     test_periods();
+    test_quote_day();
     test_easy_reply();
     test_daily_periods();
     test_ha_sources();

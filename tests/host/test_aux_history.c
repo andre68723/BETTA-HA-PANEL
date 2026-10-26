@@ -102,6 +102,20 @@ static esp_err_t request_test(void) { return ha_history_request("sensor.test", t
 #endif
 
 int main(void) {
+#ifndef TEST_EASY_STOCK
+    setenv("TZ", "Europe/Berlin", 1); tzset();
+    struct tm local = {.tm_year = 126, .tm_mon = 9, .tm_mday = 25, .tm_hour = 23, .tm_min = 30, .tm_isdst = -1};
+    const time_t autumn = mktime(&local);
+    assert(autumn - history_window_start(autumn, 24, true) == 24 * 3600 + 1800);
+    assert(autumn - history_window_start(autumn, 24, false) == 24 * 3600);
+    assert(autumn - history_window_start(autumn, 6, true) == 6 * 3600);
+    local = (struct tm){.tm_year = 126, .tm_mon = 2, .tm_mday = 29, .tm_hour = 23, .tm_min = 30, .tm_isdst = -1};
+    const time_t spring = mktime(&local);
+    assert(spring - history_window_start(spring, 24, true) == 22 * 3600 + 1800);
+    local = (struct tm){.tm_year = 126, .tm_mon = 9, .tm_mday = 26, .tm_hour = 1, .tm_isdst = -1};
+    const time_t early = mktime(&local);
+    assert(early - history_window_start(early, 6, true) == 3600);
+#endif
     gate_busy = true;
     assert(fetch_test() == ESP_ERR_TIMEOUT && clock_us >= 20000000 && clock_us < 20200000 && opens == 0);
     gate_busy = false; clock_us = 0; slow = true;

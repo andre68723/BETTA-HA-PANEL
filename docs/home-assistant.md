@@ -30,8 +30,8 @@ Each widget guide lists its own requirements at the top; this is the overview.
 
 | Feature | Needs in Home Assistant | Guide |
 | --- | --- | --- |
-| Weather tile, top-bar weather | a `weather.*` entity from any provider with daily forecasts | [Weather](widgets/weather_tile.md) |
-| German report text on the forecast | **DWD Weather** and its *Weather report* sensor, disabled by default: show disabled entities, enable it | [Weather forecast](widgets/weather_3day.md) |
+| Weather tile, top-bar weather | a `weather.*` entity; daily forecasts for highs/lows, hourly forecasts for the optional hour strip | [Weather](widgets/weather_tile.md) |
+| German report text in weather details and on the forecast | **DWD Weather** and its *Weather report* sensor, disabled by default: show disabled entities, enable it | [Weather forecast](widgets/weather_3day.md) |
 | Solar forecast | one `sensor.*` per day to show; Solcast PV Forecast is one source, replace the suggested IDs | [Solar forecast](widgets/solar_forecast.md) |
 | Energy price forecast | one `sensor.*` with a `data` list of prices: EPEX Spot (Germany and many markets); Nord Pool and Tibber through a helper that stores their prices as `data` | [Energy price forecast](widgets/energy_price_forecast.md) |
 | Parqet portfolio | the total value `sensor.*` of the **Parqet Companion** integration (HACS), optionally its gain, XIRR and dividends sensors | [Parqet portfolio](widgets/parqet_portfolio.md) |

@@ -508,6 +508,25 @@
           "stock_selector": false
         }
       ]
+    },
+    {
+      "id": "p_weather_tile",
+      "title": "weather_tile",
+      "widgets": [
+        {
+          "id": "w_weather_tile",
+          "type": "weather_tile",
+          "entity_id": "weather.home",
+          "secondary_entity_id": "sensor.weather_report",
+          "weather_hourly": true,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 360,
+            "h": 300
+          }
+        }
+      ]
     }
   ],
   "alerts": [

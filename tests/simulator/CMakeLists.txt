@@ -77,6 +77,7 @@ add_executable(betta-widget-sim
     host_adapters.c
     camera_stream_stub.c
     controls_regression.c
+    weather_now_regression.c
     popup_contract_regression.c
     camera_regression.c
     wallbox_regression.c
@@ -191,6 +192,8 @@ add_executable(betta-widget-sim
     "${REPO_ROOT}/main/ui/widgets/weather_value_parse.c"
     "${REPO_ROOT}/main/ui/widgets/weather_condition_icon.c"
     "${REPO_ROOT}/main/ui/widgets/weather_now_view.c"
+    "${REPO_ROOT}/main/ui/widgets/weather_hourly.c"
+    "${REPO_ROOT}/main/ha/ha_weather_hourly.c"
     "${REPO_ROOT}/main/ui/assets/weather/weather_icons.c"
     "${REPO_ROOT}/main/ui/theme/theme_default.c"
     "${REPO_ROOT}/main/ui/theme/theme_palette.c"

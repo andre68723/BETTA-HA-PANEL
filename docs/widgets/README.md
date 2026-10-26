@@ -54,7 +54,7 @@ Numbers, trends and states you want to read at a glance.
 
     **[Stocks & ETFs](stock_quotes.md)**
 
-    Shows **up to eight quotes** of Yahoo Finance or Easy Stock `sensor.*` entities as a list or as charts, with the last session's change and a detail view over five periods.
+    Shows **up to eight quotes** of Yahoo Finance or Easy Stock `sensor.*` entities as a list, as charts or as tiles, with the last session's change and a detail view over five periods.
 
 </div>
 
@@ -162,7 +162,7 @@ Forecasts, solar production and the energy balance.
 
     **[Weather (now)](weather_tile.md)**
 
-    Shows the **current conditions** of a `weather.*` entity, its temperature and the extra readings the provider supplies.
+    Shows the **current conditions** of a `weather.*` entity, with optional hourly forecasts and a detail popup for readings and the DWD weather report.
 
 -   [![Weather forecast](../img/gallery/weather_forecast_glow.png)](weather_3day.md)
 

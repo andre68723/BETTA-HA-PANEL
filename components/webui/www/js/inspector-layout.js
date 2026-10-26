@@ -155,7 +155,7 @@ function initInspectorLayout() {
     byId("sensorOptions"), byId("cameraOptions"));
   follow(byId("priceOptions"), [label(el.fPriceCheapTimes), label(el.fPriceLine)], "display");
   move("display", byId("evccHeaderOptions"));
-  move("display", byId("stockOptions"), byId("parqetOptions"), byId("forecastReadabilityOptions"), byId("weatherForecastOptions"),
+  move("display", byId("stockOptions"), byId("parqetOptions"), byId("forecastReadabilityOptions"), byId("weatherForecastOptions"), byId("weatherNowOptions"),
     byId("heatingOptions"), etlStyle, byId("energyTimelineColorOptions"));
   // Controls: what tap and long press do.
   move("controls", byId("historyOptions"), byId("lockOptions"), byId("alarmOptions"), byId("buttonOptions"));

@@ -201,6 +201,7 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("fStockViewLabel", "layout.inspector.stock_view");
   setTextById("fStockViewList", "layout.option.stock_view.list");
   setTextById("fStockViewChart", "layout.option.stock_view.chart");
+  setTextById("fStockViewGrid", "layout.option.stock_view.grid");
   setTextById("fStockPeriodLabel", "layout.inspector.stock_period");
   for (const code of ["1d", "1w", "30d", "ytd", "1y"]) {
     setTextById(`fStockPeriod${code === "ytd" ? "Ytd" : code}`, `layout.option.stock_period.${code}`);
@@ -312,6 +313,8 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("fAlignForecastLabel", "layout.inspector.align_forecast");
   setSelectOptionText(document.getElementById("fForecastDays"), "", "layout.inspector.forecast_keep");
   setSelectOptionText(document.getElementById("fForecastDays"), "0", "layout.inspector.forecast_auto");
+  setTextById("fWeatherHourlyHint", "layout.inspector.weather_hourly_hint");
+  setTextById("fWeatherHourlyLabel", "layout.inspector.weather_hourly");
   setTextById("fWeatherShowPrecipLabel", "layout.inspector.weather_show_precip");
   setTextById("fShowNameLabel", "layout.inspector.show_name");
   setTextById("fSensorShowAgeLabel", "layout.inspector.sensor_show_age");

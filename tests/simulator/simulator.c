@@ -72,6 +72,7 @@ void w_media_player_set_visible(ui_widget_instance_t *, bool);
 void w_vacuum_set_visible(ui_widget_instance_t *, bool);
 void w_camera_apply_state(ui_widget_instance_t *, const ha_state_t *);
 void w_todo_sim_seed(ui_widget_instance_t *, const char *const *, const bool *, size_t);
+void w_weather_tile_simulator_set_hourly(ui_widget_instance_t *, const cJSON *);
 esp_err_t w_light_tile_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_light_tile_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_heating_tile_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
@@ -298,6 +299,7 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     def->forecast_days = json_int(json, "forecast_days", -1);
     def->align_forecast = json_bool(json, "align_forecast", false);
     def->show_precipitation = json_bool(json, "show_precipitation", true);
+    def->weather_hourly = json_bool(json, "weather_hourly", false);
     def->room_controls = json_bool(json, "room_controls", false);
     const cJSON *room_entities = cJSON_GetObjectItemCaseSensitive(json, "room_entities");
     for (int i = 0; i < UI_WIDGET_EXTRA_ENTITIES; i++) {
@@ -1260,6 +1262,12 @@ int main(int argc, char **argv)
                 sim_style_card(&widgets[i].instance);
             }
         }
+    }
+    const cJSON *hourly = cJSON_GetObjectItemCaseSensitive(root, "weather_hourly");
+    for (int i = 0; i < created; i++) {
+        if (strcmp(widgets[i].def.type, "weather_tile") != 0 || !widgets[i].def.weather_hourly) continue;
+        w_weather_tile_simulator_set_hourly(&widgets[i].instance,
+            cJSON_GetObjectItemCaseSensitive(hourly, widgets[i].def.entity_id));
     }
     for (int i = 0; i < created; i++) {
         if (strcmp(widgets[i].def.type, "todo_list") != 0) continue;
