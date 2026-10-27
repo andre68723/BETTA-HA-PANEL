@@ -18,8 +18,12 @@ HA's Lovelace dashboards and custom cards are not imported. MQTT is only needed 
     wrong, expired or revoked token fails every login. The panel therefore stops
     all requests with the token at the first rejection (HTTP 401, WebSocket
     `auth_invalid`, or HTTP 403, which usually means the address is already
-    banned) and does not retry until it restarts; saving a new token in Settings
-    restarts it. The editor shows a banner with the reason, and `/api/version`
+    banned) and does not retry automatically. Correct the token or remove the ban
+    in Home Assistant, then tap **Reconnect** in the panel's Home Assistant popup.
+    Each press allows a new connection attempt; the button waits at least 15 seconds
+    between attempts. Saving a changed token in Settings restarts the panel.
+    **Settings → Device → Restart device** in the editor is another way to retry.
+    The editor shows a banner with the reason, and `/api/version`
     reports it as `ha_auth`. A token whose user is no administrator only turns
     off the entity search. To lift a ban, remove the panel's address from
     `/config/ip_bans.yaml` and restart Home Assistant.
@@ -96,6 +100,12 @@ room or creating a house page. **Floors** optionally group rooms on the house
 page. Child devices inherit their parent device's area unless the entity or child
 device has its own assignment. Entity names follow Home Assistant's display names.
 A [Room card](widgets/room_tile.md) can also be configured manually.
+
+Entity search, room details and stock rows share the discovered name. On HA 2026.10,
+existing friendly names are kept; if that attribute is absent, search combines the
+entity and device names, falling back to the entity ID. State updates without a name
+keep the discovered name. Custom widget titles remain as saved. Without a legacy
+friendly name, an HA rename is picked up by a fresh entity search.
 
 For the extra room field, choose Humidity, Cover or Media player and an entity
 already included in the room. Cover and media controls appear only when the

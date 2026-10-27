@@ -66,7 +66,7 @@ WIDGETS = {
                      ("Preconditioning", "`switch.*`, `climate.*`, `button.*`, `select.*`", False),
                      ("Door lock", "`lock.*`, `binary_sensor.*`", False), ("Interior · °C", "`sensor.*`", False)],
         "requirements": None,
-        "options": [],
+        "options": [("Optional entities", "only configured roles are shown; choose a free function with Add assignment, then select its entity; × removes a binding")],
         "panel": ["Rings for the battery level and, when set, the range and charging power.",
                   "From 200 × 330 px the lock state and interior temperature share a line under the rings, with the preconditioning button across the card below it; the Inspector says when the tile is too small for them.",
                   "Preconditioning is a button; everything else is read-only. For a `climate.*`, `switch.*` or `input_boolean.*` the button reads **Sending...** after the call until the entity changes between on and off (at most 60 seconds); taps in between are ignored."],
@@ -118,7 +118,8 @@ WIDGETS = {
         "requirements": "Cumulative counters in Wh, kWh or MWh (state class `total` or `total_increasing`) from your meter, inverter or battery "
                         "integrations, and Home Assistant's **[Recorder](https://www.home-assistant.io/integrations/recorder/)** with their "
                         "long-term statistics (enabled by default).",
-        "options": [("Look", "nested rings with values, or rings in a row with the timeline below"),
+        "options": [("Optional entities", "only configured roles are shown; choose a free function with Add assignment, then select its entity; × removes a binding"),
+                    ("Look", "nested rings with values, or rings in a row with the timeline below"),
                     ("Colors (Appearance)", "the six flow colours, as swatches or HEX; **Reset to defaults** restores them")],
         "panel": ["Search offers cumulative energy counters; the battery SOC and Solcast fields use their own filters. Counters also need Recorder statistics. The Entities info icon explains the requirements and troubleshooting; confirmed incompatible sources get a short status.",
                   "A wider card shows more details.",
@@ -139,7 +140,8 @@ WIDGETS = {
         "options": [("Gauge style", "linear (vertical bar), horizontal (bar, title and value in one row above it) or radial (arc)"),
                     ("Bar look", "linear and horizontal: smooth fill or segmented LED blocks"),
                     ("LED blocks (4-30, empty = 10)", "the number of segments; fewer on a short column"),
-                    ("Range minimum, Range maximum", "the values the bar or arc fills between; the number shown is always the real state")],
+                    ("Range minimum, Range maximum", "the values the bar or arc fills between; the number shown is always the real state"),
+                    ("Extra readouts", "only configured readouts are shown; choose a free one with Add assignment, then select its sensor; × removes it")],
         "panel": ["Radial and horizontal show the extra readouts as small text, inside the arc or in a row under the bar when there is room.",
                   "A distance in metres is shown in km.", "Read-only."],
     },
@@ -202,7 +204,8 @@ WIDGETS = {
                         "The sensors report one **interval**, set in the integration's options (default Max). The largest holdings come from "
                         "the attribute `top_holdings` of the total value sensor (five entries). The integration disables its detailed sensors "
                         "by default; only the unrealised return in percent is useful here: enable *Unrealised return (gross)* in its entity settings.",
-        "options": [("Hide amounts (percentages only)", "percentages and weights only; the value is replaced by the return (or the XIRR), dividends are not shown"),
+        "options": [("Optional entities", "only configured roles are shown; choose a free function with Add assignment, then select its entity; × removes a binding"),
+                    ("Hide amounts (percentages only)", "percentages and weights only; the value is replaced by the return (or the XIRR), dividends are not shown"),
                     ("Show selector buttons on the tile", "on by default: **Performance** and **Holdings** tabs and the intervals **1D, 1W, 1M, YTD, MAX**; off shows the start view"),
                     ("Start view, Start interval", "what the tile starts with; without the buttons they choose what it shows")],
         "panel": ["The value, the gain with the return in percent, XIRR and dividends, and on a taller tile the largest holdings as weight bars.",
@@ -218,7 +221,7 @@ WIDGETS = {
                         "Assistant's entity registry which integration a sensor belongs to; a sensor of another integration shows "
                         "**Not a quote**. Easy Stock's daily closes come from the integration's own history endpoint; for Yahoo Finance, "
                         "longer periods use Home Assistant's statistics, so they exist only since Home Assistant records the sensor.",
-        "options": [("Quote 1 to 8", "the quotes in their order; ↑ moves a quote up, an emptied row closes the gap"),
+        "options": [("Quote 1 to 8", "the same list for List, Charts and Tiles; Add quote opens a multiple selection with numbered slots for up to eight sensors; changes apply together; ↑ moves a quote up, × removes it, an emptied row closes the gap"),
                     ("View", "**List**: name, price and the last session's change; **Charts**: a small chart per quote; **Tiles**: a card per quote with name, price, the period change and a chart, in two columns on a wide tile and one on a narrow one"),
                     ("Period", "1 day, 1 week, 30 days, year to date or 1 year: the charts' first period and the one the details open with"),
                     ("Change", "percent, amount, or both"),
@@ -226,7 +229,7 @@ WIDGETS = {
                     ("Show selector buttons on the tile", "on by default, charts and tiles: the period buttons **1D, 1W, 30D, YTD, 1Y**; off shows the period above")],
         "panel": ["The price is the sensor's state with its currency; pence stay pence (GBp). A change that does not belong to the shown price "
                   "(a converted or after-hours price) is left out, a missing change shows `--`. Prices below 1 retain up to eight significant digits.",
-                  "Rows and tiles scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market "
+                  "Tiles show the percentage change on the right with an up/down arrow. With both changes enabled, the amount sits below the price. Rows and tiles scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market "
                   "state, the time of the quote and of the last update in Home Assistant, and a chart over **1D, 1W, 30D, YTD, 1Y**.",
                   "Every chart names its source: **Closes** (Easy Stock, against the close before the period), **Recorded** (a day of "
                   "Home Assistant's records from local midnight, against the previous close) or Home Assistant's daily, weekly or hourly means, whose change "
@@ -254,7 +257,7 @@ WIDGETS = {
         "entities": [("Main entity", "any", True), ("Room entities (up to 7)", "any", False),
                      ("Extra field", "one of the room entities", False)],
         "requirements": None,
-        "options": [("Room entities", "one entity per line, up to seven; importing an area in the editor fills them"),
+        "options": [("Room entities", "Add entity extends the list up to seven additional entities; ↑ reorders, × removes, and a click changes an entity; importing an area fills the list"),
                     ("Extra field", "humidity, cover (status and open/close) or media player (status and play/pause)"),
                     ("Controls on the card", "lights, switches and covers as buttons, on a card of about 400 × 240 px")],
         "panel": ["A tap opens a popup with every entity and toggles for lights, switches, covers, fans and media players.",
@@ -279,7 +282,8 @@ WIDGETS = {
         "summary": "Shows the **value** of a `sensor.*` or `binary_sensor.*` entity, formatted by its device class, with optional name, age and Recorder history.",
         "entities": [("Sensor", "`sensor.*`, `binary_sensor.*`", True)],
         "requirements": None,
-        "options": [("Show name", "the widget name; on by default"),
+        "options": [("View", "Single value or List, with up to eight sensor or binary-sensor entities; Add sensors selects and orders the entries, ↑ moves and × removes a row. Lists use each entity’s default device-class formatting and scroll when needed"),
+                    ("Show name", "the widget name; on by default"),
                     ("Show last-updated time", "the age of the value; on by default"),
                     ("Unit, Format, Time format, Currency", "by device class, see below. The inspector header shows the class and unit as chips (\"No device class\" when Home Assistant gives none) and offers only that class's choices"),
                     ("History on tap", "a tap opens the Recorder history; only when the Recorder retains the entity")],
@@ -301,13 +305,13 @@ WIDGETS = {
         "requirements": "Sensors that forecast the solar production per day, for example from "
                         "**[Solcast PV Forecast](https://github.com/BJReplay/ha-solcast-solar)**; any integration that provides them works. "
                         "The editor suggests Solcast entity ids as examples.",
-        "options": [("Bar orientation", "horizontal or vertical"),
+        "options": [("Optional entities", "only configured roles are shown; Add assignment offers the next free day, so days are filled in order and an entity is used once; × removes the last day"),
+                    ("Bar orientation", "horizontal or vertical"),
                     ("Bar max (kWh)", "the value of a full bar"),
                     ("Line up days with the weather tile", "vertical bars only: the columns use the weather forecast's day grid, so a solar tile with the same left edge, width and day count puts each day under its weather day")],
         "panel": ["Today's row carries two readings: its bar and value are the day's total (**Today forecast**); the part still "
                   "to come (**Remaining today**) is the bright start of the bar over the dimmed total, so the dimmed end reads as "
                   "already produced. This needs both sensors; in the example 25 of 55 kWh are still to come.",
-                  "With **Line up days with the weather tile** the header shows **Rest** and the remaining kWh.",
                   "Tap today's bar to see a compact **Solar forecast today** popup with **Total** and **Remaining**. Future days do not open a popup. It closes with **×** or after a minute."],
     },
     "sonos_favorites": {

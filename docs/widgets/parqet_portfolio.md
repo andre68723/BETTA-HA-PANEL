@@ -30,6 +30,7 @@ The sensors report one **interval**, set in the integration's options (default M
 
 | Option | Effect |
 | --- | --- |
+| Optional entities | only configured roles are shown; choose a free function with Add assignment, then select its entity; × removes a binding |
 | Hide amounts (percentages only) | percentages and weights only; the value is replaced by the return (or the XIRR), dividends are not shown |
 | Show selector buttons on the tile | on by default: **Performance** and **Holdings** tabs and the intervals **1D, 1W, 1M, YTD, MAX**; off shows the start view |
 | Start view, Start interval | what the tile starts with; without the buttons they choose what it shows |

@@ -19,7 +19,25 @@
 .tp-stock-spark { width: 100%; height: 36px; }
 .tp-stock-spark polyline { fill: none; stroke: currentColor; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .tp-stock-short .tp-stock-row { font-size: 12px; }
-.tp-stock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; min-height: 0; overflow: hidden; }
+.tp-stock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--label, 24px) * 12)), 1fr)); gap: 6px; min-height: 0; overflow: hidden; }
 .tp-stock-card { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); min-width: 0; }
 .tp-stock-card .tp-stock-row { justify-content: space-between; flex-wrap: wrap; gap: 2px 6px; }
-.tp-stock-card .tp-stock-row small { font-size: 11px; opacity: 0.6; }
+.tp-stock-card .tp-stock-row small { font-size: 11px; opacity: 0.6; max-width: 33%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.tp-stock-card .tp-stock-row em { margin-left: auto; }
+.tp-stock-card-amount { font-size: var(--meta, 11px); }
+
+.stock-picker-selection { max-height: 180px; overflow-y: auto; margin-bottom: 10px; }
+.stock-picker-slot { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 6px; padding: 3px 0; }
+.stock-picker-slot strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stock-picker-choice { position: relative; padding-left: 38px; }
+.stock-picker-choice::before { content: ""; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; border: 1px solid currentColor; border-radius: 3px; }
+.stock-picker-choice[aria-checked="true"]::before { content: "✓"; color: var(--accent); line-height: 16px; text-align: center; }
+
+.tp-sensor-list { display:flex; flex-direction:column; gap:6px; padding:10px; overflow:hidden; }
+/* Like the panel the list scrolls when the tile is too small for every entry; the thin scrollbar shows there is more. */
+.tp-sensor-list-rows { display:flex; flex-direction:column; flex:1 1 auto; gap:6px; min-height:0; overflow-y:auto; scrollbar-width:thin; }
+.tp-sensor-list-row { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; font-size:var(--label, 24px); }
+.tp-sensor-list-row > span { flex:1 1 40%; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tp-sensor-list-row > b { margin-left:auto; max-width:100%; overflow-wrap:anywhere; font-weight:500; }
+.tp-sensor-list-row > small { flex-basis:100%; font-size:var(--meta, 20px); opacity:0.65; }

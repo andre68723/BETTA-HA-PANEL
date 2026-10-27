@@ -708,6 +708,7 @@ const INSPECTOR_EXTRA_ENTITY_FIELDS = [
   ["vacuum_tile", "vacuum_battery", "fVacuumBattery", "sensor", "vacuum_battery"],
   ["parqet_portfolio", "parqet_dividends", "fParqetDividends", "sensor", "parqet_dividends"],
   ["parqet_portfolio", "parqet_return", "fParqetReturn", "sensor", "parqet_return"],
+  ...[2, 3, 4, 5, 6, 7, 8].map(n => ["sensor", `sensor_list_${n}`, `fSensorList${n - 1}`, "sensor,binary_sensor", "sensor_list_choose"]),
   ...[2, 3, 4, 5, 6, 7, 8].map(n => ["stock_quotes", `stock_${n}`, `fStock${n - 1}`, "sensor", "stock_quote_any"]),
   ["bambu_printer", "bambu_camera", "fBambuCamera", "camera", "bambu_camera"],
   ...["Nozzle", "Bed", "Progress", "Remaining", "Stage", "Job", "Pause", "Resume", "Stop"].map(field =>
@@ -819,12 +820,23 @@ function inspectorEntityPickerTarget(targetKey) {
   if (!target?.input || target.input.disabled || !target.domain) {
     return null;
   }
+  // A forecast day offers only entities no other day or the remaining-today reading already uses.
+  if (widgetType === "solar_forecast" && targetKey.startsWith("solar_")) {
+    const used = ["fEntity", "fSolarForecastToday", "fSolarForecastTomorrow",
+      ...[3, 4, 5, 6, 7].map(day => `fSolarForecastDay${day}`)]
+      .filter(field => el[field] && el[field] !== target.input).map(field => el[field].value.trim()).filter(Boolean);
+    return { ...target, slot: targetKey, excludedEntityIds: used };
+  }
   return { ...target, slot: targetKey };
 }
 
-async function openInspectorEntityPicker(targetKey) {
+async function openInspectorEntityPicker(targetKey, options = {}) {
   const target = inspectorEntityPickerTarget(targetKey);
   if (!target) return;
+  if (options.stockMulti && inspectorWidgetType() === "stock_quotes") {
+    target.stockSelection = [...new Set(stockQuoteInputs().map(input => input.value.trim()).filter(Boolean))];
+    target.stockWidgetId = selectedWidget()?.id;
+  }
   if (inspectorWidgetType() === "bambu_printer") {
     const widget = selectedWidget();
     try { bambuPrinters = await bambuFetchPrinters(); }

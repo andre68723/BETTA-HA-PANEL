@@ -188,7 +188,13 @@ esp_err_t ha_model_upsert_entity(const ha_entity_info_t *entity)
     xSemaphoreTake(s_model_mutex, portMAX_DELAY);
     int idx = find_entity_index(entity->id);
     if (idx >= 0) {
+        char resolved_name[APP_MAX_NAME_LEN];
+        bool keep_name = entity->name[0] == '\0' || strcmp(entity->name, entity->id) == 0;
+        if (keep_name) safe_copy_cstr(resolved_name, sizeof(resolved_name), s_entities[idx].name);
         s_entities[idx] = *entity;
+        if (keep_name) {
+            safe_copy_cstr(s_entities[idx].name, sizeof(s_entities[idx].name), resolved_name);
+        }
         xSemaphoreGive(s_model_mutex);
         return ESP_OK;
     }
@@ -200,6 +206,25 @@ esp_err_t ha_model_upsert_entity(const ha_entity_info_t *entity)
     s_entities[s_entity_count++] = *entity;
     xSemaphoreGive(s_model_mutex);
     return ESP_OK;
+}
+
+esp_err_t ha_model_set_entity_name(const char *entity_id, const char *name)
+{
+    if (s_model_mutex == NULL || s_entities == NULL || entity_id == NULL || entity_id[0] == '\0' ||
+        name == NULL || name[0] == '\0') return ESP_ERR_INVALID_ARG;
+    xSemaphoreTake(s_model_mutex, portMAX_DELAY);
+    int idx = find_entity_index(entity_id);
+    if (idx < 0 && s_entity_count < APP_HA_MAX_ENTITIES) {
+        idx = (int)s_entity_count++;
+        safe_copy_cstr(s_entities[idx].id, sizeof(s_entities[idx].id), entity_id);
+        fill_domain(entity_id, s_entities[idx].domain, sizeof(s_entities[idx].domain));
+    }
+    if (idx >= 0) {
+        if (strcmp(s_entities[idx].name, name) != 0) s_state_revision++;
+        safe_copy_cstr(s_entities[idx].name, sizeof(s_entities[idx].name), name);
+    }
+    xSemaphoreGive(s_model_mutex);
+    return idx >= 0 ? ESP_OK : ESP_ERR_NO_MEM;
 }
 
 bool ha_model_get_entity_name(const char *entity_id, char *out, size_t out_len)

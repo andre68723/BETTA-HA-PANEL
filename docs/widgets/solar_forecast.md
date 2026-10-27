@@ -24,6 +24,7 @@ Sensors that forecast the solar production per day, for example from **[Solcast 
 
 | Option | Effect |
 | --- | --- |
+| Optional entities | only configured roles are shown; Add assignment offers the next free day, so days are filled in order and an entity is used once; × removes the last day |
 | Bar orientation | horizontal or vertical |
 | Bar max (kWh) | the value of a full bar |
 | Line up days with the weather tile | vertical bars only: the columns use the weather forecast's day grid, so a solar tile with the same left edge, width and day count puts each day under its weather day |
@@ -31,7 +32,6 @@ Sensors that forecast the solar production per day, for example from **[Solcast 
 ## On the panel
 
 - Today's row carries two readings: its bar and value are the day's total (**Today forecast**); the part still to come (**Remaining today**) is the bright start of the bar over the dimmed total, so the dimmed end reads as already produced. This needs both sensors; in the example 25 of 55 kWh are still to come.
-- With **Line up days with the weather tile** the header shows **Rest** and the remaining kWh.
 - Tap today's bar to see a compact **Solar forecast today** popup with **Total** and **Remaining**. Future days do not open a popup. It closes with **×** or after a minute.
 
 ## Variants

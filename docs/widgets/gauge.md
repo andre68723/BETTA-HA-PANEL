@@ -27,8 +27,9 @@ None beyond the entities.
 | Bar look | linear and horizontal: smooth fill or segmented LED blocks |
 | LED blocks (4-30, empty = 10) | the number of segments; fewer on a short column |
 | Range minimum, Range maximum | the values the bar or arc fills between; the number shown is always the real state |
+| Extra readouts | only configured readouts are shown; choose a free one with Add assignment, then select its sensor; × removes it |
 
-<a href="../img/examples/inspector-gauge.png"><img src="../img/examples/inspector-gauge.png" alt="Inspector of the Gauge widget" loading="lazy" width="340" height="489"></a>
+<a href="../img/examples/inspector-gauge.png"><img src="../img/examples/inspector-gauge.png" alt="Inspector of the Gauge widget" loading="lazy" width="340" height="555"></a>
 
 *Inspector in the web editor, with the widget of the preview above.*
 

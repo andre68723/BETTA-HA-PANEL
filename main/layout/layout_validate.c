@@ -1021,6 +1021,24 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
                 cJSON_IsString(id) ? id->valuestring : "?");
             layout_validation_add(result, msg);
         }
+        const cJSON *view = cJSON_GetObjectItemCaseSensitive(widget, "sensor_view");
+        if (view != NULL && (!cJSON_IsString(view) ||
+            (strcmp(view->valuestring, "single") != 0 && strcmp(view->valuestring, "list") != 0))) {
+            layout_validation_add(result, "sensor_view must be single or list");
+        }
+        const cJSON *more = cJSON_GetObjectItemCaseSensitive(widget, "sensor_entities");
+        if (more != NULL && (!cJSON_IsArray(more) || cJSON_GetArraySize(more) > 7)) {
+            layout_validation_add(result, "sensor_entities must contain at most seven additional sensors");
+        } else if (more != NULL) {
+            const cJSON *item = NULL;
+            cJSON_ArrayForEach(item, more) {
+                if (!cJSON_IsString(item) || !is_valid_entity_id(item->valuestring) ||
+                    (!entity_in_domain(item->valuestring, "sensor") && !entity_in_domain(item->valuestring, "binary_sensor"))) {
+                    layout_validation_add(result, "sensor_entities must contain sensor.* or binary_sensor.* IDs");
+                    break;
+                }
+            }
+        }
         /* The device class decides which values the editor offers; any of them is valid for any sensor. */
         cJSON *format = cJSON_GetObjectItemCaseSensitive(widget, "sensor_format");
         if (format != NULL && (!cJSON_IsString(format) || !ha_sv_format_valid(format->valuestring))) {

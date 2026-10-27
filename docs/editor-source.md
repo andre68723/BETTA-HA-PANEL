@@ -43,6 +43,8 @@ www/js/readability.js panel4 role sizes, day-count and gauge-width hints for the
 www/js/bambu-printer.js Bambu printer widget: Inspector fields for its entity bindings and the canvas preview (before canvas)
 www/js/evcc-wallbox.js wallbox bindings, loadpoint discovery, optional power/flow header and its preview
 www/js/stock-quotes.js Stocks & ETFs: quote ordering and Inspector options
+www/js/sensor-list.js bounded Sensor lists and the shared ordered entity picker
+www/js/optional-entities.js role-based optional bindings and editable Room entity rows
 www/js/energy-timeline-colors.js energy flow palette, compact color controls and HEX editing
 www/js/tile-previews.js  the schematic tile previews (solar, car, Sonos, `tilePreviewMarkup`) and the house page grid (before canvas)
 www/js/layout-history.js bounded layout/selection snapshots, edit grouping and Undo/Redo
@@ -85,7 +87,8 @@ Once the server starts, press Enter in the terminal to open the default browser,
 (`http://127.0.0.1:8766/` by default). No `ui` parameter is needed; `/` uses the view chosen at startup.
 Sources are served directly from `components/webui/www/`; refresh after edits.
 Only Python's standard library is needed. The default wide-board demo contains every widget type, optional
-bindings and house/energy pages on eight pages. Save writes `.local/editor-local/paneljc-all-widgets-state.json`; Export downloads
+bindings and house/energy pages on ten pages. A Stocks & ETFs page compares List, Charts and Tiles
+with the same sensors; the local search offers ten synthetic quotes, including unbound choices. Save writes `.local/editor-local/paneljc-all-widgets-state.json`; Export downloads
 JSON. The local toolbar identifies the test environment. Ctrl+C stops the server.
 
 - `--variant panel4|panel10|paneljc|paneljc-v2|tab5` selects geometry, page limits and text-role metadata.

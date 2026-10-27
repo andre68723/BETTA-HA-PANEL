@@ -25,7 +25,9 @@ None beyond the entities.
 
 ## Options
 
-No options beyond the entities; the controls follow what the entity supports.
+| Option | Effect |
+| --- | --- |
+| Optional entities | only configured roles are shown; choose a free function with Add assignment, then select its entity; × removes a binding |
 
 ## On the panel
 

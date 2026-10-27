@@ -47,11 +47,9 @@ test("solar previews name the days by weekday in the editor language and transla
     run(`editor.i18nMap = WEB_I18N_BUILTIN.${language}; editor.i18nLanguage = "${language}";`);
     for (const orientation of ["horizontal", "vertical"]) {
       const markup = fn("solarPreviewMarkup")({ rect: { w: 640, h: 400 }, solar_forecast_bar_orientation: orientation, align_forecast: true });
-      // As solar_day_label(): today's two-letter weekday first. Rest moves into the header only for lined-up columns; horizontal bars
-      // ignore align_forecast, as on the panel.
+      // As solar_day_label(): today's two-letter weekday first. The header carries only the unit, also for lined-up columns.
       for (const text of weekdays) assert.ok(markup.includes(`>${text}<`), `${language} ${orientation}: ${text}`);
-      if (orientation === "vertical") assert.ok(markup.includes(rest), `${language} vertical: ${rest}`);
-      else assert.ok(!markup.includes(`${rest} `), `${language} horizontal: no ${rest} header`);
+      assert.ok(!markup.includes(`${rest} `), `${language} ${orientation}: no ${rest} header`);
       assert.doesNotMatch(markup, /preview\.solar\./);
       if (language === "en") assert.doesNotMatch(markup, /Heute|Morgen|\bRest\b|Tag [345]/);
     }

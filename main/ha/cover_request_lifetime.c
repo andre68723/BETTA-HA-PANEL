@@ -14,6 +14,11 @@ void cover_request_lifetime_cancel(cover_request_lifetime_t *head, void *user)
     for (; head; head = head->next)
         if (head->user == user) head->cancelled = true;
 }
+void cover_request_lifetime_cancel_cameras(cover_request_lifetime_t *head)
+{
+    for (; head; head = head->next)
+        if (head->camera) head->cancelled = true;
+}
 void cover_request_lifetime_remove(cover_request_lifetime_t **head, cover_request_lifetime_t *node)
 {
     for (; *head; head = &(*head)->next) {

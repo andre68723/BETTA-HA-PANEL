@@ -333,6 +333,14 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
         copy_field(def->extra_entity_id[UI_PARQET_EXTRA_DIVIDENDS], APP_MAX_ENTITY_ID_LEN, json, "dividends_entity_id");
         copy_field(def->extra_entity_id[UI_PARQET_EXTRA_RETURN], APP_MAX_ENTITY_ID_LEN, json, "return_entity_id");
     }
+    if (strcmp(def->type, "sensor") == 0) {
+        const cJSON *more = cJSON_GetObjectItemCaseSensitive(json, "sensor_entities");
+        for (int i = 0; i < 7; i++) {
+            const cJSON *item = cJSON_GetArrayItem(more, i);
+            if (cJSON_IsString(item)) snprintf(def->extra_entity_id[i], APP_MAX_ENTITY_ID_LEN, "%s", item->valuestring);
+        }
+        copy_field(def->display_mode, sizeof(def->display_mode), json, "sensor_view");
+    }
     if (strcmp(def->type, "stock_quotes") == 0) {
         const cJSON *more = cJSON_GetObjectItemCaseSensitive(json, "stock_entities");
         for (int i = 0; i < UI_WIDGET_EXTRA_ENTITIES; i++) def->extra_entity_id[i][0] = '\0';

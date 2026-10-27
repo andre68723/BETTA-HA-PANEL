@@ -213,7 +213,7 @@ void ha_layout_entities_collect(cJSON *root, ha_layout_entity_set_t *set)
                     for (size_t b = 0; b < EVCC_SITE_COUNT; b++) ha_layout_collect_field(widget, k_evcc_site_bindings[b].key, set);
                 }
                 /* the room card's list and the Stocks & ETFs quotes after the first */
-                static const char *const lists[] = {"room_entities", "stock_entities"};
+                static const char *const lists[] = {"room_entities", "stock_entities", "sensor_entities"};
                 for (size_t l = 0; l < sizeof(lists) / sizeof(lists[0]); l++) {
                     cJSON *list_item = NULL;
                     cJSON_ArrayForEach(list_item, cJSON_GetObjectItemCaseSensitive(widget, lists[l])) {

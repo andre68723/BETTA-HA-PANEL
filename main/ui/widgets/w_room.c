@@ -759,12 +759,11 @@ static void room_show_popup(w_room_ctx_t *ctx)
         char value[APP_MAX_STATE_LEN + APP_MAX_UNIT_LEN + 2] = {0};
         if (ha_model_get_state(id, st)) {
             cJSON *attrs = st->attributes_json[0] != '\0' ? cJSON_Parse(st->attributes_json) : NULL;
-            snprintf(name, sizeof(name), "%s", room_attr_string(attrs, "friendly_name"));
             const char *unit = room_attr_string(attrs, "unit_of_measurement");
             snprintf(value, sizeof(value), "%s%s%s", st->state, unit[0] != '\0' ? " " : "", unit);
             cJSON_Delete(attrs);
         }
-        if (name[0] == '\0') {
+        if (!ha_model_get_entity_name(id, name, sizeof(name))) {
             strlcpy(name, id, sizeof(name));
         }
         const bool toggle = room_domain_is(id, "light") || room_domain_is(id, "switch") || room_domain_is(id, "cover") ||

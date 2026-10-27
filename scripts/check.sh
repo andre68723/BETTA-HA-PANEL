@@ -137,7 +137,7 @@ checks() {
     done
     if in_group host; then
       for variant in panel4 paneljc; do
-        REQUIRE=cc step "host tests $variant" 'main tests/host tools/test_host.sh managed_components/espressif__cjson' env VARIANT="$variant" tools/test_host.sh
+        REQUIRE=cc step "host tests $variant" 'main tests/host tests/simulator/stubs tools/test_host.sh managed_components/espressif__cjson' env VARIANT="$variant" tools/test_host.sh
       done
     fi
   fi

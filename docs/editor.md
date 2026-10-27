@@ -68,8 +68,12 @@ in the settings use the same rows. A click opens the entity search, whose result
 types. The entity that is set stays on top with **Keep**, and the search starts with its ID without the last word,
 which lists the other entities of the same device; typing replaces it. **Remove** clears an optional entity, and a
 typed ID can be used only when it meets the field’s domain and metadata filters; it is marked as not found once a completed search
-does not list it. Room
-entities stay a list (choosing a result adds it); the extra field uses an entity already assigned to the card.
+does not list it. Room entities use **Add entity**, with up to seven additional rows. Click a row to change it, **↑** to reorder it or **×** to remove it; the extra field uses an entity already assigned to the card.
+
+Car, Parqet, Energy timeline, Gauge and Solar forecast show only configured optional bindings. Select a free function
+next to **Add assignment**, then choose its entity. **×** removes that assignment and makes the role available again.
+Solar forecast days are offered in order and each entity only once; **×** removes the last day. Sensor lists and Stocks & ETFs rows have **↑** and **×** like room entities.
+The primary entity stays visible; changing widgets preserves their saved bindings.
 
 Every search popup shows its active domains and field-specific filters, including when no entity matches.
 Fields that accept every entity of their domains say that no additional device-class filter applies.

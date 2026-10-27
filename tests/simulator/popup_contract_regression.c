@@ -11,6 +11,8 @@
 #include "ui/ui_widget_factory.h"
 #include "ui/widgets/weather_tile_internal.h"
 #include "host_adapters.h"
+#include "ha/ha_auth_state.h"
+#include "ui/ui_i18n.h"
 #include "ui/theme/theme_default.h"
 #include "ui/theme/ui_style.h"
 #include "ui/fonts/app_symbols.h"
@@ -136,7 +138,66 @@ static void additional_dialogs(void)
     ui_energy_timeline_popup_open(&info, snapshot);
     sim_popup_contract_check(); close_current(); free(snapshot);
 }
-void sim_popup_contract_regression(void)
+
+static lv_obj_t *find_text(lv_obj_t *root, const char *text)
+{
+    if (lv_obj_check_type(root, &lv_label_class) && strcmp(lv_label_get_text(root), text) == 0) return root;
+    for (uint32_t i = 0; i < lv_obj_get_child_count(root); i++) {
+        lv_obj_t *found = find_text(lv_obj_get_child(root, i), text);
+        if (found) return found;
+    }
+    return NULL;
+}
+
+static void reconnect_dialogs(void (*advance)(uint32_t))
+{
+    const bool online = ha_client_is_connected();
+    char original_language[APP_UI_LANGUAGE_MAX_LEN];
+    snprintf(original_language, sizeof(original_language), "%s", ui_i18n_get_language());
+    const char *languages[] = {"en", "de"};
+    const char *themes[] = {"dark_v2", "light"};
+    for (size_t language = 0; language < 2; language++) {
+        CHECK(ui_i18n_init(languages[language]) == ESP_OK);
+        for (int step = 0; step <= 2; step += 2) {
+            ui_fonts_set_user_step(step);
+            for (size_t i = 0; i < 2; i++) {
+                sim_host_set_online(false);
+                ui_conn_popup_set_api_status(false, false);
+                CHECK(theme_palette_activate_by_id(themes[i]) == ESP_OK);
+                ha_auth_state_reset();
+                CHECK(ha_auth_state_report_http(403, false, false));
+                ui_conn_popup_show_ha();
+                sim_popup_contract_check();
+                lv_obj_t *label = find_text(lv_layer_top(), ui_i18n_get("conn.reconnect", "Reconnect"));
+                CHECK(label != NULL);
+                lv_obj_t *button = lv_obj_get_parent(label);
+                CHECK(!lv_obj_has_state(button, LV_STATE_DISABLED));
+                lv_obj_send_event(button, LV_EVENT_CLICKED, NULL);
+                CHECK(lv_obj_has_state(button, LV_STATE_DISABLED));
+                CHECK(ha_auth_state_blocked()); /* the UI never clears the guard itself */
+                CHECK(ha_auth_state_take_retry());
+                lv_obj_send_event(button, LV_EVENT_CLICKED, NULL);
+                CHECK(!ha_auth_state_take_retry());
+                ha_auth_state_begin_retry(); /* the HA task has stopped the old transport */
+                CHECK(!ha_auth_state_blocked());
+                sim_popup_contract_check();
+                sim_host_set_online(true);
+                ui_conn_popup_set_api_status(true, true);
+                advance(2100);
+                CHECK(lv_obj_has_state(button, LV_STATE_DISABLED));
+                CHECK(strcmp(lv_label_get_text(label), ui_i18n_get("conn.reconnect", "Reconnect")) == 0);
+                sim_popup_contract_check();
+                close_current();
+            }
+        }
+    }
+    ha_auth_state_reset();
+    sim_host_set_online(online);
+    ui_conn_popup_set_api_status(online, online);
+    CHECK(ui_i18n_init(original_language) == ESP_OK);
+}
+
+void sim_popup_contract_regression(void (*advance)(uint32_t))
 {
     const ui_style_kind_t original = ui_style_get();
     const int original_step = ui_fonts_user_step();
@@ -187,6 +248,9 @@ void sim_popup_contract_regression(void)
         close_current();
     }
     additional_dialogs();
+    reconnect_dialogs(advance);
+    ui_fonts_set_user_step(original_step);
+    CHECK(theme_palette_activate_by_id(original_theme) == ESP_OK); ui_style_set(original);
     CHECK(cards >= 55);
     printf("popup contract: %u checks, %u card inspections\n", checks, cards);
 }

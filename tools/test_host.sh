@@ -44,6 +44,11 @@ cc -std=gnu11 -Wall -Wextra -Werror -g -I main "${cjson_flags[@]}" \
   "${cjson_sources[@]}" "${cjson_libs[@]}" -o "$out/test_entity_search"
 "$out/test_entity_search"
 
+# Shared display-name cache: use the simulator's allocation/lock adapters.
+cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/simulator/stubs "${variant_flags[@]}" \
+  tests/host/test_entity_names.c main/ha/ha_model.c -o "$out/test_entity_names"
+"$out/test_entity_names"
+
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main \
   tests/host/test_display_preview.c main/drivers/display_policy.c main/settings/brightness_model.c \
   -o "$out/test_display_preview"
@@ -126,12 +131,16 @@ cc -std=gnu11 -Wall -Wextra -Werror -g -I main \
   -o "$out/test_cover_request_lifetime"
 "$out/test_cover_request_lifetime"
 
+cc -std=gnu11 -Wall -Wextra -Werror -g -I main \
+  tests/host/test_cover_auth.c main/util/cover_guard.c main/ha/ha_auth_state.c -o "$out/test_cover_auth"
+"$out/test_cover_auth"
+
 cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -g -I main \
   tests/host/test_mjpeg_parser.c main/ha/mjpeg_parser.c -o "$out/test_mjpeg_parser"
 "$out/test_mjpeg_parser"
 
 cc -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -g -I tests/host/camera_stubs -I main \
-  tests/host/test_camera_stream.c main/ha/ha_camera_stream.c main/ha/mjpeg_parser.c -o "$out/test_camera_stream"
+  tests/host/test_camera_stream.c main/ha/ha_camera_stream.c main/ha/mjpeg_parser.c main/ha/ha_auth_state.c -o "$out/test_camera_stream"
 "$out/test_camera_stream"
 
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/host/stubs \

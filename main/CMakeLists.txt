@@ -264,6 +264,7 @@ idf_component_register(
         "ui/ui_widget_factory.c"
         "ui/ui_bindings.c"
         "ui/widgets/w_sensor.c"
+        "ui/widgets/w_sensor_list.c"
         "ui/widgets/w_button.c"
         "ui/widgets/w_slider.c"
         "ui/widgets/w_gauge.c"

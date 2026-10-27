@@ -1032,7 +1032,7 @@ function renderInspector() {
   if (el.fSolarForecastDay5) el.fSolarForecastDay5.value = widget.forecast_day_5_entity_id || "";
   if (el.fSolarForecastDay6) el.fSolarForecastDay6.value = widget.forecast_day_6_entity_id || "";
   if (el.fSolarForecastDay7) el.fSolarForecastDay7.value = widget.forecast_day_7_entity_id || "";
-  bambuLoadInspector(widget); evccLoadInspector(widget); stockLoadInspector(widget);
+  bambuLoadInspector(widget); evccLoadInspector(widget); stockLoadInspector(widget); sensorListLoadInspector(widget);
   if (el.fCarPrecond) el.fCarPrecond.value = widget.precond_entity_id || "";
   if (el.fCarLock) el.fCarLock.value = widget.lock_entity_id || "";
   if (el.fCarTemp) el.fCarTemp.value = widget.interior_temp_entity_id || "";
@@ -1395,7 +1395,7 @@ function duplicatePage(page) {
 
 const ROOM_EXTRA_NONE_KEYS = { humidity: "humidity", cover: "cover", media_player: "media" };
 
-// The room entities typed into the inspector (one per line, at most 7 besides the main sensor).
+// The room list uses a hidden newline-separated input for its existing validation and save path (up to seven extras).
 function roomEntitiesFromInspector() {
   return (el.fRoomEntities?.value || "")
     .split(/[\n,;]+/)
@@ -2084,6 +2084,7 @@ function applyInspector(options = {}) {
   }
   bambuSaveInspector(widget, widgetType);
   stockSaveInspector(widget, widgetType);
+  sensorListSaveInspector(widget, widgetType);
   if (!evccSaveInspector(widget, widgetType)) return false;
   // Energy timeline: the two battery counters go together (the firmware ignores half a battery).
   for (const [key, input] of [
@@ -2203,7 +2204,7 @@ function applyInspector(options = {}) {
   if (widgetType !== "sensor") {
     delete widget.sensor_format;
     delete widget.sensor_unit;
-  } else {
+  } else if (widget.sensor_view !== "list") {
     // A choice the device class does not offer (hidden, or the list of another class still shown) keeps the saved
     // value for when such a sensor is chosen again; the first choice is the default and is not saved.
     const format = sensorFormatChoices(widget, nextEntityId);
@@ -2507,8 +2508,8 @@ function updateSensorEntityInfo(widget = selectedWidget()) {
     el.fEntityClass.dataset.text = chips.map((chip) => chip.text).join(" · ");
     el.fEntityClass.classList.toggle("hidden", chips.length === 0);
   }
-  const format = sensor ? sensorFormatChoices(widget, entityId) : null;
-  const unit = sensor ? sensorUnitChoices(widget, entityId) : null;
+  const format = sensor && widget?.sensor_view !== "list" ? sensorFormatChoices(widget, entityId) : null;
+  const unit = sensor && widget?.sensor_view !== "list" ? sensorUnitChoices(widget, entityId) : null;
   const shownWidget = sensor && widget?.type === "sensor" ? widget : {};
   fillSensorChoice(el.fSensorFormat, el.fSensorFormatWrap, el.fSensorFormatLabel, format, "format",
     format ? shownWidget.sensor_format || format.values[0] : "", "");

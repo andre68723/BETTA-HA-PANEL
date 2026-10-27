@@ -10,7 +10,9 @@ typedef struct cover_request_lifetime {
     struct cover_request_lifetime *next;
     void *user;
     bool cancelled;
+    bool camera;
 } cover_request_lifetime_t;
 void cover_request_lifetime_add(cover_request_lifetime_t **head, cover_request_lifetime_t *node, void *user);
 void cover_request_lifetime_cancel(cover_request_lifetime_t *head, void *user);
+void cover_request_lifetime_cancel_cameras(cover_request_lifetime_t *head);
 void cover_request_lifetime_remove(cover_request_lifetime_t **head, cover_request_lifetime_t *node);

@@ -44,7 +44,7 @@ Integration setup and options: [Easy Stock](https://github.com/derspe/ha-easy-st
 
 | Option | Effect |
 | --- | --- |
-| Quote 1 to 8 | the quotes in their order; ↑ moves a quote up, an emptied row closes the gap |
+| Quote 1 to 8 | the same list for List, Charts and Tiles; Add quote opens a multiple selection with numbered slots for up to eight sensors; changes apply together; ↑ moves a quote up, × removes it, an emptied row closes the gap |
 | View | **List**: name, price and the last session's change; **Charts**: a small chart per quote; **Tiles**: a card per quote with name, price, the period change and a chart, in two columns on a wide tile and one on a narrow one |
 | Period | 1 day, 1 week, 30 days, year to date or 1 year: the charts' first period and the one the details open with |
 | Change | percent, amount, or both |
@@ -58,7 +58,7 @@ Integration setup and options: [Easy Stock](https://github.com/derspe/ha-easy-st
 ## On the panel
 
 - The price is the sensor's state with its currency; pence stay pence (GBp). A change that does not belong to the shown price (a converted or after-hours price) is left out, a missing change shows `--`. Prices below 1 retain up to eight significant digits.
-- Rows and tiles scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market state, the time of the quote and of the last update in Home Assistant, and a chart over **1D, 1W, 30D, YTD, 1Y**.
+- Tiles show the percentage change on the right with an up/down arrow. With both changes enabled, the amount sits below the price. Rows and tiles scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market state, the time of the quote and of the last update in Home Assistant, and a chart over **1D, 1W, 30D, YTD, 1Y**.
 - Every chart names its source: **Closes** (Easy Stock, against the close before the period), **Recorded** (a day of Home Assistant's records from local midnight, against the previous close) or Home Assistant's daily, weekly or hourly means, whose change is a **trend**, not a market return. A shorter history says from when it starts.
 - **1D means today**, from local midnight to now in the panel's time zone. Keep the panel and Home Assistant in the same time zone. When Easy Stock explicitly reports no trading today, the 1D chart is flat at 0%; the list keeps the last session's change. Without that attribute, including Yahoo Finance, 1D uses the previous close as its reference.
 - Charts are fetched only for a page on screen, one at a time, and refreshed every 15 minutes.

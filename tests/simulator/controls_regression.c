@@ -494,7 +494,7 @@ int sim_controls_regression(void)
     now = lv_tick_get(); lv_tick_set_cb(tick);
     sim_host_set_online(true);
     phase = "semantic roles"; semantic_controls_test();
-    phase = "popup contracts"; sim_popup_contract_regression();
+    phase = "popup contracts"; sim_popup_contract_regression(weather_delay);
     void sim_weather_now_regression(void (*delay)(uint32_t));
     sim_weather_now_regression(weather_delay);
     phase = "media primary"; process_primary_test();

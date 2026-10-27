@@ -28,6 +28,9 @@ typedef struct {
 esp_err_t ha_client_start(const ha_client_config_t *cfg);
 void ha_client_stop(void);
 bool ha_client_is_connected(void);
+/* Queue a deliberate reconnect on the HA task; UI-safe, rate-limited, never restarts the panel. */
+bool ha_client_request_reconnect(void);
+bool ha_client_reconnect_available(void);
 bool ha_client_is_initial_sync_done(void);
 esp_err_t ha_client_call_service(const char *domain, const char *service, const char *json_service_data);
 /* Like ha_client_call_service() but also requests return_response=true and

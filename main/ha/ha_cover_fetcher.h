@@ -57,6 +57,8 @@ esp_err_t ha_cover_fetcher_request(const char *entity_picture,
  * The callback for those requests will not be invoked.  Safe to call from any
  * task (including the LVGL task during widget destruction). */
 void ha_cover_fetcher_cancel(void *user);
+/* On HA disconnect, discard camera URLs queued before the next state refresh. */
+void ha_cover_fetcher_cancel_cameras(void);
 
 /* Free an image buffer obtained through a ha_cover_cb_t callback. */
 void ha_cover_result_release(ha_cover_result_t *result);

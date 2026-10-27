@@ -7,6 +7,27 @@ import json
 from generate_simulator_gallery import DATA, GEOMETRY, prepare_fixture
 
 
+def add_quote_samples(states):
+    """Ten synthetic quote choices, including unbound sensors for the Add quote picker."""
+    template = next(s for s in states if s.get('platform') == 'easy_stock')
+    for slug, name, symbol, price, change in [
+        ('europe_etf', 'Demo Europe ETF', 'DEUR.DE', 54.2, 0.8),
+        ('solar', 'Demo Solar', 'DSOL.DE', 82.75, -1.2),
+        ('health', 'Demo Health', 'DHLT.DE', 147.6, 0.4),
+        ('bonds_etf', 'Demo Bonds ETF', 'DBND.DE', 99.1, 0.0),
+        ('pacific_etf', 'Demo Pacific ETF', 'DPAC.DE', 36.8, -0.6),
+    ]:
+        entity_id = 'sensor.demo_' + slug
+        if any(s['entity_id'] == entity_id for s in states):
+            continue
+        sample = copy.deepcopy(template)
+        sample.update(entity_id=entity_id, state=str(price))
+        sample['attributes'].update(friendly_name=name, long_name=name, symbol=symbol,
+                                    change_pct=change, change=round(price * change / 100, 4),
+                                    previous_close=round(price * (1 - change / 100), 4))
+        states.append(sample)
+
+
 def all_widgets_fixture(variant):
     width, _, height = GEOMETRY[variant]
     if width < 1280:
@@ -14,6 +35,7 @@ def all_widgets_fixture(variant):
     _, gallery = prepare_fixture(json.loads(DATA.read_text(encoding='utf-8')), variant)
     samples = {w['id']: w for p in gallery['pages'] for w in p.get('widgets', [])}
     states = copy.deepcopy(gallery['states'])
+    add_quote_samples(states)
 
     def state(entity, value, **attributes):
         existing = next((item for item in states if item['entity_id'] == entity), None)
@@ -46,7 +68,7 @@ def all_widgets_fixture(variant):
                      rect=dict(zip(('x', 'y', 'w', 'h'), rect)))
             w.update(options)
             widgets.append(w)
-        icons = ['floorplan', 'climate', 'room', 'weather', 'music', 'garage']
+        icons = ['floorplan', 'climate', 'room', 'weather', 'music', 'garage', 'dashboard', 'sofa']
         pages.append(dict(id=f'test_{len(pages)}', title=page_title, icon=icons[len(pages)], widgets=widgets))
 
     # Keep the layout inside every wide board's 600 px minimum content height.
@@ -100,7 +122,6 @@ def all_widgets_fixture(variant):
         ('media_player', 'Musik', (20, 20, 340, 360), {}),
         ('sonos_favorites', 'Sonos-Favoriten', (380, 20, 300, 360), {}),
         ('portfolio', 'Portfolio', (700, 20, 260, 290), dict(parqet_selector=True)),
-        ('stocks_charts', 'Aktien & ETFs', (980, 20, 280, 290), {}),
         ('camera', 'Einfahrt', (20, 400, 340, 180), {}),
         ('todo_list', 'Einkaufsliste', (380, 380, 500, 200), {}),
         ('energy_price_forecast', 'Energiepreise', (900, 340, 340, 220), {}),
@@ -110,6 +131,19 @@ def all_widgets_fixture(variant):
         ('vacuum', 'Saugroboter mit Extras', (360, 20, 280, 360), dict(secondary_entity_id='image.demo_robot_map', tertiary_entity_id='select.demo_cleaning_mode', default_mode='Auto')),
         ('car', 'Auto mit allen Sensoren', (660, 20, 260, 540), dict(secondary_entity_id='sensor.demo_car_charging_power', tertiary_entity_id='sensor.demo_car_remaining_range', lock_entity_id='lock.demo_car_doors')),
         ('wallbox', 'Wallbox mit allen Sensoren', (940, 20, 320, 540), {}),
+    ])
+    quote_ids = ['sensor.yahoofinance_demo_ins', 'sensor.yahoofinance_demo_tech']
+    page('Aktien & ETFs', [
+        ('stocks_charts', title, (20 + index * 420, 20, 400, 560),
+         dict(stock_view=view, stock_entities=quote_ids, stock_period='ytd', stock_delta='both', stock_ticker=True))
+        for index, (view, title) in enumerate([('list', 'Liste'), ('chart', 'Charts'), ('grid', 'Kacheln')])
+    ])
+    page('Sensorlisten', [
+        ('sensor', 'Einzelwert', (20, 20, 240, 180), {}),
+        ('sensor', 'Messwerte', (280, 20, 460, 540), dict(sensor_view='list', sensor_entities=[
+            'sensor.demo_humidity', 'sensor.demo_power', 'sensor.demo_car_battery', 'sensor.demo_portfolio_value'])),
+        ('sensor', 'Zustände', (760, 20, 500, 540), dict(entity_id='binary_sensor.demo_front_door', sensor_view='list',
+            sensor_entities=['binary_sensor.demo_motion', 'sensor.demo_robot_battery'])),
     ])
     for kind, title in [('house_dashboard', 'Raumübersicht'), ('energy_dashboard', 'Energieseite')]:
         special = copy.deepcopy(next(p for p in gallery['pages'] if p.get('type') == kind))

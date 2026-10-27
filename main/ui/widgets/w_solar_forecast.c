@@ -360,17 +360,12 @@ static void solar_render(w_solar_forecast_ctx_t *ctx)
 #if UI_TEXT_ADAPTIVE
     lv_obj_set_width(ctx->title_label, content_w - 82);
     char summary[64];
-    if (ctx->aligned) {
-        char number[32];
-        if (ctx->valid[0]) solar_format_value(number, sizeof(number), ctx->values[0], ctx->units[0]);
-        else snprintf(number, sizeof(number), "-- kWh");
-        snprintf(summary, sizeof(summary), "%s %s", ui_i18n_get("solar.rest", "Rest"), number);
-    } else snprintf(summary, sizeof(summary), "%s", common_unit ? (ctx->units[0][0] ? ctx->units[0] : "kWh") : "");
+    snprintf(summary, sizeof(summary), "%s", common_unit ? (ctx->units[0][0] ? ctx->units[0] : "kWh") : "");
     lv_label_set_text(ctx->summary, summary);
-    const lv_font_t *summary_font = ui_text_fit(summary, ui_font_role(UI_TEXT_LABEL), ctx->aligned ? content_w : 78, 35);
+    const lv_font_t *summary_font = ui_text_fit(summary, ui_font_role(UI_TEXT_LABEL), 78, 35);
     lv_obj_set_style_text_font(ctx->summary, summary_font, LV_PART_MAIN);
-    lv_obj_set_width(ctx->summary, ctx->aligned ? content_w : 78);
-    lv_obj_align(ctx->summary, LV_ALIGN_TOP_RIGHT, -14, ctx->aligned && ui_widget_name_enabled(ctx->title_label) ? 42 : 10);
+    lv_obj_set_width(ctx->summary, 78);
+    lv_obj_align(ctx->summary, LV_ALIGN_TOP_RIGHT, -14, 10);
 #else
     lv_obj_set_width(ctx->title_label, content_w);
     lv_obj_set_hidden(ctx->summary, true);
@@ -379,7 +374,7 @@ static void solar_render(w_solar_forecast_ctx_t *ctx)
 
     if (ctx->vertical_bars) {
 #if UI_TEXT_ADAPTIVE
-        const lv_coord_t chart_top = ctx->aligned && ui_widget_name_enabled(ctx->title_label) ? 80 : (ui_widget_name_enabled(ctx->title_label) ? 54 : 52);
+        const lv_coord_t chart_top = ui_widget_name_enabled(ctx->title_label) ? 54 : 52;
         const lv_coord_t value_h = lv_font_get_line_height(ui_font_role(UI_TEXT_VALUE));
         const lv_coord_t day_h = lv_font_get_line_height(SOLAR_ROW_FONT);
         const lv_coord_t bottom_pad = 10;

@@ -27,6 +27,8 @@ set(WEBUI_JS_SOURCES
     js/bambu-printer.js
     js/evcc-wallbox.js
     js/stock-quotes.js
+    js/sensor-list.js
+    js/optional-entities.js
     js/energy-timeline-colors.js
     js/tile-previews.js
     js/layout-history.js

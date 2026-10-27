@@ -483,6 +483,7 @@ void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_val
     }
 
     lv_obj_set_hidden(ctx->meta_label, false);
+    lv_obj_update_layout(card); /* unavailable at creation: the card has no size yet and "--" would wrap into a column */
     lv_obj_set_width(ctx->temp_label, lv_obj_get_content_width(card));
     lv_obj_set_width(ctx->meta_label, lv_obj_get_content_width(card));
     const lv_font_t *temp_font = weather_pick_temp_font(card);
@@ -498,12 +499,20 @@ void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_val
         lv_obj_set_style_text_font(ctx->condition_label, WEATHER_CONDITION_FONT, LV_PART_MAIN);
         lv_obj_set_style_text_color(ctx->condition_label, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
         lv_obj_set_hidden(ctx->condition_label, false);
-        lv_obj_align(ctx->condition_label, LV_ALIGN_TOP_MID, 0, 36 - (ctx->hide_name ? 28 : 0));
-        lv_obj_align(ctx->temp_label, LV_ALIGN_TOP_MID, 0, 76 - (ctx->hide_name ? 28 : 0));
-        lv_obj_align(ctx->meta_label, LV_ALIGN_TOP_MID, 0, 130 - (ctx->hide_name ? 28 : 0));
         lv_label_set_text(ctx->condition_label, ui_i18n_get("weather.unavailable", "Unavailable"));
         lv_label_set_text(ctx->temp_label, "--");
         lv_label_set_text(ctx->meta_label, "");
+        /* stacked by measured height: larger text can wrap the reason onto a second line */
+        lv_obj_update_layout(card);
+        const lv_coord_t shift = ctx->hide_name ? 28 : 0;
+        const lv_coord_t condition_y = 36 - shift;
+        lv_coord_t temp_y = condition_y + lv_obj_get_height(ctx->condition_label) + 4;
+        if (temp_y < 76 - shift) temp_y = 76 - shift;
+        lv_coord_t meta_y = temp_y + lv_obj_get_height(ctx->temp_label) + 4;
+        if (meta_y < 130 - shift) meta_y = 130 - shift;
+        lv_obj_align(ctx->condition_label, LV_ALIGN_TOP_MID, 0, condition_y);
+        lv_obj_align(ctx->temp_label, LV_ALIGN_TOP_MID, 0, temp_y);
+        lv_obj_align(ctx->meta_label, LV_ALIGN_TOP_MID, 0, meta_y);
         weather_hide_lottie(ctx);
         return;
     }

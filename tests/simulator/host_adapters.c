@@ -3,6 +3,8 @@
  */
 #include "ui/theme/theme_store.h"
 #include "ha/ha_client.h"
+#include "ha/ha_auth_state.h"
+#include "esp_timer.h"
 #include "ha/ha_cover_fetcher.h"
 #include "ha/ha_energy_model.h"
 #include "ui/ui_bindings.h"
@@ -39,6 +41,20 @@ bool ha_model_get_state(const char *entity_id, ha_state_t *out_state)
             if (out_state != NULL) *out_state = s_states[i];
             return true;
         }
+    }
+    return false;
+}
+
+bool ha_model_get_entity_name(const char *entity_id, char *out, size_t out_len)
+{
+    for (size_t i = 0; i < s_state_count; i++) {
+        if (strcmp(s_states[i].entity_id, entity_id) != 0) continue;
+        cJSON *attrs = cJSON_Parse(s_states[i].attributes_json);
+        const char *name = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(attrs, "friendly_name"));
+        bool found = name != NULL && name[0] != '\0';
+        if (found) snprintf(out, out_len, "%s", name);
+        cJSON_Delete(attrs);
+        return found;
     }
     return false;
 }
@@ -84,6 +100,14 @@ bool ha_client_is_connected(void)
 }
 
 bool ha_client_is_initial_sync_done(void) { return s_online; }
+bool ha_client_reconnect_available(void)
+{
+    return (!s_online || ha_auth_state_blocked()) && ha_auth_state_retry_available(esp_timer_get_time() / 1000);
+}
+bool ha_client_request_reconnect(void)
+{
+    return ha_client_reconnect_available() && ha_auth_state_request_retry(esp_timer_get_time() / 1000);
+}
 
 static sim_service_calls_t s_calls;
 static esp_err_t s_service_result = ESP_OK;

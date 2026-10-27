@@ -72,8 +72,6 @@ function initInspectorLayout() {
     const fields = make("div", "inspector-extra-fields"); fields.append(...inputs.map(input => input.closest("label")));
     node.append(fields); container.append(node); return node;
   };
-  const battery = group("inspectorEtlBattery", [el.fEtlCharge, el.fEtlDischarge, el.fEtlSoc]);
-  const forecast = group("inspectorEtlForecast", [el.fEtlForecast]);
   const counterHelp = createInspectorHelpRow(el.energyTimelineHint, t("layout.inspector.counter_help"));
   el.energyTimelineFields.append(counterHelp);
   const etlStyle = make("div", "slider-options hidden");
@@ -139,13 +137,14 @@ function initInspectorLayout() {
   // Entities: what the tile reads or controls, including where its data comes from.
   move("entities", byId("entitySourceHint"), byId("entitySourceWarning"), label(el.fEntity), label(el.fSecondaryEntity), label(el.fTertiaryEntity), byId("parqetEntities"));
   follow(byId("vacuumOptions"), [label(el.fVacuumBattery)], "entities");
-  follow(byId("roomEntitiesFields"), [label(el.fRoomEntities), byId("fRoomEntitiesHint")], "entities");
-  move("entities", byId("carExtraFields"), byId("evccFields"), byId("bambuFields"), byId("energyTimelineFields"), byId("stockEntities"));
+  follow(byId("roomEntitiesFields"), [label(el.fRoomEntities), byId("roomEntityList"), byId("roomEntityAdd"), byId("fRoomEntitiesHint")], "entities");
+  move("entities", byId("carExtraFields"), byId("evccFields"), byId("bambuFields"), byId("energyTimelineFields"), byId("stockEntities"), byId("sensorListEntities"));
   follow(byId("solarForecastFields"), [byId("fSolarForecastTodayLabel"), byId("fSolarForecastTomorrowLabel"),
     byId("fSolarForecastDay3Label"), byId("fSolarForecastDay4Label"), byId("fSolarForecastDay5Label"), byId("fSolarForecastDay6Label"), byId("fSolarForecastDay7Label")].map(label), "entities");
   follow(byId("sliderOptions"), [label(el.fSliderEntityDomain)], "entities");
   follow(byId("graphOptions"), [label(el.fGraphHaHistory), byId("fGraphHaHistoryHint")], "entities");
   follow(byId("priceOptions"), [label(el.fPriceAverage)], "entities");
+  move("entities", byId("optionalEntityControls"));
   // Display: what the tile shows.
   move("display", label(el.fShowName), byId("binaryOptions"));
   follow(byId("roomEntitiesFields"), [label(el.fRoomExtraMode), byId("fRoomExtraEntityWrap"), byId("fRoomExtraHint"), byId("fRoomExtraWarning")], "display");
@@ -169,7 +168,7 @@ function initInspectorLayout() {
   bodies.placement.append(...position.querySelector(".inspector-group-body").children);
   for (const group of form.querySelectorAll(":scope > .inspector-group")) group.hidden = true;
   form.append(placement);
-  inspectorLayout = { root, head, sections, pageSections: PAGE_SECTIONS, pageRoot, follows, position: placement, placementChoice: null, battery, forecast, counterHelp, etlStyle, entityRows,
+  inspectorLayout = { root, head, sections, pageSections: PAGE_SECTIONS, pageRoot, follows, position: placement, placementChoice: null, counterHelp, etlStyle, entityRows,
     pageBattery, batteryManual, meters, pageHelp, page: null, widget: null, frame: null };
   // Placement starts folded (the canvas moves and sizes a widget by mouse); a click on its heading opens it until the next widget.
   placement.querySelector(":scope > summary").addEventListener("click", event => {
@@ -264,12 +263,9 @@ function refreshInspectorLayout() {
     const count = inputs.filter(input => input.value.trim() && (manual || input === el.energyBatterySoc)).length;
     group.querySelector("summary").textContent = t(caption) + " · " + (count ? inspectorSensorCount(count) : t("layout.inspector.optional"));
   }
-  const etlBattery = [el.fEtlCharge, el.fEtlDischarge, el.fEtlSoc].filter(input => input.value.trim()).length;
   if (ui.widget !== widget?.id) {
     ui.widget = widget?.id;
     for (const group of ui.root.querySelectorAll("details:not(.inspector-group):not(.inspector-sec)")) group.open = false;
-    // Optional subgroups start open when something is set in them.
-    ui.battery.open = etlBattery > 0; ui.forecast.open = !!el.fEtlForecast.value.trim();
     ui.placementChoice = null;
     ui.root.closest("aside").scrollTop = 0;
   }
@@ -288,10 +284,6 @@ function refreshInspectorLayout() {
     values.textContent = `${widget.rect.x} \u00B7 ${widget.rect.y} \u00B7 ${widget.rect.w} \u00D7 ${widget.rect.h}`;
     position.append(values);
   }
-  ui.battery.querySelector("summary").textContent = t("layout.inspector.battery") + " \u00B7 "
-    + inspectorSensorCount(etlBattery);
-  ui.forecast.querySelector("summary").textContent = t("layout.inspector.forecast") + " \u00B7 "
-    + t(el.fEtlForecast.value.trim() ? "layout.inspector.configured" : "layout.inspector.optional");
   setInspectorHelpCaption(ui.counterHelp, t("layout.inspector.counter_help"));
   ui.etlStyle.classList.toggle("hidden", widget?.type !== "energy_timeline");
   if (widget?.type === "gauge") {
@@ -320,6 +312,7 @@ function refreshInspectorLayout() {
       label.classList.toggle("inspector-label-stacked", (label.querySelector(":scope > span")?.textContent.trim().length || 0) > 22);
     }
   }
+  refreshOptionalEntities();
   refreshInspectorEntityRows();
   for (const name of INSPECTOR_SECTIONS) ui.sections[name].hidden = !widget || !inspectorSectionHasField(ui.sections[name]);
   for (const name of ui.pageSections) ui.sections[name].hidden = !selectedPage() || !inspectorSectionHasField(ui.sections[name]);

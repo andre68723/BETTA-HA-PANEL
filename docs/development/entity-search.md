@@ -67,6 +67,14 @@ class, state class, source-format flags, integration membership and capabilities
 forecast lists. Integration membership comes from HA's registry helpers, never from names or ID prefixes.
 The popup retains the unfiltered response cache so another field can apply its own policy.
 
+Discovery names are stored in the HA model, shared by the cached entity API, Room details
+and stock rows. The template keeps HA 2026.10's `friendly_name` when present; without it,
+`entity_name()` and `device_name()` supply a name without a repeated device prefix.
+Registry-only discovery retains the model's existing name when available. A state with
+only an ID cannot erase a discovered name, while an updated legacy friendly name still
+applies. This does not subscribe to registry renames: names without the legacy attribute
+refresh on discovery. Saved widget titles are independent of discovery names.
+
 Numeric metadata keeps temporarily unavailable sensors selectable. A matching unit does not establish that a
 sensor belongs to the intended car, room or portfolio. Solar forecasts and monetary metrics retain an explicit
 role-selection note. Structural series eligibility is not full validation of every timestamp or sample; the

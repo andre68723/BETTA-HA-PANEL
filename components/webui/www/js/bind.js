@@ -541,6 +541,8 @@ if (el.addBambuPrinterBtn) {
   bindHaDiagnosticsBanner();
   initInspectorLayout();
   bindStockInspector();
+  bindSensorListInspector();
+  bindOptionalEntities();
   if (el.followPageToggle) {
     el.followPageToggle.checked = followPageEnabled();
     el.followPageToggle.addEventListener("change", () => setFollowPage(el.followPageToggle.checked));

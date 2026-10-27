@@ -8,6 +8,18 @@ keep the snapshot timer and tap-to-refresh behaviour. A Bambu widget's optional
 
 ## Transport and decoding
 
+Still images use the shared cover worker. On the configured HA origin, camera
+proxy URLs drop their rotating `token` query parameters and authenticate with the
+panel's Bearer credential. Other query parameters are preserved. Missing credentials
+stop the request; foreign origins never receive the panel credential. Bearer requests
+disable redirects. Signed media URLs outside the camera proxy keep their own token.
+
+Only the latest image request for a consumer can complete. An HA disconnect cancels
+queued/in-flight camera callbacks; cancelled requests are checked before the HTTP gate
+opens. A rejected Bearer stops later image requests, including MJPEG workers, through
+the shared auth guard. The popup's explicit reconnect is queued to the HA task: it stops
+the old transport before clearing that guard, with a 15-second user retry cooldown.
+
 `ha/ha_camera_stream.c` requests `/api/camera_proxy_stream/<camera entity>`
 from the configured Home Assistant origin. It accepts no arbitrary URL, disables
 redirects and keeps the bearer token in the worker context only. It does not
@@ -50,6 +62,9 @@ an LVGL or widget pointer. Page hiding/deletion closes owned full-screen views.
 - `tools/test_host.sh`: fragmented multipart parsing, malformed and oversized
   input, URL/entity validation, real-worker HTTP failures, silence deadlines,
   cancellation inside a read, mailbox contention and buffer/reference cleanup.
+  URL/auth policy checks cover expired camera query tokens, preserved size parameters,
+  foreign/lookalike origins and signed media URLs. Retry checks cover explicit requests,
+  renewed rejection and cooldown without an automatically scheduled attempt.
 - `node --test tests/webui/*.test.mjs`: real Inspector editing events,
   enable/disable, save/reload, camera discovery binding and backup preservation.
 - `scripts/simulator.sh panel4 --regression controls`: Camera snapshot defaults,

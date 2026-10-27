@@ -39,6 +39,7 @@
 #include "ha/ha_auth_state.h"
 #include "ha/ha_discovery_domains.h"
 #include "ha/ha_registry_discovery.h"
+#include "ha/ha_cover_fetcher.h"
 #include "ha/ha_display_precision.h"
 #include "ha/ha_printer_lookup.h"
 #include "ha/ha_evcc_lookup.h"
@@ -167,6 +168,7 @@ typedef struct {
     ha_entity_search_meta_t search;
     char floor[APP_MAX_NAME_LEN];
     bool prefix_device;
+    bool name_from_template;
 } ha_light_discovery_pending_item_t;
 
 typedef struct {
@@ -970,7 +972,7 @@ static void ha_client_auth_status(int status, bool template_request)
 {
     if (ha_auth_state_report_http(status, template_request, s_client.authenticated)) {
         ESP_LOGE(TAG_HA_CLIENT, "HA rejected the panel (HTTP %d, %s): no more requests with this token until "
-                 "a restart or a new token in Settings", status, ha_auth_state_name());
+                 "a manual reconnect or corrected Settings", status, ha_auth_state_name());
     }
 }
 
@@ -1783,8 +1785,10 @@ static void ha_client_light_discovery_finish_locked(int64_t now_ms)
         safe_copy_cstr(name.text, sizeof(name.text), src->name);
         ha_registry_name_resolve(&name, src->id, src->device_id, s_client.light_discovery_devices,
             s_client.light_discovery_device_count, dst->name, sizeof(dst->name));
-        /* HA's computed friendly name includes the configured name parts. */
-        (void)ha_model_get_entity_name(src->id, dst->name, sizeof(dst->name));
+        /* Template names are already computed. Registry-only discovery keeps HA's legacy
+         * display name when present (including custom names on HA 2026.10). */
+        if (!src->name_from_template) (void)ha_model_get_entity_name(src->id, dst->name, sizeof(dst->name));
+        if (strcmp(src->id, dst->name) != 0) (void)ha_model_set_entity_name(src->id, dst->name);
         safe_copy_cstr(dst->icon, sizeof(dst->icon), src->icon);
         safe_copy_cstr(dst->device_class, sizeof(dst->device_class), src->device_class);
         safe_copy_cstr(dst->unit, sizeof(dst->unit), src->unit);
@@ -2895,6 +2899,7 @@ static esp_err_t ha_client_light_discovery_template_step(uint16_t offset, uint16
         if (!ha_client_json_string_value(entry, "name", item.name, sizeof(item.name))) {
             safe_copy_cstr(item.name, sizeof(item.name), item.id);
         }
+        item.name_from_template = true;
         (void)ha_client_json_string_value(entry, "room", item.room, sizeof(item.room));
         (void)ha_client_json_string_value(entry, "icon", item.icon, sizeof(item.icon));
         (void)ha_client_json_string_value(entry, "dc", item.device_class, sizeof(item.device_class));
@@ -5370,7 +5375,7 @@ static void ha_client_handle_text_message(const char *data, int len)
             ESP_LOGD(TAG_HA_CLIENT, "HA pong received while no ping was in-flight");
         }
     } else if (strcmp(type->valuestring, "auth_invalid") == 0 && ha_auth_state_report_ws_auth_invalid()) {
-        ESP_LOGE(TAG_HA_CLIENT, "HA rejected the token: no reconnect until a restart or a new token in Settings");
+        ESP_LOGE(TAG_HA_CLIENT, "HA rejected the token: waiting for manual reconnect or corrected Settings");
     }
 
     cJSON_Delete(root);
@@ -5497,6 +5502,7 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
             s_client.light_discovery_req_id = 0;
         }
         xSemaphoreGive(s_client.mutex);
+        ha_cover_fetcher_cancel_cameras();
         ha_client_pending_response_expire_all(true);
         if (ws_session_age_ms > 0 && ws_session_age_ms < HA_WS_SHORT_SESSION_MS) {
             ESP_LOGW(TAG_HA_CLIENT,
@@ -5566,6 +5572,30 @@ static void ha_client_task(void *arg)
     int64_t last_wifi_force_recover_ms = 0;
     bool wifi_seen_connected_once = false;
     while (true) {
+        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+        bool manual_retry = ha_auth_state_take_retry();
+        xSemaphoreGive(s_client.mutex);
+        if (manual_retry) {
+            /* Transport operations run here, never under the display lock of the popup. */
+            ha_cover_fetcher_cancel_cameras();
+            ha_ws_stop();
+            ha_client_reset_ws_rx_assembly();
+            ha_client_flush_ws_rx_queue();
+            ha_client_pending_response_expire_all(true);
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            s_client.authenticated = false;
+            s_client.pending_send_auth = false;
+            s_client.pending_send_pong = false;
+            s_client.ping_inflight = false;
+            s_client.ws_error_streak = 0;
+            s_client.ping_timeout_strikes = 0;
+            s_client.ws_short_session_strikes = 0;
+            s_client.pending_force_wifi_recover = false;
+            ha_auth_state_begin_retry();
+            xSemaphoreGive(s_client.mutex);
+            last_ws_restart_ms = ha_client_now_ms() - HA_WS_RESTART_INTERVAL_MAX_MS - HA_WS_RESTART_JITTER_MS;
+            ESP_LOGI(TAG_HA_CLIENT, "Home Assistant reconnect requested by user");
+        }
         if (s_client.ws_rx_queue != NULL) {
             ha_ws_rx_msg_t msg = {0};
             int drained = 0;
@@ -7220,6 +7250,31 @@ bool ha_client_is_connected(void)
         xSemaphoreGive(s_client.mutex);
     }
     return ha_ws_is_connected() && authenticated;
+}
+
+static bool ha_client_reconnect_available_locked(void)
+{
+    return s_client.task_handle != NULL && s_client.ws_url[0] != '\0' &&
+        (!s_client.authenticated || ha_auth_state_blocked()) &&
+        ha_auth_state_retry_available(ha_client_now_ms());
+}
+
+bool ha_client_reconnect_available(void)
+{
+    if (s_client.mutex == NULL || !wifi_mgr_is_connected()) return false;
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    bool available = ha_client_reconnect_available_locked();
+    xSemaphoreGive(s_client.mutex);
+    return available;
+}
+
+bool ha_client_request_reconnect(void)
+{
+    if (s_client.mutex == NULL || !wifi_mgr_is_connected()) return false;
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    bool requested = ha_client_reconnect_available_locked() && ha_auth_state_request_retry(ha_client_now_ms());
+    xSemaphoreGive(s_client.mutex);
+    return requested;
 }
 
 bool ha_client_is_initial_sync_done(void)

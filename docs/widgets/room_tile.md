@@ -24,11 +24,11 @@ None beyond the entities.
 
 | Option | Effect |
 | --- | --- |
-| Room entities | one entity per line, up to seven; importing an area in the editor fills them |
+| Room entities | Add entity extends the list up to seven additional entities; ↑ reorders, × removes, and a click changes an entity; importing an area fills the list |
 | Extra field | humidity, cover (status and open/close) or media player (status and play/pause) |
 | Controls on the card | lights, switches and covers as buttons, on a card of about 400 × 240 px |
 
-<a href="../img/examples/inspector-room_tile.png"><img src="../img/examples/inspector-room_tile.png" alt="Inspector of the Room widget" loading="lazy" width="340" height="620"></a>
+<a href="../img/examples/inspector-room_tile.png"><img src="../img/examples/inspector-room_tile.png" alt="Inspector of the Room widget" loading="lazy" width="340" height="683"></a>
 
 *Inspector in the web editor, with the widget of the preview above.*
 

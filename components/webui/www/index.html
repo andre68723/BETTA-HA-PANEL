@@ -1113,6 +1113,10 @@
                       <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="tertiary">Search</button>
                     </div>
                   </label>
+                  <div id="optionalEntityControls" class="optional-entity-controls" hidden>
+                    <select id="optionalEntityRole" aria-label="Optional function"></select>
+                    <button id="optionalEntityAdd" class="btn small" type="button">Add assignment</button>
+                  </div>
                   <div id="parqetEntities" class="hidden">
                   <label><span id="fParqetDividendsLabel">Dividends sensor (optional)</span>
                     <div class="entity-input-row">
@@ -1126,6 +1130,16 @@
                       <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="parqet_return">Search</button>
                     </div>
                   </label>
+                  </div>
+                  <div id="sensorListEntities" hidden>
+                    <label><span id="fSensorList1Label">Entry 2</span><div class="entity-input-row"><input id="fSensorList1" type="text" /><button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="sensor_list_2">Search</button></div></label>
+                    <label><span id="fSensorList2Label">Entry 3</span><div class="entity-input-row"><input id="fSensorList2" type="text" /><button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="sensor_list_3">Search</button></div></label>
+                    <label><span id="fSensorList3Label">Entry 4</span><div class="entity-input-row"><input id="fSensorList3" type="text" /><button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="sensor_list_4">Search</button></div></label>
+                    <label><span id="fSensorList4Label">Entry 5</span><div class="entity-input-row"><input id="fSensorList4" type="text" /><button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="sensor_list_5">Search</button></div></label>
+                    <label><span id="fSensorList5Label">Entry 6</span><div class="entity-input-row"><input id="fSensorList5" type="text" /><button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="sensor_list_6">Search</button></div></label>
+                    <label><span id="fSensorList6Label">Entry 7</span><div class="entity-input-row"><input id="fSensorList6" type="text" /><button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="sensor_list_7">Search</button></div></label>
+                    <label><span id="fSensorList7Label">Entry 8</span><div class="entity-input-row"><input id="fSensorList7" type="text" /><button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="sensor_list_8">Search</button></div></label>
+                    <button id="sensorListAdd" class="btn small" type="button">Add sensors</button>
                   </div>
                   <div id="stockEntities" class="hidden">
                   <label><span id="fStock1Label">Quote 2</span>
@@ -1170,6 +1184,7 @@
                       <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="stock_8">Search</button>
                     </div>
                   </label>
+                  <button id="stockAddQuote" class="btn small" type="button">Add quote</button>
                   <div class="field-hint" id="fStockHint">Sensors of Yahoo Finance or Easy Stock, in this order.</div>
                   </div>
                   <div id="vacuumOptions" class="hidden">
@@ -1201,6 +1216,8 @@
                         <button class="btn small entity-picker-btn" type="button" data-inspector-entity-target="room_entities">Search</button>
                       </div>
                     </label>
+                    <div id="roomEntityList" hidden></div>
+                    <button id="roomEntityAdd" class="btn small" type="button" hidden>Add entity</button>
                     <div class="meta" id="fRoomEntitiesHint"></div>
                     <label><span id="fRoomExtraModeLabel">Extra field</span>
                       <select id="fRoomExtraMode">
@@ -1651,6 +1668,7 @@
                     </label>
                   </div>
                   <div id="sensorOptions" class="slider-options hidden">
+                    <label><span id="fSensorViewLabel">View</span><select id="fSensorView"><option id="fSensorViewSingle" value="single">Single value</option><option id="fSensorViewList" value="list">List</option></select></label>
                     <label class="row">
                       <input id="fSensorShowAge" type="checkbox" checked />
                       <span id="fSensorShowAgeLabel">Show last-updated time</span>
@@ -1862,11 +1880,13 @@
       <div class="section-head">
         <h2 id="lightEntityPickerTitle">Choose Light</h2>
         <div class="row">
+        <button id="stockPickerApply" class="btn small" type="button" hidden>Apply selection</button>
           <button id="lightEntityPickerRefreshBtn" class="btn small" type="button">Refresh</button>
           <button id="lightEntityPickerCloseBtn" class="btn small" type="button">X</button>
         </div>
       </div>
       <div id="lightEntityPickerCurrent" class="entity-picker-current hidden"></div>
+      <div id="stockPickerSelection" class="stock-picker-selection" hidden></div>
       <input id="lightEntityPickerSearch" class="light-picker-search" type="search" placeholder="Search entities" maxlength="63" />
       <div id="lightEntityPickerFilter" class="meta no-shorten"></div>
       <div id="lightEntityPickerStatus" class="meta"></div>
@@ -2025,6 +2045,8 @@
   <script src="/js/bambu-printer.js"></script>
   <script src="/js/evcc-wallbox.js"></script>
   <script src="/js/stock-quotes.js"></script>
+  <script src="/js/sensor-list.js"></script>
+  <script src="/js/optional-entities.js"></script>
   <script src="/js/energy-timeline-colors.js"></script>
   <script src="/js/tile-previews.js"></script>
   <script src="/js/layout-history.js"></script>

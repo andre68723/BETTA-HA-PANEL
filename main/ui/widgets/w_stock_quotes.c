@@ -29,6 +29,7 @@
 #include "ha/ha_quote_series.h"
 #include "ui/quote_history_feed.h"
 #include "ui/text_font.h"
+#include "ui/fonts/app_symbols.h"
 #include "ui/theme/theme_default.h"
 #include "ui/theme/ui_style.h"
 #include "ui/theme/ui_typography.h"
@@ -72,7 +73,8 @@ typedef struct {
     lv_obj_t *ticker;
     lv_obj_t *price;
     lv_obj_t *delta;
-    lv_obj_t *delta2;                   /* list view with stock_delta both: the amount under the percentage */
+    lv_obj_t *trend;                    /* card view: direction beside the percentage */
+    lv_obj_t *delta2;                   /* both changes: the separate amount in list and card views */
     lv_obj_t *sub;                      /* chart view: reference or source under the change */
     lv_obj_t *spark;
 } qs_item_t;
@@ -431,7 +433,6 @@ static bool qs_card_delta(const w_qs_ctx_t *ctx, const qs_item_t *it, char *out,
     qs_pct_text(it->change.change_pct, pct, sizeof(pct));
     qs_amount_text(&it->quote, it->change.change, amount, sizeof(amount));
     if (ctx->delta_mode == QS_DELTA_ABSOLUTE) snprintf(out, cap, "%s", amount);
-    else if (ctx->delta_mode == QS_DELTA_BOTH) snprintf(out, cap, "%s  %s", amount, pct);
     else snprintf(out, cap, "%s", pct);
     *color = qs_sign_color(true, it->change.change);
     return true;
@@ -475,6 +476,7 @@ static void qs_layout_card(w_qs_ctx_t *ctx, qs_item_t *it, int x, int y, int cw,
     lv_obj_set_style_text_color(it->price, lv_color_hex(known ? APP_UI_COLOR_TEXT_PRIMARY : APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
     lv_obj_set_style_text_align(it->price, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     lv_obj_set_hidden(it->delta2, true);
+    lv_obj_set_hidden(it->trend, true);
     /* a quote that cannot be read says why, smaller, and shows neither change nor chart */
     const bool message = !known && strcmp(status, "--") != 0;
     ui_text_set(it->price, message ? UI_TEXT_META : UI_TEXT_LABEL, true);
@@ -488,24 +490,38 @@ static void qs_layout_card(w_qs_ctx_t *ctx, qs_item_t *it, int x, int y, int cw,
     char delta[96];
     uint32_t color = APP_UI_COLOR_TEXT_SOFT;
     const bool numeric = qs_card_delta(ctx, it, delta, sizeof(delta), &color);
-    const int spark_y = price_y + label_h + (stacked ? meta_h : 0) + 4;
+    const bool both = ctx->delta_mode == QS_DELTA_BOTH;
+    const int spark_y = price_y + label_h + ((stacked ? 1 : 0) + (both ? 1 : 0)) * meta_h + 4;
     lv_obj_set_hidden(it->delta, !numeric);
     if (numeric) {
         qs_set_text(it->delta, delta);
         lv_obj_set_style_text_color(it->delta, lv_color_hex(color), LV_PART_MAIN);
         lv_obj_set_style_text_font(it->delta, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
-        if (stacked) {
-            lv_obj_set_style_text_align(it->delta, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-            qs_place(it->delta, QS_CARD_PAD, price_y + label_h, inner, meta_h);
-        } else {
-            const int dw = qs_text_w(delta, ui_font_role(UI_TEXT_META)) + 2;
-            lv_obj_set_style_text_align(it->delta, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
-            qs_place(it->delta, QS_CARD_PAD + inner - dw, price_y + (label_h - meta_h) / 2 + 2, dw, meta_h);
+        const int dw = qs_text_w(delta, ui_font_role(UI_TEXT_META)) + 2;
+        const int dy = stacked ? price_y + label_h : price_y + (label_h - meta_h) / 2 + 2;
+        lv_obj_set_style_text_align(it->delta, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+        qs_place(it->delta, QS_CARD_PAD + inner - dw, dy, dw, meta_h);
+        if (ctx->delta_mode != QS_DELTA_ABSOLUTE && it->change.change != 0.0) {
+            qs_set_text(it->trend, it->change.change > 0.0 ? APP_SYMBOL_ARROW_UP : APP_SYMBOL_ARROW_DOWN);
+            lv_obj_set_style_text_font(it->trend, APP_FONT_SYMBOL_SMALL, LV_PART_MAIN);
+            lv_obj_set_style_text_color(it->trend, lv_color_hex(color), LV_PART_MAIN);
+            qs_place(it->trend, QS_CARD_PAD + inner - dw - meta_h - 2, dy, meta_h, meta_h);
+            lv_obj_set_hidden(it->trend, false);
         }
+    }
+    if (numeric && both) {
+        qs_amount_text(&it->quote, it->change.change, text, sizeof(text));
+        qs_set_text(it->delta2, text);
+        ui_text_set(it->delta2, UI_TEXT_META, true);
+        lv_obj_set_style_text_color(it->delta2, lv_color_hex(color), LV_PART_MAIN);
+        lv_obj_set_style_text_align(it->delta2, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+        qs_place(it->delta2, QS_CARD_PAD, price_y + label_h + (stacked ? meta_h : 0), inner, meta_h);
+        lv_obj_set_hidden(it->delta2, false);
     }
     /* the price takes the line up to the change */
     if (numeric && !stacked) {
-        const int dw = qs_text_w(delta, ui_font_role(UI_TEXT_META)) + 2;
+        const int dw = qs_text_w(delta, ui_font_role(UI_TEXT_META)) + 2 +
+                       (ctx->delta_mode != QS_DELTA_ABSOLUTE && it->change.change != 0.0 ? meta_h + 2 : 0);
         qs_place(it->price, QS_CARD_PAD, price_y, inner - dw - QS_GAP, label_h);
     }
     const bool chart_ok = numeric && it->plot_count >= 2;
@@ -536,7 +552,8 @@ static void qs_layout_cards(w_qs_ctx_t *ctx, int list_w, int list_h)
             if (pw > price_w) price_w = pw;
         }
         if (qs_card_delta(ctx, it, delta, sizeof(delta), &color)) {
-            const int dw = qs_text_w(delta, meta);
+            const int dw = qs_text_w(delta, meta) +
+                           (ctx->delta_mode != QS_DELTA_ABSOLUTE && it->change.change != 0.0 ? meta_h + 2 : 0);
             if (dw > delta_w) delta_w = dw;
         }
     }
@@ -547,7 +564,8 @@ static void qs_layout_cards(w_qs_ctx_t *ctx, int list_w, int list_h)
     /* the change moves under the price for every card when it does not fit beside the widest one */
     const bool stacked = price_w + QS_GAP + delta_w + 2 * QS_CARD_PAD + 2 > cw;
     const int rows = (ctx->count + cols - 1) / cols;
-    const int text_h = 2 * QS_CARD_PAD + 2 * label_h + 4 + (stacked ? meta_h : 0);
+    const int text_h = 2 * QS_CARD_PAD + 2 * label_h + 4 +
+                       ((stacked ? 1 : 0) + (ctx->delta_mode == QS_DELTA_BOTH ? 1 : 0)) * meta_h;
     int spark_h = rows > 0 ? (list_h - (rows - 1) * QS_GAP) / rows - text_h : QS_SPARK_MIN;
     if (spark_h < QS_SPARK_MIN) spark_h = QS_SPARK_MIN;
     if (spark_h > QS_SPARK_MAX_H) spark_h = QS_SPARK_MAX_H;
@@ -767,6 +785,10 @@ static void qs_item_create(w_qs_ctx_t *ctx, qs_item_t *it, const char *entity_id
     lv_obj_set_style_text_align(it->price, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     it->delta = qs_label(it->row, UI_TEXT_LABEL, APP_UI_COLOR_TEXT_SOFT);
     lv_obj_set_style_text_align(it->delta, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    if (ctx->grid) {
+        it->trend = qs_label(it->row, UI_TEXT_META, APP_UI_COLOR_TEXT_SOFT);
+        lv_obj_set_hidden(it->trend, true);
+    }
     it->delta2 = qs_label(it->row, UI_TEXT_META, APP_UI_COLOR_TEXT_SOFT);
     lv_obj_set_style_text_align(it->delta2, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     it->sub = qs_label(it->row, UI_TEXT_META, APP_UI_COLOR_TEXT_MUTED);
@@ -882,11 +904,8 @@ void w_stock_quotes_apply_state(ui_widget_instance_t *instance, const ha_state_t
         if (!it->has_state) {
             /* not a quote this widget reads, but the row still says which sensor it is */
             memset(&it->quote, 0, sizeof(it->quote));
-            cJSON *attrs = cJSON_Parse(state->attributes_json);
-            const cJSON *name = cJSON_GetObjectItemCaseSensitive(attrs, "friendly_name");
-            if (cJSON_IsString(name) && name->valuestring != NULL) strlcpy(it->quote.name, name->valuestring, sizeof(it->quote.name));
-            cJSON_Delete(attrs);
         }
+        (void)ha_model_get_entity_name(it->entity_id, it->quote.name, sizeof(it->quote.name));
         if (provider == it->provider && had_state == it->has_state && qs_quote_equal(&previous, &it->quote)) continue;
         if (it->has_change && it->point_count > 0) {
             /* a new price moves the end of the period change, not its history */

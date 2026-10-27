@@ -208,6 +208,10 @@ static bool cover_wait_until_http_ready(cover_request_lifetime_t *lifetime)
 {
     int64_t last_log_ms = 0;
     for (;;) {
+        if (cover_request_cancelled(lifetime) || ha_auth_state_blocked()) {
+            ha_client_set_aux_http_pressure(false, 0);
+            return false;
+        }
         ha_client_set_aux_http_pressure(true, COVER_HTTP_PRESSURE_HOLD_MS);
         bool connected = ha_client_is_connected();
         bool heavy_busy = ha_client_heavy_gate_is_busy();
@@ -1420,7 +1424,11 @@ static esp_err_t cover_download(const char *url, http_sink_t *sink)
      * Assistant origin only; a foreign host gets a plain anonymous request. */
     const bool ha_origin = cover_url_on_origin(work->full_url, work->ctx.base_url);
     if (ha_origin && work->ctx.cert_common_name[0] != '\0') cfg.common_name = work->ctx.cert_common_name;
-    const bool send_bearer = ha_origin && strstr(work->full_url, "token=") == NULL && work->ctx.bearer_token[0] != '\0';
+    const bool send_bearer = cover_prepare_image_auth(work->full_url, work->ctx.base_url) == COVER_HTTP_BEARER;
+    if (send_bearer && work->ctx.bearer_token[0] == '\0') {
+        ret = ESP_ERR_INVALID_STATE;
+        goto cleanup;
+    }
     /* A redirect would carry the Authorization header along to wherever it points. */
     cfg.disable_auto_redirect = send_bearer;
 
@@ -1435,9 +1443,8 @@ static esp_err_t cover_download(const char *url, http_sink_t *sink)
     }
     esp_http_client_set_header(cli, "Connection", "close");
     esp_http_client_set_header(cli, "Accept", "image/*");
-    /* The HA media_player_proxy URLs already carry a ?token=... query; a Bearer
-     * header is harmless but unnecessary and would bloat the request.  Only
-     * attach it for URLs that don't include a token. */
+    /* HA camera proxies use the panel credential, independent of rotating image URL tokens.
+     * Other signed media URLs retain their own authentication. Foreign origins get no credential. */
     if (send_bearer) {
         snprintf(work->auth, sizeof(work->auth), "Bearer %s", work->ctx.bearer_token);
         esp_http_client_set_header(cli, "Authorization", work->auth);
@@ -1462,7 +1469,7 @@ static esp_err_t cover_download(const char *url, http_sink_t *sink)
         goto client_close;
     }
     if (ha_auth_state_report_image_fetch(status, send_bearer)) {
-        ESP_LOGE(TAG, "HA rejected the panel (HTTP %d, %s): image fetches stop until a restart", status,
+        ESP_LOGE(TAG, "HA rejected the panel (HTTP %d, %s): image fetches stop until a manual reconnect or restart", status,
                  ha_auth_state_name());
     }
     if (status != 200) {
@@ -2418,6 +2425,8 @@ esp_err_t ha_cover_fetcher_request(const char *entity_picture, int target_w, int
     if (entity_picture == NULL || entity_picture[0] == '\0' || cb == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
+    if (ha_auth_state_blocked() ||
+        (cover_url_is_camera_proxy(entity_picture) && !ha_client_is_connected())) return ESP_ERR_INVALID_STATE;
     if (target_w < COVER_MIN_W) target_w = COVER_MIN_W;
     if (target_h < COVER_MIN_H) target_h = COVER_MIN_H;
 
@@ -2431,7 +2440,9 @@ esp_err_t ha_cover_fetcher_request(const char *entity_picture, int target_w, int
     req.lifetime = cover_heap_calloc(1, sizeof(*req.lifetime));
     if (!req.lifetime) return ESP_ERR_NO_MEM;
     xSemaphoreTake(s_lock, portMAX_DELAY);
+    cover_request_lifetime_cancel(s_requests, user); /* only the newest request may answer this consumer */
     cover_request_lifetime_add(&s_requests, req.lifetime, user);
+    req.lifetime->camera = cover_url_is_camera_proxy(entity_picture);
     xSemaphoreGive(s_lock);
 
     if (xQueueSend(s_queue, &req, 0) != pdTRUE) {
@@ -2440,7 +2451,7 @@ esp_err_t ha_cover_fetcher_request(const char *entity_picture, int target_w, int
         cover_req_t drop;
         if (xQueueReceive(s_queue, &drop, 0) == pdTRUE) {
             /* The dropped request is never answered: its consumer has to cope (the camera tile times out). */
-            ESP_LOGW(TAG, "cover queue full: dropped the oldest request (%.60s)", drop.url);
+            ESP_LOGW(TAG, "cover queue full: dropped the oldest %s request", cover_url_kind(drop.url));
             cover_request_finish(drop.lifetime);
         }
         if (xQueueSend(s_queue, &req, 0) != pdTRUE) {
@@ -2456,6 +2467,14 @@ void ha_cover_fetcher_cancel(void *user)
     if (s_lock == NULL) return;
     xSemaphoreTake(s_lock, portMAX_DELAY);
     cover_request_lifetime_cancel(s_requests, user);
+    xSemaphoreGive(s_lock);
+}
+
+void ha_cover_fetcher_cancel_cameras(void)
+{
+    if (s_lock == NULL) return;
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    cover_request_lifetime_cancel_cameras(s_requests);
     xSemaphoreGive(s_lock);
 }
 

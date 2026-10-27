@@ -20,6 +20,8 @@
 #include "app_config.h"
 #include "build_stamp.h"
 #include "component_versions.h"
+#include "ha/ha_client.h"
+#include "ha/ha_auth_state.h"
 #include "net/mqtt_mgr.h"
 #include "net/update_check.h"
 #include "net/wifi_mgr.h"
@@ -158,6 +160,33 @@ static lv_timer_t *s_conn_popup_timer = NULL;
 static conn_popup_kind_t s_conn_popup_kind;
 static lv_obj_t *s_conn_popup_row_labels[CONN_POPUP_MAX_ROWS];
 static int s_conn_popup_row_count = 0;
+static lv_obj_t *s_conn_retry_button, *s_conn_retry_label, *s_conn_retry_hint;
+
+static void conn_popup_retry_update(void)
+{
+    if (!s_conn_retry_button) return;
+    ui_style_action_button(s_conn_retry_button, s_conn_retry_label, UI_CONTROL_ACTION,
+                           ha_client_reconnect_available());
+    if (ha_client_is_connected() || ha_auth_state_blocked() || ha_client_reconnect_available())
+        lv_label_set_text(s_conn_retry_label, ui_i18n_get("conn.reconnect", "Reconnect"));
+}
+
+static void conn_popup_retry_cb(lv_event_t *event)
+{
+    if (lv_event_get_code(event) != LV_EVENT_CLICKED || !ha_client_request_reconnect()) return;
+    lv_label_set_text(s_conn_retry_label, ui_i18n_get("conn.reconnecting", "Reconnecting..."));
+    ui_style_action_button(s_conn_retry_button, s_conn_retry_label, UI_CONTROL_ACTION, false);
+}
+
+static int conn_popup_place_retry(int y)
+{
+    if (!s_conn_retry_button) return y;
+    lv_obj_align(s_conn_retry_hint, LV_ALIGN_TOP_LEFT, 0, y + 10);
+    lv_obj_update_layout(s_conn_retry_hint);
+    int button_y = y + 10 + lv_obj_get_height(s_conn_retry_hint) + 12;
+    lv_obj_align(s_conn_retry_button, LV_ALIGN_TOP_LEFT, 0, button_y);
+    return button_y + lv_obj_get_height(s_conn_retry_button);
+}
 
 /* Wrapping can change after a live refresh; place each next row below the actual label height. */
 static int conn_popup_place_rows(const conn_popup_row_t *rows, int count)
@@ -251,9 +280,11 @@ static void conn_popup_build_rows(conn_popup_kind_t kind, conn_popup_row_t *rows
     if (kind == CONN_POPUP_HA) {
         /* ---- Home Assistant (the card's title names it) ---- */
         row = conn_popup_push(rows, row_count, txt_status, false);
-        if (s_topbar_api_connected && s_topbar_api_sync_done) {
+        if (ha_auth_state_blocked()) {
+            snprintf(row->value, sizeof(row->value), "%s", txt_disconnected);
+        } else if (s_topbar_api_connected && ha_client_is_connected() && s_topbar_api_sync_done) {
             snprintf(row->value, sizeof(row->value), "%s", txt_connected);
-        } else if (s_topbar_api_connected) {
+        } else if (s_topbar_api_connected && ha_client_is_connected()) {
             snprintf(row->value, sizeof(row->value), "%s", ui_i18n_get("conn.syncing", "Connected, syncing"));
         } else {
             snprintf(row->value, sizeof(row->value), "%s", txt_disconnected);
@@ -262,6 +293,13 @@ static void conn_popup_build_rows(conn_popup_kind_t kind, conn_popup_row_t *rows
         if (have_settings) {
             conn_popup_host_from_url(settings->ha_ws_url, row->value, sizeof(row->value));
         }
+        row = conn_popup_push(rows, row_count, ui_i18n_get("conn.access", "Access"), false);
+        const char *access = ha_auth_state_reason() == HA_AUTH_FORBIDDEN
+            ? ui_i18n_get("conn.forbidden", "Denied (HTTP 403); check HA IP bans")
+            : ha_auth_state_reason() == HA_AUTH_TOKEN_REJECTED
+            ? ui_i18n_get("conn.token_rejected", "Access token rejected")
+            : ui_i18n_get("conn.no_rejection", "No authentication rejection");
+        snprintf(row->value, sizeof(row->value), "%s", access);
 
         /* ---- This panel's firmware ---- */
         conn_popup_push(rows, row_count, ui_i18n_get("conn.firmware", "Firmware"), true);
@@ -326,17 +364,20 @@ static void ui_pages_conn_popup_refresh_timer_cb(lv_timer_t *timer)
     for (int i = 0; i < row_count; i++) {
         conn_popup_set_row_text(s_conn_popup_row_labels[i], &rows[i]);
     }
-    conn_popup_place_rows(rows, row_count);
+    conn_popup_place_retry(conn_popup_place_rows(rows, row_count));
+    conn_popup_retry_update();
 }
 
 static void ui_pages_conn_popup_deleted_cb(lv_event_t *event)
 {
     (void)event;
     ui_pages_conn_popup_stop_timer();
+    s_conn_retry_button = s_conn_retry_label = s_conn_retry_hint = NULL;
 }
 
 static void ui_pages_show_connectivity_popup(conn_popup_kind_t kind)
 {
+    s_conn_retry_button = s_conn_retry_label = s_conn_retry_hint = NULL;
     lv_obj_t *screen = lv_scr_act();
     lv_obj_update_layout(screen);
     int screen_w = lv_obj_get_width(screen);
@@ -416,6 +457,22 @@ static void ui_pages_show_connectivity_popup(conn_popup_kind_t kind)
         s_conn_popup_row_labels[i] = conn_popup_add_row(body, content_w - 8, &rows[i]);
     }
     int content_h = conn_popup_place_rows(rows, row_count);
+    if (kind == CONN_POPUP_HA) {
+        s_conn_retry_hint = ui_popup_label_create(body, "", UI_POPUP_LABEL_HINT);
+        lv_obj_set_width(s_conn_retry_hint, content_w - 8);
+        lv_label_set_long_mode(s_conn_retry_hint, LV_LABEL_LONG_WRAP);
+        lv_label_set_text(s_conn_retry_hint, ui_i18n_get("conn.retry_hint",
+            "Fix access or remove the IP ban in Home Assistant first, then reconnect."));
+        s_conn_retry_button = lv_button_create(body);
+        lv_obj_set_size(s_conn_retry_button, content_w - 8,
+                        lv_font_get_line_height(ui_font_role(UI_TEXT_META)) + 24);
+        s_conn_retry_label = ui_popup_label_create(s_conn_retry_button, "", UI_POPUP_LABEL_BODY);
+        lv_label_set_text(s_conn_retry_label, ui_i18n_get("conn.reconnect", "Reconnect"));
+        lv_obj_center(s_conn_retry_label);
+        lv_obj_add_event_cb(s_conn_retry_button, conn_popup_retry_cb, LV_EVENT_CLICKED, NULL);
+        conn_popup_retry_update();
+        content_h = conn_popup_place_retry(content_h);
+    }
     int frame_h = 2 * (18 + lv_obj_get_style_border_width(card, LV_PART_MAIN));
     int card_h = row_y_start + content_h + frame_h + 6;
     if (card_h > screen_h - 24) card_h = screen_h - 24;

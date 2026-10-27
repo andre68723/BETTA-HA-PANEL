@@ -15,6 +15,18 @@
  * pinned TLS name; "http://host:8123.evil.example/" and "http://host:81234/" are other origins. */
 bool cover_url_on_origin(const char *url, const char *base_url);
 
+typedef enum {
+    COVER_HTTP_ANONYMOUS,
+    COVER_HTTP_SIGNED_URL,
+    COVER_HTTP_BEARER,
+} cover_http_auth_t;
+/* Recognizes HA's camera proxy paths, including absolute URLs; this is not an origin trust check. */
+bool cover_url_is_camera_proxy(const char *url);
+/* Full URL, modified in place: same-origin camera requests discard query tokens and use Bearer.
+ * Other signed URLs and all foreign URLs stay unchanged. A BEARER result requires a nonempty
+ * credential and disabled redirects; the caller must not make an anonymous fallback request. */
+cover_http_auth_t cover_prepare_image_auth(char *url, const char *base_url);
+
 /* True when a PNG chunk of `chunk_len` data bytes starting at `pos` (its length field) lies fully inside the first
  * `len` bytes: 4 length + 4 type + data + 4 CRC. Written so that a 32-bit size_t cannot wrap: a length of 0xFFFFFFF5
  * must not pass as "1 byte". */

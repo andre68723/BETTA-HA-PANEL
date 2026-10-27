@@ -208,8 +208,14 @@ def render_panels(wide, compact, devices, output, appearance_only=False, setup_o
                     image = image.crop((0, 0, image.width, TOP_BAR_H))
                 elif name.startswith("popup-"):
                     # The popup is centred; its height follows the rows (Home Assistant also lists the firmware).
-                    top, bottom = (230, 570) if name == "popup-ha" else (275, 525)
-                    image = image.crop((400, top, 880, bottom))
+                    if name == "popup-ha":
+                        card = next(row for line in dump.read_text().splitlines()
+                                    if (row := json.loads(line)).get("widget") == "popup"
+                                    and row.get("depth") == 2 and row.get("kind") == "obj")
+                        image = image.crop((max(0, card["x1"] - 12), max(0, card["y1"] - 12),
+                                            min(image.width, card["x2"] + 13), min(image.height, card["y2"] + 13)))
+                    else:
+                        image = image.crop((400, 275, 880, 525))
                 elif name.startswith("weather-forecast-report_") or name == "graph-ha-history-24h":
                     rect = fixture["pages"][0]["widgets"][0]["rect"]
                     x, y = rect["x"], rect["y"] + TOP_BAR_H

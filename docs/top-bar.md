@@ -55,7 +55,12 @@ clock and the Home Assistant chip and only appears while MQTT runs.
 
 === "Home Assistant"
 
-    ![Home Assistant card with status, host, firmware version and build time](img/examples/popup-ha.png)
+    ![Home Assistant card with status, host, access information, firmware version and Reconnect button](img/examples/popup-ha.png)
+
+    **Reconnect** retries the HA connection without restarting the panel. It is
+    available while disconnected, with at least 15 seconds between attempts.
+    Fix an invalid token or remove an IP ban in HA first; the popup shows rejected
+    access and stays disconnected if HA still refuses the request.
 
     Connection and sync state, the host, and this panel's firmware: version, build and an available update.
 

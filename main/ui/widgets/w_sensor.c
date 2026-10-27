@@ -3,6 +3,8 @@
  * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
 #include "ui/ui_widget_factory.h"
+#include "ui/widgets/w_sensor_list.h"
+#include "ui/text_font.h"
 
 #include <stdbool.h>
 #include <math.h>
@@ -34,6 +36,8 @@
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     lv_obj_t *card;
+    lv_obj_t *font_root;
+    bool list_row;
     lv_obj_t *title_label;
     lv_obj_t *value_label;
     lv_obj_t *age_label;
@@ -270,11 +274,46 @@ static void sensor_update_age_label(w_sensor_ctx_t *ctx)
         LV_PART_MAIN);
 }
 
+static void sensor_apply_row_layout(w_sensor_ctx_t *ctx)
+{
+    lv_obj_update_layout(ctx->card);
+    const int width = lv_obj_get_content_width(ctx->card);
+    if (width < 1) return;
+    const lv_font_t *font = ui_font_role(UI_TEXT_LABEL);
+    const int line = lv_font_get_line_height(font), age = lv_font_get_line_height(SENSOR_META_FONT);
+    lv_point_t size;
+    lv_text_get_size(&size, ctx->value_text, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    const bool stacked = size.x + 8 > width * 55 / 100;
+    lv_obj_set_style_text_font(ctx->title_label, font, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ctx->value_label, font, LV_PART_MAIN);
+    lv_obj_set_style_text_align(ctx->title_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+    lv_obj_set_style_text_align(ctx->value_label, stacked ? LV_TEXT_ALIGN_LEFT : LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    lv_obj_align(ctx->title_label, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_set_size(ctx->title_label, stacked ? width : width - size.x - 8, line);
+    lv_label_set_long_mode(ctx->value_label, stacked ? LV_LABEL_LONG_WRAP : LV_LABEL_LONG_CLIP);
+    int value_h = line;
+    if (stacked) {
+        lv_text_get_size(&size, ctx->value_text, font, 0, 0, width, LV_TEXT_FLAG_NONE);
+        value_h = size.y;
+    }
+    lv_obj_set_size(ctx->value_label, stacked ? width : size.x + 2, value_h);
+    lv_obj_align(ctx->value_label, LV_ALIGN_TOP_LEFT, stacked ? 0 : width - size.x - 2, stacked ? line : 0);
+    const int bottom = stacked ? line + value_h : line;
+    lv_obj_set_style_text_font(ctx->age_label, SENSOR_META_FONT, LV_PART_MAIN);
+    lv_obj_set_style_text_align(ctx->age_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+    lv_obj_set_size(ctx->age_label, width, age);
+    lv_obj_align(ctx->age_label, LV_ALIGN_TOP_LEFT, 0, bottom + 2);
+    const int height = bottom + (lv_obj_is_hidden(ctx->age_label) ? 0 : age + 2) + 4;
+    if (lv_obj_get_height(ctx->card) != height) lv_obj_set_height(ctx->card, height);
+}
+
 static void sensor_apply_layout(w_sensor_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->card == NULL || ctx->title_label == NULL || ctx->value_label == NULL || ctx->age_label == NULL) {
         return;
     }
+
+    if (ctx->list_row) { sensor_apply_row_layout(ctx); return; }
 
     lv_obj_t *card = ctx->card;
     lv_obj_update_layout(card);
@@ -394,6 +433,7 @@ static void sensor_age_timer_cb(lv_timer_t *timer)
         return;
     }
 
+    ui_fonts_tile_begin("sensor", lv_obj_get_width(ctx->font_root), lv_obj_get_height(ctx->font_root));
     if (ctx->timestamp && ctx->time_style == HA_TS_RELATIVE) {
         char text[sizeof(ctx->value_text)];
         sensor_timestamp_text(ctx, text, sizeof(text));
@@ -405,6 +445,7 @@ static void sensor_age_timer_cb(lv_timer_t *timer)
     }
     sensor_update_age_label(ctx);
     sensor_apply_layout(ctx);
+    ui_fonts_tile_end();
 }
 
 static void w_sensor_event_cb(lv_event_t *event)
@@ -432,7 +473,7 @@ static void w_sensor_event_cb(lv_event_t *event)
     }
 }
 
-esp_err_t w_sensor_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance)
+static esp_err_t sensor_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance, lv_obj_t *font_root)
 {
     if (def == NULL || parent == NULL || out_instance == NULL) {
         return ESP_ERR_INVALID_ARG;
@@ -476,6 +517,16 @@ esp_err_t w_sensor_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     }
 
     ctx->card = card;
+    ctx->font_root = font_root != NULL ? font_root : card;
+    ctx->list_row = font_root != NULL;
+    if (ctx->list_row) {
+        lv_obj_set_width(card, lv_pct(100));
+        lv_obj_set_style_pad_all(card, 0, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(card, LV_OPA_TRANSP, LV_PART_MAIN);
+        lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(card, 0, LV_PART_MAIN);
+        ui_text_record(value, UI_TEXT_LABEL, true);
+    }
     strlcpy(ctx->entity_id, def->entity_id, sizeof(ctx->entity_id));
     ctx->history_popup = def->history_popup;
     lv_obj_set_clickable(card, ctx->history_popup);
@@ -505,17 +556,35 @@ esp_err_t w_sensor_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     return ESP_OK;
 }
 
+esp_err_t w_sensor_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out)
+{
+    if (def != NULL && strcmp(def->display_mode, "list") == 0) return w_sensor_list_create(def, parent, out);
+    return sensor_create(def, parent, out, NULL);
+}
+
+esp_err_t w_sensor_row_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out, lv_obj_t *font_root)
+{
+    return sensor_create(def, parent, out, font_root);
+}
+
 void w_sensor_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
 {
     if (instance == NULL || instance->obj == NULL || state == NULL) {
         return;
     }
 
+    if (strcmp(instance->display_mode, "list") == 0) { w_sensor_list_apply_state(instance, state); return; }
+
     w_sensor_ctx_t *ctx = (w_sensor_ctx_t *)instance->ctx;
     if (ctx == NULL) {
         return;
     }
 
+    if (strcmp(ctx->entity_id, state->entity_id) != 0) return;
+    if (ctx->list_row) {
+        char name[APP_MAX_NAME_LEN];
+        if (ha_model_get_entity_name(state->entity_id, name, sizeof(name))) lv_label_set_text(ctx->title_label, name);
+    }
     if (sensor_state_is_unavailable(state->state)) {
         sensor_apply_unavailable(ctx);
         return;
@@ -565,6 +634,8 @@ void w_sensor_mark_unavailable(ui_widget_instance_t *instance)
     if (instance == NULL || instance->obj == NULL) {
         return;
     }
+
+    if (strcmp(instance->display_mode, "list") == 0) { w_sensor_list_mark_unavailable(instance); return; }
 
     w_sensor_ctx_t *ctx = (w_sensor_ctx_t *)instance->ctx;
     if (ctx == NULL) {

@@ -343,16 +343,17 @@ function renderLightEntityPicker(data = {}) {
   // can be used as it is.
   if (el.lightEntityPickerRemoveBtn) {
     el.lightEntityPickerRemoveBtn.textContent = t("entity_picker.remove");
-    el.lightEntityPickerRemoveBtn.classList.toggle("hidden", !inspectorTarget?.slot || inspectorTarget.slot === "primary"
+    el.lightEntityPickerRemoveBtn.classList.toggle("hidden", Array.isArray(inspectorTarget?.stockSelection) || !inspectorTarget?.slot || inspectorTarget.slot === "primary"
       || Boolean(inspectorTarget.append) || !inspectorTarget.input?.value.trim());
   }
   if (el.lightEntityPickerUseIdBtn) {
     const typed = search.toLowerCase();
     el.lightEntityPickerUseIdBtn.textContent = t("entity_picker.use_id", { id: typed });
-    el.lightEntityPickerUseIdBtn.classList.toggle("hidden", !inspectorTarget || !/^[a-z0-9_]+\.[a-z0-9_]+$/.test(typed)
+    el.lightEntityPickerUseIdBtn.classList.toggle("hidden", Array.isArray(inspectorTarget?.stockSelection) || !inspectorTarget || !/^[a-z0-9_]+\.[a-z0-9_]+$/.test(typed)
       || items.some(item => item.id === typed) || (strictEntitySourceType(ruleType) && !widgetEntitySourceMatches({ id: typed }, ruleType, ruleSlot)));
   }
-  renderEntityPickerCurrent(inspectorTarget);
+  renderEntityPickerCurrent(stockPickerTarget() ? null : inspectorTarget);
+  renderStockPicker();
   if (el.lightEntityPickerRefreshBtn) {
     el.lightEntityPickerRefreshBtn.textContent = liveSearch ? t("entity_picker.refresh") : t("entity_picker.search");
   }
@@ -462,7 +463,22 @@ function renderLightEntityPicker(data = {}) {
       button.querySelector("strong").textContent = item.name || item.id;
       button.querySelector("span").textContent = entityIdWithClass(item);
       button.classList.toggle("is-current", !inspectorTarget?.append && item.id === inspectorTarget?.input?.value.trim());
+      const selection = stockPickerTarget()?.stockSelection;
+      if (selection) {
+        const selected = selection.indexOf(item.id);
+        button.classList.add("stock-picker-choice");
+        button.setAttribute("role", "checkbox");
+        button.setAttribute("aria-checked", String(selected >= 0));
+        button.classList.toggle("is-current", selected >= 0);
+        button.disabled = selected < 0 && selection.length >= entityListInputs().length;
+        if (selected >= 0) button.querySelector("strong").textContent =
+          `${entityListCaption(selected)}: ${item.name || item.id}`;
+      }
       button.onclick = () => {
+        if (stockPickerTarget()) {
+          if (stockPickerToggle(item.id)) renderLightEntityPicker();
+          return;
+        }
         if (editor.lightPicker.inspectorTarget?.input) {
           if (!assignInspectorEntity(editor.lightPicker.inspectorTarget, item.id)) return;
           closeLightEntityPicker();

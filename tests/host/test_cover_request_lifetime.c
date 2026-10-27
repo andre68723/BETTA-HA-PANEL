@@ -14,6 +14,9 @@ int main(void)
     cover_request_lifetime_add(&head, &decoding, &media);
     cover_request_lifetime_add(&head, &dispatched, &media);
     cover_request_lifetime_add(&head, &other, &camera);
+    queued.camera = true;
+    cover_request_lifetime_cancel_cameras(head);
+    assert(queued.cancelled && !decoding.cancelled && !other.cancelled);
     cover_request_lifetime_cancel(head, &media);
     assert(queued.cancelled && decoding.cancelled && dispatched.cancelled && !other.cancelled);
     /* Destroying another widget must not forget earlier cancelled callbacks. */

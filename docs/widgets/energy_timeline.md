@@ -27,10 +27,11 @@ Cumulative counters in Wh, kWh or MWh (state class `total` or `total_increasing`
 
 | Option | Effect |
 | --- | --- |
+| Optional entities | only configured roles are shown; choose a free function with Add assignment, then select its entity; × removes a binding |
 | Look | nested rings with values, or rings in a row with the timeline below |
 | Colors (Appearance) | the six flow colours, as swatches or HEX; **Reset to defaults** restores them |
 
-<a href="../img/examples/inspector-energy_timeline.png"><img src="../img/examples/inspector-energy_timeline.png" alt="Inspector of the Energy timeline widget" loading="lazy" width="340" height="657"></a>
+<a href="../img/examples/inspector-energy_timeline.png"><img src="../img/examples/inspector-energy_timeline.png" alt="Inspector of the Energy timeline widget" loading="lazy" width="340" height="583"></a>
 
 *Inspector in the web editor, with the widget of the preview above.*
 

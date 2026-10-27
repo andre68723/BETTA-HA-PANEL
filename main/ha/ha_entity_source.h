@@ -19,6 +19,19 @@ void ha_entity_search_json(cJSON *entry, const ha_entity_search_meta_t *meta);
     "{%% set quotes = integration_entities('yahoofinance') + integration_entities('easy_stock') %%}" \
     "{%% set sonos = integration_entities('sonos') %%}" \
     "{%% set printers = integration_entities('bambu_lab') %%}"
+
+/* Keep 2026.10 display names while the legacy attribute exists. Without it, compose the
+ * registry entity/device names (entity_name is available since HA 2026.4). A primary
+ * entity may have an empty entity name; never duplicate an existing device prefix. */
+#define HA_DISCOVERY_DISPLAY_NAME \
+    "{%% set name = a.get('friendly_name') or '' %%}" \
+    "{%% if not name %%}" \
+    "{%% set name = entity_name(s.entity_id) or '' %%}" \
+    "{%% set dn = device_name(s.entity_id) or '' %%}" \
+    "{%% if dn and name != dn and not name.startswith(dn ~ ' ') %%}" \
+    "{%% set name = (dn ~ ' ' ~ name)|trim %%}" \
+    "{%% endif %%}{%% endif %%}" \
+    "{%% set name = name or s.entity_id %%}"
 /* Small source metadata for discovery; never transfer complete forecast lists.
  * `a` is the state's attributes. Full price parsing remains the firmware's
  * authority when the chosen entity is subscribed. */

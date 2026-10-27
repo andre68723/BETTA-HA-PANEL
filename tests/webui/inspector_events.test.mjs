@@ -430,6 +430,267 @@ test("stock quotes: add, reorder, remove a quote and the options through Inspect
   for (const key of ["stock_view", "stock_period", "stock_delta", "stock_ticker"]) assert.equal(plain[key], undefined, key);
 });
 
+test("stock Add quote shares all eight slots across views, saves, reloads and reopens a removed slot", async () => {
+  const run = setupInspector("stock_quotes", "sensor.quote_a");
+  run(`
+    renderEntityOptions = () => {};
+    openLightEntityPicker = (_kind, options) => { pickerOptions = options; editor.lightPicker.inspectorTarget = options.inspectorTarget; };
+    renderInspectorChange = refresh => { if (refresh) renderInspector(); editor.dirty = true; };
+    globalThis.stockLabels = STOCK_FIELDS.map(key => {
+      const label = { hidden: false, querySelector() { return null; } };
+      el[key].closest = () => label;
+      return label;
+    });
+    renderInspector();
+  `);
+  assert.equal(run("stockLabels.every(label => label.hidden)"), true);
+  for (const view of ["list", "chart", "grid"]) {
+    run(`el.fStockView.value = ${JSON.stringify(view)}; el.fStockView.dispatch("change")`);
+    assert.equal(run("el.stockAddQuote.disabled"), false);
+    assert.match(run("el.stockAddQuote.textContent"), /1\/8/);
+    assert.equal(run("stockLabels.every(label => label.hidden)"), true);
+  }
+  // Cancelling the picker must leave the list and row count unchanged.
+  run('el.stockAddQuote.dispatch("click")');
+  assert.equal(run("pickerOptions.inspectorTarget.input === el.fStock1"), true);
+  assert.equal(run("stockLabels.every(label => label.hidden)"), true);
+  for (let index = 1; index < 8; index++) {
+    run('el.stockAddQuote.dispatch("click")');
+    assert.equal(run(`pickerOptions.inspectorTarget.input === el.fStock${index}`), true);
+    assert.equal(run(`stockPickerToggle("sensor.quote_${index}")`), true);
+    assert.equal(run("stockPickerApply()"), true);
+    assert.equal(run(`stockLabels[${index - 1}].hidden`), false);
+  }
+  assert.equal(run("el.stockAddQuote.disabled"), false);
+  assert.match(run("el.stockAddQuote.textContent"), /8\/8/);
+  await run("el.saveBtn.onclick()");
+  run("editor.layout = savedLayout; renderInspector()");
+  assert.equal(run("selectedWidget().stock_entities.length"), 7);
+  assert.equal(run("el.stockAddQuote.disabled"), false);
+  run("stockQuoteRemove(2)"); // the row's own ×
+  assert.equal(run('selectedWidget().stock_entities.includes("sensor.quote_3")'), false); // the gap closes
+  assert.equal(run("el.stockAddQuote.disabled"), false);
+  assert.match(run("el.stockAddQuote.textContent"), /7\/8/);
+  run('el.stockAddQuote.dispatch("click")');
+  assert.equal(run("pickerOptions.inspectorTarget.input === el.fStock7"), true);
+  run('stockPickerToggle("sensor.replacement"); stockPickerApply()');
+  await run("el.saveBtn.onclick()");
+  run("editor.layout = savedLayout; renderInspector()");
+  assert.equal(run("selectedWidget().stock_entities.length"), 7);
+  assert.equal(run("selectedWidget().stock_entities[6]"), "sensor.replacement");
+  assert.equal(run("el.stockAddQuote.disabled"), false);
+});
+
+test("stock multi-selection maps slots, preserves a draft across search, cancels and applies atomically", async () => {
+  const run = setupInspector("stock_quotes", "sensor.quote_a");
+  run(`
+    renderEntityOptions = () => {};
+    renderInspectorChange = refresh => { if (refresh) renderInspector(); editor.dirty = true; };
+    openLightEntityPicker = (_kind, options) => { pickerOptions = options; editor.lightPicker.inspectorTarget = options.inspectorTarget; };
+    selectedWidget().stock_entities = ["sensor.quote_b", "sensor.quote_c"];
+    renderInspector();
+    el.stockAddQuote.dispatch("click");
+  `);
+  assert.equal(run('JSON.stringify(stockPickerTarget().stockSelection)'), JSON.stringify(['sensor.quote_a', 'sensor.quote_b', 'sensor.quote_c']));
+  run('stockPickerToggle("sensor.quote_d"); stockPickerToggle("sensor.quote_e"); stockPickerMove(4)');
+  assert.equal(run('JSON.stringify(stockPickerTarget().stockSelection)'), JSON.stringify(['sensor.quote_a', 'sensor.quote_b', 'sensor.quote_c', 'sensor.quote_e', 'sensor.quote_d']));
+  assert.equal(run('selectedWidget().stock_entities.length'), 2); // draft only
+  run('editor.lightPicker.search = "other search"; stockPickerToggle("sensor.quote_b")');
+  assert.equal(run('stockPickerTarget().stockSelection.length'), 4);
+  run('closeLightEntityPicker(); el.stockAddQuote.dispatch("click")');
+  assert.equal(run('stockPickerTarget().stockSelection.length'), 3); // cancellation discarded all changes
+  run('stockPickerToggle("sensor.quote_d"); stockPickerMove(3); stockPickerMove(2); stockPickerMove(1)');
+  run('el.stockPickerApply.dispatch("click")');
+  assert.equal(run('stockPickerTarget()'), null);
+  assert.equal(run('selectedWidget().entity_id'), 'sensor.quote_d');
+  assert.equal(run('JSON.stringify(selectedWidget().stock_entities)'), JSON.stringify(['sensor.quote_a', 'sensor.quote_b', 'sensor.quote_c']));
+  await run('el.saveBtn.onclick()');
+  run('editor.layout = savedLayout; renderInspector(); el.stockAddQuote.dispatch("click")');
+  for (const id of ['f', 'g', 'h', 'i']) assert.equal(run(`stockPickerToggle("sensor.quote_${id}")`), true);
+  assert.equal(run('stockPickerToggle("sensor.quote_overflow")'), false);
+  assert.equal(run('stockPickerTarget().stockSelection.length'), 8);
+  run('stockPickerToggle("sensor.quote_a")');
+  assert.equal(run('stockPickerToggle("sensor.quote_replacement")'), true);
+  assert.equal(run('stockPickerApply()'), true);
+  run('el.stockAddQuote.dispatch("click")'); // full lists remain editable in the multi-picker
+  assert.equal(run('stockPickerTarget().stockSelection.length'), 8);
+  assert.equal(run('pickerOptions.inspectorTarget.input === el.fEntity'), true);
+  // Switching to a different widget cannot apply a draft to it.
+  run('editor.layout.pages[0].widgets.push({ id: "other", type: "stock_quotes", entity_id: "sensor.other" }); editor.selectedWidgetId = "other"');
+  assert.equal(run('stockPickerApply()'), false);
+  assert.equal(run('selectedWidget().entity_id'), 'sensor.other');
+});
+
+function setupOptionalInspector(type) {
+  const run = setupInspector(type, "sensor.base");
+  run(`
+    renderEntityOptions = () => {};
+    const create = document.createElement;
+    document.createElement = tag => ({ ...create(tag), setAttribute() {} });
+    el.optionalEntityRole.setAttribute = () => {};
+    globalThis.optionalLabels = {};
+    for (const [field] of Object.values(OPTIONAL_ENTITY_ROLES).flat()) {
+      if (optionalLabels[field]) continue;
+      const label = { hidden: false, querySelector() { return null; } };
+      optionalLabels[field] = label;
+      el[field].closest = () => label;
+    }
+    renderInspectorChange = () => { renderInspector(); refreshOptionalEntities(); editor.dirty = true; };
+    renderInspector(); refreshOptionalEntities();
+  `);
+  return run;
+}
+
+for (const [type, slot, field, property, id] of [
+  ["car_widget", "secondary", "fSecondaryEntity", "secondary_entity_id", "sensor.charging_power"],
+  ["car_widget", "tertiary", "fTertiaryEntity", "tertiary_entity_id", "sensor.range"],
+  ["car_widget", "car_precond", "fCarPrecond", "precond_entity_id", "switch.preconditioning"],
+  ["car_widget", "car_lock", "fCarLock", "lock_entity_id", "lock.car"],
+  ["car_widget", "car_temp", "fCarTemp", "interior_temp_entity_id", "sensor.interior"],
+  ["parqet_portfolio", "secondary", "fSecondaryEntity", "secondary_entity_id", "sensor.gain"],
+  ["parqet_portfolio", "tertiary", "fTertiaryEntity", "tertiary_entity_id", "sensor.xirr"],
+  ["parqet_portfolio", "parqet_return", "fParqetReturn", "return_entity_id", "sensor.return"],
+  ["parqet_portfolio", "parqet_dividends", "fParqetDividends", "dividends_entity_id", "sensor.dividends"],
+  ["energy_timeline", "secondary", "fSecondaryEntity", "secondary_entity_id", "sensor.export"],
+  ["energy_timeline", "tertiary", "fTertiaryEntity", "tertiary_entity_id", "sensor.production"],
+  ["energy_timeline", "etl_charge", "fEtlCharge", "battery_charge_entity_id", "sensor.charge"],
+  ["energy_timeline", "etl_discharge", "fEtlDischarge", "battery_discharge_entity_id", "sensor.discharge"],
+  ["energy_timeline", "etl_soc", "fEtlSoc", "battery_soc_entity_id", "sensor.soc"],
+  ["energy_timeline", "etl_forecast", "fEtlForecast", "forecast_today_entity_id", "sensor.forecast"],
+  ["gauge", "secondary", "fSecondaryEntity", "secondary_entity_id", "sensor.extra_one"],
+  ["gauge", "tertiary", "fTertiaryEntity", "tertiary_entity_id", "sensor.extra_two"],
+  ["solar_forecast", "solar_today", "fSolarForecastToday", "forecast_today_entity_id", "sensor.today"],
+]) {
+  test(`optional ${type}/${slot}: choose role, assign, save/reload, remove and add again`, async () => {
+    const run = setupOptionalInspector(type);
+    assert.equal(run(`optionalEntityChoices().some(([, role]) => role === ${JSON.stringify(slot)})`), true);
+    assert.equal(run(`optionalLabels.${field}.hidden`), true);
+    run(`el.optionalEntityRole.value = ${JSON.stringify(slot)}; el.optionalEntityAdd.dispatch("click")`);
+    assert.equal(run(`pickerOptions.inspectorTarget.input === el.${field}`), true);
+    assert.equal(run(`assignInspectorEntity(pickerOptions.inspectorTarget, ${JSON.stringify(id)})`), true);
+    assert.equal(run(`selectedWidget().${property}`), id);
+    assert.equal(run(`optionalLabels.${field}.hidden`), false);
+    assert.equal(run(`optionalEntityChoices().some(([, role]) => role === ${JSON.stringify(slot)})`), false);
+    await run("el.saveBtn.onclick()");
+    run("editor.layout = savedLayout; renderInspector(); refreshOptionalEntities()");
+    assert.equal(run(`el.${field}.value`), id);
+    run(`optionalEntityRemove(${JSON.stringify(field)})`);
+    assert.equal(run(`selectedWidget().${property} || ""`), "");
+    assert.equal(run(`optionalLabels.${field}.hidden`), true);
+    assert.equal(run("selectedWidget().entity_id"), "sensor.base");
+    run(`el.optionalEntityRole.value = ${JSON.stringify(slot)}; el.optionalEntityAdd.dispatch("click")`);
+    assert.equal(run(`assignInspectorEntity(pickerOptions.inspectorTarget, ${JSON.stringify(id + "_new")})`), true);
+    await run("el.saveBtn.onclick()");
+    run("editor.layout = savedLayout; renderInspector(); refreshOptionalEntities()");
+    assert.equal(run(`selectedWidget().${property}`), id + "_new");
+  });
+}
+
+test("solar forecast days are added in order, only the last day is removable and entities are not reused", () => {
+  const run = setupOptionalInspector("solar_forecast");
+  const choices = () => JSON.parse(run("JSON.stringify(optionalEntityChoices().map(([, role]) => role))"));
+  assert.deepEqual(choices(), ["solar_today"]);
+  const add = (slot, id) => {
+    run(`el.optionalEntityRole.value = ${JSON.stringify(slot)}; el.optionalEntityAdd.dispatch("click")`);
+    assert.equal(run("pickerOptions.inspectorTarget.slot"), slot);
+    assert.equal(run(`assignInspectorEntity(pickerOptions.inspectorTarget, ${JSON.stringify(id)})`), true);
+  };
+  add("solar_today", "sensor.today");
+  assert.deepEqual(choices(), ["solar_tomorrow"]);
+  add("solar_tomorrow", "sensor.tomorrow");
+  assert.deepEqual(choices(), ["solar_day_3"]);
+  // The picker excludes what the other days and the remaining reading already use.
+  run('el.optionalEntityRole.value = "solar_day_3"; el.optionalEntityAdd.dispatch("click")');
+  assert.deepEqual(JSON.parse(run("JSON.stringify(pickerOptions.inspectorTarget.excludedEntityIds)")), ["sensor.base", "sensor.today", "sensor.tomorrow"]);
+  run("closeLightEntityPicker()");
+  // Only the last configured day shows ×; removing a middle day is refused.
+  assert.equal(run("optionalEntityRemove('fSolarForecastToday')"), false);
+  assert.equal(run("selectedWidget().forecast_today_entity_id"), "sensor.today");
+  assert.equal(run("optionalEntityRemove('fSolarForecastTomorrow')"), true);
+  assert.equal(run("optionalEntityRemove('fSolarForecastToday')"), true);
+  assert.deepEqual(choices(), ["solar_today"]);
+});
+
+test("optional role picker cancellation and widget switches preserve configured values and release shared rows", () => {
+  const run = setupOptionalInspector("car_widget");
+  run(`
+    selectedWidget().lock_entity_id = "lock.car";
+    selectedWidget().secondary_entity_id = "sensor.power";
+    editor.layout.pages[0].widgets.push({ id: "other", type: "solar_forecast", entity_id: "sensor.remaining",
+      forecast_tomorrow_entity_id: "sensor.tomorrow", rect: { x: 0, y: 0, w: 400, h: 300 } });
+    renderInspector(); refreshOptionalEntities();
+    el.optionalEntityRole.value = "car_temp"; el.optionalEntityAdd.dispatch("click");
+    closeLightEntityPicker();
+  `);
+  assert.equal(run("selectedWidget().interior_temp_entity_id"), undefined);
+  assert.equal(run("selectedWidget().lock_entity_id"), "lock.car");
+  run('editor.selectedWidgetId = "other"; renderInspector(); refreshOptionalEntities()');
+  assert.equal(run("el.fSolarForecastTomorrow.value"), "sensor.tomorrow");
+  assert.equal(run("optionalEntityChoices().some(([, role]) => role === 'car_temp')"), false);
+  run('editor.selectedWidgetId = "graph"; renderInspector(); refreshOptionalEntities()');
+  assert.equal(run("el.fSecondaryEntity.value"), "sensor.power");
+  assert.equal(run("optionalLabels.fSecondaryEntity.hidden"), false);
+  run('selectedWidget().type = "heating_tile"; renderInspector(); refreshOptionalEntities()');
+  assert.equal(run("optionalLabels.fSecondaryEntity.hidden"), false); // required field outside the dynamic-role types
+  assert.equal(run("el.optionalEntityControls.hidden"), true);
+});
+
+test("room entity rows: add, reorder, edit, remove, enforce capacity and retain order after save/reload", async () => {
+  const run = setupOptionalInspector("room_tile");
+  run(`
+    el.roomEntityAdd.dispatch("click");
+    assignInspectorEntity(pickerOptions.inspectorTarget, "sensor.humidity");
+    el.roomEntityAdd.dispatch("click");
+    assignInspectorEntity(pickerOptions.inspectorTarget, "light.room");
+  `);
+  assert.equal(run("selectedWidget().room_entities.join(',')"), "sensor.humidity,light.room");
+  run("roomEntityMove(1)");
+  assert.equal(run("selectedWidget().room_entities.join(',')"), "light.room,sensor.humidity");
+  run("roomEntityEdit(1)");
+  assert.equal(run('assignInspectorEntity(pickerOptions.inspectorTarget, "light.room")'), false); // duplicate
+  assert.equal(run('assignInspectorEntity(pickerOptions.inspectorTarget, "sensor.temperature")'), true);
+  assert.equal(run("selectedWidget().room_entities.join(',')"), "light.room,sensor.temperature");
+  run("roomEntityRemove(0)");
+  assert.equal(run("selectedWidget().room_entities.join(',')"), "sensor.temperature");
+  for (let index = 1; index < 7; index++) run(`el.roomEntityAdd.dispatch("click"); assignInspectorEntity(pickerOptions.inspectorTarget, "sensor.extra_${index}")`);
+  assert.equal(run("el.roomEntityAdd.disabled"), true);
+  await run("el.saveBtn.onclick()");
+  run("editor.layout = savedLayout; renderInspector(); refreshOptionalEntities()");
+  assert.equal(run("selectedWidget().room_entities.length"), 7);
+  assert.equal(run("selectedWidget().room_entities[0]"), "sensor.temperature");
+  run("roomEntityRemove(3)");
+  assert.equal(run("el.roomEntityAdd.disabled"), false);
+  run("roomEntityEdit(0)");
+  assert.equal(run("removeInspectorEntity(pickerOptions.inspectorTarget)"), true);
+  assert.equal(run("selectedWidget().room_entities[0]"), "sensor.extra_1");
+  assert.equal(run("selectedWidget().entity_id"), "sensor.base");
+});
+
+test("sensor list selects mixed entities, reorders, saves and retains selections across single/list switches", async () => {
+  const run = setupInspector("sensor", "sensor.temperature");
+  run(`renderEntityOptions = () => {}; renderInspectorChange = () => { renderInspector(); editor.dirty = true; };
+    openLightEntityPicker = (_kind, options) => { pickerOptions = options; editor.lightPicker.inspectorTarget = options.inspectorTarget; };
+    selectedWidget().sensor_unit = "degree"; renderInspector();
+    el.fSensorView.value = "list"; el.fSensorView.dispatch("change");
+    el.sensorListAdd.dispatch("click");`);
+  assert.equal(run('pickerOptions.configOverride.allowedDomains.join(",")'), 'sensor,binary_sensor');
+  run('stockPickerToggle("sensor.humidity"); stockPickerToggle("binary_sensor.window"); stockPickerMove(2); el.stockPickerApply.dispatch("click")');
+  assert.equal(run('selectedWidget().sensor_entities.join(",")'), 'binary_sensor.window,sensor.humidity');
+  assert.equal(run('selectedWidget().sensor_unit'), 'degree');
+  await run('el.saveBtn.onclick()');
+  // The row's own × empties it and the remaining entries close up.
+  run('sensorListRemove(0)');
+  assert.equal(run('selectedWidget().sensor_entities.join(",")'), 'sensor.humidity');
+  run('sensorListRemove(0)');
+  assert.equal(run('selectedWidget().sensor_entities'), undefined);
+  run('editor.layout = savedLayout; renderInspector(); el.fSensorView.value = "single"; el.fSensorView.dispatch("change")');
+  assert.equal(run('selectedWidget().sensor_entities.length'), 2);
+  assert.equal(run('selectedWidget().sensor_view'), undefined);
+  run('el.fSensorView.value = "list"; el.fSensorView.dispatch("change")');
+  assert.equal(run('selectedWidget().sensor_entities[0]'), 'binary_sensor.window');
+  assert.equal(run('selectedWidget().sensor_view'), 'list');
+});
+
 test("sensor format and unit: offered by device class, saved, kept while hidden and reset to the default", async () => {
   const run = setupInspector("sensor", "sensor.sun_next_rising");
   run("renderEntityOptions = () => {}");

@@ -70,10 +70,18 @@ def demo_responses(variant, fixture_path=None, all_widgets=False):
         if not isinstance(supplied, dict) or not isinstance(supplied.get('pages'), list):
             raise ValueError('Fixture must be a layout object with a pages array')
         fixture.update({key: supplied[key] for key in ('version', 'pages', 'alerts', 'states') if key in supplied})
+    if fixture_path is None and not all_widgets:
+        from editor_local_demo import add_quote_samples
+        add_quote_samples(fixture['states'])
     for state in fixture['states']:
         # Synthetic picture URLs are unnecessary here; no external resource is fetched.
         if 'entity_picture' in state.get('attributes', {}): state['attributes']['entity_picture'] = ''
     responses = demo_api(fixture)
+    # Explicit synthetic integration metadata also makes unbound quote samples searchable.
+    quote_ids = {s['entity_id'] for s in fixture['states'] if s.get('platform') in ('easy_stock', 'yahoofinance')}
+    for entity in responses['/api/entities']['items']:
+        if entity['id'] in quote_ids:
+            entity['search_flags'] |= 8
     if all_widgets:
         widgets = [w for page in fixture['pages'] for w in page.get('widgets', [])]
         def bindings(kind):

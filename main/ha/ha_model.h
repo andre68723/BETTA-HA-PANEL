@@ -39,7 +39,9 @@ esp_err_t ha_model_init(void);
 void ha_model_reset(void);
 esp_err_t ha_model_upsert_entity(const ha_entity_info_t *entity);
 esp_err_t ha_model_upsert_state(const ha_state_t *state);
-/* Copies the HA-computed friendly name when available; leaves out unchanged otherwise. */
+/* Updates only the discovery name, preserving state/capability metadata. */
+esp_err_t ha_model_set_entity_name(const char *entity_id, const char *name);
+/* Copies the shared display name when available; leaves out unchanged otherwise. */
 bool ha_model_get_entity_name(const char *entity_id, char *out, size_t out_len);
 bool ha_model_get_state(const char *entity_id, ha_state_t *out_state);
 uint32_t ha_model_state_revision(void);

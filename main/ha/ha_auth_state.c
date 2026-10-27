@@ -5,8 +5,38 @@
 
 static volatile ha_auth_block_t s_block = HA_AUTH_OK;
 static volatile bool s_not_admin = false;
+static bool s_retry_requested;
+static int64_t s_retry_after_ms;
 
 void ha_auth_state_reset(void)
+{
+    s_block = HA_AUTH_OK;
+    s_not_admin = false;
+    s_retry_requested = false;
+    s_retry_after_ms = 0;
+}
+
+bool ha_auth_state_retry_available(int64_t now_ms)
+{
+    return !s_retry_requested && now_ms >= s_retry_after_ms;
+}
+
+bool ha_auth_state_request_retry(int64_t now_ms)
+{
+    if (!ha_auth_state_retry_available(now_ms)) return false;
+    s_retry_after_ms = now_ms + 15000;
+    s_retry_requested = true;
+    return true;
+}
+
+bool ha_auth_state_take_retry(void)
+{
+    bool requested = s_retry_requested;
+    s_retry_requested = false;
+    return requested;
+}
+
+void ha_auth_state_begin_retry(void)
 {
     s_block = HA_AUTH_OK;
     s_not_admin = false;

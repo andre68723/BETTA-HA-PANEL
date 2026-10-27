@@ -726,6 +726,10 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
         }
         if (found) {
             ui_widget_factory_apply_state(&s_widgets[i], &s_state_scratch);
+        } else if (mark_unavailable_if_missing && !strcmp(s_widgets[i].type, "sensor") && !strcmp(s_widgets[i].display_mode, "list")) {
+            snprintf(s_state_scratch.entity_id, sizeof(s_state_scratch.entity_id), "%s", entity_id);
+            snprintf(s_state_scratch.state, sizeof(s_state_scratch.state), "unavailable");
+            ui_widget_factory_apply_state(&s_widgets[i], &s_state_scratch);
         } else if (is_primary && mark_unavailable_if_missing) {
             ui_widget_factory_mark_unavailable(&s_widgets[i]);
         }
@@ -994,6 +998,14 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
             sizeof(out->extra_entity_id[UI_PARQET_EXTRA_DIVIDENDS]));
         ui_runtime_copy_json_string(widget_json, "return_entity_id", out->extra_entity_id[UI_PARQET_EXTRA_RETURN],
             sizeof(out->extra_entity_id[UI_PARQET_EXTRA_RETURN]));
+    }
+    if (strcmp(out->type, "sensor") == 0) {
+        const cJSON *more = cJSON_GetObjectItemCaseSensitive(widget_json, "sensor_entities");
+        for (int i = 0; i < 7; i++) {
+            const cJSON *item = cJSON_GetArrayItem(more, i);
+            if (cJSON_IsString(item)) snprintf(out->extra_entity_id[i], APP_MAX_ENTITY_ID_LEN, "%s", item->valuestring);
+        }
+        ui_runtime_copy_json_string(widget_json, "sensor_view", out->display_mode, sizeof(out->display_mode));
     }
     if (strcmp(out->type, "stock_quotes") == 0) {
         cJSON *more = cJSON_GetObjectItemCaseSensitive(widget_json, "stock_entities");

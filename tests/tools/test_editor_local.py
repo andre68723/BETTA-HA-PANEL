@@ -112,6 +112,16 @@ class LocalEditorTest(unittest.TestCase):
         self.assertEqual(self.request('/api/layout', 'PUT', {'pages':[]})[0], 400)
         self.assertFalse(self.state.exists())
 
+    def test_quote_search_offers_ten_values_and_filters_by_name(self):
+        status, raw = self.request('/api/ha/light_entities?domain=sensor&search=demo')
+        self.assertEqual(status, 200)
+        quotes = [item for item in json.loads(raw)['items'] if item['search_flags'] & 8]
+        self.assertEqual(len(quotes), 10)
+        status, raw = self.request('/api/ha/light_entities?domain=sensor&search=apple')
+        self.assertEqual(status, 200)
+        self.assertEqual([item['id'] for item in json.loads(raw)['items']], ['sensor.yahoofinance_demo_tech'])
+
+
 
 class AllWidgetsDemoTest(unittest.TestCase):
     def test_shared_demo_reports_device_classes_without_capture_only_overrides(self):
@@ -143,7 +153,7 @@ class AllWidgetsDemoTest(unittest.TestCase):
                 fixture = all_widgets_fixture(variant)
                 widgets = [w for p in fixture['pages'] for w in p['widgets']]
                 self.assertEqual({w['type'] for w in widgets}, types)
-                self.assertEqual(len(fixture['pages']), 8)
+                self.assertEqual(len(fixture['pages']), 10)
                 # Compact navigation needs a distinct, explicit icon for every page.
                 icons = [page['icon'] for page in fixture['pages']]
                 self.assertEqual(len(set(icons)), len(icons))
@@ -179,6 +189,24 @@ class AllWidgetsDemoTest(unittest.TestCase):
                     sample = next(w for w in widgets if w['type'] == kind)
                     self.assertGreaterEqual(sum(bool(v) for k, v in sample.items() if k.endswith('entity_id')), minimum)
 
+    def test_stock_demo_covers_all_views_and_ten_searchable_quotes(self):
+        for variant in ('paneljc', 'tab5'):
+            responses, _ = demo_responses(variant, all_widgets=True)
+            page = next(p for p in responses['/api/layout']['pages'] if p['title'] == 'Aktien & ETFs')
+            widgets = page['widgets']
+            self.assertEqual([w['stock_view'] for w in widgets], ['list', 'chart', 'grid'])
+            self.assertEqual(len({(w['entity_id'], tuple(w['stock_entities'])) for w in widgets}), 1)
+            self.assertEqual({w['stock_period'] for w in widgets}, {'ytd'})
+        for all_widgets in (False, True):
+            responses, _ = demo_responses('paneljc', all_widgets=all_widgets)
+            quotes = [e for e in responses['/api/entities']['items'] if e['search_flags'] & 8]
+            self.assertEqual(len(quotes), 10)
+            self.assertEqual(len({e['id'] for e in quotes}), 10)
+            states = {s['entity_id']: s for s in responses['/api/state']['items']}
+            for quote in quotes:
+                self.assertTrue(states[quote['id']]['attributes']['symbol'])
+                self.assertTrue(float(states[quote['id']]['state']) > 0)
+
     def test_demo_uses_separate_default_save_file(self):
         with tempfile.TemporaryDirectory() as directory:
             # Inspect construction without persisting anything in the repository.
@@ -186,7 +214,7 @@ class AllWidgetsDemoTest(unittest.TestCase):
             demo = build_server(port=0, all_widgets=True)
             try:
                 self.assertNotEqual(original.local_store.path, demo.local_store.path)
-                self.assertEqual(len(demo.local_store.seed['/api/layout']['pages']), 8)
+                self.assertEqual(len(demo.local_store.seed['/api/layout']['pages']), 10)
             finally:
                 original.server_close()
                 demo.server_close()

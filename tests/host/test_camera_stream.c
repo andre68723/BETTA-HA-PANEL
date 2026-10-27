@@ -4,6 +4,7 @@
  */
 #include "ha/ha_camera_stream.h"
 #include "ha/ha_client.h"
+#include "ha/ha_auth_state.h"
 #include "camera_test_platform.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -126,12 +127,20 @@ int main(void)
     ha_camera_stream_t *a = start(), *b = start(); CHECK(a && b && !start());
     ha_camera_stream_stop(a); ha_camera_stream_stop(b); run_tasks(); clean();
     for (int status_code = 301; status_code <= 403; status_code += status_code == 301 ? 100 : 2) {
+        ha_auth_state_reset();
         unsigned before = opens; code = status_code;
         a = start(); run_tasks();
         ha_cover_result_t frame = {0}; ha_camera_stream_status_t status;
         CHECK(!ha_camera_stream_take(a, &frame, &status) && status == HA_CAMERA_FAILED);
         CHECK(opens == before + 1); ha_camera_stream_stop(a); clean();
+        if (status_code == 401 || status_code == 403) {
+            CHECK(ha_auth_state_blocked());
+            before = opens;
+            a = start(); run_tasks();
+            CHECK(opens == before); ha_camera_stream_stop(a); clean();
+        }
     }
+    ha_auth_state_reset();
     code = 200; content_type = "image/jpeg";
     a = start(); run_tasks();
     ha_cover_result_t frame = {0}; ha_camera_stream_status_t status;

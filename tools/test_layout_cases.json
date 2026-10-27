@@ -88,6 +88,9 @@
   ]},
   "status": {"title": "Status", "cases": [
    {"page": {"type": "house_dashboard", "title": "Haus", "house": "{house}"}},
+   {"type": "sensor", "title": "Messwerte", "w": 380, "h": 340, "entity_id": "{temp}", "sensor_view": "list", "sensor_entities": ["{humidity}", "{power}", "{motion}"], "sensor_show_age": false, "gallery": {"slot": "sensor_list", "title": "Sensor list", "rect": [10, 10, 380, 340], "caps": "sensor", "page": "gallery_sensor_list", "order": 54}},
+   {"type": "sensor", "title": "Liste schmal", "w": 160, "h": 250, "entity_id": "{temp}", "sensor_view": "list", "sensor_entities": ["{humidity}", "{motion}"]},
+   {"type": "sensor", "title": "Einzelwert explizit", "w": 200, "h": 140, "entity_id": "{temp}", "sensor_view": "single"},
    {"type": "sensor", "title": "Datum+Zeit", "w": 300, "h": 150, "entity_id": "{timestamp}"},
    {"type": "sensor", "title": "Datum+Zeit explizit", "w": 300, "h": 150, "entity_id": "{timestamp}", "sensor_format": "datetime"},
    {"type": "sensor", "title": "Als Text", "w": 300, "h": 150, "entity_id": "{duration}", "sensor_format": "text"},

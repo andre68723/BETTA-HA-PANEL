@@ -9,6 +9,10 @@ int main(int argc, char **argv)
 {
     /* Export the exact production query for HA integration validation. */
     if (argc > 1) {
+        if (strcmp(argv[1], "--name-template") == 0) {
+            printf(HA_DISCOVERY_DISPLAY_NAME);
+            return 0;
+        }
         char *query = ha_entity_source_template(argv[1], "\"\"", 0, 25);
         assert(query != NULL);
         puts(query);
@@ -22,6 +26,8 @@ int main(int argc, char **argv)
         assert(strstr(query, "{% set offset = 25 %}") != NULL);
         assert(strstr(query, "integration_entities('easy_stock')") != NULL);
         assert(strstr(query, "xf=") != NULL && strstr(query, "ft=") != NULL);
+        assert(strstr(query, "s.name") == NULL);
+        assert(strstr(query, "entity_name(s.entity_id)") != NULL);
         free(query);
     }
     cJSON *raw = cJSON_Parse("{\"xf\":129,\"ft\":4,\"dm\":true}");

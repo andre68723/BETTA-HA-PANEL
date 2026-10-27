@@ -142,7 +142,7 @@ function solarPreviewMarkup(widget) {
   return `
     <div class="solar-preview ${orientation}">
       ${widgetNamePreview(widget, "div", 'class="solar-preview-title"')}
-      <div class="solar-preview-unit">${aligned ? `${escapeHtml(t("preview.solar.rest"))} ${escapeHtml(solarPreviewFormatValue(allRows[0].value))}` : "kWh"}</div>
+      <div class="solar-preview-unit">kWh</div>
       <div class="solar-preview-body" style="--cols:${Math.max(1, rows.length)}">${rowMarkup}</div>
     </div>
     <div class="resize-handle"></div>
@@ -1137,6 +1137,7 @@ function tilePreviewMarkup(widget) {
       return `<div class="tp tp-slider tp-slider-h2${isCover ? " tp-slider-cover" : ""}"><div class="tp-hbar2"><i style="width:${sliderPct}%"></i><span>${sliderPct} %</span></div>${name('b', '')}</div>${handle}`;
     }
     case "sensor": {
+      if (widget.sensor_view === "list") return sensorListPreview(widget, name) + handle;
       // The panel shows the value in its largest font when it is all the tile shows.
       const showLabel = widgetShowsName(widget);
       const valueOnly = !showLabel && widget.sensor_show_age === false;

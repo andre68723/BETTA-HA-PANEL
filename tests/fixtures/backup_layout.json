@@ -19,7 +19,12 @@
           "sensor_show_age": false,
           "sensor_format": "relative",
           "sensor_unit": "degree",
-          "history_popup": true
+          "history_popup": true,
+          "sensor_view": "list",
+          "sensor_entities": [
+            "sensor.humidity",
+            "binary_sensor.window"
+          ]
         },
         {
           "id": "w_camera",
