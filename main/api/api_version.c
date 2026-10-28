@@ -149,7 +149,9 @@ static void set_json_headers(httpd_req_t *req)
 }
 
 /* One entry per FreeRTOS task with its stack: where it lives (internal RAM or PSRAM), its allocated size and how
- * little of it was ever free (bytes). Read with GET /api/version?tasks=1 to size stacks from measurements. */
+ * little of it was ever free (bytes). "run_time" and "total_time" are the cumulative run-time counters (same unit): the difference
+ * of two reads gives each task's share of the time and "core" says where it ran (-1 = unpinned). Read with
+ * GET /api/version?tasks=1 to size stacks and find what loads a core. */
 static void add_task_stacks(cJSON *root)
 {
     const UBaseType_t capacity = uxTaskGetNumberOfTasks() + 4U;
@@ -159,7 +161,9 @@ static void add_task_stacks(cJSON *root)
         heap_caps_free(tasks);
         return;
     }
-    const UBaseType_t count = uxTaskGetSystemState(tasks, capacity, NULL);
+    uint32_t total_time = 0;
+    const UBaseType_t count = uxTaskGetSystemState(tasks, capacity, &total_time);
+    cJSON_AddNumberToObject(root, "total_time", (double)total_time);
     for (UBaseType_t i = 0; i < count; i++) {
         cJSON *item = cJSON_CreateObject();
         if (item == NULL) {
@@ -170,6 +174,9 @@ static void add_task_stacks(cJSON *root)
         cJSON_AddBoolToObject(item, "stack_internal", esp_ptr_internal(tasks[i].pxStackBase));
         cJSON_AddNumberToObject(item, "stack_size", (double)heap_caps_get_allocated_size(tasks[i].pxStackBase));
         cJSON_AddNumberToObject(item, "stack_free_min", (double)tasks[i].usStackHighWaterMark);
+        const BaseType_t core = xTaskGetCoreID(tasks[i].xHandle);
+        cJSON_AddNumberToObject(item, "core", core == tskNO_AFFINITY ? -1 : (double)core);
+        cJSON_AddNumberToObject(item, "run_time", (double)tasks[i].ulRunTimeCounter);
         cJSON_AddItemToArray(list, item);
     }
     heap_caps_free(tasks);
@@ -286,6 +293,11 @@ esp_err_t api_version_get_handler(httpd_req_t *req)
         /* Version of the ESP32-C6 firmware image embedded in this build (it matches esp_hosted). */
         add_version_if_present(components, "esp32_c6_firmware", APP_HOSTED_C6_EXPECTED_VERSION);
 #endif
+        /* What the C6 itself reported over ESP-Hosted this boot; differs from the embedded image until the host has updated it. */
+        char c6_running[16];
+        if (wifi_mgr_get_c6_version(c6_running, sizeof(c6_running))) {
+            add_version_if_present(components, "esp32_c6_running", c6_running);
+        }
     }
 
     /* Live memory snapshot, for spotting leaks/regressions across firmware

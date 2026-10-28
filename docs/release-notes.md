@@ -37,7 +37,6 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 - **Stocks & ETFs:** tiles place the percentage change on the right with an up/down arrow; when both changes are shown, the amount stays below the price. Small quotes retain their precision, including scientific sensor values. The 1D chart covers today from local midnight; Easy Stock's no-trading flag keeps it flat at 0% on an idle day while the list retains the last session's change.
 
 - **Price forecast window:** without the Today/Tomorrow buttons the 24 hours around now no longer leave the left empty and cut off the evening when the price sensor starts with today (yesterday dropped out); the window then begins at the first price of the list. Reported in issue #1.
-- **C6 Wi-Fi memory status:** the Device status row is hidden, and no retained C6 incident sample is reported, when the Wi-Fi co-processor firmware has no memory monitor (the prebuilt ESP-Hosted 3.0.10 image); before it showed an unsupported text.
 - **Solar bars on the compact boards:** vertical bars take about two thirds of their column (up to 72 px) instead of half (up to 42 px), so the margins beside them are narrower on the 4-inch and Tab5 boards; the 10-inch boards are unchanged.
 - **Seven forecast days:** Weather offers up to seven days including today and Solar gets **Day 6** and **Day 7** forecast fields, so both can show a week (Visible days 1-7). Layouts saved before keep their six weather columns and five solar days. With a Visible-days count the weather cards sit on the shared day grid, so **Line up days with the weather tile** holds for every count on the 10-inch boards (it was off with few days, where the cards were capped at 96 px). A long forecast leaves less room in the attribute budget: the detail-popup readings are dropped first so the forecast stays.
 - **Solar today:** the remaining part is now the bright start of today's bar and the part already produced is dimmed at its end. The lined-up header no longer repeats it as **Rest**.
@@ -51,7 +50,7 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 - **Popup text fitting:** Room details keep long names on one line; history axes reserve space for complete values, units and dates at larger text sizes.
 - **Car:** repeated battery, power, range, temperature, lock and preconditioning states no longer redraw the tile. Changed readings and availability still update, including recovery from unavailable sources.
 - **Card styles:** Flat, Glass and Matte no longer reapply unchanged card properties on every state update. Widget changes and active-state surfaces still receive the selected style.
-- **Energy details:** Solar daily statistics use **Daily production**, in both the popup and the right-hand panel; Gas and Water retain **Daily consumption**.
+- **Energy details:** Solar daily statistics use **Daily production**, in both the popup and the right-hand panel; Gas and Water retain **Daily consumption**. Glow now has coloured node halos, Glass translucent surfaces and light rims, and Matte opaque borderless nodes; Flat keeps outlined circles. The editor preview follows these surfaces. German style names use **Flat** and **Glass**.
 - **Energy day totals:** the Energy page in Home Assistant Energy mode uses the full local day on daylight-saving changes; the request could omit hours before.
 - **Names and larger text:** light, empty, camera, car, Sonos and media player tiles keep their name on one line; with larger text, lock, sensor, car, gauge, to-do, slider and weather tiles drop or move elements instead of overlapping.
 - **Wallbox:** unchanged HA refreshes keep vehicle, mode and target popups open; `null` is shown as Guest vehicle while connected, and the list uses HA's vehicle names. Choosing the energy flow in the Inspector fills the site sensors; idle timers no longer redraw the card; a wallbox beside a price tile keeps its own text size.
@@ -64,12 +63,13 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 
 - **Home Assistant connection:** the HA popup shows rejected access and offers **Reconnect** after fixing a token or IP ban, without restarting the panel. Camera snapshots use the panel credential instead of expiring image tokens; old queued camera requests are discarded on disconnect.
 - **Entity names:** search, Room details and stock rows share discovered names. Missing `friendly_name` attributes no longer replace a discovered name with its entity ID; searches can compose entity/device names. Existing HA 2026.10 names and saved widget titles are kept.
-- **Panel:** vacuum states and firmware-update progress follow the panel language; on the 10-inch JC panel short taps are no longer lost.
+- **Panel:** vacuum states and firmware-update progress follow the panel language; on the 10-inch JC panel short taps are no longer lost and the screen rotates with the PPA again (a fixed ESP-IDF driver bug) instead of the CPU, which freed 17-34 % of one core.
 - **Local editor demo:** an Aktien & ETFs page compares List, Charts and Tiles with the same three sensors; search offers ten synthetic quotes.
 - **Inspector:** one order for every widget (header, Entities, Display, Controls, Placement); entities are rows that open the search; explanations open from info icons, including the text-size help; the header names the main entity's device class and unit.
 - **Entity metadata:** the Inspector also shows cover, media-player, switch and other reported device classes; live attributes fill incomplete entity-list metadata. Room extra-field explanations use section help, while missing-entity warnings stay visible.
 - **Preview:** text roles, fixed 10-inch layouts and visible elements follow the panel more closely; overlapping tiles are marked.
-- **Device status:** Settings → Device → Device status shows the Wi-Fi coprocessor's memory and the last incident.
+- **Device status:** Settings → Device → Device status shows the Wi-Fi coprocessor's memory and the last incident, unless the coprocessor firmware has no memory monitor (the prebuilt ESP-Hosted 3.0.10 image), in which case the row is hidden.
+- **Firmware list:** Settings → Firmware shows the version the ESP32-C6 reports now next to the one embedded in the build.
 - **Language:** the theme editor, time-zone choices and setup hints follow the selected language.
 
 ### Validation limits

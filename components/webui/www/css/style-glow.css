@@ -13,3 +13,10 @@ body[data-ui-style="glow"] #canvas .widget-box {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
 }
 body[data-ui-style="glow"] #canvas .tp-datetime b { color: var(--pv-text); }
+
+/* Energy nodes retain their source colours and circular flow geometry. */
+body[data-ui-style="glow"] #canvas .energy-preview-node {
+  --energy-home-surface: color-mix(in srgb, white 10%, var(--pv-card));
+  --energy-node-surface: linear-gradient(color-mix(in srgb, white 18%, var(--pv-card)), color-mix(in srgb, black 22%, var(--pv-card)));
+  box-shadow: 0 0 24px color-mix(in srgb, currentColor 40%, transparent);
+}

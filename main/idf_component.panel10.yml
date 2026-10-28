@@ -31,7 +31,7 @@ dependencies:
     rules:
       - if: "target in [esp32p4]"
   joltwallet/littlefs:
-    version: "1.23.0"
+    version: "1.23.1"
   espressif/esp_hosted:
     version: "3.0.10"
     rules:

@@ -56,7 +56,7 @@ The adapter's registration rotation stays zero. Its custom bitmap callback uses
 the current `lv_display_get_rotation()` for both boot and runtime orientation,
 keeping Tab5 automatic rotation and LVGL's native touch mapping together. Native
 DPI framebuffer counts remain unchanged; no extra full-screen buffer is required.
-`APP_DISPLAY_PPA` selects bounded PPA rotation or LVGL CPU rotation (original JC).
+`APP_DISPLAY_PPA` selects bounded PPA rotation or LVGL CPU rotation; all variants use the PPA.
 A PPA completion has a one-second deadline and retains crash evidence; uncertain
 output is never submitted or reused after a timeout. The adapter's sleep handling
 is disabled because BETTA owns brightness, wake and inactivity policy.
@@ -71,6 +71,15 @@ one ST7121/v1.3 Tab5 report adapter 0.7.3, valid OTA, live Home Assistant connec
 and unchanged layouts/settings. The owner confirmed physical image orientation
 and page navigation by touch on all three. Tab5 was mounted at 270 degrees;
 this check does not qualify physical touch mapping in every automatic orientation.
+
+## Vendored PPA driver (temporary)
+
+`components/esp_driver_ppa` is ESP-IDF 6.1's driver with upstream commit `469aa16` (esp-idf#19096, #19023): the
+P4 DIG-734 workaround now uses the rotated block size, so 90/270 degree RGB565 rotations no longer fail to complete.
+It overrides the IDF component for all variants. Remove it, with its `LICENSE` entry, once the ESP-IDF in use
+contains the change: `grep -n "in_block_w" $IDF_PATH/components/esp_driver_ppa/src/ppa_srm.c` finds the fixed code.
+After removing it, rebuild every variant, run a rotation soak on paneljc and tab5 and check that `GET /api/version`
+reports no PPA coredump.
 
 ## Waveshare LCD-4B BSP override
 

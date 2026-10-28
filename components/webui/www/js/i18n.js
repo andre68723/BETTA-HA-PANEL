@@ -1578,6 +1578,7 @@ const WEB_I18N_BUILTIN = {
     "settings.firmware_info.desc.cjson": "JSON parser for layouts, settings and Home Assistant messages",
     "settings.firmware_info.desc.esp_serial_slave_link": "SDIO link to the ESP32-C6 companion chip",
     "settings.firmware_info.desc.esp32_c6_firmware": "Firmware of the ESP32-C6 companion chip embedded in this build (matches esp_hosted)",
+    "settings.firmware_info.desc.esp32_c6_running": "Version the ESP32-C6 reports now; it differs from the embedded one until the host has updated the chip",
     "settings.firmware_info.desc.waveshare_bsp": "Board support package of the Waveshare ESP32-P4 4\" panel",
     "settings.firmware_info.desc.m5stack_bsp": "Board support package of the M5Stack Tab5",
     "settings.firmware_info.desc.esp_lcd_st7703": "Driver for the ST7703 display panel of the 4\" panel",

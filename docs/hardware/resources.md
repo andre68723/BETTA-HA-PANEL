@@ -61,8 +61,7 @@ refresh optimisation: first finished frame 133 ms (energy page), 159 ms (house p
 Measured on `paneljc`: switching pages redraws the whole 1280 x 680 area, which
 takes roughly 120 ms (a page with little on it) to 280 ms (a page full of
 widgets). The panel is portrait natively, so every frame is rotated: by the PPA
-hardware (`CONFIG_APP_DISPLAY_PPA`) on `paneljc-v2`, and on the CPU on the
-original `paneljc`, whose configuration leaves the PPA off; drawing itself is software rendering
+hardware (`CONFIG_APP_DISPLAY_PPA`); drawing itself is software rendering
 into PSRAM buffers. The refresh of the widgets on the new page runs after the
 first frame in slices of about 8 ms (tiles that are updated while hidden are skipped, room tiles included), and LVGL's shadow, corner and image caches are enabled. Two
 things were tried and do not work here: small render buffers in internal RAM

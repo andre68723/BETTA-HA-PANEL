@@ -49,3 +49,11 @@ body[data-ui-style="glass"] #canvas .widget-box {
   border-top: 1px solid rgba(255, 255, 255, 0.4);
   border-left: 1px solid rgba(255, 255, 255, 0.4);
 }
+
+/* Energy nodes retain their source colours and circular flow geometry. */
+body[data-ui-style="glass"] #canvas .energy-preview-node {
+  --energy-home-surface: color-mix(in srgb, white 24%, var(--pv-card));
+  --energy-node-surface: linear-gradient(color-mix(in srgb, white 28%, transparent), color-mix(in srgb, var(--pv-card) 70%, transparent));
+  border-color: color-mix(in srgb, white 59%, currentColor);
+  box-shadow: 0 5px 16px #0005;
+}

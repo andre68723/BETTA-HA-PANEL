@@ -74,3 +74,11 @@ body[data-ui-style="matte"] #canvas .widget-box {
   --pv-control-danger-bg: var(--pv-control-matte-danger-bg, #763c3c);
   --pv-control-danger-fg: var(--pv-control-matte-danger-fg, #fff);
 }
+
+/* Energy nodes retain their source colours and circular flow geometry. */
+body[data-ui-style="matte"] #canvas .energy-preview-node {
+  --energy-home-surface: var(--pv-matte-off, var(--pv-card));
+  --energy-node-surface: var(--pv-matte-off, var(--pv-card));
+  border-width: 0;
+  box-shadow: none;
+}

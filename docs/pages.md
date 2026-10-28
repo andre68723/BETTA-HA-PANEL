@@ -39,6 +39,10 @@ Choose **+ Page → Energy dashboard**, then select the source in the page inspe
 | Home Assistant Energy | The sources configured in Home Assistant's Energy dashboard |
 | Manual live sensors | Live power sensors for grid, solar, home and optionally battery; gas and water are optional |
 
+Energy nodes follow the selected appearance: Flat uses plain outlined circles, Glow adds coloured
+light halos, Glass uses translucent surfaces with light rims, and Matte uses opaque borderless surfaces.
+Source colours and the home consumption ring keep their meaning in every style.
+
 Both sources use the same fixed page layout; an HA Lovelace Energy card is not imported.
 The 24-hour [Energy timeline](widgets/energy_timeline.md) is a separate widget and needs no energy page.
 See [Home Assistant setup](home-assistant.md#energy-and-rooms) for what each needs.

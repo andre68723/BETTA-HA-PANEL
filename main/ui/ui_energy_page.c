@@ -505,47 +505,60 @@ static void energy_style_text(lv_obj_t *label, lv_color_t color, const lv_font_t
     lv_obj_set_style_bg_opa(label, LV_OPA_TRANSP, LV_PART_MAIN);
 }
 
-/* The energy page never went through any of the three rendering styles at all (found via the
- * widget gallery: Flat and Glow rendered pixel-identical, Glass differed only by the shared
- * page-background gradient every special page picks up, not by anything of its own) -- this is
- * the one place that matters most, since the node circles are the dominant visual element. Flat
- * keeps its original flat fill and plain border; Glow gets a raised look (a light-to-dark
- * gradient fill and a drop shadow, the same visual language as ui_style_button()); Glass
- * gets a white-tinted translucent fill and a soft shadow, matching the Glass card frosting of
- * ui_style_apply_card(). The accent color border that identifies which node this is (grid, solar, ...) stays
- * the same color in all styles -- only the fill/shadow treatment around it changes. */
+/* Direction changes must retain the selected surface's rim and halo. */
+static void energy_style_node_accent(lv_obj_t *circle, lv_color_t color)
+{
+    const lv_color_t rim = ui_style_get() == UI_STYLE_GLASS
+        ? lv_color_mix(lv_color_white(), color, 150) : color;
+    lv_obj_set_style_border_color(circle, rim, LV_PART_MAIN);
+    if (ui_style_get() == UI_STYLE_GLOW) {
+        lv_obj_set_style_shadow_color(circle, color, LV_PART_MAIN);
+    }
+}
+
+/* Keep source colours and circular flow geometry in every appearance. Surface
+ * contrast, the rim and lighting distinguish the styles without changing data. */
 static void energy_style_node_circle(lv_obj_t *circle, lv_color_t color)
 {
+    const lv_color_t base = lv_color_hex(APP_UI_COLOR_CARD_BG_OFF);
+    energy_style_node_accent(circle, color);
+    lv_obj_set_style_border_opa(circle, LV_OPA_COVER, LV_PART_MAIN);
     switch (ui_style_get()) {
     case UI_STYLE_FLAT:
-    case UI_STYLE_MATTE:
-        lv_obj_set_style_bg_color(circle, lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(circle, base, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(circle, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_bg_grad_dir(circle, LV_GRAD_DIR_NONE, LV_PART_MAIN);
         lv_obj_set_style_shadow_width(circle, 0, LV_PART_MAIN);
         break;
-    case UI_STYLE_GLASS:
-        lv_obj_set_style_bg_color(circle, lv_color_mix(lv_color_white(), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), 40), LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(circle, LV_OPA_70, LV_PART_MAIN);
+    case UI_STYLE_MATTE:
+        lv_obj_set_style_bg_color(circle, lv_color_hex(theme_palette_active()->matte_card_off), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(circle, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_bg_grad_dir(circle, LV_GRAD_DIR_NONE, LV_PART_MAIN);
-        lv_obj_set_style_shadow_width(circle, 14, LV_PART_MAIN);
-        lv_obj_set_style_shadow_offset_y(circle, 4, LV_PART_MAIN);
+        lv_obj_set_style_border_width(circle, 0, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(circle, 0, LV_PART_MAIN);
+        break;
+    case UI_STYLE_GLASS:
+        lv_obj_set_style_bg_color(circle, lv_color_mix(lv_color_white(), base, 100), LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_color(circle, lv_color_mix(lv_color_white(), base, 24), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(circle, LV_OPA_70, LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_dir(circle, LV_GRAD_DIR_VER, LV_PART_MAIN);
+        lv_obj_set_style_border_opa(circle, LV_OPA_70, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(circle, 16, LV_PART_MAIN);
+        lv_obj_set_style_shadow_offset_y(circle, 5, LV_PART_MAIN);
         lv_obj_set_style_shadow_color(circle, lv_color_black(), LV_PART_MAIN);
         lv_obj_set_style_shadow_opa(circle, LV_OPA_30, LV_PART_MAIN);
         break;
     case UI_STYLE_GLOW:
-        lv_obj_set_style_bg_color(circle, lv_color_mix(lv_color_white(), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), 40), LV_PART_MAIN);
-        lv_obj_set_style_bg_grad_color(circle, lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(circle, lv_color_mix(lv_color_white(), base, 46), LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_color(circle, lv_color_mix(lv_color_black(), base, 56), LV_PART_MAIN);
         lv_obj_set_style_bg_grad_dir(circle, LV_GRAD_DIR_VER, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(circle, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_style_shadow_width(circle, 10, LV_PART_MAIN);
-        lv_obj_set_style_shadow_offset_y(circle, 3, LV_PART_MAIN);
-        lv_obj_set_style_shadow_color(circle, lv_color_black(), LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(circle, 24, LV_PART_MAIN);
+        lv_obj_set_style_shadow_offset_y(circle, 0, LV_PART_MAIN);
+        lv_obj_set_style_shadow_color(circle, color, LV_PART_MAIN);
         lv_obj_set_style_shadow_opa(circle, LV_OPA_40, LV_PART_MAIN);
         break;
     }
-    lv_obj_set_style_border_color(circle, color, LV_PART_MAIN);
-    lv_obj_set_style_border_opa(circle, LV_OPA_COVER, LV_PART_MAIN);
 }
 
 static void energy_create_node(energy_page_ctx_t *ctx, int node_id, int cx, int cy, int size, const char *title,
@@ -1304,7 +1317,7 @@ static void energy_update_bidir_node(energy_node_t *node,
         border_hex = color_in_hex;
     }
     if (node->circle != NULL) {
-        lv_obj_set_style_border_color(node->circle, lv_color_hex(border_hex), LV_PART_MAIN);
+        energy_style_node_accent(node->circle, lv_color_hex(border_hex));
     }
 }
 

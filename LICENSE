@@ -108,6 +108,10 @@ by the SPDX/license header at the top of each such file. Notably:
   no OV02C10 driver. CMakeLists.txt and Kconfig carry the fork's modification
   notices, preserved by tools/vendor_cam_sensor.py. main/drivers/ambient_camera.c
   follows the V4L2 capture approach of that project's local camera module.
+- components/esp_driver_ppa/: ESP-IDF 6.1's esp_driver_ppa (Apache-2.0, Copyright
+  Espressif Systems (Shanghai) CO LTD, license text in that directory) without
+  its test app, with the upstream SRM rotation fix from ESP-IDF commit 469aa16
+  applied to src/ppa_srm.c (see the README.md there).
 - main/ha/ha_cover_fetcher.c compiles the stb_image decoder (Sean Barrett and
   contributors, public domain / MIT) from the LVGL component; it is not
   vendored in this repository.

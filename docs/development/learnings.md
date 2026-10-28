@@ -75,6 +75,12 @@ Internal RAM is scarce (Wi-Fi/SDIO buffers, TLS, task stacks); keep large buffer
 - **Size task stacks from measurements:** `GET /api/version?tasks=1` lists each task's stack (priority, internal or
   not, size, least ever free). Exercise the panel first (page switches, popups, editor, discovery); the low-water mark
   only covers what ran since boot. IDF-created tasks report `stack_size` 0.
+- **Find what loads a core:** the same list carries `core`, `run_time` and the top-level `total_time`. Read it twice,
+  e.g. 30 s apart; `(run_time delta) / (total_time delta)` is each task's share of one core (`IDLE0`/`IDLE1` the idle share).
+  On `paneljc` (2026-10-29) `ui_runtime` took 23-67 % of core 1 and the CPU rotation in `lvgl` another 17-34 %.
+  With the PPA, `tools/stress_test.py --duration 90` (paneljc, source `4df01b2`-equivalent, 9 editor bursts) measured
+  core 0 22 % and core 1 67 % busy under load (`lvgl` 35 %, `ui_runtime` 27 %, `ha_client` 11 %), 7 % and 29 % in the
+  20 s after; no failed requests or coredump, internal heap 267.7 → 263.0 KB free.
 - **Stacks that live in PSRAM** (`xTaskCreateWithCaps`, must end with `vTaskDeleteWithCaps(NULL)`): `ha_cover`,
   `ha_energy_tl`, `ha_history` (10 KB: a 5,000-value day left only 2 KB at 8 KB) and the MQTT client
   (`CONFIG_MQTT_TASK_STACK_ON_EXTERNAL_MEMORY`). Current sizes: `ui_runtime` 16 KB, `lvgl` 20 KB (`taskLVGL` in older images),
@@ -124,10 +130,12 @@ keep stacks in PSRAM only for tasks that never touch flash. mbedTLS uses PSRAM
 - **Known cause (paneljc, 2026-10-05):** `taskLVGL` blocked in `ppa_do_operation` (90° rotation flush) waiting with
   `portMAX_DELAY` for a PPA interrupt, holding the display lock. The `esp_lvgl_port` patch in
   `tools/apply_component_patches.py` runs the rotation non-blocking and waits 1 s on a semaphore; on a timeout
-  `lvgl_port_ppa_timeout_hook()` writes a core dump and restarts (at most three in a row). Why the PPA sometimes does
-  not finish is not established (a candidate is the SRM tail-block calculation in `ppa_srm.c`, not yet shown on the
-  device). The `paneljc` configuration therefore rotates on the CPU (`CONFIG_APP_DISPLAY_PPA` unset in
-  `config/sdkconfig.defaults.paneljc`); `paneljc-v2` keeps the PPA.
+  `lvgl_port_ppa_timeout_hook()` writes a core dump and restarts (at most three in a row). Cause of the missing
+  completion (2026-10-29, esp-idf#19096/#19023; reasoned from the upstream reports and the 352x68 geometry, not
+  reproduced on the device): the DIG-734 workaround in `ppa_srm.c` sized the leftover
+  block from the unrotated input, so a 90/270 degree RGB565 rotation such as 352x68 skipped the macro-block-order
+  bypass and the transaction never ended. `components/esp_driver_ppa` is ESP-IDF 6.1's driver with upstream commit
+  `469aa16`; `paneljc` rotates with the PPA again. Delete the directory once ESP-IDF contains the fix.
   The shared adapter callback in `drivers/display_port.c` retains the same bounded transaction and crash hook.
 - **Reading a core dump:** a heartbeat timeout aborts in `ui_watchdog`; read the other tasks' stacks
   (`lvgl`/`taskLVGL`, `ui_runtime`, `httpd`, `ha_client`, history and cover tasks). A PPA timeout aborts in `lvgl` (`taskLVGL` in older images);

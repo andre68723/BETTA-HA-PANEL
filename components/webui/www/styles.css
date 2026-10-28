@@ -1282,7 +1282,7 @@ textarea {
   justify-content: center;
   align-items: center;
   gap: 8px;
-  background: #1d1f24;
+  background: var(--energy-node-surface, var(--pv-card, #1d1f24));
   color: var(--text);
   font-size: 13px;
   font-weight: 700;
@@ -1337,7 +1337,7 @@ textarea {
   margin: -58px 0 0 -58px;
   border: 0;
   background:
-    radial-gradient(circle, #1d1f24 0, #1d1f24 calc(50% - 4px), transparent calc(50% - 3px), transparent 100%),
+    radial-gradient(circle, var(--energy-home-surface, var(--pv-card, #1d1f24)) 0, var(--energy-home-surface, var(--pv-card, #1d1f24)) calc(50% - 4px), transparent calc(50% - 3px), transparent 100%),
     conic-gradient(var(--energy-home-ring, #435566 0deg 360deg));
 }
 

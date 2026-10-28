@@ -93,10 +93,9 @@ does not validate its pin assignments, display initialization or touch mapping.
 
 Device guide: [Guition JC8012P4A1](paneljc.md).
 
-The original `paneljc` profile uses CPU rotation through `lv_draw_sw_rotate`
-in the shared adapter bitmap callback (`CONFIG_APP_DISPLAY_PPA` disabled). This bypasses
-the PPA completion stalls; long-run stability remains under observation.
-`paneljc-v2` retains PPA rotation. The display boot log identifies the backend.
+Both `paneljc` profiles rotate with the PPA (`CONFIG_APP_DISPLAY_PPA`). The vendored
+`components/esp_driver_ppa` carries the ESP-IDF fix for 90/270 degree rotations that never completed.
+The display boot log identifies the backend.
 
 For a panel that still responds over HTTP, collect `/api/version` and `/api/log` before using
 RESET or opening a serial port. The recovery steps are in [development.md](../development.md).

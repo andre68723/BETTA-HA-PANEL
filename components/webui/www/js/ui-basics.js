@@ -138,6 +138,7 @@ const COMPONENT_VERSION_LABELS = [
   ["cjson", "cjson", "settings.firmware_info.desc.cjson"],
   ["esp_serial_slave_link", "esp_serial_slave_link", "settings.firmware_info.desc.esp_serial_slave_link"],
   ["esp32_c6_firmware", "ESP32-C6 firmware", "settings.firmware_info.desc.esp32_c6_firmware"],
+  ["esp32_c6_running", "ESP32-C6 running", "settings.firmware_info.desc.esp32_c6_running"],
   ["waveshare_bsp", "Waveshare BSP", "settings.firmware_info.desc.waveshare_bsp"],
   ["m5stack_bsp", "M5Stack Tab5 BSP", "settings.firmware_info.desc.m5stack_bsp"],
   ["esp_lcd_st7703", "esp_lcd_st7703", "settings.firmware_info.desc.esp_lcd_st7703"],

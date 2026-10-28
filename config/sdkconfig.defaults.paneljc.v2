@@ -12,7 +12,3 @@
 # panel revision you have.
 
 CONFIG_APP_PANELJC_PANEL_V2=y
-
-# Keep the existing PPA path on this untested panel revision. The CPU-rotation
-# trial in the base overlay targets the original paneljc device only.
-CONFIG_APP_DISPLAY_PPA=y

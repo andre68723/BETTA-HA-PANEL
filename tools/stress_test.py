@@ -22,6 +22,10 @@ learnings" section of docs/development/learnings.md for what each investigation 
      find the other's bug -- a second, deliberately different load shape was necessary, not a tuning
      knob on the first.
 
+Also reports where the CPU time went: `GET /api/version?tasks=1` carries each task's run time, so the difference of the
+reads before and after the load gives every task's share of its core (`core`, `run_time`, `total_time`; firmware before
+2026-10-29 lacks them and only the idle-based `cpu.load_percent` is printed).
+
 Reports `GET /api/version`'s `memory` object before, during (at each poll interval) and after a
 cool-down pause once the load stops, so a real leak (does not recover after the load stops) can be
 told apart from a one-time allocation (a persistent cache, drops once then stays flat).
@@ -176,6 +180,35 @@ def print_memory(base, label):
     return mem
 
 
+def cpu_snapshot(base):
+    """Per-task run times from /api/version?tasks=1, or None when the firmware predates them."""
+    try:
+        data = get_json(base, "/api/version?tasks=1")
+    except (urllib.error.URLError, OSError, json.JSONDecodeError):
+        return None
+    if "total_time" not in data:
+        return None
+    return {"total": data["total_time"], "tasks": {t["name"]: t for t in data["tasks"] if "run_time" in t},
+            "load": data.get("cpu", {}).get("load_percent")}
+
+
+def print_cpu(label, first, last, top=6):
+    """Share of one core's time per task between two snapshots, busiest first, idle tasks last."""
+    total = last["total"] - first["total"]
+    if total <= 0:
+        return
+    rows = []
+    for name, task in last["tasks"].items():
+        before = first["tasks"].get(name)
+        if before is not None:
+            rows.append(((task["run_time"] - before["run_time"]) * 100.0 / total, name, task.get("core", -1)))
+    rows.sort(reverse=True)
+    idle = {name: share for share, name, _ in rows if name.startswith("IDLE")}
+    busy = [f"{name} c{core} {share:.0f}%" for share, name, core in rows if not name.startswith("IDLE")][:top]
+    print(f"[cpu {label}] " + ", ".join(f"{n} {100 - v:.0f}% busy" for n, v in sorted(idle.items())) +
+          " | " + ", ".join(busy))
+
+
 def navigate_loop(base, pages, stop, interval_s, stats):
     i = 0
     while not stop.is_set():
@@ -253,6 +286,7 @@ def main():
               f"{args.webui_concurrency} concurrent requests: {webui_assets}")
         webui_assets *= args.webui_copies
 
+    cpu_before = cpu_snapshot(base)
     before_mem = print_memory(base, "before")
     memory_ok = before_mem is not None
     lowest_internal = before_mem.get("min_free_heap_internal") if before_mem else None
@@ -286,6 +320,9 @@ def main():
         if mem is not None:
             lowest_internal = min(lowest_internal, mem["min_free_heap_internal"]) if lowest_internal is not None else mem["min_free_heap_internal"]
 
+    cpu_during = cpu_snapshot(base)
+    if cpu_before and cpu_during:
+        print_cpu("load", cpu_before, cpu_during)
     stop.set()
     for t in threads:
         # Each request has a timeout; finish every in-flight request before the
@@ -293,7 +330,11 @@ def main():
         t.join()
 
     print(f"load stopped, cooling down {COOLDOWN_S}s to check for recovery...")
+    cpu_idle_start = cpu_snapshot(base)
     time.sleep(COOLDOWN_S)
+    cpu_idle_end = cpu_snapshot(base)
+    if cpu_idle_start and cpu_idle_end:
+        print_cpu("idle", cpu_idle_start, cpu_idle_end)
     mem = print_memory(base, f"t=+{COOLDOWN_S}s after load")
     memory_ok &= mem is not None
     if mem is not None:

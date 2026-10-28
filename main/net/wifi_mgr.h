@@ -77,6 +77,9 @@ bool wifi_mgr_get_sta_gateway(uint32_t *out_addr);
 /* After a firmware update whose esp_hosted version needs a different C6 image, the C6 update waits until the new image is marked valid (it ends with
  * a restart, which would otherwise roll the new image back). util/ota_validate.c calls this right after marking it valid. */
 void wifi_mgr_run_deferred_c6_update(void);
+/* Version the C6 reported over ESP-Hosted in this boot ("3.0.10"); false until the query succeeded or without a co-processor.
+ * The image embedded in the build is APP_HOSTED_C6_EXPECTED_VERSION, which says nothing about what the chip runs. */
+bool wifi_mgr_get_c6_version(char *out, size_t out_len);
 esp_err_t wifi_mgr_get_ap_ip(char *out, size_t out_len);
 esp_err_t wifi_mgr_get_sta_ap_info(wifi_mgr_sta_ap_info_t *out_info);
 /* The connected AP's RSSI without waiting for the Wi-Fi API: ESP_ERR_TIMEOUT when it is busy, so a

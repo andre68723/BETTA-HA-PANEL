@@ -44,6 +44,8 @@
 
 static bool s_wifi_connected = false;
 static bool s_c6_update_deferred; /* keep diagnostics paused while an update waits for validation */
+/* Version the co-processor reported (major<<16 | minor<<8 | patch, bit 31 = known); one word so the HTTP task reads it untorn. */
+static volatile uint32_t s_c6_version_word;
 static EventGroupHandle_t s_wifi_event_group = NULL;
 /* esp_hosted's RPC response-table locking only landed in 2.12.13 (we're on
  * 2.12.12; kept as a second layer on 2.12.13): concurrent esp_wifi_* calls from different tasks (e.g. the
@@ -737,6 +739,25 @@ static esp_err_t hosted_get_embedded_c6_fw(const uint8_t **out_data, size_t *out
 }
 #endif
 
+static void wifi_mgr_remember_c6_version(const esp_hosted_coprocessor_fwver_t *fw)
+{
+    s_c6_version_word = 0x80000000U | ((fw->major1 & 0xFFU) << 16) | ((fw->minor1 & 0xFFU) << 8) | (fw->patch1 & 0xFFU);
+}
+
+bool wifi_mgr_get_c6_version(char *out, size_t out_len)
+{
+    const uint32_t word = s_c6_version_word;
+    if (out == NULL || out_len == 0) {
+        return false;
+    }
+    out[0] = '\0';
+    if ((word & 0x80000000U) == 0) {
+        return false;
+    }
+    snprintf(out, out_len, "%u.%u.%u", (unsigned)((word >> 16) & 0xFFU), (unsigned)((word >> 8) & 0xFFU), (unsigned)(word & 0xFFU));
+    return true;
+}
+
 static void wifi_mgr_maybe_auto_update_c6_fw(const esp_hosted_coprocessor_fwver_t *running_fw)
 {
     if (running_fw == NULL || !APP_HOSTED_AUTO_UPDATE_C6_FW) {
@@ -942,6 +963,7 @@ static void c6_deferred_update_task(void *arg)
     }
     esp_hosted_coprocessor_fwver_t fw = {0};
     if (esp_hosted_get_coprocessor_fwversion(&fw) == ESP_OK) {
+        wifi_mgr_remember_c6_version(&fw);
         wifi_mgr_maybe_auto_update_c6_fw(&fw);
     }
     wifi_mgr_api_unlock();
@@ -1106,6 +1128,7 @@ static esp_err_t wifi_mgr_init_hosted_transport(void)
     if (fw_err == ESP_OK) {
         ESP_LOGI(TAG_WIFI, "ESP-Hosted connected to C6 FW %" PRIu32 ".%" PRIu32 ".%" PRIu32,
                  fw.major1, fw.minor1, fw.patch1);
+        wifi_mgr_remember_c6_version(&fw);
         wifi_mgr_maybe_auto_update_c6_fw(&fw);
     } else {
         // Treat unknown version as 0.0.0 so blank/legacy co-processors are auto-recovered.

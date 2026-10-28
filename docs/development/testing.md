@@ -197,7 +197,8 @@ from its `energy` sensors, the doorbell popup from its `doorbell` notification w
 
 `tools/stress_test.py <panel-ip>` combines rapid page navigation, repeated entity discovery (Room/House import) and
 concurrent loads of every editor asset in `index.html` (six connections, `--webui-concurrency`). It reports memory from
-`GET /api/version` before, during and after a cool-down, counts failed requests and exits nonzero on any failure or
+`GET /api/version` before, during and after a cool-down, prints each core's busy share and the busiest tasks
+(`?tasks=1` run times) for the load and the cool-down, counts failed requests and exits nonzero on any failure or
 memory probe. `--no-navigate --no-discovery` isolates the editor load, `--no-webui-load` reproduces the older test.
 A one-time cache allocation drops once and stays flat; a leak keeps dropping after the load stops. It only does GETs and
 page switches and never touches USB. Errors under combined load count as failures even if the panel recovers.

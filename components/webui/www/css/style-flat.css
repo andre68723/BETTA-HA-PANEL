@@ -55,3 +55,9 @@ body[data-ui-style="flat"] #canvas .tp-clim-chips i {
   background: var(--pv-card-on);
   box-shadow: none;
 }
+
+/* Energy nodes retain their source colours and circular flow geometry. */
+body[data-ui-style="flat"] #canvas .energy-preview-node {
+  --energy-node-surface: var(--pv-card);
+  box-shadow: none;
+}
