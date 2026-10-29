@@ -3,8 +3,8 @@
 # Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
 cmake_minimum_required(VERSION 3.16)
 
-set(BETTAOS_RELEASE_VERSION "v0.9.1-rc2")
-# A test build can report another version without editing this file: BETTA_VERSION=v0.9.1-rc2 scripts/build.sh <variant> reconfigure build
+set(BETTAOS_RELEASE_VERSION "v0.9.1")
+# A test build can report another version without editing this file: BETTA_VERSION=v0.9.1 scripts/build.sh <variant> reconfigure build
 if(DEFINED ENV{BETTA_VERSION} AND NOT "$ENV{BETTA_VERSION}" STREQUAL "")
     set(BETTAOS_RELEASE_VERSION "$ENV{BETTA_VERSION}")
 endif()
