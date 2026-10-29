@@ -1241,11 +1241,6 @@ void ui_history_popup_open_quote(const char *entity_id, ha_quote_provider_t prov
     size_t n = (size_t)snprintf(info, sizeof(info), "%s", q->symbol);
     const char *market = quote_market_text(q->market);
     if (market[0] != '\0') n += (size_t)snprintf(info + n, sizeof(info) - n, "%s%s", n ? "  \xC2\xB7  " : "", market);
-    if (q->has_quote_time && n < sizeof(info)) {
-        char when[24];
-        quote_time_text(q->quote_time, true, when, sizeof(when));
-        n += (size_t)snprintf(info + n, sizeof(info) - n, "  \xC2\xB7  %s %s", ui_i18n_get("stock.quote_time", "quote"), when);
-    }
     ha_state_t *state = ui_calloc_prefer_psram(1, sizeof(*state));
     if (state != NULL && ha_model_get_state(entity_id, state) && state->ha_changed_s > 0 && n < sizeof(info)) {
         char when[24];

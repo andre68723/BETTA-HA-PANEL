@@ -40,7 +40,7 @@ bool ha_display_precision_handle_result(
     uint32_t msg_id, bool success, const cJSON *result, ha_display_precision_changed_fn changed);
 
 /* Any task: the integration of entity_id from its registry entry: NULL while not answered yet, "" when the
- * lookup failed or timed out, "yahoofinance" or "easy_stock", or "other" for any other integration (and for
+ * lookup failed or timed out, "easy_stock", or "other" for any other integration (and for
  * an entity without a registry entry). */
 const char *ha_display_precision_platform(const char *entity_id);
 

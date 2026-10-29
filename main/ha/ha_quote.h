@@ -1,14 +1,13 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  *
- * Market quotes of the Stocks & ETFs widget from two Home Assistant integrations, normalized into one model: Yahoo Finance
- * (iprak/yahoofinance, registry platform "yahoofinance") and Easy Stock (registry platform "easy_stock"). The provider comes
- * from the entity registry (ha_display_precision.h), never from an entity ID or from attributes alone: an unrelated sensor
- * with a "symbol" attribute is not a quote. Pure logic (host tested).
+ * Market quotes of the Stocks & ETFs widget from the Easy Stock Home Assistant integration (registry platform "easy_stock"),
+ * normalized into one model. The provider comes from the entity registry (ha_display_precision.h), never from an entity ID
+ * or from attributes alone: an unrelated sensor with a "symbol" attribute is not a quote. Pure logic (host tested).
  *
  * The sensor state is the price. The daily change belongs to the last reported trading session; it is only kept when it
- * refers to the same price and currency as the state (Yahoo's state can be converted or an extended-hours price, so its
- * regularMarketPrice must match). A missing change is derived from a valid previous close, never assumed to be zero.
+ * and the previous close describe the price of the state. A missing change is derived from a valid previous close, never
+ * assumed to be zero.
  */
 #pragma once
 
@@ -20,7 +19,6 @@ typedef enum {
     HA_QUOTE_PROVIDER_PENDING = 0, /* the registry has not answered yet */
     HA_QUOTE_PROVIDER_FAILED,      /* the registry lookup failed or timed out */
     HA_QUOTE_PROVIDER_UNSUPPORTED, /* another integration: not a quote this widget reads */
-    HA_QUOTE_PROVIDER_YAHOO,
     HA_QUOTE_PROVIDER_EASY_STOCK,
 } ha_quote_provider_t;
 
@@ -49,13 +47,11 @@ typedef struct ha_quote {
     double prev_close;
     char symbol[HA_QUOTE_SYMBOL_LEN];
     char name[HA_QUOTE_NAME_LEN];       /* friendly_name: the short name for a list */
-    char long_name[HA_QUOTE_NAME_LEN];  /* Easy Stock long_name ("... UCITS ETF USD Acc"), "" for Yahoo */
+    char long_name[HA_QUOTE_NAME_LEN];  /* Easy Stock long_name ("... UCITS ETF USD Acc") */
     ha_quote_market_t market;
-    bool has_quote_time;                /* Yahoo regularMarketTime: when the price was set at the exchange */
-    int64_t quote_time;                 /* UTC epoch seconds */
-    bool has_live;                      /* Easy Stock price_is_live */
+    bool has_live;                      /* price_is_live */
     bool price_is_live;
-    bool has_traded_today;              /* Easy Stock: absent stays unknown, not false */
+    bool has_traded_today;              /* absent stays unknown, not false */
     bool traded_today;
 } ha_quote_t;
 
@@ -65,8 +61,8 @@ ha_quote_provider_t ha_quote_provider_from_platform(const char *platform);
 /* A complete finite number ("208.65", "-0.5", "1e3"); false for "", "unknown", trailing text, NaN, infinity or overflow. */
 bool ha_quote_number(const char *text, double *out);
 
-/* Reads state and attributes (the entity's attributes JSON object) of a Yahoo Finance or Easy Stock sensor. Returns false
- * for another provider; out->available is false for an unknown, unavailable or non-numeric state. */
+/* Reads state and attributes (the entity's attributes JSON object) of an Easy Stock sensor. Returns false for another
+ * provider; out->available is false for an unknown, unavailable or non-numeric state. */
 bool ha_quote_parse(ha_quote_provider_t provider, const char *state, const char *attributes_json, ha_quote_t *out);
 
 /* A number with thousands separators and `decimals` digits: 13361.4 -> "13.361,40" (german) or "13,361.40"; plus adds "+"

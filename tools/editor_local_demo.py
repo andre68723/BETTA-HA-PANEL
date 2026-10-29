@@ -132,7 +132,7 @@ def all_widgets_fixture(variant):
         ('car', 'Auto mit allen Sensoren', (660, 20, 260, 540), dict(secondary_entity_id='sensor.demo_car_charging_power', tertiary_entity_id='sensor.demo_car_remaining_range', lock_entity_id='lock.demo_car_doors')),
         ('wallbox', 'Wallbox mit allen Sensoren', (940, 20, 320, 540), {}),
     ])
-    quote_ids = ['sensor.yahoofinance_demo_ins', 'sensor.yahoofinance_demo_tech']
+    quote_ids = ['sensor.demo_insurer', 'sensor.demo_tech']
     page('Aktien & ETFs', [
         ('stocks_charts', title, (20 + index * 420, 20, 400, 560),
          dict(stock_view=view, stock_entities=quote_ids, stock_period='ytd', stock_delta='both', stock_ticker=True))

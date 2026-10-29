@@ -480,7 +480,7 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
     }
 
     if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "stock_quotes") == 0) {
-        /* Stocks & ETFs: entity_id is the first quote, stock_entities up to seven more (sensors of Yahoo Finance or Easy
+        /* Stocks & ETFs: entity_id is the first quote, stock_entities up to seven more (Easy
          * Stock; which one is known from the registry at run time). */
         const char *wid = cJSON_IsString(id) ? id->valuestring : "?";
         cJSON *more = cJSON_GetObjectItemCaseSensitive(widget, "stock_entities");

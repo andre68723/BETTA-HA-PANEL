@@ -214,13 +214,11 @@ WIDGETS = {
                   "A gain or dividends sensor in another currency than the total value, or a percentage sensor without `%`, is left out and the line says **Unit differs**."],
     },
     "stock_quotes": {
-        "summary": "Shows **up to eight quotes** of Yahoo Finance or Easy Stock `sensor.*` entities as a list, as charts or as tiles, with the last session's change and a detail view over five periods.",
-        "entities": [("Quote 1", "`sensor.*` of Yahoo Finance or Easy Stock", True), ("Quote 2 to 8", "`sensor.*` of Yahoo Finance or Easy Stock", False)],
-        "requirements": "One of two integrations from HACS, or both mixed: **[Yahoo Finance](https://github.com/iprak/yahoofinance)** "
-                        "(`iprak/yahoofinance`) or **[Easy Stock](https://github.com/derspe/ha-easy-stock)**. The panel reads from Home "
-                        "Assistant's entity registry which integration a sensor belongs to; a sensor of another integration shows "
-                        "**Not a quote**. Easy Stock's daily closes come from the integration's own history endpoint; for Yahoo Finance, "
-                        "longer periods use Home Assistant's statistics, so they exist only since Home Assistant records the sensor.",
+        "summary": "Shows **up to eight quotes** of Easy Stock `sensor.*` entities as a list, as charts or as tiles, with the last session's change and a detail view over five periods.",
+        "entities": [("Quote 1", "`sensor.*` of Easy Stock", True), ("Quote 2 to 8", "`sensor.*` of Easy Stock", False)],
+        "requirements": "The **[Easy Stock](https://github.com/derspe/ha-easy-stock)** integration from HACS; its quotes come from Yahoo Finance. "
+                        "The panel reads from Home Assistant's entity registry which integration a sensor belongs to; a sensor of "
+                        "another integration shows **Not a quote**. Easy Stock's daily closes come from the integration's own history endpoint.",
         "options": [("Quote 1 to 8", "the same list for List, Charts and Tiles; Add quote opens a multiple selection with numbered slots for up to eight sensors; changes apply together; ↑ moves a quote up, × removes it, an emptied row closes the gap"),
                     ("View", "**List**: name, price and the last session's change; **Charts**: a small chart per quote; **Tiles**: a card per quote with name, price, the period change and a chart, in two columns on a wide tile and one on a narrow one"),
                     ("Period", "1 day, 1 week, 30 days, year to date or 1 year: the charts' first period and the one the details open with"),
@@ -228,15 +226,15 @@ WIDGETS = {
                     ("Show the symbol", "the ticker under the name (list), after it (charts) or beside it (tiles)"),
                     ("Show selector buttons on the tile", "on by default, charts and tiles: the period buttons **1D, 1W, 30D, YTD, 1Y**; off shows the period above")],
         "panel": ["The price is the sensor's state with its currency; pence stay pence (GBp). A change that does not belong to the shown price "
-                  "(a converted or after-hours price) is left out, a missing change shows `--`. Prices below 1 retain up to eight significant digits.",
+                  "is left out, a missing change shows `--`. Prices below 1 retain up to eight significant digits.",
                   "Tiles show the percentage change on the right with an up/down arrow. With both changes enabled, the amount sits below the price. Rows and tiles scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market "
-                  "state, the time of the quote and of the last update in Home Assistant, and a chart over **1D, 1W, 30D, YTD, 1Y**.",
+                  "state, the time of the last update in Home Assistant, and a chart over **1D, 1W, 30D, YTD, 1Y**.",
                   "Every chart names its source: **Closes** (Easy Stock, against the close before the period), **Recorded** (a day of "
                   "Home Assistant's records from local midnight, against the previous close) or Home Assistant's daily, weekly or hourly means, whose change "
                   "is a **trend**, not a market return. A shorter history says from when it starts.",
                   "**1D means today**, from local midnight to now in the panel's time zone. Keep the panel and Home Assistant in the same time zone. "
                   "When Easy Stock explicitly reports no trading today, the 1D chart is flat at 0%; the list keeps the last session's change. "
-                  "Without that attribute, including Yahoo Finance, 1D uses the previous close as its reference.",
+                  "Without that attribute, 1D uses the previous close as its reference.",
                   "Charts are fetched only for a page on screen, one at a time, and refreshed every 15 minutes."],
     },
     "energy_price_forecast": {

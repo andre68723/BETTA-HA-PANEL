@@ -54,7 +54,7 @@ Numbers, trends and states you want to read at a glance.
 
     **[Stocks & ETFs](stock_quotes.md)**
 
-    Shows **up to eight quotes** of Yahoo Finance or Easy Stock `sensor.*` entities as a list, as charts or as tiles, with the last session's change and a detail view over five periods.
+    Shows **up to eight quotes** of Easy Stock `sensor.*` entities as a list, as charts or as tiles, with the last session's change and a detail view over five periods.
 
 </div>
 

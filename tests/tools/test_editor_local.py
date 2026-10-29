@@ -119,7 +119,7 @@ class LocalEditorTest(unittest.TestCase):
         self.assertEqual(len(quotes), 10)
         status, raw = self.request('/api/ha/light_entities?domain=sensor&search=apple')
         self.assertEqual(status, 200)
-        self.assertEqual([item['id'] for item in json.loads(raw)['items']], ['sensor.yahoofinance_demo_tech'])
+        self.assertEqual([item['id'] for item in json.loads(raw)['items']], ['sensor.demo_tech'])
 
 
 

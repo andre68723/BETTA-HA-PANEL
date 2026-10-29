@@ -30,7 +30,7 @@ static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
 #define DP_MAX_DIGITS 6
 
 /* The integration of an entity, as far as a reader needs it (ha_display_precision_platform()). */
-typedef enum { DP_PLATFORM_PENDING = 0, DP_PLATFORM_FAILED, DP_PLATFORM_OTHER, DP_PLATFORM_YAHOO, DP_PLATFORM_EASY_STOCK } dp_platform_t;
+typedef enum { DP_PLATFORM_PENDING = 0, DP_PLATFORM_FAILED, DP_PLATFORM_OTHER, DP_PLATFORM_EASY_STOCK } dp_platform_t;
 
 /* Read by every task, under the lock: hashes of the entity ids, their precision and integration. */
 static uint32_t *s_hash;
@@ -133,7 +133,6 @@ static dp_platform_t dp_entry_platform(const cJSON *entry)
 {
     const cJSON *platform = cJSON_GetObjectItemCaseSensitive(entry, "platform");
     if (!cJSON_IsString(platform) || platform->valuestring == NULL) return DP_PLATFORM_OTHER;
-    if (strcmp(platform->valuestring, "yahoofinance") == 0) return DP_PLATFORM_YAHOO;
     if (strcmp(platform->valuestring, "easy_stock") == 0) return DP_PLATFORM_EASY_STOCK;
     return DP_PLATFORM_OTHER;
 }
@@ -292,7 +291,6 @@ const char *ha_display_precision_platform(const char *entity_id)
     switch (platform) {
     case DP_PLATFORM_FAILED: return "";
     case DP_PLATFORM_OTHER: return "other";
-    case DP_PLATFORM_YAHOO: return "yahoofinance";
     case DP_PLATFORM_EASY_STOCK: return "easy_stock";
     default: return NULL;
     }

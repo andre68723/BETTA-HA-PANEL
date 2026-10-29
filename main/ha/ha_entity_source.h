@@ -16,7 +16,7 @@ void ha_entity_search_parse(const cJSON *entry, ha_entity_search_meta_t *out);
 void ha_entity_search_json(cJSON *entry, const ha_entity_search_meta_t *meta);
 
 #define HA_DISCOVERY_SOURCE_SETUP \
-    "{%% set quotes = integration_entities('yahoofinance') + integration_entities('easy_stock') %%}" \
+    "{%% set quotes = integration_entities('easy_stock') %%}" \
     "{%% set sonos = integration_entities('sonos') %%}" \
     "{%% set printers = integration_entities('bambu_lab') %%}"
 

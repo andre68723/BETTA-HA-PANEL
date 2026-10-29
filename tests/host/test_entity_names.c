@@ -25,7 +25,7 @@ int main(void)
     assert(ha_model_set_entity_name(entity.id, "Thermostat Temperature") == ESP_OK);
     assert(ha_model_state_revision() == revision);
     /* Missing legacy names must not erase the discovery name; metadata still refreshes. */
-    snprintf(entity.name, sizeof(entity.name), "%s", entity.id);
+    snprintf(entity.name, sizeof(entity.name), "%.*s", (int)sizeof(entity.name) - 1, entity.id);
     entity.supported_features = 42;
     assert(ha_model_upsert_entity(&entity) == ESP_OK);
     size_t total;

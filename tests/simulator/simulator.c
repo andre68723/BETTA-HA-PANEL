@@ -678,7 +678,7 @@ static bool load_display_precisions(const cJSON *states)
     size_t wanted = 0;
     const cJSON *state = NULL;
     cJSON_ArrayForEach(state, states) {
-        /* a registry entry: the precision and/or the integration ("platform": "yahoofinance", "easy_stock", ...) */
+        /* a registry entry: the precision and/or the integration ("platform": "easy_stock", ...) */
         const cJSON *digits = cJSON_GetObjectItemCaseSensitive(state, "display_precision");
         const cJSON *platform = cJSON_GetObjectItemCaseSensitive(state, "platform");
         if ((cJSON_IsNumber(digits) && digits->valueint >= 0 && digits->valueint <= 6) || cJSON_IsString(platform)) {

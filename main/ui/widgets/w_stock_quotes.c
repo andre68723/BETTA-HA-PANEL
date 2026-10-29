@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  *
- * Stocks & ETFs (stock_quotes): up to eight market quotes of Yahoo Finance or Easy Stock sensors (ha/ha_quote.h), mixed in
+ * Stocks & ETFs (stock_quotes): up to eight market quotes of Easy Stock sensors (ha/ha_quote.h), mixed in
  * any order. entity_id is the first quote, extra_entity_id[0 .. 6] the others. The provider of each comes from its registry
  * entry; a sensor of another integration is named as such instead of being read. Three views (display_mode):
  *   list   rows of name (and, with stock_ticker, the symbol), price and the last session's change;
@@ -728,7 +728,7 @@ static void qs_feed_update(qs_item_t *it)
 static void qs_row_clicked(lv_event_t *e)
 {
     qs_item_t *it = (qs_item_t *)lv_event_get_user_data(e);
-    if (it == NULL || (it->provider != HA_QUOTE_PROVIDER_YAHOO && it->provider != HA_QUOTE_PROVIDER_EASY_STOCK)) return;
+    if (it == NULL || it->provider != HA_QUOTE_PROVIDER_EASY_STOCK) return;
     ui_history_popup_open_quote(it->entity_id, it->provider, &it->quote, it->ctx->period);
 }
 
@@ -880,7 +880,7 @@ static bool qs_quote_equal(const ha_quote_t *a, const ha_quote_t *b)
         a->has_change == b->has_change && a->change == b->change &&
         a->has_change_pct == b->has_change_pct && a->change_pct == b->change_pct &&
         a->has_prev_close == b->has_prev_close && a->prev_close == b->prev_close &&
-        a->market == b->market && a->has_quote_time == b->has_quote_time && a->quote_time == b->quote_time &&
+        a->market == b->market &&
         a->has_live == b->has_live && a->price_is_live == b->price_is_live &&
         a->has_traded_today == b->has_traded_today && a->traded_today == b->traded_today &&
         strcmp(a->currency, b->currency) == 0 && strcmp(a->symbol, b->symbol) == 0 &&

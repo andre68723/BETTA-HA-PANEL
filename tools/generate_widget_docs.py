@@ -332,29 +332,24 @@ def main():
         sections += ["## Requirements", "", info["requirements"] or "None beyond the entities.", ""]
         if kind == "stock_quotes":
             sections += [
-                "### Choose an integration", "",
-                "**The main difference for ETF charts is historical backfill. Easy Stock downloads up to one year of daily closes when "
-                "the sensor is first set up, including prices from before the sensor existed. A new ETF sensor can therefore show a 1Y "
-                "chart immediately, as far back as Yahoo has data for that symbol.** In BETTA, Yahoo Finance's longer charts use Home "
-                "Assistant statistics collected since recording began; installing the sensor does not backfill the preceding year.", "",
-                "Choose **Easy Stock** for a new setup that needs historical ETF charts. Keep **Yahoo Finance** if you already use it or "
-                "want its sensor currency conversion and pre/post-market options. Both use Yahoo Finance upstream; mixing them does "
-                "not provide independent market data.", "",
-                "| In BETTA | Easy Stock | Yahoo Finance (`iprak/yahoofinance`) |",
-                "| --- | --- | --- |",
-                "| Setup | Home Assistant UI, one asset per entry | Symbols in YAML |",
-                "| History before sensor creation | **Yes: up to one year of daily closes is downloaded at setup** | **No backfill for BETTA's HA-statistics charts; history starts with recording** |",
-                "| 1D | Today's Recorder data; explicit no-trading flag gives a flat 0% chart | Today's Recorder data against the previous close; no no-trading flag |",
-                "| 1W | Home Assistant hourly means (trend) | Home Assistant hourly means (trend) |",
-                "| 30D, YTD, 1Y | Daily closes from the integration, as far back as its history reaches | Home Assistant daily/weekly means (trend), only since recording began |",
-                "| Currency | Sensor's native currency; Lovelace card conversion does not change BETTA | Sensor currency, including configured conversion; mismatched session changes are omitted |", "",
-                "Both can share one tile. Neither supplies an exchange real-time guarantee. The panel refreshes histories every 15 minutes; "
-                "quote freshness also depends on the integration's polling interval. For 1D, keep Recorder enabled for the sensors. "
+                "### History", "",
+                "**Easy Stock downloads up to one year of daily closes when the sensor is first set up, including prices from before "
+                "the sensor existed. A new ETF sensor can therefore show a 1Y chart immediately, as far back as Yahoo Finance, the "
+                "integration's source, has data for that symbol.**", "",
+                "| In BETTA | Easy Stock |",
+                "| --- | --- |",
+                "| Setup | Home Assistant UI, one asset per entry |",
+                "| History before sensor creation | **Yes: up to one year of daily closes is downloaded at setup** |",
+                "| 1D | Today's Recorder data; an explicit no-trading flag gives a flat 0% chart |",
+                "| 1W | Home Assistant hourly means (trend) |",
+                "| 30D, YTD, 1Y | Daily closes from the integration, as far back as its history reaches |",
+                "| Currency | Sensor's native currency; Lovelace card conversion does not change BETTA |", "",
+                "It supplies no exchange real-time guarantee. The panel refreshes histories every 15 minutes; quote freshness also "
+                "depends on the integration's polling interval. For 1D, keep Recorder enabled for the sensors. "
                 "Easy Stock's Lovelace card settings do not configure the panel.", "",
                 "A 1Y chart shows price change, not a total return with reinvested distributions. If the close before the period is "
                 "missing, BETTA marks the history as shorter and uses the first available close as its starting point.", "",
-                "Integration setup and options: [Easy Stock](https://github.com/derspe/ha-easy-stock#setup) · "
-                "[Yahoo Finance](https://github.com/iprak/yahoofinance#configuration).", "",
+                "Integration setup and options: [Easy Stock](https://github.com/derspe/ha-easy-stock#setup).", "",
             ]
         sections += ["## Options", ""] + options_table(info["options"]) + inspector_image(kind, title) + option_details(kind)
         sections += ["## On the panel", ""] + [f"- {item}" for item in info["panel"]] + [""] + panel_details(kind)

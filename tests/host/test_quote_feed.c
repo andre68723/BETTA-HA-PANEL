@@ -63,7 +63,7 @@ int main(void) {
         }
         handles[i] = quote_history_feed_register(&objects[i], false, received, NULL); assert(handles[i]);
         char id[40]; snprintf(id, sizeof(id), "sensor.quote_%d", i);
-        quote_history_feed_set(handles[i], id, HA_QUOTE_PROVIDER_YAHOO, "TEST", HA_QUOTE_PERIOD_1D, 100);
+        quote_history_feed_set(handles[i], id, HA_QUOTE_PROVIDER_EASY_STOCK, "TEST", HA_QUOTE_PERIOD_1D, 100);
     }
     objects[39].visible = true; feed_tick(NULL);
     assert(sends == 1 && s_state.inflight == 39);
@@ -75,7 +75,7 @@ int main(void) {
     assert(replies == 1 && s_state.inflight == -1);
     assert(strcmp(s_entries[39].entity_id, "sensor.quote_39") == 0);
     objects[79].visible = true;
-    quote_history_feed_set(handles[79], "sensor.popup", HA_QUOTE_PROVIDER_YAHOO, "TEST", HA_QUOTE_PERIOD_1D, 100);
+    quote_history_feed_set(handles[79], "sensor.popup", HA_QUOTE_PROVIDER_EASY_STOCK, "TEST", HA_QUOTE_PERIOD_1D, 100);
     feed_tick(NULL); assert(sends == 2 && s_state.inflight == 79);
     for (int i = 0; i < 80; i++) quote_history_feed_unregister(handles[i]);
     assert(s_capacity == 0 && s_slots == NULL && s_entries == NULL && timers == 0);

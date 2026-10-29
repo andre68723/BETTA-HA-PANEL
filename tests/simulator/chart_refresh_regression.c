@@ -68,7 +68,7 @@ static void stock_cases(void)
     cJSON *request = ha_display_precision_next_request(871, 0);
     CHECK(request != NULL);
     cJSON_Delete(request);
-    cJSON *reply = cJSON_Parse("{\"sensor.refresh_quote\":{\"platform\":\"yahoofinance\"},\"sensor.refresh_easy\":{\"platform\":\"easy_stock\"}}");
+    cJSON *reply = cJSON_Parse("{\"sensor.refresh_quote\":{\"platform\":\"easy_stock\"},\"sensor.refresh_easy\":{\"platform\":\"easy_stock\"}}");
     CHECK(ha_display_precision_handle_result(871, true, reply, NULL));
     cJSON_Delete(reply);
     static const char *const views[] = {"", "chart", "grid"};

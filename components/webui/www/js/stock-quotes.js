@@ -201,7 +201,7 @@ function bindStockInspector() {
 const STOCK_PREVIEW_CHANGES = [0.40, -0.08, 1.12, -0.36, 0, 2.05, -1.4, 0.7];
 
 function stockPreviewSymbol(id) {
-  const object = String(id || "").replace(/^sensor\./, "").replace(/^yahoofinance_/, "");
+  const object = String(id || "").replace(/^sensor\./, "");
   return object.replace(/_([a-z]{1,2})$/, ".$1").replace(/_/g, " ").toUpperCase();
 }
 

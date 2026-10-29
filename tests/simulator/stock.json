@@ -11,12 +11,12 @@
      "title": "Watchlist",
      "entity_id": "sensor.demo_world_etf",
      "stock_entities": [
-      "sensor.yahoofinance_demo_ins",
-      "sensor.yahoofinance_demo_tech",
-      "sensor.yahoofinance_demo_lon",
+      "sensor.demo_insurer",
+      "sensor.demo_tech",
+      "sensor.demo_london",
       "sensor.demo_em_etf",
       "sensor.demo_not_a_quote",
-      "sensor.yahoofinance_demo_gone"
+      "sensor.demo_delisted"
      ],
      "x": 16,
      "y": 12,
@@ -29,9 +29,9 @@
      "title": "Ticker, both changes",
      "entity_id": "sensor.demo_world_etf",
      "stock_entities": [
-      "sensor.yahoofinance_demo_ins",
-      "sensor.yahoofinance_demo_tech",
-      "sensor.yahoofinance_demo_lon"
+      "sensor.demo_insurer",
+      "sensor.demo_tech",
+      "sensor.demo_london"
      ],
      "x": 368,
      "y": 12,
@@ -46,8 +46,8 @@
      "title": "Charts 30D",
      "entity_id": "sensor.demo_world_etf",
      "stock_entities": [
-      "sensor.yahoofinance_demo_ins",
-      "sensor.yahoofinance_demo_tech"
+      "sensor.demo_insurer",
+      "sensor.demo_tech"
      ],
      "x": 16,
      "y": 324,
@@ -61,7 +61,7 @@
      "title": "Charts 1Y, amounts",
      "entity_id": "sensor.demo_world_etf",
      "stock_entities": [
-      "sensor.yahoofinance_demo_ins"
+      "sensor.demo_insurer"
      ],
      "x": 368,
      "y": 254,
@@ -95,55 +95,46 @@
    }
   },
   {
-   "entity_id": "sensor.yahoofinance_demo_ins",
+   "entity_id": "sensor.demo_insurer",
    "state": "379.5",
-   "platform": "yahoofinance",
+   "platform": "easy_stock",
    "attributes": {
     "state_class": "measurement",
-    "currencySymbol": "€",
     "symbol": "DINS.DE",
-    "marketState": "REGULAR",
-    "regularMarketChange": -0.3,
-    "regularMarketChangePercent": -0.08,
-    "regularMarketPreviousClose": 379.8,
-    "regularMarketPrice": 379.5,
-    "regularMarketTime": 1792598400,
+    "market_state": "REGULAR",
+    "change": -0.3,
+    "change_pct": -0.08,
+    "previous_close": 379.8,
     "unit_of_measurement": "EUR",
     "friendly_name": "Allianz"
    }
   },
   {
-   "entity_id": "sensor.yahoofinance_demo_tech",
+   "entity_id": "sensor.demo_tech",
    "state": "245.2",
-   "platform": "yahoofinance",
+   "platform": "easy_stock",
    "attributes": {
     "state_class": "measurement",
-    "currencySymbol": "$",
     "symbol": "DTEC",
-    "marketState": "POSTPOST",
-    "regularMarketChange": 2.72,
-    "regularMarketChangePercent": 1.12,
-    "regularMarketPreviousClose": 242.48,
-    "regularMarketPrice": 245.2,
-    "regularMarketTime": 1792598400,
+    "market_state": "POSTPOST",
+    "change": 2.72,
+    "change_pct": 1.12,
+    "previous_close": 242.48,
     "unit_of_measurement": "USD",
     "friendly_name": "Apple"
    }
   },
   {
-   "entity_id": "sensor.yahoofinance_demo_lon",
+   "entity_id": "sensor.demo_london",
    "state": "1234.5",
-   "platform": "yahoofinance",
+   "platform": "easy_stock",
    "attributes": {
     "state_class": "measurement",
-    "currencySymbol": "p",
     "symbol": "DLON.L",
-    "marketState": "CLOSED",
-    "regularMarketChange": -4.5,
-    "regularMarketChangePercent": -0.36,
-    "regularMarketPreviousClose": 1239.0,
-    "regularMarketPrice": 1234.5,
-    "regularMarketTime": 1792598400,
+    "market_state": "CLOSED",
+    "change": -4.5,
+    "change_pct": -0.36,
+    "previous_close": 1239.0,
     "unit_of_measurement": "GBp",
     "friendly_name": "London Demo plc"
    }
@@ -177,9 +168,9 @@
    }
   },
   {
-   "entity_id": "sensor.yahoofinance_demo_gone",
+   "entity_id": "sensor.demo_delisted",
    "state": "unavailable",
-   "platform": "yahoofinance",
+   "platform": "easy_stock",
    "attributes": {
     "symbol": "DGON.DE",
     "unit_of_measurement": "EUR",

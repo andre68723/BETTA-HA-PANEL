@@ -31,7 +31,7 @@ any cover class is valid for the Cover widget. Its supported features determine 
 | Energy timeline | Battery SOC / Forecast today | `sensor` | Battery percentage / Solcast detailed forecast structure. |
 | Parqet portfolio | Value, unrealised gain, dividends | `sensor` | `monetary` device class. The class does not distinguish fees from value or dividends. |
 | Parqet portfolio | XIRR, unrealised return | `sensor` | Numeric with unit `%` and no physical device class. The user chooses the corresponding financial metric. |
-| Stocks & ETFs | Quotes 1–8 | `sensor` | Registered with Yahoo Finance or Easy Stock; an arbitrary `symbol` attribute is insufficient. |
+| Stocks & ETFs | Quotes 1–8 | `sensor` | Registered with Easy Stock; an arbitrary `symbol` attribute is insufficient. |
 | Car | SOC / Charging power / Range | `sensor` | Battery `%` / power W or kW / distance m, km or mi; matching class or no class. |
 | Car | Interior temperature | `sensor` | Temperature class or unit. |
 | Car | Lock | `lock`, `binary_sensor` | Binary sensors require lock, door or opening class. |

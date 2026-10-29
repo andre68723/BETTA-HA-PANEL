@@ -390,7 +390,7 @@ void quote_history_feed_set(void *handle, const char *entity_id, ha_quote_provid
     if (i < 0 || i >= s_capacity || !s_slots[i].used) return;
     feed_entry_t *e = &s_entries[i];
     const bool supported = entity_id != NULL && entity_id[0] != '\0' && period >= 0 && period < HA_QUOTE_PERIOD_COUNT &&
-                           (provider == HA_QUOTE_PROVIDER_YAHOO || provider == HA_QUOTE_PROVIDER_EASY_STOCK);
+                           provider == HA_QUOTE_PROVIDER_EASY_STOCK;
     const char *sym = symbol != NULL ? symbol : "";
     const bool same = e->configured == supported && e->provider == provider && e->period == period &&
                       strcmp(e->entity_id, entity_id != NULL ? entity_id : "") == 0 && strcmp(e->symbol, sym) == 0;

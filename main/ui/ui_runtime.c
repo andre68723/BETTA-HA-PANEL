@@ -353,10 +353,7 @@ static void ui_runtime_stock_symbol_from_entity(const char *entity_id, char *out
     }
     out[0] = '\0';
     const char *src = entity_id != NULL ? entity_id : "";
-    const char *prefix = "sensor.yahoofinance_";
-    if (strncmp(src, prefix, strlen(prefix)) == 0) {
-        src += strlen(prefix);
-    } else if (strncmp(src, "sensor.", 7) == 0) {
+    if (strncmp(src, "sensor.", 7) == 0) {
         src += 7;
     }
 
@@ -422,12 +419,9 @@ static void ui_runtime_refresh_topbar_stocks(void)
         }
 
         char unit[8] = {0};
-        char currency_symbol[8] = {0};
-        float price = 0.0f;
-        bool has_price = false;
         ui_runtime_stock_symbol_from_entity(entity_id, items[count].symbol, sizeof(items[count].symbol));
 
-        /* A Yahoo Finance or Easy Stock sensor (by its registry entry) is read like the Stocks & ETFs widget reads it: the
+        /* An Easy Stock sensor (by its registry entry) is read like the Stocks & ETFs widget reads it: the
          * state is the price. Any other sensor keeps the reading below. */
         ha_quote_t quote;
         if (ha_quote_parse(ha_quote_provider_from_platform(ha_display_precision_platform(entity_id)), state.state,
@@ -453,29 +447,20 @@ static void ui_runtime_refresh_topbar_stocks(void)
                 ui_runtime_stock_symbol_from_entity(symbol_item->valuestring, items[count].symbol, sizeof(items[count].symbol));
             }
 
-            cJSON *price_item = cJSON_GetObjectItemCaseSensitive(attrs, "regularMarketPrice");
-            has_price = ui_runtime_json_item_to_float(price_item, &price);
-
-            cJSON *currency_item = cJSON_GetObjectItemCaseSensitive(attrs, "currencySymbol");
-            if (cJSON_IsString(currency_item) && currency_item->valuestring != NULL) {
-                snprintf(currency_symbol, sizeof(currency_symbol), "%s", currency_item->valuestring);
-            }
-
             cJSON *unit_item = cJSON_GetObjectItemCaseSensitive(attrs, "unit_of_measurement");
             if (cJSON_IsString(unit_item) && unit_item->valuestring != NULL) {
                 snprintf(unit, sizeof(unit), "%s", unit_item->valuestring);
             }
             cJSON_Delete(attrs);
         }
-        bool is_euro = ui_runtime_stock_currency_is_euro(currency_symbol) ||
-                       (currency_symbol[0] == '\0' && ui_runtime_stock_currency_is_euro(unit));
+        bool is_euro = ui_runtime_stock_currency_is_euro(unit);
 
         char *end = NULL;
-        float numeric = has_price ? price : strtof(state.state, &end);
-        if (has_price || end != state.state) {
+        float numeric = strtof(state.state, &end);
+        if (end != state.state) {
             const char *suffix = "";
             if (!is_euro) {
-                suffix = currency_symbol[0] != '\0' ? currency_symbol : unit;
+                suffix = unit;
             }
             snprintf(items[count].value, sizeof(items[count].value), "%.2f%s", (double)numeric, suffix);
             items[count].value_is_euro = is_euro;
@@ -515,13 +500,8 @@ static void ui_runtime_stock_chip_tap(void)
         if (cJSON_IsString(symbol) && symbol->valuestring != NULL && symbol->valuestring[0] != '\0') {
             ui_runtime_stock_symbol_from_entity(symbol->valuestring, title, sizeof(title));
         }
-        const cJSON *price = cJSON_GetObjectItemCaseSensitive(attrs, "regularMarketPrice");
-        float value = 0.0f;
-        if (ui_runtime_json_item_to_float((cJSON *)price, &value)) snprintf(current, sizeof(current), "%.2f", (double)value);
-        const cJSON *symbol_char = cJSON_GetObjectItemCaseSensitive(attrs, "currencySymbol");
         const cJSON *unit = cJSON_GetObjectItemCaseSensitive(attrs, "unit_of_measurement");
-        const char *suffix = cJSON_IsString(symbol_char) && symbol_char->valuestring[0] != '\0' ? symbol_char->valuestring
-                             : cJSON_IsString(unit) ? unit->valuestring : "";
+        const char *suffix = cJSON_IsString(unit) ? unit->valuestring : "";
         if (suffix[0] != '\0') {
             const size_t used = strlen(current);
             snprintf(current + used, sizeof(current) - used, " %.8s", suffix);

@@ -30,9 +30,9 @@ jobs:
           persist-credentials: false
       - name: ESP-Hosted C6 firmware
         run: |
-          curl -L --fail https://github.com/esphome/esp-hosted-firmware/releases/download/v2.12.13/network_adapter_esp32c6.bin \
-            -o release/network_adapter_esp32c6_2.12.13.bin
-          echo "09e4ed4ff648444ad045c1d934825af407648f58898586ce9f4275e53fdb23f6  release/network_adapter_esp32c6_2.12.13.bin" | sha256sum -c -
+          curl -L --fail https://github.com/esphome/esp-hosted-firmware/releases/download/v3.0.10/network_adapter_esp32c6.bin \
+            -o release/network_adapter_esp32c6_3.0.10.bin
+          echo "c552957fad9f35cf31b0273099dd3b23dc5c388bb43884c6567756ab97fd8cce  release/network_adapter_esp32c6_3.0.10.bin" | sha256sum -c -
       - name: Build
         run: |
           . "$IDF_PATH/export.sh"

@@ -78,7 +78,7 @@ def demo_responses(variant, fixture_path=None, all_widgets=False):
         if 'entity_picture' in state.get('attributes', {}): state['attributes']['entity_picture'] = ''
     responses = demo_api(fixture)
     # Explicit synthetic integration metadata also makes unbound quote samples searchable.
-    quote_ids = {s['entity_id'] for s in fixture['states'] if s.get('platform') in ('easy_stock', 'yahoofinance')}
+    quote_ids = {s['entity_id'] for s in fixture['states'] if s.get('platform') == 'easy_stock'}
     for entity in responses['/api/entities']['items']:
         if entity['id'] in quote_ids:
             entity['search_flags'] |= 8

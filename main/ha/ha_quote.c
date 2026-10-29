@@ -11,15 +11,14 @@
 
 #include "cJSON.h"
 
-/* Yahoo's regularMarketPrice and the state are the same price when they agree to this relative difference (rounding of
- * the state); a larger difference means a converted or extended-hours state, whose change is not the session's. */
+/* Two prices are the same when they agree to this relative difference (rounding of the state); a change and a previous
+ * close that add up to another price belong to another session or currency. */
 #define QUOTE_SAME_PRICE 0.0005
 
 ha_quote_provider_t ha_quote_provider_from_platform(const char *platform)
 {
     if (platform == NULL) return HA_QUOTE_PROVIDER_PENDING;
     if (platform[0] == '\0') return HA_QUOTE_PROVIDER_FAILED;
-    if (strcmp(platform, "yahoofinance") == 0) return HA_QUOTE_PROVIDER_YAHOO;
     if (strcmp(platform, "easy_stock") == 0) return HA_QUOTE_PROVIDER_EASY_STOCK;
     return HA_QUOTE_PROVIDER_UNSUPPORTED;
 }
@@ -59,7 +58,7 @@ static void quote_json_string(const cJSON *attrs, const char *key, char *out, si
     if (start + need > len) out[start] = '\0';
 }
 
-/* "SAP SE                        I" (a Yahoo name padded to a fixed width) -> "SAP SE I" */
+/* "SAP SE                        I" (a name padded to a fixed width) -> "SAP SE I" */
 static void quote_collapse_spaces(char *text)
 {
     size_t n = 0;
@@ -111,8 +110,7 @@ bool ha_quote_parse(ha_quote_provider_t provider, const char *state, const char 
 {
     if (out == NULL) return false;
     memset(out, 0, sizeof(*out));
-    if (provider != HA_QUOTE_PROVIDER_YAHOO && provider != HA_QUOTE_PROVIDER_EASY_STOCK) return false;
-    const bool yahoo = provider == HA_QUOTE_PROVIDER_YAHOO;
+    if (provider != HA_QUOTE_PROVIDER_EASY_STOCK) return false;
     out->available = state != NULL && ha_quote_number(state, &out->price);
     if (out->available) out->price_decimals = quote_state_decimals(state);
 
@@ -122,33 +120,24 @@ bool ha_quote_parse(ha_quote_provider_t provider, const char *state, const char 
         return true;
     }
     quote_json_string(attrs, "symbol", out->symbol, sizeof(out->symbol));
-    if (!yahoo) quote_json_string(attrs, "long_name", out->long_name, sizeof(out->long_name));
+    quote_json_string(attrs, "long_name", out->long_name, sizeof(out->long_name));
     quote_json_string(attrs, "friendly_name", out->name, sizeof(out->name));
     quote_collapse_spaces(out->name);
     quote_collapse_spaces(out->long_name);
-    /* Easy Stock names the currency; Yahoo only through the unit (currencySymbol is a sign such as "€"). */
-    if (!yahoo) quote_json_string(attrs, "currency", out->currency, sizeof(out->currency));
+    /* The currency is named; the unit is the fallback. */
+    quote_json_string(attrs, "currency", out->currency, sizeof(out->currency));
     quote_json_string(attrs, "unit_of_measurement", out->currency, sizeof(out->currency));
 
-    const cJSON *market = cJSON_GetObjectItemCaseSensitive(attrs, yahoo ? "marketState" : "market_state");
+    const cJSON *market = cJSON_GetObjectItemCaseSensitive(attrs, "market_state");
     out->market = quote_market(cJSON_IsString(market) ? market->valuestring : NULL);
 
     double change = 0.0, pct = 0.0, prev = 0.0;
-    const bool has_change = quote_json_number(cJSON_GetObjectItemCaseSensitive(attrs, yahoo ? "regularMarketChange" : "change"), &change);
-    const bool has_pct = quote_json_number(cJSON_GetObjectItemCaseSensitive(attrs, yahoo ? "regularMarketChangePercent" : "change_pct"), &pct);
+    const bool has_change = quote_json_number(cJSON_GetObjectItemCaseSensitive(attrs, "change"), &change);
+    const bool has_pct = quote_json_number(cJSON_GetObjectItemCaseSensitive(attrs, "change_pct"), &pct);
     const bool has_prev = quote_json_number(
-        cJSON_GetObjectItemCaseSensitive(attrs, yahoo ? "regularMarketPreviousClose" : "previous_close"), &prev) && prev > 0.0;
+        cJSON_GetObjectItemCaseSensitive(attrs, "previous_close"), &prev) && prev > 0.0;
 
-    /* The session's figures describe the session's price. Yahoo names it: a state that differs is converted or an
-     * extended-hours price, and the figures stay unavailable rather than describing another price. */
-    bool session = out->available;
-    if (yahoo && session) {
-        double regular = 0.0;
-        if (quote_json_number(cJSON_GetObjectItemCaseSensitive(attrs, "regularMarketPrice"), &regular)) {
-            session = quote_same_price(regular, out->price);
-        }
-    }
-    if (session) {
+    if (out->available) {
         out->has_prev_close = has_prev;
         out->prev_close = prev;
         if (has_change) {
@@ -171,22 +160,13 @@ bool ha_quote_parse(ha_quote_provider_t provider, const char *state, const char 
         }
     }
 
-    if (yahoo) {
-        double at = 0.0;
-        if (quote_json_number(cJSON_GetObjectItemCaseSensitive(attrs, "regularMarketTime"), &at) &&
-            at > 0.0 && at <= 253402300799.0) {
-            out->has_quote_time = true;
-            out->quote_time = (int64_t)at;
-        }
-    } else {
-        const cJSON *traded = cJSON_GetObjectItemCaseSensitive(attrs, "traded_today");
-        out->has_traded_today = cJSON_IsBool(traded);
-        out->traded_today = cJSON_IsTrue(traded);
-        const cJSON *live = cJSON_GetObjectItemCaseSensitive(attrs, "price_is_live");
-        if (cJSON_IsBool(live)) {
-            out->has_live = true;
-            out->price_is_live = cJSON_IsTrue(live);
-        }
+    const cJSON *traded = cJSON_GetObjectItemCaseSensitive(attrs, "traded_today");
+    out->has_traded_today = cJSON_IsBool(traded);
+    out->traded_today = cJSON_IsTrue(traded);
+    const cJSON *live = cJSON_GetObjectItemCaseSensitive(attrs, "price_is_live");
+    if (cJSON_IsBool(live)) {
+        out->has_live = true;
+        out->price_is_live = cJSON_IsTrue(live);
     }
     cJSON_Delete(attrs);
     return true;

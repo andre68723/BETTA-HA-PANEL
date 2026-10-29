@@ -82,7 +82,7 @@ static void test_quote_day(void)
     CHECK(n == 4 && points[0].t == start && points[0].v == 100 && points[1].t == points[2].t);
     CHECK(points[1].v == 100 && points[2].v == 105 && points[3].t == now && points[3].v == 110);
     CHECK(ha_quote_series_period_change(&series, &q, &c) && c.change_pct == 10);
-    q.has_traded_today = false; /* Yahoo and older Easy Stock keep the previous-close reference. */
+    q.has_traded_today = false; /* Older Easy Stock versions keep the previous-close reference. */
     CHECK(ha_quote_series_period_change(&series, &q, &c) && c.change_pct == 10);
     n = ha_quote_day_plot(points, 0, 8, now, &q);
     CHECK(n == 2 && points[0].v == 100 && points[1].v == 110);
