@@ -34,17 +34,24 @@ daily check now.
 
 ## Publish a release
 
-Nothing publishes automatically, and nothing is pushed or released without the owner's request.
+Merging a pull request into `main` publishes the release; nothing is pushed or released without the owner's request. The
+`release` job of `.github/workflows/build.yml` runs after the five variants are built and packaged:
 
-1. Set the reported version: `BETTAOS_RELEASE_VERSION` in the root `CMakeLists.txt`, or `BETTA_VERSION=<v>` for one build.
-2. `scripts/build.sh <variant> reconfigure build` for each board.
-3. `scripts/package_release.sh <version> <variant>...` writes `betta86-ha-panel-<version>-<variant>.factory.bin` and
-   `.ota.bin` plus `SHA256SUMS` into `release/out/<version>/` (the update check looks for that name).
-4. `gh release create <version> -R andre68723/BETTA-HA-PANEL --target <commit> --notes-file <notes>
-   release/out/<version>/*.bin release/out/<version>/SHA256SUMS`, with `--prerelease` for a test version. `--target` must
-   exist on the fork and be the commit the images were built from.
-5. Check: enable "Include pre-releases", `POST /api/ota/check`, read `update` in `GET /api/ota/status`. Install a changed
-   partition table over USB first.
+1. It reads `BETTAOS_RELEASE_VERSION` from the root `CMakeLists.txt`. Raise it in the pull request that is meant to release
+   (`v0.9.2-rc1` for a test version, `v0.9.2` for a release) and describe it in `docs/release-notes.md`.
+2. If a release with that name exists it does nothing, so merges without a version change publish nothing.
+3. Otherwise it creates the tag on the merged commit and the GitHub release with the images, `SHA256SUMS`, the text of
+   `scripts/release_notes.sh` and GitHub's list of merged work. A version with a suffix (`-rc1`) is a pre-release.
+
+`workflow_dispatch` runs the same steps; on any ref but `main`, or with `dry_run`, it stops before creating anything and
+prints the release it would publish. To publish by hand instead: set the version,
+`scripts/build.sh <variant> reconfigure build` for each board, `scripts/package_release.sh <version> <variant>...`
+(`release/out/<version>/`) and
+`gh release create <version> -R andre68723/BETTA-HA-PANEL --target <commit> --notes-file <notes>
+release/out/<version>/*.bin release/out/<version>/SHA256SUMS`; `--target` must be the commit the images were built from.
+
+Check a release: enable "Include pre-releases", `POST /api/ota/check`, read `update` in `GET /api/ota/status`. Install a
+changed partition table over USB first.
 
 Packaged versions stay in `release/out/` (git-ignored) until `scripts/clean.sh --release [N]` removes all but the newest N.
 
