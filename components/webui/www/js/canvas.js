@@ -1154,6 +1154,10 @@ function renderInspector() {
     el.fShowName.checked = widgetShowsName(widget);
     el.fShowName.disabled = !widgetSupportsName(widget.type);
   }
+  // The optional icon before the name exists on the room cards only (Room and Room air), off by default.
+  const iconTypes = ["room_tile", "room_air_tile"];
+  if (el.fShowIconRow) el.fShowIconRow.classList.toggle("hidden", !iconTypes.includes(widget.type));
+  if (el.fShowIcon) el.fShowIcon.checked = iconTypes.includes(widget.type) && widget.show_icon === true;
   if (el.fSensorShowAge) {
     el.fSensorShowAge.checked = widget.type !== "sensor" || widget.sensor_show_age !== false;
   }
@@ -2153,6 +2157,8 @@ function applyInspector(options = {}) {
   } else {
     delete widget.show_name;
   }
+  if (["room_tile", "room_air_tile"].includes(widgetType) && el.fShowIcon?.checked) widget.show_icon = true;
+  else delete widget.show_icon; // default: off
   delete widget.sensor_show_label;
   if (widgetType === "camera_tile" && el.fCameraLive?.checked) widget.camera_live = true;
   else delete widget.camera_live; // off by default

@@ -1535,13 +1535,28 @@ static void w_rr_layout_generic(w_rr_ctx_t *ctx, lv_coord_t inner_w, lv_coord_t 
 
     const bool fan = w_rr_can_set_fan(ctx);
     const bool mode = ctx->mode_count > 0;
+    /* Two chips share the row by text length: halves unless one text is short and the other would be cut. */
+    lv_coord_t mode_w = fan && mode ? (col_w - 8) / 2 : col_w;
+    if (fan && mode && ctx->rooms_label != NULL && ctx->fan_label != NULL) {
+        const lv_font_t *font = ui_font_role(UI_TEXT_META);
+        lv_point_t a, b;
+        char mode_label[W_RR_MODE_LEN];
+        w_rr_mode_label(ctx->mode_current, mode_label, sizeof(mode_label));
+        lv_text_get_size(&a, ctx->mode_current[0] != '\0' ? mode_label : ui_i18n_get("roborock.mode", "Mode"), font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        const char *fan_text = ctx->fan_speed[0] != '\0' ? ctx->fan_speed : ui_i18n_get("roborock.fan_title", "Suction level");
+        lv_text_get_size(&b, fan_text, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        const lv_coord_t room = col_w - 8, want_a = a.x + 16, want_b = b.x + 16, half = room / 2;
+        if (want_a < half && want_b > half) mode_w = LV_MAX(want_a, room - want_b);
+        else if (want_b < half && want_a > half) mode_w = LV_MIN(room - LV_MAX(want_b, 48), want_a);
+        mode_w = LV_CLAMP(48, mode_w, room - 48);
+    }
     if (ctx->rooms_btn != NULL) {
         w_rr_set_hidden(ctx->rooms_btn, fan && !mode);
-        lv_obj_set_size(ctx->rooms_btn, fan && mode ? (col_w - 8) / 2 : col_w, chip_h);
+        lv_obj_set_size(ctx->rooms_btn, mode_w, chip_h);
     }
     if (ctx->fan_btn != NULL) {
         w_rr_set_hidden(ctx->fan_btn, !fan);
-        lv_coord_t fan_x = mode ? (col_w + 8) / 2 : 0;
+        lv_coord_t fan_x = mode ? (fan ? mode_w + 8 : (col_w + 8) / 2) : 0;
         lv_coord_t fan_w = col_w - fan_x;
         lv_obj_set_pos(ctx->fan_btn, fan_x, 0);
         lv_obj_set_size(ctx->fan_btn, fan_w, chip_h);

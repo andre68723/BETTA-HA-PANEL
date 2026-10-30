@@ -2,7 +2,7 @@
 
 # Room air
 
-Shows **room humidity** from a `sensor.*` entity with optional CO₂, PM2.5 and a unified BETTA status; a tap opens read-only details.
+Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and PM2.5 from `sensor.*` entities; a tap opens read-only details.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/room_air_glow.png"><img src="../img/gallery/room_air_glow.png" alt="Room air, Glow style" loading="lazy" width="360" height="260" style="width: 288px"></a></figure>
@@ -19,19 +19,26 @@ Shows **room humidity** from a `sensor.*` entity with optional CO₂, PM2.5 and 
 
 ## Requirements
 
-Bind each role explicitly using the reported device class and unit. Basic humidity/temperature sensors, IKEA ALPSTUGA and Awair Element can supply different subsets. No direct device polling.
+Bind each role explicitly using the reported device class and unit; the tile shows only what is bound. No direct device polling.
+
+| Level | Bound readings | Example |
+| --- | --- | --- |
+| 1 | Humidity and temperature | Zigbee temperature/humidity sensor, e.g. a Tuya sensor with display |
+| 2 | Level 1 plus CO₂, PM2.5 and the device's own rating | IKEA ALPSTUGA |
+| 3 | Level 2 plus VOC and more values | Awair Element |
 
 ## Options
 
 | Option | Effect |
 | --- | --- |
+| Icon before the name | a small air-quality symbol in front of the name, off by default; shown only with the name |
 | Sources | optional roles stay independent; outdoor comparison can be disabled without losing its bindings |
 | Evaluation | editable humidity, CO₂ and PM2.5 display bands and drying margin; Reset restores defaults |
 
 ## On the panel
 
-- Humidity remains the main reading. CO₂ and PM2.5 have stable positions when the card has room; tap for every bound value.
-- The worst usable indoor band controls green/amber/red. Missing or unsupported configured evaluation inputs produce a partial-data marker; if all known bands are green, the status is neutral.
+- A neutral card like the Room widget: the name on top, the readings (up to three, four on wide tiles) as value over label in the middle, and chips at the bottom: the BETTA status (Good, Fair, Poor) and, only when there is something to do, the short advice. Colour appears only in the chips and in the readings that are rated amber or red. Tap for every bound value.
+- The worst usable indoor band controls green/amber/red. A configured humidity, CO₂ or PM2.5 reading that is missing or unsupported adds a partial-data marker; if the remaining bands are green, the status is neutral.
 - Temperature is context. VOC is displayed but not evaluated; Awair scores and IKEA ratings never drive BETTA colour or advice.
 - The popup shows per-reading status, source IDs, simultaneous reasons, outdoor absolute humidity and moisture conflicts. Window state does not prove effective ventilation.
 - HA availability is not sample age. Unbound pollutants are outside the evaluation. No outdoor PM input, automatic actions or countdown.

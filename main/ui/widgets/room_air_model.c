@@ -80,12 +80,18 @@ static air_band_t pollutant(double v, double amber, double red, double h, air_ba
     return band;
 }
 
-static air_band_t humidity(const air_config_t *c, double v, air_band_t old)
+static air_band_t humidity(const air_config_t *c, double v, air_memory_t *m)
 {
-    air_band_t band = v < c->rh_red_low || v > c->rh_red_high ? AIR_POOR :
-        v < c->rh_low || v > c->rh_high ? AIR_FAIR : AIR_GOOD;
-    if (old == AIR_POOR && (v < c->rh_red_low + 2 || v > c->rh_red_high - 2)) return AIR_POOR;
-    if (old >= AIR_FAIR && band == AIR_GOOD && (v < c->rh_low + 2 || v > c->rh_high - 2)) return AIR_FAIR;
+    air_band_t old = m->band[AIR_HUMIDITY];
+    int side = v < c->rh_low ? -1 : v > c->rh_high ? 1 : 0;
+    air_band_t band = v < c->rh_red_low || v > c->rh_red_high ? AIR_POOR : side ? AIR_FAIR : AIR_GOOD;
+    /* Hysteresis applies only on the side of the previous excursion. */
+    if (old == AIR_POOR && band != AIR_POOR &&
+        ((m->rh_side < 0 && v < c->rh_red_low + 2) || (m->rh_side > 0 && v > c->rh_red_high - 2))) band = AIR_POOR;
+    if (old >= AIR_FAIR && band == AIR_GOOD &&
+        ((m->rh_side < 0 && v < c->rh_low + 2) || (m->rh_side > 0 && v > c->rh_high - 2))) band = AIR_FAIR;
+    if (side) m->rh_side = side;
+    else if (band == AIR_GOOD) m->rh_side = 0;
     return band;
 }
 
@@ -108,20 +114,21 @@ air_result_t air_evaluate(const air_config_t *c, const air_input_t in[AIR_ROLE_C
         r.band[i] = AIR_NONE;
         if (i != AIR_HUMIDITY && i != AIR_CO2 && i != AIR_PM25 && i != AIR_VOC) continue;
         if (!in[i].bound) { m->band[i] = AIR_NONE; continue; }
-        if (!valid[i] || i == AIR_VOC) {
+        if (i == AIR_VOC) continue; /* display only; never evaluated, never coverage */
+        if (!valid[i]) {
             r.partial = true;
             lost |= m->band[i] != AIR_NONE;
             m->band[i] = AIR_NONE;
             continue;
         }
         ++r.measured;
-        air_band_t band = i == AIR_HUMIDITY ? humidity(c, in[i].value, m->band[i]) :
+        air_band_t band = i == AIR_HUMIDITY ? humidity(c, in[i].value, m) :
             i == AIR_CO2 ? pollutant(in[i].value, c->co2_amber, c->co2_red, 50, m->band[i]) :
             pollutant(in[i].value, c->pm_amber, c->pm_red, 3, m->band[i]);
         m->band[i] = r.band[i] = band;
         if (band > r.overall) r.overall = band;
         if (band > AIR_GOOD) {
-            if (i == AIR_HUMIDITY) r.reasons |= in[i].value < c->rh_low ? AIR_DRY : AIR_HUMID;
+            if (i == AIR_HUMIDITY) r.reasons |= m->rh_side < 0 ? AIR_DRY : AIR_HUMID;
             if (i == AIR_CO2) r.reasons |= AIR_FRESH_AIR;
             if (i == AIR_PM25) r.reasons |= AIR_PARTICLES;
         }

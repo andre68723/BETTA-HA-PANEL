@@ -154,7 +154,7 @@ Everything about one room in a single card.
 
     **[Room air](room_air_tile.md)**
 
-    Shows **room humidity** from a `sensor.*` entity with optional CO₂, PM2.5 and a unified BETTA status; a tap opens read-only details.
+    Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and PM2.5 from `sensor.*` entities; a tap opens read-only details.
 
 </div>
 

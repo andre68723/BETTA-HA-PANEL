@@ -5,6 +5,7 @@
 #include "ui/ui_memory.h"
 #include "ui/ui_popup.h"
 #include "ui/ui_i18n.h"
+#include "ui/fonts/app_symbols.h"
 #include "ui/theme/ui_style.h"
 #include "ui/theme/theme_default.h"
 #include "ha/ha_sensor_value.h"
@@ -14,6 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define AIR_MAX_COLUMNS 4
+
 typedef struct {
     char id[AIR_ROLE_COUNT][APP_MAX_ENTITY_ID_LEN];
     char text[AIR_ROLE_COUNT][96], unit[AIR_ROLE_COUNT][32];
@@ -22,7 +25,8 @@ typedef struct {
     air_config_t config;
     air_memory_t memory;
     air_result_t result;
-    lv_obj_t *card, *surface, *title, *status, *value, *pollutants, *advice, *extra;
+    lv_obj_t *card, *title, *title_icon, *chip_status, *status, *chip_advice, *advice, *advice_more, *extra;
+    lv_obj_t *col_label[AIR_MAX_COLUMNS], *col_value[AIR_MAX_COLUMNS];
     lv_obj_t *overlay, *body;
     lv_timer_t *timer;
 } room_air_t;
@@ -85,8 +89,19 @@ static void value_text(room_air_t *ctx, int role, char *out, size_t size)
         }
     }
     char number[96]; snprintf(number, sizeof(number), "%s", ctx->text[role]);
+    /* Numbers use a decimal point on every tile, whatever the UI language. Tile display precision: whole ppm, % and ppb; one decimal for temperature and PM2.5, without a trailing ".0". */
+    if (ctx->input[role].valid && role != AIR_WINDOW && role != AIR_RATING) {
+        char *end = NULL;
+        double raw = strtod(ctx->text[role], &end);
+        if (end != ctx->text[role] && *end == 0) {
+            int decimals = role == AIR_TEMPERATURE || role == AIR_OUT_TEMPERATURE || (role == AIR_PM25 && fabs(raw) < 10) ? 1 : 0;
+            snprintf(number, sizeof(number), "%.*f", decimals, raw);
+            size_t len = strlen(number);
+            if (decimals && len > 2 && !strcmp(number + len - 2, ".0")) number[len - 2] = 0;
+        }
+    }
     if (!ha_sv_number_text(number, number, !strcmp(ctx->unit[role], "μg/m³") ? "µg/m³" : ctx->unit[role], "", HA_SV_UNIT_DEFAULT,
-                           ui_i18n_get_language(), out, size)) snprintf(out, size, "%s", number);
+                           "en", out, size)) snprintf(out, size, "%s", number);
 }
 
 static void popup_refresh(room_air_t *ctx)
@@ -124,9 +139,8 @@ static void popup_refresh(room_air_t *ctx)
         label = ui_popup_label_create(ctx->body, reason_text(bit), UI_POPUP_LABEL_BODY);
         lv_obj_set_width(label, LV_PCT(100));
     }
-    if (!ctx->result.reasons) {
-        label = ui_popup_label_create(ctx->body, ui_i18n_get(ctx->result.overall == AIR_GOOD ? "air.in_range" : "air.no_advice",
-            ctx->result.overall == AIR_GOOD ? "Measured values in range" : "Insufficient evaluated data for advice"), UI_POPUP_LABEL_BODY);
+    if (!ctx->result.reasons && ctx->result.overall != AIR_GOOD) {
+        label = ui_popup_label_create(ctx->body, ui_i18n_get("air.no_advice", "Insufficient evaluated data for advice"), UI_POPUP_LABEL_BODY);
         lv_obj_set_width(label, LV_PCT(100));
     }
     if (ctx->result.comparison) {
@@ -188,13 +202,32 @@ static void popup_open(room_air_t *ctx)
     popup_refresh(ctx);
 }
 
-static void line_place(lv_obj_t *label, int width, int *y, ui_text_role_t role)
+static int meta_height(void) { return lv_font_get_line_height(ui_font_role(UI_TEXT_META)); }
+
+static void place(lv_obj_t *label, ui_text_role_t role, bool essential, int x, int y, int width, const char *text, lv_text_align_t align)
 {
-    ui_text_set(label, role, true);
+    lv_label_set_text(label, text);
+    ui_text_set(label, role, essential);
     int h = lv_font_get_line_height(ui_font_role(role));
     lv_obj_set_size(label, width, h);
-    lv_obj_set_pos(label, 0, *y);
-    *y += h + 4;
+    lv_obj_set_pos(label, x, y);
+    lv_obj_set_style_text_align(label, align, 0);
+    lv_obj_set_style_text_font(label, ui_text_fit(text, ui_font_role(role), width, h), 0);
+    lv_obj_set_hidden(label, false);
+}
+
+/* The status pill of the Room widget: an outline in Flat and Matte, a soft tint in Glow and Glass. */
+static void style_chip(lv_obj_t *chip, uint32_t color)
+{
+    lv_obj_set_style_border_color(chip, lv_color_hex(color), 0);
+    if (ui_style_has_depth()) {
+        lv_obj_set_style_bg_color(chip, lv_color_hex(color), 0);
+        lv_obj_set_style_bg_opa(chip, LV_OPA_20, 0);
+        lv_obj_set_style_border_width(chip, 0, 0);
+    } else {
+        lv_obj_set_style_bg_opa(chip, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(chip, 1, 0);
+    }
 }
 
 static void render(room_air_t *ctx)
@@ -202,64 +235,125 @@ static void render(room_air_t *ctx)
     air_result_t result = air_evaluate(&ctx->config, ctx->input, &ctx->memory, now_ms());
     if (result.overall != ctx->result.overall || result.reasons != ctx->result.reasons) ctx->popup_dirty = true;
     ctx->result = result;
-    int w = lv_obj_get_width(ctx->card) - 24, h = lv_obj_get_height(ctx->card) - 24, y = 0;
+    const int w = lv_obj_get_width(ctx->card) - 24, h = lv_obj_get_height(ctx->card) - 24;
     if (w <= 0 || h <= 0) return;
-    uint32_t color = band_color(ctx->result.overall);
-    lv_obj_set_pos(ctx->surface, -6, -6);
-    lv_obj_set_size(ctx->surface, w + 12, h + 12);
-    lv_obj_set_style_bg_color(ctx->surface, lv_color_hex(color), 0);
-    lv_obj_set_style_border_color(ctx->surface, lv_color_hex(color), 0);
-    if (ui_widget_name_enabled(ctx->title)) {
-        line_place(ctx->title, w, &y, UI_TEXT_META);
-        ui_text_record(ctx->title, UI_TEXT_META, false);
-    }
-    char text[384], a[128], b[128];
+    const uint32_t color = band_color(ctx->result.overall);
+    char text[384], value[128];
+    const int meta_h = meta_height(), label_h = lv_font_get_line_height(ui_font_role(UI_TEXT_LABEL));
+    const int value_h = lv_font_get_line_height(ui_font_role(UI_TEXT_VALUE));
+
+    /* Header: title (and optional icon) on the left, the quality chip on the right. Colour lives only in the
+     * chips and in the readings that cause it. */
+    const int chip_h = meta_h + 12, pad = 12, header_h = LV_MAX(label_h, chip_h);
     snprintf(text, sizeof(text), "%s%s", band_name(ctx->result.overall), ctx->result.partial ? " *" : "");
-    lv_label_set_text(ctx->status, text);
-    line_place(ctx->status, w, &y, UI_TEXT_META);
+    lv_point_t extent;
+    lv_text_get_size(&extent, text, ui_font_role(UI_TEXT_META), 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    const int q_w = LV_MIN(extent.x + 2 * pad, w * 45 / 100), q_x = w - q_w;
+    lv_obj_set_pos(ctx->chip_status, q_x, 0);
+    lv_obj_set_size(ctx->chip_status, q_w, chip_h);
+    style_chip(ctx->chip_status, color);
+    place(ctx->status, UI_TEXT_META, true, q_x, (chip_h - meta_h) / 2, q_w, text, LV_TEXT_ALIGN_CENTER);
     lv_obj_set_style_text_color(ctx->status, lv_color_hex(color), 0);
-    value_text(ctx, AIR_HUMIDITY, text, sizeof(text));
-    lv_label_set_text(ctx->value, text);
-    line_place(ctx->value, w, &y, UI_TEXT_KEY);
-    bool pollutant_row = (ctx->input[AIR_CO2].bound || ctx->input[AIR_PM25].bound) && w >= 330 && h - y >= 95;
-    lv_obj_set_hidden(ctx->pollutants, !pollutant_row);
-    if (pollutant_row) {
-        value_text(ctx, AIR_CO2, a, sizeof(a)); value_text(ctx, AIR_PM25, b, sizeof(b));
-        if (ctx->input[AIR_CO2].bound && ctx->input[AIR_PM25].bound)
-            snprintf(text, sizeof(text), "CO₂ %s · PM %s", a, b);
-        else snprintf(text, sizeof(text), "%s %s", ctx->input[AIR_CO2].bound ? "CO₂" : "PM", ctx->input[AIR_CO2].bound ? a : b);
-        lv_label_set_text(ctx->pollutants, text);
-        line_place(ctx->pollutants, w, &y, UI_TEXT_META);
-        lv_obj_set_style_text_font(ctx->pollutants, ui_text_fit(text, ui_font_role(UI_TEXT_META), w, lv_obj_get_height(ctx->pollutants)), 0);
-    }
+    const int top = header_h + 6;
+    if (ui_widget_name_enabled(ctx->title)) {
+        const int icon_w = ctx->title_icon ? lv_font_get_line_height(APP_FONT_SYMBOL_SMALL) + 6 : 0;
+        const int title_y = (header_h - label_h) / 2;
+        ui_text_set(ctx->title, UI_TEXT_LABEL, false);
+        lv_obj_set_size(ctx->title, LV_MAX(q_x - 8 - icon_w, 0), label_h);
+        lv_obj_set_pos(ctx->title, icon_w, title_y);
+        if (ctx->title_icon) {
+            lv_obj_set_pos(ctx->title_icon, 0, title_y + (label_h - lv_font_get_line_height(APP_FONT_SYMBOL_SMALL)) / 2);
+            lv_obj_set_hidden(ctx->title_icon, false);
+        }
+    } else if (ctx->title_icon) lv_obj_set_hidden(ctx->title_icon, true);
+
+    /* Bottom: the advice chip, only when there is something to do (a Good room shows just the status chip). */
     unsigned reasons = ctx->result.reasons;
     const char *advice = reasons & AIR_CONFLICT ? ui_i18n_get("air.conflict_short", "Air exchange · moisture conflict") :
-        reasons & AIR_FRESH_AIR ? ui_i18n_get("air.co2_short", "Air exchange · CO₂") :
+        reasons & AIR_FRESH_AIR ? ui_i18n_get("air.co2_short", "Ventilate · CO₂ elevated") :
         reasons & AIR_HUMID ? ui_i18n_get("air.humid_short", "Humidity high") :
         reasons & AIR_DRY ? reason_text(AIR_DRY) : reasons & AIR_PARTICLES ? ui_i18n_get("air.pm_short", "Particles elevated") :
-        ctx->result.overall == AIR_GOOD ? (ctx->result.measured == 1 && ctx->input[AIR_HUMIDITY].valid ?
-            ui_i18n_get("air.rh_range", "Humidity in range") : ui_i18n_get("air.in_range_short", "Measured values in range")) :
         ui_i18n_get("air.partial", "Partial data");
-    bool more = ctx->result.partial || (reasons && (reasons & (reasons - 1))) ||
-        (!pollutant_row && (ctx->input[AIR_CO2].bound || ctx->input[AIR_PM25].bound));
-    snprintf(text, sizeof(text), "%s%s", advice, more ? " +" : "");
-    lv_label_set_text(ctx->advice, text);
-    line_place(ctx->advice, w, &y, UI_TEXT_META);
-    lv_obj_set_style_text_font(ctx->advice, ui_text_fit(text, ui_font_role(UI_TEXT_META), w, lv_obj_get_height(ctx->advice)), 0);
-    bool extra = h - y >= lv_font_get_line_height(ui_font_role(UI_TEXT_META));
-    lv_obj_set_hidden(ctx->extra, !extra);
-    if (extra) {
+    const bool has_advice = reasons != 0 || ctx->result.overall != AIR_GOOD;
+    const bool more = ctx->result.partial || (reasons && (reasons & (reasons - 1)));
+    const int chip_y = h - chip_h;
+    const bool show_advice = has_advice && w >= 70;
+    lv_obj_set_hidden(ctx->chip_advice, !show_advice);
+    lv_obj_set_hidden(ctx->advice, !show_advice);
+    lv_obj_set_hidden(ctx->advice_more, !(show_advice && more));
+    if (show_advice) {
+        /* A chevron marks further reasons or partial data, shown in the details. */
+        const int more_w = more ? lv_font_get_line_height(APP_FONT_SYMBOL_SMALL) + 4 : 0;
+        snprintf(text, sizeof(text), "%s", advice);
+        lv_obj_set_pos(ctx->chip_advice, 0, chip_y);
+        lv_obj_set_size(ctx->chip_advice, w, chip_h);
+        style_chip(ctx->chip_advice, color);
+        place(ctx->advice, UI_TEXT_META, false, 6, chip_y + (chip_h - meta_h) / 2, w - 12 - more_w, text, LV_TEXT_ALIGN_CENTER);
+        lv_obj_set_style_text_color(ctx->advice, lv_color_hex(color), 0);
+        if (more) {
+            lv_obj_set_pos(ctx->advice_more, w - 6 - more_w + 2, chip_y + (chip_h - lv_font_get_line_height(APP_FONT_SYMBOL_SMALL)) / 2);
+            lv_obj_set_style_text_color(ctx->advice_more, lv_color_hex(color), 0);
+        }
+    }
+
+    /* Middle: up to four readings as value over label, chosen by priority and shown in a fixed order. */
+    static const int priority[] = {AIR_HUMIDITY, AIR_CO2, AIR_PM25, AIR_TEMPERATURE, AIR_VOC};
+    static const int order[] = {AIR_CO2, AIR_HUMIDITY, AIR_PM25, AIR_TEMPERATURE, AIR_VOC};
+    const int max_cols = w >= 440 ? AIR_MAX_COLUMNS : 3;
+    bool pick[AIR_ROLE_COUNT] = {0};
+    int cols = 0;
+    for (unsigned i = 0; i < sizeof(priority) / sizeof(priority[0]) && cols < max_cols; ++i)
+        if (ctx->input[priority[i]].bound) { pick[priority[i]] = true; ++cols; }
+    const int zone_top = top, zone_h = (show_advice ? chip_y - 6 : h) - zone_top;
+    const int block_h = value_h + meta_h + 2;
+    const bool rating = ctx->input[AIR_RATING].bound || ctx->input[AIR_WINDOW].bound;
+    const bool with_label = zone_h >= block_h;
+    const bool rating_fits = rating && with_label && zone_h >= block_h + meta_h + 6;
+    for (int i = 0; i < AIR_MAX_COLUMNS; ++i) {
+        lv_obj_set_hidden(ctx->col_label[i], true);
+        lv_obj_set_hidden(ctx->col_value[i], true);
+    }
+    lv_obj_set_hidden(ctx->extra, true);
+    int col = 0;
+    const int used_h = (with_label ? block_h : value_h) + (rating_fits ? meta_h + 6 : 0);
+    const int by = zone_top + LV_MAX((zone_h - used_h) / 2, 0);
+    for (unsigned i = 0; i < sizeof(order) / sizeof(order[0]) && cols > 0 && zone_h >= value_h; ++i) {
+        const int role = order[i];
+        if (!pick[role]) continue;
+        const int cw = w / cols, x = col * cw;
+        value_text(ctx, role, value, sizeof(value));
+        place(ctx->col_value[col], UI_TEXT_VALUE, true, x, by, cw - 4, value, LV_TEXT_ALIGN_CENTER);
+        const air_band_t band = ctx->input[role].valid ? ctx->result.band[role] : AIR_NONE;
+        lv_obj_set_style_text_color(ctx->col_value[col], lv_color_hex(band == AIR_FAIR || band == AIR_POOR ? band_color(band) :
+            ctx->input[role].valid ? APP_UI_COLOR_TEXT_PRIMARY : APP_UI_COLOR_TEXT_MUTED), 0);
+        if (with_label) {
+            place(ctx->col_label[col], UI_TEXT_META, false, x, by + value_h + 2, cw - 4, role_name(role), LV_TEXT_ALIGN_CENTER);
+            lv_obj_set_style_text_color(ctx->col_label[col], lv_color_hex(APP_UI_COLOR_TEXT_MUTED), 0);
+        }
+        ++col;
+    }
+    /* One size for all values: the smallest that any column needed. */
+    const lv_font_t *common = NULL;
+    for (int i = 0; i < col; ++i) {
+        const lv_font_t *font = lv_obj_get_style_text_font(ctx->col_value[i], LV_PART_MAIN);
+        if (!common || font->line_height < common->line_height) common = font;
+    }
+    for (int i = 0; common && i < col; ++i) lv_obj_set_style_text_font(ctx->col_value[i], common, 0);
+    if (rating_fits) {
+        char win[64];
         if (ctx->input[AIR_RATING].bound) {
-            value_text(ctx, AIR_RATING, a, sizeof(a));
-            snprintf(text, sizeof(text), "%s: %s", role_name(AIR_RATING), a);
-        } else if (ctx->input[AIR_TEMPERATURE].bound || ctx->input[AIR_WINDOW].bound) {
-            value_text(ctx, AIR_TEMPERATURE, a, sizeof(a)); value_text(ctx, AIR_WINDOW, b, sizeof(b));
-            snprintf(text, sizeof(text), "%s%s%s", ctx->input[AIR_TEMPERATURE].bound ? a : "",
-                ctx->input[AIR_TEMPERATURE].bound && ctx->input[AIR_WINDOW].bound ? " · " : "", ctx->input[AIR_WINDOW].bound ? b : "");
-        } else snprintf(text, sizeof(text), "%s", ui_i18n_get("air.humidity_scope", "Humidity only"));
-        lv_label_set_text(ctx->extra, text);
-        line_place(ctx->extra, w, &y, UI_TEXT_META);
-        ui_text_record(ctx->extra, UI_TEXT_META, false);
+            value_text(ctx, AIR_RATING, value, sizeof(value));
+            snprintf(text, sizeof(text), "%s: %s", role_name(AIR_RATING), value);
+            if (ctx->input[AIR_WINDOW].bound) {
+                value_text(ctx, AIR_WINDOW, win, sizeof(win));
+                snprintf(text + strlen(text), sizeof(text) - strlen(text), " · %s", win);
+            }
+        } else {
+            value_text(ctx, AIR_WINDOW, value, sizeof(value));
+            snprintf(text, sizeof(text), "%s: %s", role_name(AIR_WINDOW), value);
+        }
+        place(ctx->extra, UI_TEXT_META, false, 0, by + block_h + 6, w, text, LV_TEXT_ALIGN_CENTER);
+        lv_obj_set_style_text_color(ctx->extra, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), 0);
     }
     popup_refresh(ctx);
 }
@@ -300,22 +394,46 @@ esp_err_t w_room_air_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     lv_obj_set_style_pad_all(ctx->card, 10, 0);
     lv_obj_set_scrollable(ctx->card, false);
     lv_obj_set_clickable(ctx->card, true);
-    ctx->surface = lv_obj_create(ctx->card);
-    lv_obj_remove_style_all(ctx->surface);
-    lv_obj_set_clickable(ctx->surface, false);
-    lv_obj_set_style_bg_opa(ctx->surface, LV_OPA_10, 0);
-    lv_obj_set_style_border_width(ctx->surface, 2, 0);
-    lv_obj_set_style_border_opa(ctx->surface, LV_OPA_60, 0);
-    lv_obj_set_style_radius(ctx->surface, ui_style_radius(10), 0);
     ctx->title = ui_widget_name_create(ctx->card, !def->hide_name);
     lv_label_set_text(ctx->title, def->title[0] ? def->title : ui_i18n_get("air.title", "Room air"));
-    ctx->status = lv_label_create(ctx->card); ctx->value = lv_label_create(ctx->card);
-    ctx->pollutants = lv_label_create(ctx->card); ctx->advice = lv_label_create(ctx->card); ctx->extra = lv_label_create(ctx->card);
-    lv_obj_t *labels[] = {ctx->title, ctx->status, ctx->value, ctx->pollutants, ctx->advice, ctx->extra};
+    if (def->show_icon) {
+        ctx->title_icon = lv_label_create(ctx->card);
+        lv_label_set_text(ctx->title_icon, APP_SYMBOL_AIR_QUALITY);
+        lv_obj_set_style_text_font(ctx->title_icon, APP_FONT_SYMBOL_SMALL, 0);
+        lv_obj_set_style_text_color(ctx->title_icon, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), 0);
+        lv_obj_set_clickable(ctx->title_icon, false);
+    }
+    ctx->chip_status = lv_obj_create(ctx->card);
+    ctx->chip_advice = lv_obj_create(ctx->card);
+    lv_obj_t *chips[] = {ctx->chip_status, ctx->chip_advice};
+    for (unsigned i = 0; i < 2; ++i) {
+        lv_obj_remove_style_all(chips[i]);
+        lv_obj_set_clickable(chips[i], false);
+        lv_obj_set_style_radius(chips[i], ui_style_radius(LV_RADIUS_CIRCLE), 0);
+        lv_obj_set_scrollbar_mode(chips[i], LV_SCROLLBAR_MODE_OFF);
+    }
+    ctx->status = lv_label_create(ctx->card);
+    ctx->advice = lv_label_create(ctx->card);
+    ctx->advice_more = lv_label_create(ctx->card);
+    lv_label_set_text(ctx->advice_more, APP_SYMBOL_CHEVRON_RIGHT);
+    lv_obj_set_style_text_font(ctx->advice_more, APP_FONT_SYMBOL_SMALL, 0);
+    lv_obj_set_clickable(ctx->advice_more, false);
+    ctx->extra = lv_label_create(ctx->card);
+    lv_obj_t *labels[] = {ctx->title, ctx->status, ctx->advice, ctx->extra};
     for (unsigned i = 0; i < sizeof(labels) / sizeof(labels[0]); ++i) {
         lv_label_set_long_mode(labels[i], LV_LABEL_LONG_DOT);
         lv_obj_set_style_text_color(labels[i], lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), 0);
         lv_obj_set_clickable(labels[i], false);
+    }
+    for (int i = 0; i < AIR_MAX_COLUMNS; ++i) {
+        ctx->col_label[i] = lv_label_create(ctx->card);
+        ctx->col_value[i] = lv_label_create(ctx->card);
+        lv_obj_t *cells[] = {ctx->col_label[i], ctx->col_value[i]};
+        for (unsigned j = 0; j < 2; ++j) {
+            lv_label_set_long_mode(cells[j], LV_LABEL_LONG_DOT);
+            lv_obj_set_style_text_color(cells[j], lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), 0);
+            lv_obj_set_clickable(cells[j], false);
+        }
     }
     ctx->timer = lv_timer_create(timer_cb, 1000, ctx);
     lv_obj_add_event_cb(ctx->card, event_cb, LV_EVENT_DELETE, ctx);

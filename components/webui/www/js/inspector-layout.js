@@ -146,7 +146,7 @@ function initInspectorLayout() {
   follow(byId("priceOptions"), [label(el.fPriceAverage)], "entities");
   move("entities", byId("optionalEntityControls"));
   // Display: what the tile shows.
-  move("display", label(el.fShowName), byId("binaryOptions"));
+  move("display", label(el.fShowName), el.fShowIconRow, byId("binaryOptions"));
   follow(byId("roomEntitiesFields"), [label(el.fRoomExtraMode), byId("fRoomExtraEntityWrap"), byId("fRoomExtraHint"), byId("fRoomExtraWarning")], "display");
   follow(byId("solarForecastFields"), [label(el.fSolarForecastBarMax)], "display");
   follow(byId("buttonOptions"), [label(el.fButtonAccentColor)], "display");

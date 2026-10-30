@@ -37,6 +37,7 @@
 #define APP_SYMBOL_ARROW_UP     "\xF3\xB0\x81\x9D" /* U+F005D arrow-up */
 #define APP_SYMBOL_ARROW_DOWN   "\xF3\xB0\x81\x85" /* U+F0045 arrow-down */
 #define APP_SYMBOL_CHEVRON_DOWN "\xF3\xB0\x85\x80" /* U+F0140 chevron-down */
+#define APP_SYMBOL_CHEVRON_RIGHT "\xF3\xB0\x85\x82" /* U+F0142 chevron-right */
 #define APP_SYMBOL_CHECK        "\xF3\xB0\x84\xAC" /* U+F012C check */
 #define APP_SYMBOL_WIFI         "\xF3\xB0\x96\xA9" /* U+F05A9 wifi */
 #define APP_SYMBOL_WIFI_OFF     "\xF3\xB0\x96\xAA" /* U+F05AA wifi-off */
@@ -56,4 +57,9 @@
 #define APP_SYMBOL_IMAGE        "\xF3\xB0\x8B\xA9" /* U+F02E9 image */
 #define APP_SYMBOL_LOCATE       "\xF3\xB0\x86\xA4" /* U+F01A4 crosshairs-gps */
 #define APP_SYMBOL_CLOSE        "\xF3\xB0\x85\x96" /* U+F0156 close */
+#define APP_SYMBOL_ROOM         "\xF3\xB0\x92\xB9" /* U+F04B9 sofa */
+#define APP_SYMBOL_THERMOMETER  "\xF3\xB0\x94\x8F" /* U+F050F thermometer */
+#define APP_SYMBOL_HUMIDITY     "\xF3\xB0\x96\x8E" /* U+F058E water-percent */
+#define APP_SYMBOL_CO2          "\xF3\xB0\x9F\xA4" /* U+F07E4 molecule-co2 */
+#define APP_SYMBOL_AIR_QUALITY  "\xF3\xB0\xB5\x83" /* U+F0D43 air-filter */
 #define APP_SYMBOL_ALERT        "\xF3\xB0\x80\xA6" /* U+F0026 alert */

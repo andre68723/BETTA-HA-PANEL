@@ -288,6 +288,7 @@
             "light.a"
           ],
           "room_controls": true,
+          "show_icon": true,
           "room_extra_mode": "humidity",
           "room_extra_entity_id": "sensor.room_temp"
         }

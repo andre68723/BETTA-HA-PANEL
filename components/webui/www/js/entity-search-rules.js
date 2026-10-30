@@ -68,7 +68,7 @@ function entitySearchRoleMatches(entity, role) {
     case "air_temperature": return measurement(["temperature"], ["°C", "°F"]);
     case "air_co2": return measurement(["carbon_dioxide"], ["ppm"]);
     case "air_pm25": return measurement(["pm25"], ["µg/m³", "μg/m³"]);
-    case "air_voc": return dc === "volatile_organic_compounds_parts" || dc === "volatile_organic_compounds" || (unit && ["ppb", "µg/m³", "μg/m³"].includes(unit));
+    case "air_voc": return dc === "volatile_organic_compounds_parts" || dc === "volatile_organic_compounds" || (!dc && unit === "ppb");
     case "air_out_temperature": return domain === "weather" || measurement(["temperature"], ["°C", "°F"]);
     case "air_out_humidity": return domain === "weather" || dc === "humidity";
     case "none": return false;

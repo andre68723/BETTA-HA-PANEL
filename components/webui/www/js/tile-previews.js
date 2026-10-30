@@ -1089,7 +1089,7 @@ function tilePreviewMarkup(widget) {
       // The corner button is icon, word and padding wide (at most 52 % of the card); the chips keep clear of it.
       const cornerW = compact ? Math.min(Math.max(44, 8 + 24 + 4 + previewTextWidth(word, textRoleSize("meta", 20)) + 8), (w - 28) * 0.52) : 0;
       const corner = compact ? `<span class="tp-room-action ${extraRole}" style="width:${Math.round(cornerW)}px"><i>${primary.symbol}</i>${word}</span>` : "";
-      return `<div class="tp tp-room${compact ? " tp-room-cornered" : ""}" style="--corner:${Math.round(cornerW)}px">${corner}${name('div', 'class="tp-name" style="text-align:left"')}<div class="tp-room-main">${ring ? `<i class="tp-room-ring" style="width:${ring}px;height:${ring}px"><b>${temp}</b></i>` : `<b class="tp-room-temp">${temp}</b>`}${side}</div>
+      return `<div class="tp tp-room${compact ? " tp-room-cornered" : ""}" style="--corner:${Math.round(cornerW)}px">${corner}${widget.show_icon === true ? name('div', 'class="tp-name" style="text-align:left"').replace(/>/, '>\u{1F6CB}\uFE0F ') : name('div', 'class="tp-name" style="text-align:left"')}<div class="tp-room-main">${ring ? `<i class="tp-room-ring" style="width:${ring}px;height:${ring}px"><b>${temp}</b></i>` : `<b class="tp-room-temp">${temp}</b>`}${side}</div>
         ${controls ? `<div class="tp-room-chips tp-room-controls">${controls}</div>` : ""}<div class="tp-room-chips">${chips}</div></div>${handle}`;
     }
     case "climate_tile":

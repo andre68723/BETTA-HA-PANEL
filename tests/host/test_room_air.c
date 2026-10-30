@@ -65,9 +65,9 @@ static void coverage(void)
     input[AIR_HUMIDITY].valid = false; assert(evaluate().overall == AIR_POOR);
     input[AIR_PM25].valid = false; assert(evaluate().overall == AIR_NONE);
     clean(); input[AIR_VOC] = (air_input_t){true, true, 718};
-    assert(evaluate().partial && evaluate().overall == AIR_NONE && evaluate().band[AIR_VOC] == AIR_NONE);
-    input[AIR_RATING] = (air_input_t){true, true, 100};
-    assert(evaluate().overall == AIR_NONE); /* rating cannot cover unsupported VOC */
+    assert(!evaluate().partial && evaluate().overall == AIR_GOOD && evaluate().band[AIR_VOC] == AIR_NONE);
+    input[AIR_VOC].valid = false; assert(!evaluate().partial && evaluate().overall == AIR_GOOD); /* VOC is display only */
+    input[AIR_HUMIDITY].valid = false; assert(evaluate().overall == AIR_NONE);
     clean(); input[AIR_RATING] = (air_input_t){true, false, 0};
     input[AIR_TEMPERATURE] = (air_input_t){true, false, 0};
     assert(!evaluate().partial && evaluate().overall == AIR_GOOD);
@@ -106,6 +106,12 @@ static void hysteresis(void)
     input[AIR_CO2].valid = false; assert(evaluate().overall == AIR_NONE && !evaluate().reasons);
     air_memory_reset(&memory); input[AIR_CO2].valid = true; input[AIR_CO2].value = 990;
     assert(evaluate().overall == AIR_GOOD);
+    /* humidity hysteresis stays on the side of the excursion and keeps its reason */
+    clean(); input[AIR_HUMIDITY].value = 38; assert(evaluate().reasons == AIR_DRY);
+    input[AIR_HUMIDITY].value = 41; assert(evaluate().overall == AIR_FAIR && evaluate().reasons == AIR_DRY);
+    input[AIR_HUMIDITY].value = 59; assert(evaluate().overall == AIR_GOOD); /* other side's zone does not apply */
+    clean(); input[AIR_HUMIDITY].value = 65; assert(evaluate().reasons == AIR_HUMID);
+    input[AIR_HUMIDITY].value = 41; assert(evaluate().overall == AIR_GOOD);
 }
 
 static void slots_and_subscriptions(void)

@@ -445,7 +445,10 @@ body[data-ui-style] #canvas .widget-box .control-alert { --control-fill: var(--p
 
 /* Room air uses the same line-height-driven rows as w_room_air.c. */
 #canvas .tp-air { display: block; position: absolute; inset: 10px; padding: 0; color: var(--pv-text); }
-#canvas .air-preview-surface { position: absolute; inset: -6px; background: color-mix(in srgb, var(--air-color) 10%, transparent); border: 2px solid color-mix(in srgb, var(--air-color) 60%, transparent); border-radius: 10px; }
-#canvas .air-preview-row { position: absolute; left: 0; right: 0; font-size: var(--meta); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#canvas .air-preview-status { color: var(--air-color); }
-#canvas .air-preview-value { font-size: var(--key); }
+#canvas .air-preview-row { position: absolute; font-size: var(--meta); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#canvas .air-preview-name { font-size: var(--label); }
+#canvas .air-preview-chip { position: absolute; border-radius: 999px; border: 1px solid var(--chip); }
+#canvas .air-preview-chip-text { text-align: center; }
+#canvas .air-preview-extra { color: var(--pv-muted); text-align: center; }
+#canvas .air-preview-col-label { color: var(--pv-muted); text-align: center; }
+#canvas .air-preview-col-value { font-size: var(--value); text-align: center; }

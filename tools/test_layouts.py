@@ -53,6 +53,7 @@ BOARDS = {"paneljc": (1280, 680, 12), "tab5": (1280, 600, 12), "panel4": (720, 6
 MAX_BYTES = 32768
 FIXED_NOW = "2026-10-15T12:00"  # generate_simulator_gallery.FIXED_NOW, the default of --now
 MARGIN = GAP = 10
+ROW_GAP = 36  # between rows: free space for the overview's ID tags
 LONG_TITLE = "Ein sehr langer Titel, der nicht hineinpasst"
 
 def minimum_sizes():
@@ -178,8 +179,8 @@ def place(cases, board):
                 spot = row
                 break
         if spot is None:
-            y = rows[-1][0] + rows[-1][1] + GAP if rows else MARGIN
-            if y + h > height - MARGIN:
+            y = rows[-1][0] + rows[-1][1] + ROW_GAP if rows else MARGIN
+            if y + h > height - MARGIN - ROW_GAP + GAP:
                 new_page()
                 y = MARGIN
             spot = [y, h, MARGIN]
@@ -194,6 +195,21 @@ def place(cases, board):
 def by_height(cases):
     """Page cases first, then the tallest widgets: fewer, fuller pages than the catalogue order."""
     return sorted(cases, key=lambda case: (0, 0) if "page" in case else (1, -case["h"]))
+
+
+WIDGET_TAGS = {}  # widget id -> stable tag: the case, not the page position, so it survives re-pagination
+_TAG_COUNTS = {}
+
+
+def stable_tag(suite_id, case):
+    """<type>:<title slug>, numbered when two cases of one suite share both; the case order is fixed, so tags are stable."""
+    text = (case.get("title") or case.get("gallery", {}).get("title") or "").lower()
+    for src, dst in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+        text = text.replace(src, dst)
+    slug = "lang" if case.get("title") == LONG_TITLE else re.sub(r"[^a-z0-9]+", "-", text).strip("-")[:28]
+    base = f"{case['type']}:{slug}" if slug else case["type"]
+    count = _TAG_COUNTS[(suite_id, base)] = _TAG_COUNTS.get((suite_id, base), 0) + 1
+    return base if count == 1 else f"{base}~{count}"
 
 
 EXPECT = {}  # widget id -> texts its case expects to be visible (the case's "expect")
@@ -246,6 +262,7 @@ def build_page(suite_id, title, number, placed, entities):
     for index, (case, rect) in enumerate(placed):
         widget = widget_fields(case, entities)
         widgets.append(dict(widget, id=f"{page_id}_{index}", rect=rect))
+        WIDGET_TAGS[f"{page_id}_{index}"] = stable_tag(suite_id, case)
         EXPECT[f"{page_id}_{index}"] = case.get("expect", [])
         SIM_STATES[f"{page_id}_{index}"] = case.get("sim_state", {})
         if "sim" in case:
@@ -261,6 +278,7 @@ def generate(board, entities):
     """{file stem: layout} for every suite, split by the board's page limit and the layout size limit."""
     _, _, max_pages = BOARDS[board]
     layouts = {}
+    _TAG_COUNTS.clear()
     for suite_id, suite in all_suites().items():
         pages = [build_page(suite_id, suite["title"], n + 1, placed, entities)
                  for n, placed in enumerate(place(by_height(suite["cases"]), board))]
@@ -398,6 +416,8 @@ def simulate(board, suite, styles, steps, languages, out, theme="dark_v2"):
     return 1 if failed or missing else 0
 
 
+IMAGE_GEOMETRY = {"paneljc": (1280, 800, 680), "tab5": (1280, 720, 600), "panel4": (720, 720, 600)}  # screenshot w, h; content h
+
 PAGE_STYLE = """:root{--bg:#f4f5f7;--fg:#1d2026;--muted:#5d6470;--card:#fff;--line:#d9dce2;--bad:#b3261e;--ok:#1e7b3a;--accent:#1f6feb}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#121418;--fg:#e8eaed;--muted:#9aa0a8;--card:#1c1f25;
 --line:#30343c;--bad:#ff8a80;--ok:#7ee2a0;--accent:#6ea8ff}}
@@ -423,6 +443,19 @@ figure img{width:100%;height:auto;display:block;cursor:zoom-in}
 figure.zoom img{cursor:zoom-out}
 figure.zoom{grid-column:1/-1}
 figcaption{font-size:13px;color:var(--muted);padding-top:4px}
+.stage{position:relative;line-height:0}
+.overlay{position:absolute;inset:0;pointer-events:none}
+.overlay .w{position:absolute;box-sizing:border-box;display:none;border:1px dashed #e8eaedcc;font:11px/1.2 ui-monospace,monospace;overflow:hidden}
+.overlay .w{overflow:visible}
+.overlay .tag{position:absolute;display:none;height:13px;box-sizing:border-box;padding:0 4px;background:#e8eaed;color:#111;font:600 10px/13px ui-monospace,monospace;white-space:nowrap}
+.overlay .dot{position:absolute;display:none;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:7px;background:#e8eaed;color:#111;font:700 9px/14px ui-monospace,monospace;text-align:center;pointer-events:none}
+body.ids .overlay .tag,body.ids .overlay .dot{display:block}
+body.ids .overlay .tag{pointer-events:auto;cursor:help}
+body.ids .overlay .w{display:block;pointer-events:auto;cursor:help}
+body.ids .overlay .w:hover{background:#ffffff1f}
+#detail{position:fixed;right:12px;bottom:12px;z-index:5;max-width:min(520px,calc(100vw - 24px));background:var(--card);border:1px solid var(--accent);
+border-radius:8px;padding:10px 12px;font-size:13px;display:none;box-shadow:0 4px 18px #0006}
+#detail.shown{display:block}#detail code{display:block;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0;font-size:12px}
 .board,.step{display:none}.board.shown,.step.shown{display:block}"""
 
 PAGE_SCRIPT = """const state={board:null,style:null,step:null,lang:null};
@@ -438,12 +471,44 @@ function apply(){
  document.querySelectorAll('.board').forEach(b=>b.classList.toggle('shown',b.dataset.board===state.board));
  document.querySelectorAll('.step').forEach(b=>b.classList.toggle('shown',b.dataset.step===state.step));
  document.querySelectorAll('.board.shown figure img').forEach(i=>{i.src=`${i.dataset.board}/${state.style}-${state.step}-${state.lang}/${i.dataset.page}.png`});
+ document.body.classList.toggle('ids',state.ids==='an');
+ if(state.ids==='an')document.querySelectorAll('.board.shown figure').forEach(buildOverlay);
  measureNavigation();save();}
+function buildOverlay(fig){
+ if(fig.dataset.built)return;fig.dataset.built='1';
+ const [W,H,top,cw,ch]=fig.dataset.geometry.split(',').map(Number),box=fig.querySelector('.overlay');
+ const pct=(v,t)=>`${v/t*100}%`;
+ JSON.parse(fig.dataset.widgets).forEach((w,n)=>{const d=document.createElement('div');d.className='w';
+  Object.assign(d.style,{left:pct(w.x,W),top:pct(w.y+top,H),width:pct(w.w,W),height:pct(w.h,H)});
+  d.dataset.info=JSON.stringify(w);box.appendChild(d);
+  const t=document.createElement('div');t.className='tag';t.textContent=`${n+1} ${w.tag}`;t.onclick=()=>showDetail(fig,w);box.appendChild(t);
+  const l=document.createElement('div');l.className='dot';l.textContent=n+1;Object.assign(l.style,{left:pct(w.x,W),top:pct(w.y+top,H)});box.appendChild(l);});
+ new ResizeObserver(()=>placeTags(fig)).observe(fig.querySelector('img'));placeTags(fig);}
+function placeTags(fig){
+ const [W,H,top,cw,ch]=fig.dataset.geometry.split(',').map(Number),img=fig.querySelector('img'),scale=img.clientWidth/W;
+ if(!scale)return;
+ const rects=JSON.parse(fig.dataset.widgets),box=fig.querySelector('.overlay'),tags=box.querySelectorAll('.tag'),
+  placed=[],need=13/scale,
+  hit=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h,
+  free=r=>r.x>=0&&r.y>=0&&r.x+r.w<=cw&&r.y+r.h<=ch&&!rects.some(o=>hit(r,o))&&!placed.some(o=>hit(r,o)),
+  gap=(r,w)=>Math.hypot(Math.max(w.x-(r.x+r.w),r.x-(w.x+w.w),0),Math.max(w.y-(r.y+r.h),r.y-(w.y+w.h),0));
+ rects.forEach((w,n)=>{
+  const tw=(tags[n].textContent.length*6.2+10)/scale;let best=null,bestGap=1e9;
+  for(let y=0;y+need<=ch;y+=need/2)for(let x=0;x+tw<=cw;x+=need){const r={x:Math.min(Math.max(x,0),cw-tw),y,w:tw,h:need};
+   if(!free(r))continue;const g=gap(r,w)+Math.abs(r.x-w.x)/1000;if(g<bestGap){best=r;bestGap=g;}}
+  for(const x of [w.x]){for(const y of [w.y+w.h,w.y-need]){const r={x:Math.min(x,cw-tw),y,w:tw,h:need};
+   if(free(r)&&gap(r,w)<=bestGap){best=r;bestGap=gap(r,w);}}}
+  const t=tags[n];
+  if(!best){t.style.display='none';return;}
+  t.style.display='';placed.push(best);
+  Object.assign(t.style,{left:`${best.x/W*100}%`,top:`${(best.y+top)/H*100}%`});
+ });}
 const saved=load();
 document.querySelectorAll('header .group').forEach(g=>{const key=g.dataset.key,values=[...g.querySelectorAll('button')].map(b=>b.dataset.value);
  state[key]=values.includes(saved[key])?saved[key]:values[0];});
 document.querySelectorAll('header button').forEach(b=>b.onclick=()=>{state[b.dataset.key]=b.dataset.value;apply()});
-document.querySelectorAll('figure img').forEach(i=>i.onclick=()=>i.parentElement.classList.toggle('zoom'));
+document.querySelectorAll('figure img').forEach(i=>i.onclick=()=>i.closest('figure').classList.toggle('zoom'));
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{const w=e.target.closest('.w');if(w){const fig=o.closest('figure');showDetail(fig,JSON.parse(w.dataset.info));}}));
 const navigationSize=new ResizeObserver(measureNavigation);
  navigationSize.observe(document.querySelector('header'));
  document.querySelectorAll('nav').forEach(nav=>navigationSize.observe(nav));
@@ -451,7 +516,7 @@ apply();"""
 
 
 SUITE_LABELS = {
-    "energie": "Energie & Prognosen", "klima": "Klima & Wetter", "steuerung": "Schalten & Bedienen",
+    "energie": "Energie & Prognosen", "klima": "Klima & Wetter", "steuerung": "Schalten & Bedienen", "raeume": "Räume & Raumklima",
     "status": "Sensoren & Status", "geraete": "Fahrzeuge & Geräte", "finanzen": "Finanzen & Kurse",
     "zustaende": "Zustände & Bedienung", "grenzen": "Kleine Kacheln & Sonderfälle", "maximal": "Große Kacheln",
 }
@@ -486,9 +551,14 @@ def view(boards, styles, steps, languages, out, open_browser, theme="dark_v2"):
                             f'{f"<ul>{items}</ul>" if items else ""}</div>')
         body = []
         for stem, layout in layouts.items():
-            figures = "".join(f'<figure><img data-board="{board}" data-page="{page["id"]}" alt="{html.escape(page_label(page))}" '
-                              f'loading="lazy"><figcaption>{html.escape(page_label(page))}</figcaption></figure>'
-                              for page in layout["pages"])
+            width_px, height_px, content_h = IMAGE_GEOMETRY[board]
+            def figure(page):
+                info = [dict(id=w["id"], tag=WIDGET_TAGS.get(w["id"], w["type"]), type=w["type"], **w["rect"]) for w in page["widgets"]]
+                attrs = (f'data-geometry="{width_px},{height_px},{(height_px - content_h) // 2},{width_px},{content_h}" data-suite="{html.escape(stem)}" '
+                         f'data-fixture="{html.escape(str(out / board / f"{stem}.fixture.json"))}" data-widgets="{html.escape(json.dumps(info), quote=True)}"')
+                return (f'<figure {attrs}><div class="stage" style="aspect-ratio:{width_px}/{height_px}"><img data-board="{board}" data-page="{page["id"]}" alt="{html.escape(page_label(page))}" '
+                        f'loading="lazy"><div class="overlay"></div></div><figcaption>{html.escape(page_label(page))}</figcaption></figure>')
+            figures = "".join(figure(page) for page in layout["pages"])
             body.append(f'<section id="{board}-{stem}"><h2>{html.escape(suite_label(stem))}</h2><div class="pages">{figures}</div></section>')
         width = "420px" if board == "panel4" else "560px"
         sections.append(f'<div class="board" data-board="{board}" style="--w:{width}"><nav>{links}</nav><main>{"".join(findings)}{"".join(body)}</main></div>')
@@ -506,10 +576,10 @@ def view(boards, styles, steps, languages, out, open_browser, theme="dark_v2"):
                      else '<span class="ok">Alle Typen und Varianten haben einen Testfall</span>')
     header = (f'<header><h1>Testseiten im Simulator</h1><div class="bar">{group("board", "Größe", boards, names)}'
               f'{group("style", "Stil", styles)}{group("step", "Textstufe", [str(s) for s in steps])}'
-              f'{group("lang", "Sprache", languages)}<span>Theme: {html.escape(theme)}</span>{coverage_note}</div></header>')
+              f'{group("lang", "Sprache", languages)}{group("ids", "IDs", ["aus", "an"])}<span>Theme: {html.escape(theme)}</span>{coverage_note}</div></header>')
     page = (f'<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             f"<title>Test layouts</title><style>{PAGE_STYLE}</style></head><body>{header}"
-            f'{"".join(sections)}<script>{PAGE_SCRIPT}</script></body></html>')
+            f'{"".join(sections)}<div id="detail"></div><script>{PAGE_SCRIPT}</script></body></html>')
     index = out / "index.html"
     index.write_text(page, encoding="utf-8")
     print(f"overview: {index}")

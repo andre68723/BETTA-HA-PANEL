@@ -73,6 +73,7 @@ typedef struct {
     bool align_forecast; /* solar: dated columns with Rest in the header */
     bool weather_hourly; /* weather_tile: optional real hourly forecast strip, default false */
     bool show_precipitation; /* weather_3day: rain chance and amount, default true */
+    bool show_icon; /* room_tile, room_air_tile: a small icon before the name, default false */
     bool room_controls; /* room_tile: a control row (lights, switches, covers) when the card is large enough, default false */
     float gauge_min; /* gauge: bottom of the bar's range, default 0 */
     float gauge_max; /* gauge: top of the bar's range, default 100 */

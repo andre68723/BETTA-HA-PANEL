@@ -4,6 +4,21 @@
 
 Changes of **this fork**, compared with upstream v0.8.2. The release notes of the original project (v0.8.2 and earlier, by Cpt_Kirk) are kept unchanged in [Upstream release notes](release-notes-upstream.md).
 
+## v0.9.2-rc1
+
+Changes since [v0.9.1](#v091).
+
+### Widgets: new and changed
+
+| Widget | Status | What is new or changed |
+| --- | --- | --- |
+| [Room air](widgets/room_air_tile.md) | <span class="release-status release-status--new">New</span> | One BETTA status (Good, Fair, Poor) and a short advice as chips, with humidity, CO₂, PM2.5 and temperature as readings on a neutral card like the Room widget, from basic sensors up to IKEA ALPSTUGA and Awair Element. Read-only details with outdoor absolute-humidity comparison and window state; VOC and device ratings are display-only. |
+| [Parqet portfolio](widgets/parqet_portfolio.md) | <span class="release-status release-status--changed">Changed</span> | The interval buttons follow the panel language like the Stocks & ETFs period buttons (**1T** instead of **1D** in German). |
+
+### Panel and editor
+
+The page icon list gains **Humidity** and **Air quality**.
+
 ## v0.9.1
 
 Changes since [v0.9.0](#v090).
@@ -19,7 +34,6 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 | [Energy price forecast](widgets/energy_price_forecast.md) | <span class="release-status release-status--new">New</span> | A day of electricity prices as hourly or 15-minute bars from a price sensor (EPEX Spot, Nord Pool, Tibber). The price now, Today/Tomorrow buttons, the day's minimum and maximum and the next cheap window. |
 | [Parqet portfolio](widgets/parqet_portfolio.md) | <span class="release-status release-status--new">New</span> | Value, gain, return, XIRR, dividends and the largest holdings from the Parqet Companion sensors, with tabs and interval buttons on the tile; an option hides amounts. |
 | [Stocks & ETFs](widgets/stock_quotes.md) | <span class="release-status release-status--new">New</span> | Up to eight Easy Stock quotes as a list, as charts or as tiles (a card per quote with price, change and chart, two columns on wide tiles, one on narrow ones) with period buttons (1D to 1Y). A tap opens the details with a chart; the top bar's stock item opens its price history. |
-| [Room air](widgets/room_air_tile.md) | <span class="release-status release-status--new">New</span> | Humidity, optional CO₂/PM2.5 and a unified BETTA status, with read-only details, outdoor absolute-humidity comparison and window state. VOC and native device ratings are separate display values. |
 | [Sensor](widgets/sensor.md) | <span class="release-status release-status--changed">Changed</span> | The value follows the device class: local time, dates, durations, scaled units, currency with the entity's display precision, readable states and the decimal comma. A new **List** view shows up to eight sensor and binary-sensor entities, each with its own formatting, availability and history on tap; the Inspector adds, orders (↑) and removes (×) the rows. |
 | [Wallbox](widgets/wallbox.md) | <span class="release-status release-status--changed">Changed</span> | An optional header shows charging power or the site's energy flow; loadpoint discovery fills the site sensors. |
 | [Media player](widgets/media_player.md), [Vacuum](widgets/vacuum_tile.md), [Bambu printer](widgets/bambu_printer.md) | <span class="release-status release-status--changed">Changed</span> | Media Play/Pause stays accented while available, including when paused or stopped. Other controls highlight active states or selections; unavailable entities block stale actions, and the printer's Stop is labelled Abort. |

@@ -1054,6 +1054,10 @@
                       <input id="fShowName" type="checkbox" checked />
                       <span id="fShowNameLabel">Show name</span>
                     </label>
+                    <label class="row hidden" id="fShowIconRow">
+                      <input id="fShowIcon" type="checkbox" />
+                      <span id="fShowIconLabel">Icon before the name</span>
+                    </label>
                   <select id="fType" hidden>
                     <option value="sensor">sensor</option>
                     <option value="button">button</option>
@@ -1393,8 +1397,8 @@
 </div>
 <label><span data-i18n="air.window">window</span><div class="entity-input-row"><input id="fAirWindow" type="text" /><button type="button" class="btn small" data-inspector-entity-target="air_window">…</button></div></label>
 <label><span data-i18n="air.rating">rating</span><div class="entity-input-row"><input id="fAirRating" type="text" /><button type="button" class="btn small" data-inspector-entity-target="air_rating">…</button></div></label>
-<p class="meta warn" data-i18n="air.sources_hint">Sources</p></div>
-<div id="airEvaluation" class="hidden"><details><summary data-i18n="air.evaluation">Evaluation</summary><p class="meta warn" data-i18n="air.threshold_hint">Thresholds</p><label><span data-i18n="air.rh_red_low">rh_red_low</span><input id="air_rh_red_low" type="number" step="any" /></label>
+<p id="airSourcesHint" class="meta" data-i18n="air.sources_hint">Sources</p></div>
+<div id="airEvaluation" class="hidden"><details><summary data-i18n="air.evaluation">Evaluation</summary><p id="airThresholdHint" class="meta" data-i18n="air.threshold_hint">Thresholds</p><label><span data-i18n="air.rh_red_low">rh_red_low</span><input id="air_rh_red_low" type="number" step="any" /></label>
 <label><span data-i18n="air.rh_low">rh_low</span><input id="air_rh_low" type="number" step="any" /></label>
 <label><span data-i18n="air.rh_high">rh_high</span><input id="air_rh_high" type="number" step="any" /></label>
 <label><span data-i18n="air.rh_red_high">rh_red_high</span><input id="air_rh_red_high" type="number" step="any" /></label>

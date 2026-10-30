@@ -28,7 +28,8 @@ test("Room air preview keeps missing inputs and native ratings separate from BET
   assert.equal(run("airPreviewData(widget).overall"), 2);
   assert.equal(run("airPreviewData(widget).partial"), true);
   run("editor.states.set('sensor.rh','50');editor.states.set('sensor.co2','744');widget.voc_entity_id='sensor.voc';");
-  assert.equal(run("airPreviewData(widget).overall"), -1);
+  assert.equal(run("airPreviewData(widget).overall"), 0); // VOC is display only
+  assert.equal(run("airPreviewData(widget).partial"), false);
   run("delete widget.voc_entity_id; editor.states.set('sensor.rating','poor')");
   assert.equal(run("airPreviewData(widget).overall"), 0);
   assert.ok(!run("airPreviewMarkup(widget)").includes("NaN"));
@@ -69,4 +70,16 @@ test("Humidity picker rejects percent scores and battery; PM accepts both micro 
   for (const dc of ["battery", ""]) assert.equal(run(`widgetEntitySourceMatches({id:'sensor.score',device_class:${JSON.stringify(dc)},unit:'%',search_flags:1},'room_air_tile')`), false);
   assert.equal(run("widgetEntitySourceMatches({id:'sensor.rh',device_class:'humidity',unit:'%',search_flags:1},'room_air_tile')"), true);
   for (const unit of ["µg/m³", "μg/m³"]) assert.equal(run(`widgetEntitySourceMatches({id:'sensor.pm',device_class:'pm25',unit:${JSON.stringify(unit)},search_flags:1},'room_air_tile','air_pm25')`), true);
+});
+
+test("Room air search helpers keep PM2.5 out of VOC and offer weather for outdoor roles", () => {
+  const { run } = loadEditor();
+  const match = (entity, role) => run(`entitySearchRoleMatches(${JSON.stringify(entity)}, ${JSON.stringify(role)})`);
+  const pm = { id: "sensor.pm", device_class: "pm25", unit: "µg/m³", state_class: "measurement" };
+  const voc = { id: "sensor.voc", device_class: "volatile_organic_compounds_parts", unit: "ppb", state_class: "measurement" };
+  assert.equal(match(pm, "air_voc"), false);
+  assert.equal(match(pm, "air_pm25"), true);
+  assert.equal(match(voc, "air_voc"), true);
+  assert.equal(match(voc, "air_pm25"), false);
+  assert.equal(match({ id: "weather.home" }, "air_out_humidity"), true);
 });

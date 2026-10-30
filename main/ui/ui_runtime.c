@@ -901,6 +901,7 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
         out->show_precipitation = cJSON_IsTrue(show_precip);
     }
     out->room_controls = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "room_controls"));
+    out->show_icon = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "show_icon"));
     out->hide_name = !widget_show_name(widget_json);
     out->lock_confirm = cJSON_IsTrue(lock_confirm);
     out->price_selector = cJSON_IsTrue(price_selector); /* off unless the layout says true: the running 24 hours */
@@ -1487,7 +1488,7 @@ static void ui_runtime_check_alerts(const char *entity_id)
 /* Device tests without touch (POST /api/ui/tap): only tiles whose tap opens a read-only popup answer, so a test can never
  * switch a light or unlock a door. The popup a tap opened is remembered so it can be dismissed the same way. */
 static const char *const k_test_tap_types[] = {"weather_3day", "energy_timeline", "room_tile", "sensor", "binary_tile",
-                                               "contact_tile", "solar_forecast", "car_widget", "graph"};
+                                               "contact_tile", "solar_forecast", "car_widget", "graph", "room_air_tile"};
 static lv_obj_t *s_test_popup = NULL;
 
 static bool layer_top_has_child(const lv_obj_t *obj)

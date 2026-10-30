@@ -38,7 +38,12 @@
 #define PQ_MAX_INDEX 4 /* the last interval, "max": the sensors' own figures */
 
 static const char *const PQ_INTERVAL_CODE[PQ_INTERVALS] = {"1d", "1w", "1m", "ytd", "max"};
-static const char *const PQ_INTERVAL_TEXT[PQ_INTERVALS] = {"1D", "1W", "1M", "YTD", "MAX"};
+static const char *const PQ_INTERVAL_KEY[PQ_INTERVALS] = {"parqet.period.1d", "parqet.period.1w", "parqet.period.1m",
+                                                          "parqet.period.ytd", "parqet.period.max"};
+static const char *const PQ_INTERVAL_FALLBACK[PQ_INTERVALS] = {"1D", "1W", "1M", "YTD", "MAX"};
+
+/* The interval button text, translated like the Stocks & ETFs period buttons (1T in German). */
+static const char *pq_interval_text(int i) { return ui_i18n_get(PQ_INTERVAL_KEY[i], PQ_INTERVAL_FALLBACK[i]); }
 
 typedef enum { PQ_PERFORMANCE = 0, PQ_HOLDINGS } pq_view_t;
 /* which holdings the Holdings view lists: the largest by value, the best or the worst by return in the interval (a touch choice, not saved) */
@@ -342,8 +347,12 @@ static void pq_layout(w_pq_ctx_t *ctx)
     const bool chips = ctx->selector && h >= 200;
     const bool tabs = ctx->selector && h >= 260;
     char interval[12];
-    if (ws) snprintf(interval, sizeof(interval), "%s", PQ_INTERVAL_TEXT[ctx->interval]);
-    else parqet_interval_label(ctx->attrs.interval, interval, sizeof(interval));
+    if (ws) snprintf(interval, sizeof(interval), "%s", pq_interval_text(ctx->interval));
+    else {
+        parqet_interval_label(ctx->attrs.interval, interval, sizeof(interval));
+        for (int i = 0; i < PQ_MAX_INDEX; i++) /* a known interval reads like its button; "Max" keeps its own label */
+            if (strcmp(ctx->attrs.interval, PQ_INTERVAL_CODE[i]) == 0) snprintf(interval, sizeof(interval), "%s", pq_interval_text(i));
+    }
     lv_coord_t interval_w = 0;
     if (!chips && interval[0] != '\0') {
         lv_label_set_text(ctx->interval_label, interval);
@@ -386,12 +395,12 @@ static void pq_layout(w_pq_ctx_t *ctx)
     for (int i = 0; i < 2; i++) pq_set_hidden(ctx->tab[i], !tabs);
     if (chips) {
         lv_coord_t total = 0;
-        for (int i = 0; i < PQ_INTERVALS; i++) total += pq_text_w(PQ_INTERVAL_TEXT[i], meta) + 16 + gap;
+        for (int i = 0; i < PQ_INTERVALS; i++) total += pq_text_w(pq_interval_text(i), meta) + 16 + gap;
         const lv_coord_t shrink = total > w - 2 * pad ? (total - (w - 2 * pad)) / PQ_INTERVALS + 1 : 0; /* a narrow tile trims the chip padding */
         lv_coord_t x = pad;
         for (int i = 0; i < PQ_INTERVALS; i++) {
-            const lv_coord_t cw = pq_text_w(PQ_INTERVAL_TEXT[i], meta) + 16 - shrink;
-            lv_label_set_text(ctx->chip[i], PQ_INTERVAL_TEXT[i]);
+            const lv_coord_t cw = pq_text_w(pq_interval_text(i), meta) + 16 - shrink;
+            lv_label_set_text(ctx->chip[i], pq_interval_text(i));
             lv_obj_set_size(ctx->chip[i], cw, chip_h);
             lv_obj_align(ctx->chip[i], LV_ALIGN_TOP_LEFT, x, y);
             pq_chip_style(ctx->chip[i], ctx->interval == i);

@@ -259,6 +259,7 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     /* As ui_runtime_widget_from_json(): the sensor's value format and unit style (missing here, the formats rendered raw). */
     copy_field(def->sensor_format, sizeof(def->sensor_format), json, "sensor_format");
     copy_field(def->sensor_unit, sizeof(def->sensor_unit), json, "sensor_unit");
+    if (strcmp(def->type, "roborock_tile") == 0) snprintf(def->type, sizeof(def->type), "%s", "vacuum_tile"); /* legacy name, as ui_runtime.c */
     if (strcmp(def->type, "energy_timeline") == 0) def->energy_palette = etl_palette_from_json(json);
     copy_field(def->graph_display_mode, sizeof(def->graph_display_mode), json, "graph_display_mode");
     copy_field(def->style_variant, sizeof(def->style_variant), json, "style_variant");
@@ -305,6 +306,7 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     def->show_precipitation = json_bool(json, "show_precipitation", true);
     def->weather_hourly = json_bool(json, "weather_hourly", false);
     def->room_controls = json_bool(json, "room_controls", false);
+    def->show_icon = json_bool(json, "show_icon", false);
     const cJSON *room_entities = cJSON_GetObjectItemCaseSensitive(json, "room_entities");
     for (int i = 0; i < UI_WIDGET_EXTRA_ENTITIES; i++) {
         const cJSON *id = cJSON_GetArrayItem(room_entities, i);

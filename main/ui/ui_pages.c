@@ -152,6 +152,8 @@ static const struct {
     {"weather", "\xF3\xB0\x96\x95"},   /* weather-partly-cloudy */
     {"music", "\xF3\xB0\x9D\x9A"},     /* music */
     {"climate", "\xF3\xB0\x94\x8F"},   /* thermometer */
+    {"humidity", "\xF3\xB0\x96\x8E"},  /* water-percent */
+    {"air", "\xF3\xB0\xB5\x83"},       /* air-filter */
     {"sofa", "\xF3\xB0\x92\xB9"},      /* sofa */
     {"tv", "\xF3\xB0\x94\x82"},        /* television */
     {"garage", "\xF3\xB0\x9B\x99"},    /* garage */

@@ -27,6 +27,7 @@ None beyond the entities.
 | Room entities | Add entity extends the list up to seven additional entities; ↑ reorders, × removes, and a click changes an entity; importing an area fills the list |
 | Extra field | humidity, cover (status and open/close) or media player (status and play/pause) |
 | Controls on the card | lights, switches and covers as buttons, on a card of about 400 × 240 px |
+| Icon before the name | a small room symbol in front of the name, off by default; shown only with the name |
 
 <a href="../img/examples/inspector-room_tile.png"><img src="../img/examples/inspector-room_tile.png" alt="Inspector of the Room widget" loading="lazy" width="340" height="683"></a>
 

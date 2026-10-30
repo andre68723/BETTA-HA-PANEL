@@ -108,7 +108,8 @@ function airPreviewData(widget) {
       airNormalize(role, editor.states.get(id), meta.unit);
     if (!["humidity", "co2", "pm25", "voc"].includes(role)) continue;
     const n = values[role];
-    if (n === null || role === "voc") { bands[role] = -1; partial = true; continue; }
+    if (role === "voc") { bands[role] = -1; continue; } /* display only */
+    if (n === null) { bands[role] = -1; partial = true; continue; }
     const band = role === "humidity" ? (n < c.rh_red_low || n > c.rh_red_high ? 2 : n < c.rh_low || n > c.rh_high ? 1 : 0) :
       role === "co2" ? (n >= c.co2_red ? 2 : n >= c.co2_amber ? 1 : 0) : (n >= c.pm_red ? 2 : n >= c.pm_amber ? 1 : 0);
     bands[role] = band; overall = Math.max(overall, band);
@@ -134,36 +135,71 @@ function airPreviewData(widget) {
 }
 
 function airPreviewMarkup(widget, name) {
-  const r = airPreviewData(widget), w = widget.rect?.w || 360, h = widget.rect?.h || 240;
-  const meta = previewLineHeight(textRoleSize("meta", 20)), key = previewLineHeight(textRoleSize("key", 36));
-  const color = r.overall === 0 ? "var(--pv-ok, #42b883)" : r.overall === 1 ? "#d49a28" : r.overall === 2 ? "var(--pv-error, #e75d68)" : "var(--pv-muted)";
-  const fmt = (id) => {
+  const r = airPreviewData(widget), w = (widget.rect?.w || 360) - 24, h = (widget.rect?.h || 240) - 24;
+  const meta = previewLineHeight(textRoleSize("meta", 20)), label = previewLineHeight(textRoleSize("label", 24)), value = previewLineHeight(textRoleSize("value", 28));
+  const bandColor = (band) => band === 0 ? "var(--pv-ok, #42b883)" : band === 1 ? "#d49a28" : band === 2 ? "var(--pv-error, #e75d68)" : "var(--pv-muted)";
+  const color = bandColor(r.overall);
+  // Tile precision as in w_room_air.c: whole ppm, % and ppb; one decimal for temperature and PM2.5 below 10, no trailing ".0".
+  const rounded = (state, role) => {
+    const number = Number(state);
+    if (!role || String(state).trim() === "" || !Number.isFinite(number)) return state;
+    const decimals = role === "temperature" || (role === "pm25" && Math.abs(number) < 10) ? 1 : 0;
+    return number.toFixed(decimals).replace(/\.0$/, "");
+  };
+  const fmt = (id, role) => {
     const state = editor.states.get(id), unit = (entityDisplayInfo(id).unit || "").replace("μg/m³", "µg/m³");
-    return id && state != null && !["unknown", "unavailable", ""].includes(String(state)) ? `${state}${unit ? ` ${unit}` : ""}` : "—";
+    return id && state != null && !["unknown", "unavailable", ""].includes(String(state)) ? `${rounded(state, role)}${unit ? ` ${unit}` : ""}` : "—";
   };
-  let y = 0;
-  const row = (text, height, cls = "") => {
-    const html = `<div class="air-preview-row ${cls}" style="top:${y}px;height:${height}px">${escapeHtml(text)}</div>`;
-    y += height + 4; return html;
-  };
-  let rows = widgetShowsName(widget) ? row(widget.title || t("air.title"), meta, "air-preview-name") : "";
-  rows += row(t(["air.not_evaluated", "air.good", "air.fair", "air.poor"][r.overall + 1]) + (r.partial ? " *" : ""), meta, "air-preview-status");
-  rows += row(fmt(widget.entity_id), key, "air-preview-value");
-  const pollutants = (widget.co2_entity_id || widget.pm25_entity_id) && w - 24 >= 330 && h - 24 - y >= 95;
-  if (pollutants) rows += row([widget.co2_entity_id ? `CO₂ ${fmt(widget.co2_entity_id)}` : "", widget.pm25_entity_id ? `PM ${fmt(widget.pm25_entity_id)}` : ""].filter(Boolean).join(" · "), meta);
+  const box = (cls, x, y, width, height, text, style = "") =>
+    `<div class="air-preview-row ${cls}" style="left:${x}px;top:${y}px;width:${width}px;height:${height}px;${style}">${escapeHtml(text)}</div>`;
+  let html = "";
+  // Header: title on the left, quality chip on the right; colour lives only in the chips and in the readings that cause it.
   const reasons = [r.comparison?.conflict ? "air.conflict_short" : r.bands.co2 > 0 ? "air.co2_short" : "", r.bands.humidity > 0 ? r.values.humidity < (widget.air_thresholds?.rh_low ?? 40) ? "air.dry" : "air.humid_short" : "", r.bands.pm25 > 0 ? "air.pm_short" : ""].filter(Boolean);
-  const scope = !widget.co2_entity_id && !widget.pm25_entity_id && !widget.voc_entity_id ? "air.rh_range" : "air.in_range_short";
-  rows += row(t(reasons[0] || (r.overall === 0 ? scope : "air.partial")) + (reasons.length > 1 || r.partial || (!pollutants && (widget.co2_entity_id || widget.pm25_entity_id)) ? " +" : ""), meta);
-  if (h - 24 - y >= meta) {
-    let extra = widget.native_rating_entity_id ? `${t("air.rating")}: ${fmt(widget.native_rating_entity_id)}` :
-      widget.temperature_entity_id ? fmt(widget.temperature_entity_id) : t("air.humidity_scope");
-    if (widget.native_rating_entity_id && entityDisplayInfo(widget.native_rating_entity_id).device_class === "enum") {
-      const state = editor.states.get(widget.native_rating_entity_id);
-      extra = `${t("air.rating")}: ${t(`air.enum_${state}`, {}, state || "—")}`;
-    }
-    rows += row(extra, meta);
+  // Nothing to advise when everything is fine: the status chip alone says Good (w_room_air.c).
+  const hasAdvice = reasons.length > 0 || r.overall !== 0;
+  const advice = t(reasons[0] || "air.partial") + (reasons.length > 1 || r.partial ? " ›" : "");
+  const status = t(["air.not_evaluated", "air.good", "air.fair", "air.poor"][r.overall + 1]) + (r.partial ? " *" : "");
+  const chipH = meta + 12, chipY = h - chipH, headerH = Math.max(label, chipH), qW = Math.min(status.length * meta * 0.55 + 24, w * 0.45), qX = w - qW;
+  const top = headerH + 6;
+  html += `<div class="air-preview-chip" style="left:${qX}px;top:0;width:${qW}px;height:${chipH}px;--chip:${color}"></div>`;
+  html += box("air-preview-chip-text", qX, (chipH - meta) / 2, qW, meta, status, `color:${color}`);
+  if (widgetShowsName(widget)) html += box("air-preview-name", 0, (headerH - label) / 2, Math.max(qX - 8, 0), label, `${widget.show_icon === true ? "🌬️ " : ""}${widget.title || t("air.title")}`);
+  // Bottom: the advice chip, only when there is something to do.
+  const showAdvice = hasAdvice && w >= 70;
+  if (showAdvice) {
+    html += `<div class="air-preview-chip" style="left:0;top:${chipY}px;width:${w}px;height:${chipH}px;--chip:${color}"></div>`;
+    html += box("air-preview-chip-text", 6, chipY + (chipH - meta) / 2, w - 12, meta, advice, `color:${color}`);
   }
-  return `<div class="tp tp-air" style="--air-color:${color}"><div class="air-preview-surface"></div>${rows}</div>`;
+  // Middle: up to four readings as value over label, chosen by priority and shown in a fixed order.
+  const keyOf = { humidity: "entity_id", co2: "co2_entity_id", pm25: "pm25_entity_id", temperature: "temperature_entity_id", voc: "voc_entity_id" };
+  const maxCols = w >= 440 ? 4 : 3;
+  const picked = ["humidity", "co2", "pm25", "temperature", "voc"].filter((role) => widget[keyOf[role]]).slice(0, maxCols);
+  const order = ["co2", "humidity", "pm25", "temperature", "voc"].filter((role) => picked.includes(role));
+  const zoneH = (showAdvice ? chipY - 6 : h) - top, blockH = value + meta + 2, withLabel = zoneH >= blockH;
+  const hasRating = widget.native_rating_entity_id || widget.window_entity_id, ratingFits = hasRating && withLabel && zoneH >= blockH + meta + 6;
+  const usedH = (withLabel ? blockH : value) + (ratingFits ? meta + 6 : 0), by = top + Math.max((zoneH - usedH) / 2, 0);
+  if (zoneH >= value) order.forEach((role, i) => {
+    const cw = w / order.length, x = i * cw, band = r.bands[role];
+    html += box("air-preview-col-value", x, by, cw - 4, value, fmt(widget[keyOf[role]], role), band > 0 ? `color:${bandColor(band)}` : "");
+    if (withLabel) html += box("air-preview-col-label", x, by + value + 2, cw - 4, meta, t(`air.${role}`));
+  });
+  if (ratingFits) {
+    const windowState = () => {
+      const state = editor.states.get(widget.window_entity_id);
+      return state === "on" ? t("air.open") : state === "off" ? t("air.closed") : "—";
+    };
+    let extra = "";
+    if (widget.native_rating_entity_id) {
+      extra = `${t("air.rating")}: ${fmt(widget.native_rating_entity_id)}`;
+      if (entityDisplayInfo(widget.native_rating_entity_id).device_class === "enum") {
+        const state = editor.states.get(widget.native_rating_entity_id);
+        extra = `${t("air.rating")}: ${t(`air.enum_${state}`, {}, state || "—")}`;
+      }
+      if (widget.window_entity_id) extra += ` · ${windowState()}`;
+    } else extra = `${t("air.window")}: ${windowState()}`;
+    html += box("air-preview-extra", 0, by + blockH + 6, w, meta, extra);
+  }
+  return `<div class="tp tp-air">${html}</div>`;
 }
 
 function airTranslateInspector() {

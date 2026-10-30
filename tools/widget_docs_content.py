@@ -10,26 +10,34 @@ panel         what the tile shows and how it reacts to touch, as list items
 """
 
 WIDGETS = {
-    "room_air_tile": {'summary': 'Shows **room humidity** from a `sensor.*` entity with optional CO₂, PM2.5 and a '
-                'unified BETTA status; a tap opens read-only details.',
+    "room_air_tile": {'summary': 'Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and '
+                'PM2.5 from `sensor.*` entities; a tap opens read-only details.',
      'entities': [('Humidity', '`sensor.*`', True),
                   ('Temperature, CO₂, PM2.5, VOC and device rating', '`sensor.*`', False),
                   ('Outdoor temperature and humidity', '`sensor.*`, `weather.*`', False),
                   ('Window contact', '`binary_sensor.*`', False)],
-     'requirements': 'Bind each role explicitly using the reported device class and unit. Basic '
-                     'humidity/temperature sensors, IKEA ALPSTUGA and Awair Element can supply '
-                     'different subsets. No direct device polling.',
-     'options': [('Sources',
+     'requirements': 'Bind each role explicitly using the reported device class and unit; the tile shows only '
+                     'what is bound. No direct device polling.\n\n'
+                     '| Level | Bound readings | Example |\n'
+                     '| --- | --- | --- |\n'
+                     '| 1 | Humidity and temperature | Zigbee temperature/humidity sensor, e.g. a Tuya sensor with display |\n'
+                     '| 2 | Level 1 plus CO₂, PM2.5 and the device\'s own rating | IKEA ALPSTUGA |\n'
+                     '| 3 | Level 2 plus VOC and more values | Awair Element |',
+     'options': [('Icon before the name',
+                  'a small air-quality symbol in front of the name, off by default; shown only with the name'),
+                 ('Sources',
                   'optional roles stay independent; outdoor comparison can be disabled without losing '
                   'its bindings'),
                  ('Evaluation',
                   'editable humidity, CO₂ and PM2.5 display bands and drying margin; Reset restores '
                   'defaults')],
-     'panel': ['Humidity remains the main reading. CO₂ and PM2.5 have stable positions when the card '
-               'has room; tap for every bound value.',
-               'The worst usable indoor band controls green/amber/red. Missing or unsupported '
-               'configured evaluation inputs produce a partial-data marker; if all known bands are '
-               'green, the status is neutral.',
+     'panel': ['A neutral card like the Room widget: the name on top, the readings (up to three, four on wide '
+               'tiles) as value over label in the middle, and chips at the bottom: the BETTA status '
+               '(Good, Fair, Poor) and, only when there is something to do, the short advice. Colour appears only in the chips and in the readings '
+               'that are rated amber or red. Tap for every bound value.',
+                              'The worst usable indoor band controls green/amber/red. A configured humidity, CO₂ or '
+               'PM2.5 reading that is missing or unsupported adds a partial-data marker; if the '
+               'remaining bands are green, the status is neutral.',
                'Temperature is context. VOC is displayed but not evaluated; Awair scores and IKEA '
                'ratings never drive BETTA colour or advice.',
                'The popup shows per-reading status, source IDs, simultaneous reasons, outdoor absolute '
@@ -296,7 +304,8 @@ WIDGETS = {
         "requirements": None,
         "options": [("Room entities", "Add entity extends the list up to seven additional entities; ↑ reorders, × removes, and a click changes an entity; importing an area fills the list"),
                     ("Extra field", "humidity, cover (status and open/close) or media player (status and play/pause)"),
-                    ("Controls on the card", "lights, switches and covers as buttons, on a card of about 400 × 240 px")],
+                    ("Controls on the card", "lights, switches and covers as buttons, on a card of about 400 × 240 px"),
+                    ("Icon before the name", "a small room symbol in front of the name, off by default; shown only with the name")],
         "panel": ["A tap opens a popup with every entity and toggles for lights, switches, covers, fans and media players.",
                   "With **Controls on the card** lights and switches toggle together and covers get up and down."],
     },

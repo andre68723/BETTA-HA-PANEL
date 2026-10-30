@@ -474,6 +474,7 @@ if (el.addBambuPrinterBtn) {
   bindInspectorAutoApply(el.fForecastDays, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fAlignForecast, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fShowName, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fShowIcon, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSensorShowAge, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSensorFormat, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSensorUnit, ["change"], { softEntityValidation: true });

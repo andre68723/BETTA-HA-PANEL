@@ -323,6 +323,7 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("fWeatherHourlyLabel", "layout.inspector.weather_hourly");
   setTextById("fWeatherShowPrecipLabel", "layout.inspector.weather_show_precip");
   setTextById("fShowNameLabel", "layout.inspector.show_name");
+  setTextById("fShowIconLabel", "layout.inspector.show_icon");
   setTextById("fSensorShowAgeLabel", "layout.inspector.sensor_show_age");
   updateSensorEntityInfo(); // the format and unit choices follow the device class and carry their own texts
   setTextById("fSolarForecastBarOrientationLabel", "layout.inspector.solar_bar_orientation");

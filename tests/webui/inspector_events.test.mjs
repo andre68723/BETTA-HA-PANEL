@@ -261,6 +261,8 @@ for (const [input, type, entity, property, firstChecked, firstValue, secondValue
   ["fHistoryPopup", "contact_tile", "binary_sensor.door", "history_popup", true, true, undefined],
   ["fHistoryPopup", "lock_tile", "lock.front_door", "history_popup", true, true, undefined],
   ["fRoomControls", "room_tile", "sensor.temperature", "room_controls", true, true, undefined],
+  ["fShowIcon", "room_tile", "sensor.temperature", "show_icon", true, true, undefined],
+  ["fShowIcon", "room_air_tile", "sensor.humidity", "show_icon", true, true, undefined],
   ["fHistoryPopup", "vacuum_tile", "vacuum.robot", "history_popup", true, true, undefined],
   ["fCameraLive", "camera_tile", "camera.printer", "camera_live", true, true, undefined],
   ["fLockConfirm", "lock_tile", "lock.front_door", "lock_confirm", true, true, undefined],

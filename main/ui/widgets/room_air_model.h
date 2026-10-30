@@ -29,6 +29,7 @@ typedef struct {
     air_band_t band[AIR_ROLE_COUNT];
     unsigned advice, pending, valid_inputs;
     int64_t pending_since_ms;
+    int rh_side; /* -1 dry, +1 humid: side of the last humidity excursion, for hysteresis and reason */
     bool initialized;
 } air_memory_t;
 

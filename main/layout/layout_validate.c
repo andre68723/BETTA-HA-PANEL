@@ -355,6 +355,11 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         layout_validation_add(result, msg);
     }
 
+    cJSON *show_icon = cJSON_GetObjectItemCaseSensitive(widget, "show_icon");
+    if (show_icon != NULL && !cJSON_IsBool(show_icon)) {
+        snprintf(msg, sizeof(msg), "widget show_icon must be true or false");
+        layout_validation_add(result, msg);
+    }
     if (show_name != NULL && !cJSON_IsBool(show_name)) {
         snprintf(msg, sizeof(msg), "widget show_name must be true or false");
         layout_validation_add(result, msg);
