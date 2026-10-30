@@ -1741,14 +1741,13 @@
                       <select id="fStockView">
                         <option value="list" id="fStockViewList">List</option>
                         <option value="chart" id="fStockViewChart">Charts</option>
-                        <option value="grid" id="fStockViewGrid">Tiles</option>
                       </select>
                     </label>
                     <label><span id="fStockPeriodLabel">Period</span>
                       <select id="fStockPeriod">
                         <option value="1d" id="fStockPeriod1d">1 day</option>
                         <option value="1w" id="fStockPeriod1w">1 week</option>
-                        <option value="30d" id="fStockPeriod30d">30 days</option>
+                        <option value="30d" id="fStockPeriod30d">1 month</option>
                         <option value="ytd" id="fStockPeriodYtd">Year to date</option>
                         <option value="1y" id="fStockPeriod1y">1 year</option>
                       </select>
@@ -1763,6 +1762,14 @@
                     <label class="row">
                       <input id="fStockTicker" type="checkbox" />
                       <span id="fStockTickerLabel">Show the symbol</span>
+                    </label>
+                    <label class="row" id="fStockCardsRow">
+                      <input id="fStockCards" type="checkbox" />
+                      <span id="fStockCardsLabel">Show as cards</span>
+                    </label>
+                    <label class="row" id="fStockPreviousRow">
+                      <input id="fStockPrevious" type="checkbox" />
+                      <span id="fStockPreviousLabel">Show the start price</span>
                     </label>
                     <label class="row" id="fStockSelectorRow">
                       <input id="fStockSelector" type="checkbox" />

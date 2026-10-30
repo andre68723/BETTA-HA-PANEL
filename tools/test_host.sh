@@ -159,6 +159,14 @@ cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/host/stubs \
 "$out/test_camera_layout"
 
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/host/stubs \
+  "${variant_flags[@]}" "${cjson_flags[@]}" tests/host/test_stock_layout.c \
+  main/layout/layout_validate.c main/ha/ha_timestamp_format.c main/ha/ha_sensor_value.c main/ha/ha_datetime_value.c main/util/iso_time.c main/layout/widget_types.c main/layout/layout_orientation.c \
+  main/layout/room_air_slots.c main/ui/widgets/room_air_model.c main/layout/bambu_printer_slots.c main/layout/evcc_slots.c \
+  main/ha/ha_alarm_state.c main/util/entity_id.c main/util/room_extra.c main/util/chime_synth.c \
+  "${cjson_sources[@]}" "${cjson_libs[@]}" -lm -o "$out/test_stock_layout"
+"$out/test_stock_layout"
+
+cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/host/stubs \
   "${variant_flags[@]}" "${cjson_flags[@]}" tests/host/test_price_layout.c \
   main/layout/layout_validate.c main/ha/ha_timestamp_format.c main/ha/ha_sensor_value.c main/ha/ha_datetime_value.c main/util/iso_time.c main/layout/widget_types.c main/layout/layout_orientation.c \
   main/layout/room_air_slots.c main/ui/widgets/room_air_model.c main/layout/bambu_printer_slots.c main/layout/evcc_slots.c main/ha/ha_layout_entities.c \

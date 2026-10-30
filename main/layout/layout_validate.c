@@ -504,7 +504,7 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
             }
         }
         static const char *const choices[][6] = {
-            {"stock_view", "list", "chart", "grid", NULL},
+            {"stock_view", "list", "chart", "grid", NULL}, /* "grid" is the former Tiles view: read as chart with stock_cards */
             {"stock_period", "1d", "1w", "30d", "ytd", "1y"},
             {"stock_delta", "percent", "absolute", "both", NULL},
         };
@@ -530,6 +530,14 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         if (stock_selector != NULL && !cJSON_IsBool(stock_selector)) {
             snprintf(msg, sizeof(msg), "widget %s: stock_selector must be true or false", wid);
             layout_validation_add(result, msg);
+        }
+        static const char *const stock_flags[] = {"stock_cards", "stock_previous"};
+        for (size_t k = 0; k < sizeof(stock_flags) / sizeof(stock_flags[0]); k++) {
+            cJSON *flag = cJSON_GetObjectItemCaseSensitive(widget, stock_flags[k]);
+            if (flag != NULL && !cJSON_IsBool(flag)) {
+                snprintf(msg, sizeof(msg), "widget %s: %s must be true or false", wid, stock_flags[k]);
+                layout_validation_add(result, msg);
+            }
         }
     }
 

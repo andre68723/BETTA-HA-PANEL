@@ -511,6 +511,8 @@
           "stock_period": "ytd",
           "stock_delta": "both",
           "stock_ticker": true,
+          "stock_cards": true,
+          "stock_previous": true,
           "stock_selector": false
         }
       ]

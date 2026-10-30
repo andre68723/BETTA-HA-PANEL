@@ -207,7 +207,6 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("fStockViewLabel", "layout.inspector.stock_view");
   setTextById("fStockViewList", "layout.option.stock_view.list");
   setTextById("fStockViewChart", "layout.option.stock_view.chart");
-  setTextById("fStockViewGrid", "layout.option.stock_view.grid");
   setTextById("fStockPeriodLabel", "layout.inspector.stock_period");
   for (const code of ["1d", "1w", "30d", "ytd", "1y"]) {
     setTextById(`fStockPeriod${code === "ytd" ? "Ytd" : code}`, `layout.option.stock_period.${code}`);
@@ -218,6 +217,8 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("fStockDeltaBoth", "layout.option.stock_delta.both");
   setTextById("fStockTickerLabel", "layout.inspector.stock_ticker");
   setTextById("fStockSelectorLabel", "layout.inspector.selector");
+  setTextById("fStockCardsLabel", "layout.inspector.stock_cards");
+  setTextById("fStockPreviousLabel", "layout.inspector.stock_previous");
   setTextById("fCameraLiveLabel", "layout.inspector.camera_live");
   setTextById("cameraLiveHint", "layout.inspector.camera_live_hint");
   setTextById("fBambuCameraLabel", "layout.inspector.bambu_camera");

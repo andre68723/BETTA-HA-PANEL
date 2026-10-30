@@ -399,8 +399,13 @@ test("stock quotes: add, reorder, remove a quote and the options through Inspect
   assert.equal(run("JSON.stringify(selectedWidget().stock_entities)"), JSON.stringify(["sensor.quote_c", "sensor.quote_b"]));
   run("stockMoveUp(1)"); // and above the first: it becomes the primary entity
   assert.equal(run("selectedWidget().entity_id"), "sensor.quote_c");
-  run('el.fStockView.value = "grid"; el.fStockView.dispatch("change")');
-  assert.equal(run("el.fStockSelectorRow.hidden"), false); // the period buttons belong to the tile view too
+  run('el.fStockView.value = "chart"; el.fStockView.dispatch("change")');
+  assert.equal(run("el.fStockSelectorRow.hidden"), false); // the period buttons and the cards switch belong to the chart view
+  assert.equal(run("el.fStockCardsRow.hidden"), false);
+  assert.equal(run("el.fStockPreviousRow.hidden"), true); // the start price needs cards
+  run('el.fStockCards.checked = true; el.fStockCards.dispatch("change")');
+  assert.equal(run("el.fStockPreviousRow.hidden"), false);
+  run('el.fStockPrevious.checked = true; el.fStockPrevious.dispatch("change")');
   run('el.fStockPeriod.value = "ytd"; el.fStockPeriod.dispatch("change")');
   run('el.fStockDelta.value = "both"; el.fStockDelta.dispatch("change")');
   run('el.fStockTicker.checked = true; el.fStockTicker.dispatch("change")');
@@ -408,18 +413,28 @@ test("stock quotes: add, reorder, remove a quote and the options through Inspect
   const saved = JSON.parse(run("JSON.stringify(savedLayout.pages[0].widgets[0])"));
   assert.equal(saved.entity_id, "sensor.quote_c");
   assert.deepEqual(saved.stock_entities, ["sensor.quote_a", "sensor.quote_b"]);
-  assert.equal(saved.stock_view, "grid");
+  assert.equal(saved.stock_view, "chart");
+  assert.equal(saved.stock_cards, true);
+  assert.equal(saved.stock_previous, true);
   assert.equal(saved.stock_period, "ytd");
   assert.equal(saved.stock_delta, "both");
   assert.equal(saved.stock_ticker, true);
   run("editor.layout = savedLayout; renderInspector()");
   assert.equal(run("el.fStock1.value"), "sensor.quote_a");
-  assert.equal(run("el.fStockView.value"), "grid");
+  assert.equal(run("el.fStockView.value"), "chart");
+  assert.equal(run("el.fStockCards.checked"), true);
+  assert.equal(run("el.fStockPrevious.checked"), true);
   assert.equal(run("el.fStockDelta.value"), "both");
   assert.equal(run("el.fStockTicker.checked"), true);
   assert.equal(run("el.fStockPeriod.value"), "ytd");
   // switching the view keeps the quotes and the shared options
-  run('el.fStockView.value = "chart"; el.fStockView.dispatch("change"); el.fStockView.value = "grid"; el.fStockView.dispatch("change")');
+  run('el.fStockView.value = "list"; el.fStockView.dispatch("change"); el.fStockView.value = "chart"; el.fStockView.dispatch("change")');
+  assert.equal(run("el.fStockCards.checked"), true); // hiding the controls keeps their values
+  assert.equal(run("selectedWidget().stock_cards"), true);
+  // the former Tiles view reads as charts with cards
+  run('editor.layout.pages[0].widgets[0].stock_view = "grid"; delete editor.layout.pages[0].widgets[0].stock_cards; renderInspector()');
+  assert.equal(run("el.fStockView.value"), "chart");
+  assert.equal(run("el.fStockCards.checked"), true);
   assert.equal(run("JSON.stringify(selectedWidget().stock_entities)"), JSON.stringify(["sensor.quote_a", "sensor.quote_b"]));
   assert.equal(run("selectedWidget().stock_delta"), "both");
   // an emptied row closes the gap; the defaults are not written
@@ -429,7 +444,10 @@ test("stock quotes: add, reorder, remove a quote and the options through Inspect
   await run("el.saveBtn.onclick()");
   const plain = JSON.parse(run("JSON.stringify(savedLayout.pages[0].widgets[0])"));
   assert.deepEqual(plain.stock_entities, ["sensor.quote_b"]);
-  for (const key of ["stock_view", "stock_period", "stock_delta", "stock_ticker"]) assert.equal(plain[key], undefined, key);
+  run('el.fStockCards.checked = false; el.fStockCards.dispatch("change"); el.fStockPrevious.checked = false; el.fStockPrevious.dispatch("change")');
+  await run("el.saveBtn.onclick()");
+  const plain2 = JSON.parse(run("JSON.stringify(savedLayout.pages[0].widgets[0])"));
+  for (const key of ["stock_view", "stock_period", "stock_delta", "stock_ticker", "stock_cards", "stock_previous"]) assert.equal(plain2[key], undefined, key);
 });
 
 test("stock Add quote shares all eight slots across views, saves, reloads and reopens a removed slot", async () => {

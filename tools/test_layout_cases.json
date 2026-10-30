@@ -155,19 +155,22 @@
    {"type": "parqet_portfolio", "title": "Positionen", "w": 470, "h": 360, "portfolio": true, "parqet_selector": true, "parqet_interval": "ytd", "parqet_view": "holdings"},
    {"type": "parqet_portfolio", "title": "Nur Prozent", "w": 400, "h": 312, "portfolio": true, "parqet_interval": "ytd", "parqet_hide_amounts": true},
    {"type": "stock_quotes", "title": "Watchlist", "w": 400, "h": 300, "entity_id": "{stock_1}", "stock_entities": ["{stock_2}", "{stock_3}", "{stock_4}", "{stock_5}"]},
-   {"type": "stock_quotes", "title": "Kurse 30 Tage", "w": 400, "h": 300, "entity_id": "{stock_1}", "stock_entities": ["{stock_5}"], "stock_view": "chart"},
+   {"type": "stock_quotes", "title": "Kurse 1 Monat", "w": 400, "h": 300, "entity_id": "{stock_1}", "stock_entities": ["{stock_5}"], "stock_view": "chart"},
    {"type": "stock_quotes", "title": "Mit Symbol", "w": 400, "h": 300, "entity_id": "{stock_5}", "stock_entities": ["{stock_2}", "{stock_4}"], "stock_ticker": true, "stock_delta": "both"},
    {"type": "stock_quotes", "title": "", "w": 450, "h": 190, "entity_id": "{stock_1}", "stock_entities": ["{stock_5}"], "stock_view": "chart", "stock_period": "1d", "stock_delta": "absolute", "show_name": false},
    {"type": "stock_quotes", "title": "Nur Betrag, YTD", "w": 490, "h": 240, "entity_id": "{stock_2}", "stock_entities": ["{stock_4}", "{stock_5}"], "stock_period": "ytd", "stock_delta": "absolute"},
    {"type": "stock_quotes", "title": "Liste, Prozent, 1 Woche", "w": 400, "h": 240, "entity_id": "{stock_1}", "stock_entities": ["{stock_2}", "{stock_3}"], "stock_view": "list", "stock_period": "1w", "stock_delta": "percent"},
-   {"type": "stock_quotes", "title": "Kurse 30 Tage explizit", "w": 400, "h": 240, "entity_id": "{stock_2}", "stock_entities": ["{stock_4}"], "stock_view": "chart", "stock_period": "30d"},
+   {"type": "stock_quotes", "title": "Kurse 1 Monat explizit", "w": 400, "h": 240, "entity_id": "{stock_2}", "stock_entities": ["{stock_4}"], "stock_view": "chart", "stock_period": "30d"},
    {"type": "stock_quotes", "title": "Kurse 1 Jahr", "w": 400, "h": 240, "entity_id": "{stock_3}", "stock_entities": ["{stock_5}"], "stock_view": "chart", "stock_period": "1y"},
    {"type": "stock_quotes", "title": "Kurse ohne Tasten", "w": 400, "h": 240, "entity_id": "{stock_2}", "stock_entities": ["{stock_4}"], "stock_view": "chart", "stock_selector": false},
-   {"type": "stock_quotes", "title": "Kacheln, zwei Spalten", "w": 700, "h": 340, "entity_id": "{stock_1}", "stock_entities": ["{stock_2}", "{stock_3}", "{stock_4}"], "stock_view": "grid"},
-   {"type": "stock_quotes", "title": "Kacheln, schmal", "w": 300, "h": 320, "entity_id": "{stock_1}", "stock_entities": ["{stock_5}", "{stock_2}"], "stock_view": "grid", "stock_period": "1w"},
-   {"type": "stock_quotes", "title": "Kacheln, Symbol und beides", "w": 640, "h": 300, "entity_id": "{stock_5}", "stock_entities": ["{stock_2}", "{stock_4}"], "stock_view": "grid", "stock_ticker": true, "stock_delta": "both", "stock_period": "ytd"},
-   {"type": "stock_quotes", "title": "", "w": 520, "h": 200, "entity_id": "{stock_2}", "stock_entities": ["{stock_3}"], "stock_view": "grid", "stock_period": "1d", "stock_delta": "absolute", "stock_selector": false, "show_name": false},
-   {"type": "stock_quotes", "title": "Kacheln, acht", "w": 700, "h": 300, "entity_id": "{stock_1}", "stock_entities": ["{stock_2}", "{stock_3}", "{stock_4}", "{stock_5}", "{stock_1}", "{stock_2}", "{stock_3}"], "stock_view": "grid", "stock_ticker": true}
+   {"type": "stock_quotes", "title": "Karten, zwei Spalten", "w": 700, "h": 340, "entity_id": "{stock_1}", "stock_entities": ["{stock_2}", "{stock_3}", "{stock_4}"], "stock_view": "chart", "stock_cards": true},
+   {"type": "stock_quotes", "title": "Karten, schmal", "w": 300, "h": 320, "entity_id": "{stock_1}", "stock_entities": ["{stock_5}", "{stock_2}"], "stock_view": "chart", "stock_cards": true, "stock_period": "1w"},
+   {"type": "stock_quotes", "title": "Karten, Symbol und beides", "w": 640, "h": 300, "entity_id": "{stock_5}", "stock_entities": ["{stock_2}", "{stock_4}"], "stock_view": "chart", "stock_cards": true, "stock_ticker": true, "stock_delta": "both", "stock_period": "ytd"},
+   {"type": "stock_quotes", "title": "", "w": 520, "h": 200, "entity_id": "{stock_2}", "stock_entities": ["{stock_3}"], "stock_view": "chart", "stock_cards": true, "stock_period": "1d", "stock_delta": "absolute", "stock_selector": false, "show_name": false},
+   {"type": "stock_quotes", "title": "Karten, acht (alte Ansicht grid)", "w": 700, "h": 300, "entity_id": "{stock_1}", "stock_entities": ["{stock_2}", "{stock_3}", "{stock_4}", "{stock_5}", "{stock_1}", "{stock_2}", "{stock_3}"], "stock_view": "grid", "stock_ticker": true},
+   {"type": "stock_quotes", "title": "Karten mit Startkurs", "w": 700, "h": 360, "entity_id": "{stock_1}", "stock_entities": ["{stock_2}", "{stock_3}", "{stock_4}"], "stock_view": "chart", "stock_cards": true, "stock_previous": true, "stock_ticker": true, "stock_period": "ytd"},
+   {"type": "stock_quotes", "title": "Karten, breit, vier Spalten", "w": 1240, "h": 340, "entity_id": "{stock_1}", "stock_entities": ["{stock_2}", "{stock_3}", "{stock_4}", "{stock_5}", "{stock_1}", "{stock_2}", "{stock_3}"], "stock_view": "chart", "stock_cards": true, "stock_previous": true, "stock_ticker": true},
+   {"type": "stock_quotes", "title": "Karten nur im Diagramm", "w": 400, "h": 240, "entity_id": "{stock_2}", "stock_entities": ["{stock_4}"], "stock_view": "list", "stock_cards": true, "stock_previous": true}
   ]}
  },
  "gallery_only": [
@@ -206,7 +209,7 @@
   {"type": "stock_quotes", "entity_id": "{stock_1}", "stock_entities": "{gallery_stock_entities}", "gallery": {"slot": "stock_quotes", "title": "Stocks list", "rect": [10, 10, 380, 280], "caps": "stock_quotes", "page": "gallery_stock", "order": 49, "requires": "stock"}},
   {"type": "stock_quotes", "entity_id": "{stock_1}", "stock_entities": "{gallery_stock_pair}", "stock_ticker": true, "stock_delta": "both", "gallery": {"slot": "stock_quotes", "title": "Stocks list (symbol, both changes)", "rect": [410, 10, 380, 280], "caps": "stock_quotes", "page": "gallery_stock", "order": 50, "requires": "stock"}},
   {"type": "stock_quotes", "entity_id": "{stock_1}", "stock_entities": "{gallery_stock_pair}", "stock_view": "chart", "gallery": {"slot": "stock_quotes", "title": "Stocks charts", "rect": [10, 310, 380, 330], "caps": "stock_quotes", "page": "gallery_stock", "order": 51, "requires": "stock"}},
-  {"type": "stock_quotes", "entity_id": "{stock_1}", "stock_entities": "{gallery_stock_entities}", "stock_view": "grid", "stock_ticker": true, "gallery": {"slot": "stock_quotes", "title": "Stocks tiles", "rect": [10, 650, 700, 330], "caps": "stock_quotes", "page": "gallery_stock", "order": 53, "requires": "stock"}}
+  {"type": "stock_quotes", "entity_id": "{stock_1}", "stock_entities": "{gallery_stock_entities}", "stock_view": "chart", "stock_cards": true, "stock_ticker": true, "gallery": {"slot": "stock_quotes", "title": "Stocks cards", "rect": [10, 650, 700, 330], "caps": "stock_quotes", "page": "gallery_stock", "order": 53, "requires": "stock"}}
  ],
  "gallery_caps": {
   "room_air_tile": {"Domain": "sensor; optional sensor/weather outdoor pair and binary_sensor window", "Display": "humidity, unified BETTA status, CO₂/PM2.5 when space permits; native rating is display-only", "Interaction": "read-only details on tap", "Size": "min 280x220"},

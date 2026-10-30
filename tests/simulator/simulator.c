@@ -363,6 +363,9 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
         copy_field(def->stock_delta, sizeof(def->stock_delta), json, "stock_delta");
         def->stock_ticker = json_bool(json, "stock_ticker", false);
         def->stock_selector = json_bool(json, "stock_selector", true);
+        def->stock_previous = json_bool(json, "stock_previous", false);
+        if (strcmp(def->display_mode, "chart") == 0 && json_bool(json, "stock_cards", false))
+            snprintf(def->display_mode, sizeof(def->display_mode), "%s", "grid");
     }
     if (strcmp(def->type, "room_tile") == 0) {
         copy_field(def->display_mode, sizeof(def->display_mode), json, "room_extra_mode");

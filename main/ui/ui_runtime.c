@@ -1015,6 +1015,10 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
         ui_runtime_copy_json_string(widget_json, "stock_delta", out->stock_delta, sizeof(out->stock_delta));
         out->stock_ticker = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "stock_ticker"));
         out->stock_selector = !cJSON_IsFalse(cJSON_GetObjectItemCaseSensitive(widget_json, "stock_selector"));
+        out->stock_previous = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "stock_previous"));
+        /* Charts shown as cards: stock_cards on the chart view; the old "grid" view reads the same. */
+        if (strcmp(out->display_mode, "chart") == 0 && cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "stock_cards")))
+            snprintf(out->display_mode, sizeof(out->display_mode), "%s", "grid");
     }
     if (strcmp(out->type, "energy_timeline") == 0) {
         ui_runtime_copy_json_string(widget_json, "battery_charge_entity_id",

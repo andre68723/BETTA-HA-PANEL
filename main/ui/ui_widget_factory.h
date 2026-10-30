@@ -105,6 +105,7 @@ typedef struct {
     char stock_delta[12];   /* stock_quotes: "percent" (default), "absolute" or "both" */
     bool stock_ticker;      /* stock_quotes: the symbol after the name, default false */
     bool stock_selector;    /* stock_quotes: period buttons on the chart tile, default true */
+    bool stock_previous;    /* stock_quotes: cards show the period's start price under the price, default false */
     air_config_t air_config; /* room_air_tile thresholds, copied into its private context */
     int x;
     int y;

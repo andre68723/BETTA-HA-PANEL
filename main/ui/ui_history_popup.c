@@ -994,7 +994,7 @@ void ui_history_popup_open_evcc(const char *entity)
 
 static const char *const QUOTE_PERIOD_KEY[HA_QUOTE_PERIOD_COUNT] = {
     "stock.period.1d", "stock.period.1w", "stock.period.30d", "stock.period.ytd", "stock.period.1y"};
-static const char *const QUOTE_PERIOD_TEXT[HA_QUOTE_PERIOD_COUNT] = {"1D", "1W", "30D", "YTD", "1Y"};
+static const char *const QUOTE_PERIOD_TEXT[HA_QUOTE_PERIOD_COUNT] = {"1D", "1W", "1M", "YTD", "1Y"};
 
 static bool quote_german(void)
 {

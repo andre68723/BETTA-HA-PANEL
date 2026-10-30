@@ -342,7 +342,7 @@ def main():
                 "| History before sensor creation | **Yes: up to one year of daily closes is downloaded at setup** |",
                 "| 1D | Today's Recorder data; an explicit no-trading flag gives a flat 0% chart |",
                 "| 1W | Home Assistant hourly means (trend) |",
-                "| 30D, YTD, 1Y | Daily closes from the integration, as far back as its history reaches |",
+                "| 1M, YTD, 1Y | Daily closes from the integration, as far back as its history reaches |",
                 "| Currency | Sensor's native currency; Lovelace card conversion does not change BETTA |", "",
                 "It supplies no exchange real-time guarantee. The panel refreshes histories every 15 minutes; quote freshness also "
                 "depends on the integration's polling interval. For 1D, keep Recorder enabled for the sensors. "

@@ -492,6 +492,9 @@ if (el.addBambuPrinterBtn) {
   bindInspectorAutoApply(el.fStockDelta, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fStockTicker, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fStockSelector, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fStockCards, ["change"], { softEntityValidation: true });
+  el.fStockCards?.addEventListener("change", stockSyncSelectorRow);
+  bindInspectorAutoApply(el.fStockPrevious, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fParqetReturn, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fParqetSelector, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fParqetView, ["change"], { softEntityValidation: true });
