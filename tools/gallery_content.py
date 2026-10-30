@@ -264,7 +264,7 @@ WIDGET_GROUPS = [
 # The Widget column names the widget *type*, e.g. "Slider" -- not each variant's own on-widget
 # title ("Vertical", "Horizontal"), which said nothing about which widget it even was.
 ROW_DISPLAY_NAME = {
-    "room_air_tile": "Room air", "sensor": "Sensor", "gauge": "Gauge", "car_widget": "Car", "bambu_printer": "Bambu printer", "wallbox_evcc": "Wallbox", "graph": "Graph",
+    "room_air_tile": "Air quality", "sensor": "Sensor", "gauge": "Gauge", "car_widget": "Car", "bambu_printer": "Bambu printer", "wallbox_evcc": "Wallbox", "graph": "Graph",
     "solar_forecast": "Solar forecast", "energy_price_forecast": "Energy price forecast", "parqet_portfolio": "Parqet portfolio", "stock_quotes": "Stocks & ETFs", "weather_tile": "Weather (now)", "weather_3day": "Weather forecast",
     "button": "Button", "scene_tile": "Scene", "select_tile": "Select", "lock_tile": "Lock", "alarm_tile": "Alarm", "datetime_tile": "Date/Time", "slider": "Slider", "cover_tile": "Cover",
     "light_tile": "Light", "fan_tile": "Fan", "climate_tile": "Climate", "heating_tile": "Heating",

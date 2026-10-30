@@ -140,7 +140,7 @@ def all_widgets_fixture(variant):
     ])
     page('Sensorlisten', [
         ('sensor', 'Einzelwert', (20, 20, 240, 180), {}),
-        ('room_air', 'Raumklima', (20, 220, 280, 320), {}),
+        ('air_quality', 'Luftqualität', (20, 220, 280, 320), {}),
         ('sensor', 'Messwerte', (320, 20, 420, 540), dict(sensor_view='list', sensor_entities=[
             'sensor.demo_humidity', 'sensor.demo_power', 'sensor.demo_car_battery', 'sensor.demo_portfolio_value'])),
         ('sensor', 'Zustände', (760, 20, 500, 540), dict(entity_id='binary_sensor.demo_front_door', sensor_view='list',

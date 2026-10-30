@@ -516,7 +516,7 @@ apply();"""
 
 
 SUITE_LABELS = {
-    "energie": "Energie & Prognosen", "klima": "Klima & Wetter", "steuerung": "Schalten & Bedienen", "raeume": "Räume & Raumklima",
+    "energie": "Energie & Prognosen", "klima": "Klima & Wetter", "steuerung": "Schalten & Bedienen", "raeume": "Räume & Luftqualität",
     "status": "Sensoren & Status", "geraete": "Fahrzeuge & Geräte", "finanzen": "Finanzen & Kurse",
     "zustaende": "Zustände & Bedienung", "grenzen": "Kleine Kacheln & Sonderfälle", "maximal": "Große Kacheln",
 }

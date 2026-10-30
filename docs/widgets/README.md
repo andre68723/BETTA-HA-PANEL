@@ -150,9 +150,9 @@ Everything about one room in a single card.
 
     Groups a **room's values and controls** in one card, with a popup for its entities; any domain, filled from a Home Assistant area or by hand.
 
--   [![Room air](../img/gallery/room_air_glow.png)](room_air_tile.md)
+-   
 
-    **[Room air](room_air_tile.md)**
+    **[Air quality](room_air_tile.md)**
 
     Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and PM2.5 from `sensor.*` entities; a tap opens read-only details.
 

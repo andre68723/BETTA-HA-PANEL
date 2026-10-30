@@ -83,3 +83,14 @@ test("Room air search helpers keep PM2.5 out of VOC and offer weather for outdoo
   assert.equal(match(voc, "air_pm25"), false);
   assert.equal(match({ id: "weather.home" }, "air_out_humidity"), true);
 });
+
+test("Inspector row names drop the shared device prefix even when an outdoor weather entity is listed", () => {
+  const { run } = loadEditor();
+  run(`editor.entities=[{id:'sensor.a_rh',name:'alpstuga_emil Luftfeuchtigkeit'},{id:'sensor.a_t',name:'alpstuga_emil Temperatur'},
+    {id:'sensor.a_co2',name:'alpstuga_emil Kohlendioxid'},{id:'weather.home',name:'Heidelberg_Wetter'}];`);
+  const names = ids => JSON.parse(run(`JSON.stringify(inspectorEntityRowNames(${JSON.stringify(ids)}))`));
+  assert.deepEqual(names(["sensor.a_rh", "sensor.a_t", "sensor.a_co2"]), ["Luftfeuchtigkeit", "Temperatur", "Kohlendioxid"]);
+  // the outdoor rows must not change how the sensors are named
+  assert.deepEqual(names(["sensor.a_rh", "sensor.a_t", "sensor.a_co2", "weather.home", "weather.home"]),
+    ["Luftfeuchtigkeit", "Temperatur", "Kohlendioxid", "Heidelberg_Wetter", "Heidelberg_Wetter"]);
+});

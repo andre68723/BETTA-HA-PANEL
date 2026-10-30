@@ -904,16 +904,21 @@ function inspectorEntityRowNames(ids) {
     const entity = id ? editor.entities.find(item => item?.id === id) : null;
     return entity?.name && entity.name !== id ? String(entity.name) : "";
   });
+  // The shared leading words (usually the device) are dropped from the rows that share them. Rows of another device, such as an
+  // outdoor weather entity, neither break the shortening of the others nor lose their own name.
   const named = names.filter(Boolean).map(name => name.split(" "));
-  let prefix = named.length >= 2 ? named[0] : [];
-  for (const words of named.slice(1)) {
+  const groups = new Map();
+  for (const words of named) groups.set(words[0], [...(groups.get(words[0]) || []), words]);
+  const biggest = [...groups.values()].reduce((best, group) => (group.length > best.length ? group : best), []);
+  let prefix = biggest.length >= 2 ? biggest[0] : [];
+  for (const words of biggest.slice(1)) {
     let i = 0;
     while (i < prefix.length && i < words.length && prefix[i] === words[i]) i++;
     prefix = prefix.slice(0, i);
   }
   return names.map(name => {
     const words = name.split(" ");
-    return name && prefix.length && words.length > prefix.length ? words.slice(prefix.length).join(" ") : name;
+    return name && prefix.length && words.length > prefix.length && prefix.every((word, i) => words[i] === word) ? words.slice(prefix.length).join(" ") : name;
   });
 }
 

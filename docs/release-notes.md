@@ -12,7 +12,7 @@ Changes since [v0.9.1](#v091).
 
 | Widget | Status | What is new or changed |
 | --- | --- | --- |
-| [Room air](widgets/room_air_tile.md) | <span class="release-status release-status--new">New</span> | One BETTA status (Good, Fair, Poor) and a short advice as chips, with humidity, CO₂, PM2.5 and temperature as readings on a neutral card like the Room widget, from basic sensors up to IKEA ALPSTUGA and Awair Element. Read-only details with outdoor absolute-humidity comparison and window state; VOC and device ratings are display-only. |
+| [Air quality](widgets/room_air_tile.md) | <span class="release-status release-status--new">New</span> | One BETTA status (Good, Fair, Poor) and a short advice as chips, with humidity, CO₂, PM2.5 and temperature as readings on a neutral card like the Room widget, from basic sensors up to IKEA ALPSTUGA and Awair Element. Read-only details with outdoor absolute-humidity comparison and window state; VOC and device ratings are display-only. |
 | [Parqet portfolio](widgets/parqet_portfolio.md) | <span class="release-status release-status--changed">Changed</span> | The interval buttons follow the panel language like the Stocks & ETFs period buttons (**1T** instead of **1D** in German). |
 
 ### Panel and editor

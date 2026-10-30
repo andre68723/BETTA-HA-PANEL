@@ -94,6 +94,7 @@ function refreshOptionalEntities() {
     select.value = choices.some(([, slot]) => slot === previous) ? previous : choices[0]?.[1] || "";
     select.setAttribute("aria-label", t("layout.inspector.optional_role"));
     el.optionalEntityAdd.textContent = t("layout.inspector.optional_add");
+    if (el.optionalEntityCaption) el.optionalEntityCaption.textContent = t("layout.inspector.optional_caption");
     el.optionalEntityAdd.disabled = choices.length === 0;
   }
   refreshRoomEntityList();

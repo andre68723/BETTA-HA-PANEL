@@ -409,7 +409,7 @@ const el = {
   fVacuumBattery: document.getElementById("fVacuumBattery"),
   fBinaryDisplayMode: document.getElementById("fBinaryDisplayMode"),
   fBinaryDisplayModeLabel: document.getElementById("fBinaryDisplayModeLabel"),
-  ...Object.fromEntries(["optionalEntityControls", "optionalEntityRole", "optionalEntityAdd", "roomEntityList", "roomEntityAdd"].map(id => [id, document.getElementById(id)])),
+  ...Object.fromEntries(["optionalEntityControls", "optionalEntityCaption", "optionalEntityRole", "optionalEntityAdd", "roomEntityList", "roomEntityAdd"].map(id => [id, document.getElementById(id)])),
   fRoomEntities: document.getElementById("fRoomEntities"),
   fRoomEntitiesLabel: document.getElementById("fRoomEntitiesLabel"),
   fRoomEntitiesHint: document.getElementById("fRoomEntitiesHint"),

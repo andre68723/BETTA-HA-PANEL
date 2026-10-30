@@ -395,7 +395,7 @@ esp_err_t w_room_air_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     lv_obj_set_scrollable(ctx->card, false);
     lv_obj_set_clickable(ctx->card, true);
     ctx->title = ui_widget_name_create(ctx->card, !def->hide_name);
-    lv_label_set_text(ctx->title, def->title[0] ? def->title : ui_i18n_get("air.title", "Room air"));
+    lv_label_set_text(ctx->title, def->title[0] ? def->title : ui_i18n_get("air.title", "Air quality"));
     if (def->show_icon) {
         ctx->title_icon = lv_label_create(ctx->card);
         lv_label_set_text(ctx->title_icon, APP_SYMBOL_AIR_QUALITY);
