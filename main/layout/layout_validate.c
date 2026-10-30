@@ -2,6 +2,7 @@
  * Copyright (c) 2026 Cpt_Kirk
  * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
+#include "layout/room_air_slots.h"
 #include "ha/ha_alarm_state.h"
 #include "ha/ha_sensor_value.h"
 #include "layout/layout_validate.h"
@@ -704,6 +705,26 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         }
     }
 
+    if (cJSON_IsString(type) && !strcmp(type->valuestring, "room_air_tile")) {
+        const cJSON *outdoor = cJSON_GetObjectItemCaseSensitive(widget, "air_outdoor_enabled");
+        if (outdoor && !cJSON_IsBool(outdoor)) layout_validation_add(result, "room_air_tile: air_outdoor_enabled must be boolean");
+        air_config_t cfg;
+        if (!air_config_from_json(widget, &cfg)) layout_validation_add(result, "room_air_tile: invalid air_thresholds or insufficient hysteresis width");
+        for (int role = 0; role < AIR_ROLE_COUNT; ++role) {
+            const cJSON *v = cJSON_GetObjectItemCaseSensitive(widget, air_bindings[role].key);
+            if (!v || (cJSON_IsString(v) && !v->valuestring[0])) continue;
+            bool ok = cJSON_IsString(v) && strlen(v->valuestring) < APP_MAX_ENTITY_ID_LEN && is_valid_entity_id(v->valuestring);
+            if (ok) {
+                ok = role == AIR_WINDOW ? entity_in_domain(v->valuestring, "binary_sensor") :
+                    entity_in_domain(v->valuestring, "sensor") ||
+                    ((role == AIR_OUT_TEMPERATURE || role == AIR_OUT_HUMIDITY) && entity_in_domain(v->valuestring, "weather"));
+            }
+            if (!ok) {
+                snprintf(msg, sizeof(msg), "room_air_tile: invalid %s (%s)", air_bindings[role].key, air_bindings[role].domains);
+                layout_validation_add(result, msg);
+            }
+        }
+    }
     if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "bambu_printer") == 0) {
         /* Explicit bindings (layout/bambu_printer_slots.h): sensors, three action buttons and an optional camera.
          * Overlong ids are rejected rather than truncated; the three buttons must be distinct. */

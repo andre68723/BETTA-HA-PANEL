@@ -12,6 +12,7 @@
 #include "app_config.h"
 #include "ha/ha_model.h"
 #include "layout/bambu_printer_slots.h"
+#include "layout/room_air_slots.h"
 #include "layout/energy_timeline_colors.h"
 
 /* Entities beyond primary / secondary / tertiary: the room card list (7) and the car tile extras. */
@@ -103,6 +104,7 @@ typedef struct {
     char stock_delta[12];   /* stock_quotes: "percent" (default), "absolute" or "both" */
     bool stock_ticker;      /* stock_quotes: the symbol after the name, default false */
     bool stock_selector;    /* stock_quotes: period buttons on the chart tile, default true */
+    air_config_t air_config; /* room_air_tile thresholds, copied into its private context */
     int x;
     int y;
     int w;

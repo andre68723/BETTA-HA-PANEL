@@ -76,6 +76,7 @@ add_executable(betta-widget-sim
     typography_dump.c
     host_adapters.c
     camera_stream_stub.c
+    room_air_regression.c
     controls_regression.c
     weather_now_regression.c
     popup_contract_regression.c
@@ -95,7 +96,10 @@ add_executable(betta-widget-sim
     "${REPO_ROOT}/main/build_stamp.c"
     "${REPO_ROOT}/main/net/wifi_signal_level.c"
     "${REPO_ROOT}/main/layout/widget_types.c"
-    "${REPO_ROOT}/main/layout/bambu_printer_slots.c"
+    "${REPO_ROOT}/main/layout/room_air_slots.c"
+        "${REPO_ROOT}/main/ui/widgets/room_air_model.c"
+        "${REPO_ROOT}/main/ui/widgets/w_room_air.c"
+        "${REPO_ROOT}/main/layout/bambu_printer_slots.c"
     "${REPO_ROOT}/main/layout/evcc_slots.c"
     "${REPO_ROOT}/main/ui/widgets/w_empty_tile.c"
     "${REPO_ROOT}/main/ui/widgets/w_sensor.c"

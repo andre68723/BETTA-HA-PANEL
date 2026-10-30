@@ -232,6 +232,13 @@ const ENTITY_PICKER_CONFIGS = {
     liveSearch: false,
   },
   wallbox_evcc: {domain: "select", titleKey: "evcc.loadpoint", blankKey: "evcc.add", widgetKey: "evcc.wallbox", titleFallback: "Loadpoint", blankFallback: "Wallbox", widgetFallback: "Wallbox"},
+  room_air_tile: {
+    domain: "sensor",
+    titleKey: "air.choose_humidity",
+    blankKey: "air.blank",
+    widgetKey: "air.title",
+    itemsKey: "entity_picker.items_sensor",
+  },
   bambu_printer: {
     domain: "sensor",
     titleKey: "entity_picker.title_bambu",
@@ -603,6 +610,6 @@ const ALARM_ACTION_FIELDS = [
   ["fAlarmArmVacation", "arm_vacation"],
   ["fAlarmArmCustom", "arm_custom_bypass"],
 ];
-const WIDGET_NAME_TYPES = new Set(["wallbox_evcc", "sensor", "button", "slider", "gauge", "graph", "empty_tile", "light_tile", "heating_tile", "weather_tile", "weather_3day", "solar_forecast", "energy_price_forecast", "parqet_portfolio", "stock_quotes", "car_widget", "bambu_printer", "todo_list", "media_player", "sonos_favorites", "cover_tile", "fan_tile", "contact_tile", "camera_tile", "climate_tile", "scene_tile", "select_tile", "energy_timeline", "datetime_tile", "lock_tile", "alarm_tile", "binary_tile", "room_tile", "vacuum_tile", "roborock_tile"]);
+const WIDGET_NAME_TYPES = new Set(["room_air_tile", "wallbox_evcc", "sensor", "button", "slider", "gauge", "graph", "empty_tile", "light_tile", "heating_tile", "weather_tile", "weather_3day", "solar_forecast", "energy_price_forecast", "parqet_portfolio", "stock_quotes", "car_widget", "bambu_printer", "todo_list", "media_player", "sonos_favorites", "cover_tile", "fan_tile", "contact_tile", "camera_tile", "climate_tile", "scene_tile", "select_tile", "energy_timeline", "datetime_tile", "lock_tile", "alarm_tile", "binary_tile", "room_tile", "vacuum_tile", "roborock_tile"]);
 // Widget types whose name is hidden unless show_name is true: the weather tiles show the weather, not the place.
 const WIDGET_NAME_HIDDEN_BY_DEFAULT = new Set(["weather_tile", "weather_3day"]);

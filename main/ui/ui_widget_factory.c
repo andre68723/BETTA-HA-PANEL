@@ -50,6 +50,9 @@ esp_err_t w_solar_forecast_create(const ui_widget_def_t *def, lv_obj_t *parent, 
 void w_solar_forecast_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_solar_forecast_mark_unavailable(ui_widget_instance_t *instance);
 esp_err_t w_parqet_portfolio_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
+esp_err_t w_room_air_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
+void w_room_air_apply_state(ui_widget_instance_t *, const ha_state_t *);
+void w_room_air_mark_unavailable(ui_widget_instance_t *);
 esp_err_t w_stock_quotes_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void w_stock_quotes_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_stock_quotes_mark_unavailable(ui_widget_instance_t *instance);
@@ -186,6 +189,7 @@ static esp_err_t ui_widget_factory_create_inner(const ui_widget_def_t *def, lv_o
     out_instance->history_popup = def->history_popup;
     out_instance->ctx = NULL;
 
+    if (!strcmp(def->type, "room_air_tile")) return w_room_air_create(def, parent, out_instance);
     if (strcmp(def->type, "sensor") == 0) {
         return w_sensor_create(def, parent, out_instance);
     }
@@ -311,6 +315,8 @@ static void ui_widget_factory_apply_state_inner(ui_widget_instance_t *instance, 
         w_weather_tile_apply_state(instance, state);
     } else if (strcmp(instance->type, "solar_forecast") == 0) {
         w_solar_forecast_apply_state(instance, state);
+    } else if (!strcmp(instance->type, "room_air_tile")) {
+        w_room_air_apply_state(instance, state);
     } else if (strcmp(instance->type, "stock_quotes") == 0) {
         w_stock_quotes_apply_state(instance, state);
     } else if (strcmp(instance->type, "parqet_portfolio") == 0) {
@@ -409,6 +415,8 @@ static void ui_widget_factory_mark_unavailable_inner(ui_widget_instance_t *insta
         w_weather_tile_mark_unavailable(instance);
     } else if (strcmp(instance->type, "solar_forecast") == 0) {
         w_solar_forecast_mark_unavailable(instance);
+    } else if (!strcmp(instance->type, "room_air_tile")) {
+        w_room_air_mark_unavailable(instance);
     } else if (strcmp(instance->type, "stock_quotes") == 0) {
         w_stock_quotes_mark_unavailable(instance);
     } else if (strcmp(instance->type, "parqet_portfolio") == 0) {

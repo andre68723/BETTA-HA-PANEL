@@ -16,6 +16,8 @@ function widgetSizeLimitsForCanvas(type) {
   };
 
   switch (type) {
+    case "room_air_tile":
+      return { minW: 280, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "sensor":
       return { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "button":
@@ -324,6 +326,15 @@ const el = {
   addVacuumTileBtn: document.getElementById("addVacuumTileBtn"),
   addCoverTileBtn: document.getElementById("addCoverTileBtn"),
   addClimateTileBtn: document.getElementById("addClimateTileBtn"),
+  addRoomAirBtn: document.getElementById("addRoomAirBtn"),
+  fAirTemperature: document.getElementById("fAirTemperature"),
+  fAirCo2: document.getElementById("fAirCo2"),
+  fAirPm25: document.getElementById("fAirPm25"),
+  fAirVoc: document.getElementById("fAirVoc"),
+  fAirOutTemperature: document.getElementById("fAirOutTemperature"),
+  fAirOutHumidity: document.getElementById("fAirOutHumidity"),
+  fAirWindow: document.getElementById("fAirWindow"),
+  fAirRating: document.getElementById("fAirRating"),
   addRoomTileBtn: document.getElementById("addRoomTileBtn"),
   addSceneTileBtn: document.getElementById("addSceneTileBtn"),
   addSelectTileBtn: document.getElementById("addSelectTileBtn"),

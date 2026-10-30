@@ -57,6 +57,7 @@ nav = [
       { "Lock" = "widgets/lock_tile.md" },
       { "Media player" = "widgets/media_player.md" },
       { "Room" = "widgets/room_tile.md" },
+      { "Room air" = "widgets/room_air_tile.md" },
       { "Scene" = "widgets/scene_tile.md" },
       { "Select" = "widgets/select_tile.md" },
       { "Sensor" = "widgets/sensor.md" },

@@ -33,7 +33,7 @@ level. Logs and warnings remain available on cached runs. No JSON interface or a
 | Widget/layout/font/gallery | `docs/appearance.md`, `docs/appearance-implementation.md`, `docs/widget-anatomy.md`, `docs/simulator.md`, `docs/development/testing.md` |
 | Editor/preview | `docs/editor-source.md`, `docs/appearance.md` |
 | Board/memory/build | `docs/choose-display.md`, matching `docs/hardware/` guide, `docs/development/build.md`, `docs/development/components.md` |
-| HA/MQTT/API | `docs/home-assistant.md`, relevant `main/ha/` or `main/api/` code; `docs/notifications.md` when relevant |
+| HA/MQTT/API | `docs/home-assistant.md`, relevant `main/ha/` or `main/api/` code; `docs/notifications.md` when relevant. Browser-only diagnostic export: `docs/development/tools.md#home-assistant-template-export`. |
 | User behavior | Matching user guide and current version in `docs/release-notes.md` |
 | Docs/screenshots/Pages | `docs/documentation.md`, matching topic, `zensical.toml` |
 | Device failures | `docs/coredump.md`, `docs/development/learnings.md`, board guide |

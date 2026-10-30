@@ -138,7 +138,7 @@ function initInspectorLayout() {
   move("entities", byId("entitySourceHint"), byId("entitySourceWarning"), label(el.fEntity), label(el.fSecondaryEntity), label(el.fTertiaryEntity), byId("parqetEntities"));
   follow(byId("vacuumOptions"), [label(el.fVacuumBattery)], "entities");
   follow(byId("roomEntitiesFields"), [label(el.fRoomEntities), byId("roomEntityList"), byId("roomEntityAdd"), byId("fRoomEntitiesHint")], "entities");
-  move("entities", byId("carExtraFields"), byId("evccFields"), byId("bambuFields"), byId("energyTimelineFields"), byId("stockEntities"), byId("sensorListEntities"));
+  move("entities", byId("airSources"), byId("carExtraFields"), byId("evccFields"), byId("bambuFields"), byId("energyTimelineFields"), byId("stockEntities"), byId("sensorListEntities"));
   follow(byId("solarForecastFields"), [byId("fSolarForecastTodayLabel"), byId("fSolarForecastTomorrowLabel"),
     byId("fSolarForecastDay3Label"), byId("fSolarForecastDay4Label"), byId("fSolarForecastDay5Label"), byId("fSolarForecastDay6Label"), byId("fSolarForecastDay7Label")].map(label), "entities");
   follow(byId("sliderOptions"), [label(el.fSliderEntityDomain)], "entities");
@@ -151,7 +151,7 @@ function initInspectorLayout() {
   follow(byId("solarForecastFields"), [label(el.fSolarForecastBarMax)], "display");
   follow(byId("buttonOptions"), [label(el.fButtonAccentColor)], "display");
   move("display", byId("sliderOptions"), byId("graphOptions"), byId("solarForecastStyleOptions"), byId("gaugeOptions"),
-    byId("sensorOptions"), byId("cameraOptions"));
+    byId("airEvaluation"), byId("sensorOptions"), byId("cameraOptions"));
   follow(byId("priceOptions"), [label(el.fPriceCheapTimes), label(el.fPriceLine)], "display");
   move("display", byId("evccHeaderOptions"));
   move("display", byId("stockOptions"), byId("parqetOptions"), byId("forecastReadabilityOptions"), byId("weatherForecastOptions"), byId("weatherNowOptions"),

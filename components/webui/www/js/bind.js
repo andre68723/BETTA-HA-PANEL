@@ -132,6 +132,7 @@ if (el.addBambuPrinterBtn) {
   if (el.addEnergyTimelineBtn) el.addEnergyTimelineBtn.onclick = () => openLightEntityPicker("energy_timeline");
   if (el.addPriceForecastBtn) el.addPriceForecastBtn.onclick = () => openLightEntityPicker("energy_price_forecast");
   if (el.addParqetPortfolioBtn) el.addParqetPortfolioBtn.onclick = () => openLightEntityPicker("parqet_portfolio");
+  if (el.addRoomAirBtn) el.addRoomAirBtn.onclick = () => openLightEntityPicker("room_air_tile");
   if (el.addStockQuotesBtn) el.addStockQuotesBtn.onclick = () => openLightEntityPicker("stock_quotes");
   if (el.addDatetimeTileBtn) el.addDatetimeTileBtn.onclick = () => openLightEntityPicker("datetime_tile");
   if (el.addLockTileBtn) el.addLockTileBtn.onclick = () => openLightEntityPicker("lock_tile");
@@ -541,6 +542,7 @@ if (el.addBambuPrinterBtn) {
   bindHaDiagnosticsBanner();
   initInspectorLayout();
   bindStockInspector();
+  bindAirInspector();
   bindSensorListInspector();
   bindOptionalEntities();
   if (el.followPageToggle) {

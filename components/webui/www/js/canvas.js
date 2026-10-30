@@ -285,6 +285,7 @@ function renderPagesMini() {
 // Maps a widget's `type` value to the i18n key of its "+ <Name>" Add-menu label (the only place
 // each type already has a translated display name), used to build the inspector's live heading.
 const WIDGET_TYPE_LABEL_KEYS = {
+  room_air_tile: "layout.widgets.add_room_air",
   sensor: "layout.widgets.add_sensor",
   button: "layout.widgets.add_button",
   slider: "layout.widgets.add_slider",
@@ -461,7 +462,7 @@ function renderWidgets() {
 
   const energyPage = isFixedPage(page);
   const addButtons = [
-    el.addSensorBtn,
+    el.addRoomAirBtn, el.addSensorBtn,
     el.addButtonBtn,
     el.addSliderBtn,
     el.addGraphBtn,
@@ -1032,6 +1033,7 @@ function renderInspector() {
   if (el.fSolarForecastDay5) el.fSolarForecastDay5.value = widget.forecast_day_5_entity_id || "";
   if (el.fSolarForecastDay6) el.fSolarForecastDay6.value = widget.forecast_day_6_entity_id || "";
   if (el.fSolarForecastDay7) el.fSolarForecastDay7.value = widget.forecast_day_7_entity_id || "";
+  airLoadInspector(widget);
   bambuLoadInspector(widget); evccLoadInspector(widget); stockLoadInspector(widget); sensorListLoadInspector(widget);
   if (el.fCarPrecond) el.fCarPrecond.value = widget.precond_entity_id || "";
   if (el.fCarLock) el.fCarLock.value = widget.lock_entity_id || "";
@@ -1837,7 +1839,7 @@ function addWidget(type, options = {}) {
       ? DEFAULT_SOLCAST_ENTITIES.remaining
       : pickDefaultEntityForWidgetType(type, sliderDomain);
   const secondaryEntityId = type === "heating_tile" ? pickDefaultSecondaryEntity("heating_tile", "sensor") : "";
-  const defaultW = type === "weather_3day" ? 360
+  const defaultW = type === "room_air_tile" ? 360 : type === "weather_3day" ? 360
       : type === "solar_forecast" ? 460
       : type === "car_widget" ? 280
       : type === "wallbox_evcc" ? 360
@@ -1860,7 +1862,7 @@ function addWidget(type, options = {}) {
       : type === "vacuum_tile" ? 360
       : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 300
       : 220;
-  const defaultH = type === "weather_3day" ? 260
+  const defaultH = type === "room_air_tile" ? 240 : type === "weather_3day" ? 260
       : type === "solar_forecast" ? 250
       : type === "car_widget" ? 340
       : type === "wallbox_evcc" ? 300
@@ -2082,6 +2084,7 @@ function applyInspector(options = {}) {
     if (value) widget[key] = value;
     else delete widget[key];
   }
+  if (!airSaveInspector(widget, widgetType)) return false;
   bambuSaveInspector(widget, widgetType);
   stockSaveInspector(widget, widgetType);
   sensorListSaveInspector(widget, widgetType);

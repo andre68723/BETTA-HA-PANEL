@@ -37,6 +37,7 @@ www/js/settings.js    settings pages: Wi-Fi, OTA, device status, alerts, backup,
 www/js/brightness-test.js  temporary brightness tests: shared controls, serialized requests and device countdown
 www/js/update-check.js the panel's daily firmware update check: banner, OTA URL, its two settings
 www/js/entity-search-rules.js search eligibility by field and the rules shown in each picker
+www/js/room-air.js     Room air bindings, evaluation fields and measured-value preview
 www/js/layout-model.js layout model, entity domains and suggestions, loading layout and entities
 www/js/pickers.js     entity pickers, the "+ Widget" dialog (widget types and entity search)
 www/js/readability.js panel4 role sizes, day-count and gauge-width hints for the previews (after pickers, before canvas)

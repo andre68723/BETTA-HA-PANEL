@@ -493,6 +493,8 @@ int sim_controls_regression(void)
 {
     now = lv_tick_get(); lv_tick_set_cb(tick);
     sim_host_set_online(true);
+    void sim_room_air_regression(void);
+    phase = "room air"; sim_room_air_regression();
     phase = "semantic roles"; semantic_controls_test();
     phase = "popup contracts"; sim_popup_contract_regression(weather_delay);
     void sim_weather_now_regression(void (*delay)(uint32_t));

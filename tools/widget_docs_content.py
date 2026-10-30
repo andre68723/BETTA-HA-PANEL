@@ -10,6 +10,45 @@ panel         what the tile shows and how it reacts to touch, as list items
 """
 
 WIDGETS = {
+    "room_air_tile": {'summary': 'Shows **room humidity** from a `sensor.*` entity with optional CO₂, PM2.5 and a '
+                'unified BETTA status; a tap opens read-only details.',
+     'entities': [('Humidity', '`sensor.*`', True),
+                  ('Temperature, CO₂, PM2.5, VOC and device rating', '`sensor.*`', False),
+                  ('Outdoor temperature and humidity', '`sensor.*`, `weather.*`', False),
+                  ('Window contact', '`binary_sensor.*`', False)],
+     'requirements': 'Bind each role explicitly using the reported device class and unit. Basic '
+                     'humidity/temperature sensors, IKEA ALPSTUGA and Awair Element can supply '
+                     'different subsets. No direct device polling.',
+     'options': [('Sources',
+                  'optional roles stay independent; outdoor comparison can be disabled without losing '
+                  'its bindings'),
+                 ('Evaluation',
+                  'editable humidity, CO₂ and PM2.5 display bands and drying margin; Reset restores '
+                  'defaults')],
+     'panel': ['Humidity remains the main reading. CO₂ and PM2.5 have stable positions when the card '
+               'has room; tap for every bound value.',
+               'The worst usable indoor band controls green/amber/red. Missing or unsupported '
+               'configured evaluation inputs produce a partial-data marker; if all known bands are '
+               'green, the status is neutral.',
+               'Temperature is context. VOC is displayed but not evaluated; Awair scores and IKEA '
+               'ratings never drive BETTA colour or advice.',
+               'The popup shows per-reading status, source IDs, simultaneous reasons, outdoor absolute '
+               'humidity and moisture conflicts. Window state does not prove effective ventilation.',
+               'HA availability is not sample age. Unbound pollutants are outside the evaluation. No '
+               'outdoor PM input, automatic actions or countdown.',
+               'Default display bands: humidity green 40–60 %, amber 30–<40 or >60–70 %, red below 30 '
+               'or above 70 %; CO₂ green below 1000 ppm, amber 1000–<2000, red from 2000 ppm; PM2.5 '
+               'green below 15 µg/m³, amber 15–<35, red from 35 µg/m³.',
+               'CO₂ follows the [UBA traffic-light '
+               'reference](https://www.umweltbundesamt.de/richtig-lueften-in-schulen) with explicit '
+               'BETTA boundaries. Humidity and PM bands are configurable product display choices, not '
+               'health limits. The [WHO PM2.5 '
+               'reference](https://cdn.who.int/media/docs/default-source/who-compendium-on-health-and-environment/who_compendium_chapter2.pdf) '
+               'of 15 µg/m³ is a 24-hour average; this widget does not calculate that average.',
+               'Band exits use 2 percentage points RH, 50 ppm CO₂ and 3 µg/m³ PM2.5 of hysteresis. New '
+               'warnings appear immediately; improving advice settles for 60 seconds. Outdoor drying '
+               'starts at an indoor-minus-outdoor difference of 1 g/m³; this is a configurable benefit '
+               'margin, not an airflow prediction.']},
     "alarm_tile": {
         "summary": "Shows the **state** of an `alarm_control_panel.*` entity and arms or disarms it, asking for a code when the entity needs one.",
         "entities": [("Alarm panel", "`alarm_control_panel.*`", True)],

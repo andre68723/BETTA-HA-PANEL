@@ -21,6 +21,7 @@ typedef struct {
 
 static const widget_type_info_t s_types[] = {
     /* type              min_w       min_h       max_w       max_h       domains */
+    {"room_air_tile", {280, 220, CBW, CBH}, "sensor"},
     {"sensor",          {120,  80,  CBW,        CBH},       "sensor|binary_sensor"},
     {"button",          {100,  100, 480, 320}, "switch|media_player"},
     {"slider",          {100,         100, CBW,        CBH},       "*"},

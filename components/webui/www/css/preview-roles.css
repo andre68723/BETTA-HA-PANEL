@@ -442,3 +442,10 @@ body[data-ui-style] #canvas .widget-box .control-alert { --control-fill: var(--p
 .tp-weather-hours { display: flex; gap: 8px; overflow-x: auto; min-height: 0; padding-top: 8px; border-top: 1px solid var(--card-border, #586575); }
 .tp-weather-hour { flex: 0 0 max(76px, calc(var(--r-meta) * 4.5)); display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .tp-weather-hour > i { font-style: normal; font-size: 32px; line-height: 1; }
+
+/* Room air uses the same line-height-driven rows as w_room_air.c. */
+#canvas .tp-air { display: block; position: absolute; inset: 10px; padding: 0; color: var(--pv-text); }
+#canvas .air-preview-surface { position: absolute; inset: -6px; background: color-mix(in srgb, var(--air-color) 10%, transparent); border: 2px solid color-mix(in srgb, var(--air-color) 60%, transparent); border-radius: 10px; }
+#canvas .air-preview-row { position: absolute; left: 0; right: 0; font-size: var(--meta); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#canvas .air-preview-status { color: var(--air-color); }
+#canvas .air-preview-value { font-size: var(--key); }

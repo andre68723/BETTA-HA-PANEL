@@ -109,6 +109,7 @@ async function loadI18nLanguage(language, refreshCatalog = false) {
 }
 
 function applyWebTranslations() {
+  airTranslateInspector();
   layoutHistoryControls();
   setTextById("layoutTabBtn", "tabs.layout");
   setTextById("settingsTabBtn", "tabs.settings");
@@ -184,6 +185,7 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("addVacuumTileBtn", "layout.widgets.add_vacuum");
   setTextById("addCoverTileBtn", "layout.widgets.add_cover");
   setTextById("addClimateTileBtn", "layout.widgets.add_climate");
+  setTextById("addRoomAirBtn", "layout.widgets.add_room_air");
   setTextById("addRoomTileBtn", "layout.widgets.add_room");
   setTextById("addSceneTileBtn", "layout.widgets.add_scene");
   setTextById("addSelectTileBtn", "layout.widgets.add_select");
