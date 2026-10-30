@@ -32,20 +32,10 @@ void air_slots_from_json(const cJSON *json, char *primary, char *secondary, char
     }
 }
 
+/* The evaluation bands are fixed. A layout saved with air_thresholds keeps loading; the values are ignored. */
 bool air_config_from_json(const cJSON *json, air_config_t *out)
 {
+    (void)json;
     *out = air_config_default();
-    const cJSON *cfg = cJSON_GetObjectItemCaseSensitive(json, "air_thresholds");
-    if (!cfg) return true;
-    if (!cJSON_IsObject(cfg)) return false;
-    const char *keys[] = {"rh_red_low", "rh_low", "rh_high", "rh_red_high", "co2_amber", "co2_red", "pm_amber", "pm_red", "drying_margin"};
-    double *values[] = {&out->rh_red_low, &out->rh_low, &out->rh_high, &out->rh_red_high,
-        &out->co2_amber, &out->co2_red, &out->pm_amber, &out->pm_red, &out->drying_margin};
-    for (unsigned i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i) {
-        const cJSON *v = cJSON_GetObjectItemCaseSensitive(cfg, keys[i]);
-        if (!v) continue;
-        if (!cJSON_IsNumber(v)) return false;
-        *values[i] = v->valuedouble;
-    }
-    return air_config_valid(out);
+    return true;
 }

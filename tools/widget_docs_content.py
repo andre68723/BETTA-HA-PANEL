@@ -28,9 +28,9 @@ WIDGETS = {
                  ('Sources',
                   'optional roles stay independent; outdoor comparison can be disabled without losing '
                   'its bindings'),
-                 ('Evaluation',
-                  'editable humidity, CO₂ and PM2.5 display bands and drying margin; Reset restores '
-                  'defaults')],
+                 ('Rating',
+                  'fixed, not adjustable: humidity 40 to 60 % and CO₂ below 1000 ppm are green, PM2.5 below '
+                  '15 µg/m³ is green; the worst measured value sets the status')],
      'panel': ['A neutral card like the Room widget: the name on top, the readings (up to three, four on wide '
                'tiles) as value over label in the middle, and chips at the bottom: the BETTA status '
                '(Good, Fair, Poor) and, only when there is something to do, the short advice. Colour appears only in the chips and in the readings '
@@ -44,7 +44,7 @@ WIDGETS = {
                'humidity and moisture conflicts. Window state does not prove effective ventilation.',
                'HA availability is not sample age. Unbound pollutants are outside the evaluation. No '
                'outdoor PM input, automatic actions or countdown.',
-               'Default display bands: humidity green 40–60 %, amber 30–<40 or >60–70 %, red below 30 '
+               'Display bands: humidity green 40–60 %, amber 30–<40 or >60–70 %, red below 30 '
                'or above 70 %; CO₂ green below 1000 ppm, amber 1000–<2000, red from 2000 ppm; PM2.5 '
                'green below 15 µg/m³, amber 15–<35, red from 35 µg/m³.',
                'CO₂ follows the [UBA traffic-light '

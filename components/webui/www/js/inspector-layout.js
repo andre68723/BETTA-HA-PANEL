@@ -151,7 +151,7 @@ function initInspectorLayout() {
   follow(byId("solarForecastFields"), [label(el.fSolarForecastBarMax)], "display");
   follow(byId("buttonOptions"), [label(el.fButtonAccentColor)], "display");
   move("display", byId("sliderOptions"), byId("graphOptions"), byId("solarForecastStyleOptions"), byId("gaugeOptions"),
-    byId("airEvaluation"), byId("sensorOptions"), byId("cameraOptions"));
+    byId("sensorOptions"), byId("cameraOptions"));
   follow(byId("priceOptions"), [label(el.fPriceCheapTimes), label(el.fPriceLine)], "display");
   move("display", byId("evccHeaderOptions"));
   move("display", byId("stockOptions"), byId("parqetOptions"), byId("forecastReadabilityOptions"), byId("weatherForecastOptions"), byId("weatherNowOptions"),

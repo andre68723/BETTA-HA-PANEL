@@ -133,8 +133,8 @@ static void slots_and_subscriptions(void)
     assert(!extra[2][0] && !extra[3][0]);
     assert(cJSON_GetObjectItemCaseSensitive(w, "outdoor_temperature_entity_id")); /* retained JSON */
     assert(air_config_from_json(w, &config) && config.co2_red == 2000);
-    cJSON_AddItemToObject(w, "air_thresholds", cJSON_Parse("{\"co2_red\":900}"));
-    assert(!air_config_from_json(w, &config));
+    cJSON_AddItemToObject(w, "air_thresholds", cJSON_Parse("{\"co2_red\":900}")); /* an older layout: ignored */
+    assert(air_config_from_json(w, &config) && config.co2_red == 2000);
     cJSON_Delete(root);
 }
 

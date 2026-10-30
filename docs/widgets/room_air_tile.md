@@ -4,6 +4,10 @@
 
 Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and PM2.5 from `sensor.*` entities; a tap opens read-only details.
 
+<div class="widget-previews">
+<figure><a href="../img/gallery/air_quality_glow.png"><img src="../img/gallery/air_quality_glow.png" alt="Air quality, Glow style" loading="lazy" width="360" height="260" style="width: 288px"></a></figure>
+</div>
+
 ## Entities
 
 | Entity | Domains |
@@ -29,7 +33,7 @@ Bind each role explicitly using the reported device class and unit; the tile sho
 | --- | --- |
 | Icon before the name | a small air-quality symbol in front of the name, off by default; shown only with the name |
 | Sources | optional roles stay independent; outdoor comparison can be disabled without losing its bindings |
-| Evaluation | editable humidity, CO₂ and PM2.5 display bands and drying margin; Reset restores defaults |
+| Rating | fixed, not adjustable: humidity 40 to 60 % and CO₂ below 1000 ppm are green, PM2.5 below 15 µg/m³ is green; the worst measured value sets the status |
 
 ## On the panel
 
@@ -38,7 +42,7 @@ Bind each role explicitly using the reported device class and unit; the tile sho
 - Temperature is context. VOC is displayed but not evaluated; Awair scores and IKEA ratings never drive BETTA colour or advice.
 - The popup shows per-reading status, source IDs, simultaneous reasons, outdoor absolute humidity and moisture conflicts. Window state does not prove effective ventilation.
 - HA availability is not sample age. Unbound pollutants are outside the evaluation. No outdoor PM input, automatic actions or countdown.
-- Default display bands: humidity green 40–60 %, amber 30–<40 or >60–70 %, red below 30 or above 70 %; CO₂ green below 1000 ppm, amber 1000–<2000, red from 2000 ppm; PM2.5 green below 15 µg/m³, amber 15–<35, red from 35 µg/m³.
+- Display bands: humidity green 40–60 %, amber 30–<40 or >60–70 %, red below 30 or above 70 %; CO₂ green below 1000 ppm, amber 1000–<2000, red from 2000 ppm; PM2.5 green below 15 µg/m³, amber 15–<35, red from 35 µg/m³.
 - CO₂ follows the [UBA traffic-light reference](https://www.umweltbundesamt.de/richtig-lueften-in-schulen) with explicit BETTA boundaries. Humidity and PM bands are configurable product display choices, not health limits. The [WHO PM2.5 reference](https://cdn.who.int/media/docs/default-source/who-compendium-on-health-and-environment/who_compendium_chapter2.pdf) of 15 µg/m³ is a 24-hour average; this widget does not calculate that average.
 - Band exits use 2 percentage points RH, 50 ppm CO₂ and 3 µg/m³ PM2.5 of hysteresis. New warnings appear immediately; improving advice settles for 60 seconds. Outdoor drying starts at an indoor-minus-outdoor difference of 1 g/m³; this is a configurable benefit margin, not an airflow prediction.
 

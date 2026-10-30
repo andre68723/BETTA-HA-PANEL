@@ -42,8 +42,7 @@ test("Room air field events save JSON, retain disabled outdoor sources and reloa
     function input(value=''){return {value:String(value),checked:true,listeners:{},addEventListener(k,fn){this.listeners[k]=fn;},classList:{toggle(){}}};}
     document.getElementById=id=>nodes[id]||null;
     for(const [key,field] of AIR_ROLES) el['fAir'+field]=input();
-    for(const [key,value] of Object.entries(AIR_DEFAULTS)) nodes['air_'+key]=input(value);
-    nodes.airOutdoorEnabled=input();nodes.airReset=input();
+    nodes.airOutdoorEnabled=input();
     var widget={type:'room_air_tile',entity_id:'sensor.rh',outdoor_temperature_entity_id:'weather.demo',outdoor_humidity_entity_id:'weather.demo'};
     var saved='';
     autoApplyInspector=()=>{if(airSaveInspector(widget,widget.type))saved=JSON.stringify(widget);};
@@ -56,13 +55,11 @@ test("Room air field events save JSON, retain disabled outdoor sources and reloa
   run("nodes.airOutdoorEnabled.checked=true;nodes.airOutdoorEnabled.listeners.change();widget=JSON.parse(saved);airLoadInspector(widget);");
   assert.equal(run("widget.air_outdoor_enabled"), true);
   assert.equal(run("widget.outdoor_temperature_entity_id"), "weather.demo");
-  run("nodes.air_co2_red.value='2500';nodes.air_co2_red.listeners.change();widget=JSON.parse(saved);airLoadInspector(widget);");
-  assert.equal(run("widget.air_thresholds.co2_red"), 2500);
-  run("nodes.airReset.onclick();widget=JSON.parse(saved);airLoadInspector(widget);");
-  assert.equal(run("widget.air_thresholds.co2_red"), 2000);
+  // the evaluation is fixed: no thresholds are written, and a threshold from an older layout is kept untouched
+  assert.equal(run("widget.air_thresholds"), undefined);
+  run("widget.air_thresholds={co2_red:2500};nodes.airOutdoorEnabled.listeners.change();widget=JSON.parse(saved);");
+  assert.deepEqual(JSON.parse(run("JSON.stringify(widget.air_thresholds)")), { co2_red: 2500 });
   assert.equal(run("widget.co2_entity_id"), "sensor.co2");
-  run("var before=saved;setStatus=()=>{};nodes.air_co2_red.value='500';nodes.air_co2_red.listeners.change();");
-  assert.equal(run("saved===before"), true);
 });
 
 test("Humidity picker rejects percent scores and battery; PM accepts both micro spellings", () => {

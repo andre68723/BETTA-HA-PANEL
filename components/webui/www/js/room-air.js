@@ -14,14 +14,6 @@ const AIR_ROLES = [
   ["native_rating_entity_id", "Rating", "sensor", "rating"],
 ];
 
-function airConfigValid(c) {
-  return Object.keys(AIR_DEFAULTS).every(key => Number.isFinite(c[key])) &&
-    c.rh_red_low >= 0 && c.rh_red_high <= 100 && c.rh_low - c.rh_red_low > 4 &&
-    c.rh_high - c.rh_low > 4 && c.rh_red_high - c.rh_high > 4 &&
-    c.co2_amber > 50 && c.co2_red - c.co2_amber > 100 && c.pm_amber > 3 &&
-    c.pm_red - c.pm_amber > 6 && c.drying_margin > 0 && c.drying_margin <= 20;
-}
-
 function airNormalize(role, state, unit) {
   const text = String(state ?? "");
   // Same strict decimal grammar as the firmware, including exponents; no blank, hex or trailing junk.
@@ -40,13 +32,8 @@ function airNormalize(role, state, unit) {
 
 function airLoadInspector(widget) {
   const active = widget?.type === "room_air_tile";
-  for (const id of ["airSources", "airEvaluation"]) document.getElementById(id)?.classList.toggle("hidden", !active);
+  document.getElementById("airSources")?.classList.toggle("hidden", !active);
   for (const [key, field] of AIR_ROLES) if (el[`fAir${field}`]) el[`fAir${field}`].value = active ? widget[key] || "" : "";
-  const config = { ...AIR_DEFAULTS, ...(widget?.air_thresholds || {}) };
-  for (const key of Object.keys(AIR_DEFAULTS)) {
-    const input = document.getElementById(`air_${key}`);
-    if (input) input.value = config[key];
-  }
   const enabled = document.getElementById("airOutdoorEnabled");
   if (enabled) enabled.checked = widget?.air_outdoor_enabled !== false;
   airRefreshOutdoor();
@@ -60,12 +47,6 @@ function airRefreshOutdoor() {
 
 function airSaveInspector(widget, type) {
   if (type !== "room_air_tile") return true;
-  const config = {};
-  for (const key of Object.keys(AIR_DEFAULTS)) {
-    const input = document.getElementById(`air_${key}`);
-    config[key] = input ? (String(input.value).trim() ? Number(input.value) : NaN) : (widget.air_thresholds?.[key] ?? AIR_DEFAULTS[key]);
-  }
-  if (!airConfigValid(config)) { setStatus(t("air.invalid_thresholds"), true); return false; }
   const next = {};
   for (const [key, field, domains] of AIR_ROLES) {
     const id = el[`fAir${field}`]?.value.trim() ?? widget[key] ?? "";
@@ -76,7 +57,6 @@ function airSaveInspector(widget, type) {
   }
   // Commit only after validation, so a failed edit cannot partially replace sources.
   for (const [key] of AIR_ROLES) { if (next[key]) widget[key] = next[key]; else delete widget[key]; }
-  widget.air_thresholds = config;
   const enabled = document.getElementById("airOutdoorEnabled");
   widget.air_outdoor_enabled = enabled ? enabled.checked : widget.air_outdoor_enabled !== false;
   airRefreshOutdoor();
@@ -85,17 +65,11 @@ function airSaveInspector(widget, type) {
 
 function bindAirInspector() {
   for (const [, field] of AIR_ROLES) bindInspectorAutoApply(el[`fAir${field}`], ["change"], { softEntityValidation: true });
-  for (const key of Object.keys(AIR_DEFAULTS)) bindInspectorAutoApply(document.getElementById(`air_${key}`), ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(document.getElementById("airOutdoorEnabled"), ["change"], { softEntityValidation: true });
-  const reset = document.getElementById("airReset");
-  if (reset) reset.onclick = () => {
-    for (const [key, value] of Object.entries(AIR_DEFAULTS)) document.getElementById(`air_${key}`).value = value;
-    autoApplyInspector({ softEntityValidation: true });
-  };
 }
 
 function airPreviewData(widget) {
-  const c = { ...AIR_DEFAULTS, ...widget.air_thresholds };
+  const c = AIR_DEFAULTS; // fixed rules; an older layout's air_thresholds are ignored
   const roles = [["entity_id", "humidity"], ...AIR_ROLES.map(([key, , , role]) => [key, role])];
   const values = {}, bands = {};
   let partial = false, overall = -1;
@@ -203,5 +177,5 @@ function airPreviewMarkup(widget, name) {
 }
 
 function airTranslateInspector() {
-  for (const node of document.querySelectorAll("#airSources [data-i18n], #airEvaluation [data-i18n]")) node.textContent = t(node.dataset.i18n);
+  for (const node of document.querySelectorAll("#airSources [data-i18n]")) node.textContent = t(node.dataset.i18n);
 }

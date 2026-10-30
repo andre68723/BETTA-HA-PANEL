@@ -150,7 +150,7 @@ Everything about one room in a single card.
 
     Groups a **room's values and controls** in one card, with a popup for its entities; any domain, filled from a Home Assistant area or by hand.
 
--   
+-   [![Air quality](../img/gallery/air_quality_glow.png)](room_air_tile.md)
 
     **[Air quality](room_air_tile.md)**
 

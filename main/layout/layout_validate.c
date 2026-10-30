@@ -721,8 +721,6 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
     if (cJSON_IsString(type) && !strcmp(type->valuestring, "room_air_tile")) {
         const cJSON *outdoor = cJSON_GetObjectItemCaseSensitive(widget, "air_outdoor_enabled");
         if (outdoor && !cJSON_IsBool(outdoor)) layout_validation_add(result, "room_air_tile: air_outdoor_enabled must be boolean");
-        air_config_t cfg;
-        if (!air_config_from_json(widget, &cfg)) layout_validation_add(result, "room_air_tile: invalid air_thresholds or insufficient hysteresis width");
         for (int role = 0; role < AIR_ROLE_COUNT; ++role) {
             const cJSON *v = cJSON_GetObjectItemCaseSensitive(widget, air_bindings[role].key);
             if (!v || (cJSON_IsString(v) && !v->valuestring[0])) continue;
