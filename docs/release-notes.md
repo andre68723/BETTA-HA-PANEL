@@ -26,7 +26,7 @@ Changes since [v0.9.1](#v091).
 
 ### Panel and editor
 
-The page icon list gains **Humidity** and **Air quality**.
+The page icon list gains **Humidity** and **Air quality**. Camera tiles visibly mark unavailable entities and hide old pictures until fresh frames return.
 
 The original JC reports lock, refresh, rotation and transfer times through `GET /api/version`,
 with a bounded list of slow operations and caller addresses. All panels expose cached chip temperature in the same API. Minute log summaries aid flicker

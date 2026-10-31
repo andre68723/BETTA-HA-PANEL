@@ -505,6 +505,7 @@ Object.assign(WEB_I18N_BUILTIN, {
     "layout.inspector.camera_live": "Livebild (MJPEG)",
     "layout.inspector.camera_live_hint": "**Livebild**\n\nStreamt, solange die Kachel sichtbar ist. Antippen vergrößert das Bild.\n\n**Kameravoraussetzung**\n\nUnterstützt werden nur MJPEG-Streams. Die Bildrate hängt von der Quelle ab.",
     "layout.inspector.bambu_camera": "Live-Kamera (optional, MJPEG)",
+    "layout.preview.camera_unavailable": "Nicht verfügbar",
     "layout.preview.camera_connecting": "Verbinde…",
     "layout.inspector.lock_confirm": "Vor dem Entriegeln oder Öffnen nachfragen",
     "layout.inspector.price_cheap_times": "Günstige Zeiten (die günstigsten Stunden hinterlegen und nennen)",

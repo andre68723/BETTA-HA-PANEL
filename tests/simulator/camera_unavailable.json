@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "ha_online": true,
+  "pages": [
+    {
+      "id": "camera_states",
+      "title": "Camera states",
+      "widgets": [
+        {
+          "id": "snapshot",
+          "type": "camera_tile",
+          "title": "snapshot",
+          "entity_id": "camera.test_snapshot",
+          "camera_live": false,
+          "show_name": true,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 160,
+            "h": 120
+          }
+        },
+        {
+          "id": "offline",
+          "type": "camera_tile",
+          "title": "offline",
+          "entity_id": "camera.test_offline",
+          "camera_live": false,
+          "show_name": true,
+          "rect": {
+            "x": 175,
+            "y": 0,
+            "w": 160,
+            "h": 120
+          }
+        },
+        {
+          "id": "unknown",
+          "type": "camera_tile",
+          "title": "unknown",
+          "entity_id": "camera.test_unknown",
+          "camera_live": false,
+          "show_name": false,
+          "rect": {
+            "x": 350,
+            "y": 0,
+            "w": 160,
+            "h": 120
+          }
+        },
+        {
+          "id": "live_offline",
+          "type": "camera_tile",
+          "title": "live offline",
+          "entity_id": "camera.test_live_offline",
+          "camera_live": true,
+          "show_name": true,
+          "rect": {
+            "x": 0,
+            "y": 150,
+            "w": 160,
+            "h": 120
+          }
+        },
+        {
+          "id": "live_unknown",
+          "type": "camera_tile",
+          "title": "live unknown",
+          "entity_id": "camera.test_live_unknown",
+          "camera_live": true,
+          "show_name": false,
+          "rect": {
+            "x": 175,
+            "y": 150,
+            "w": 160,
+            "h": 120
+          }
+        },
+        {
+          "id": "failed",
+          "type": "camera_tile",
+          "title": "failed",
+          "entity_id": "camera.test_failed",
+          "camera_live": false,
+          "show_name": true,
+          "rect": {
+            "x": 350,
+            "y": 150,
+            "w": 160,
+            "h": 120
+          }
+        }
+      ]
+    }
+  ],
+  "states": [
+    {
+      "entity_id": "camera.test_snapshot",
+      "state": "idle",
+      "attributes": {
+        "entity_picture": "file:tests/simulator/camera_preview.png"
+      }
+    },
+    {
+      "entity_id": "camera.test_offline",
+      "state": "unavailable",
+      "attributes": {
+        "entity_picture": "file:tests/simulator/camera_preview.png"
+      }
+    },
+    {
+      "entity_id": "camera.test_unknown",
+      "state": "unknown",
+      "attributes": {
+        "entity_picture": "file:tests/simulator/camera_preview.png"
+      }
+    },
+    {
+      "entity_id": "camera.test_live_offline",
+      "state": "unavailable",
+      "attributes": {
+        "entity_picture": "file:tests/simulator/camera_preview.png"
+      }
+    },
+    {
+      "entity_id": "camera.test_live_unknown",
+      "state": "unknown",
+      "attributes": {
+        "entity_picture": "file:tests/simulator/camera_preview.png"
+      }
+    },
+    {
+      "entity_id": "camera.test_failed",
+      "state": "idle",
+      "attributes": {
+        "entity_picture": "file:missing-camera-test-image.png"
+      }
+    }
+  ]
+}

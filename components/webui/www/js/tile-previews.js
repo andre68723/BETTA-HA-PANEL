@@ -839,7 +839,7 @@ function tilePreviewMarkup(widget) {
         <div class="tp-btns"><span class="${previewControlClass(false, previewControlAvailable(widget.entity_id))}">\u2212</span><span class="tp-primary ${previewControlClass(!off, previewControlAvailable(widget.entity_id))}">\u23FB</span><span class="${previewControlClass(false, previewControlAvailable(widget.entity_id))}">+</span></div></div>${handle}`;
       }
     case "camera_tile":
-      return `<div class="tp tp-camera"><div class="tp-cam-img">${widget.camera_live ? escapeHtml(t("layout.preview.camera_connecting")) : "\uD83D\uDCF7"}</div>${name('div', 'class="tp-cam-strip"')}</div>${handle}`;
+      return `<div class="tp tp-camera"><div class="tp-cam-img">${!previewControlAvailable(widget.entity_id) ? escapeHtml(t("layout.preview.camera_unavailable")) : widget.camera_live ? escapeHtml(t("layout.preview.camera_connecting")) : "\uD83D\uDCF7"}</div>${name('div', 'class="tp-cam-strip"')}</div>${handle}`;
     case "contact_tile": {
       const open = previewEntityState(widget.entity_id) !== "off";
       return `<div class="tp tp-contact"><div class="tp-door${open ? "" : " closed"}"><i></i></div><div class="tp-blind-text">${name('b', '')}<small class="${open ? "tp-amber" : "tp-green"}">${pvText(open ? "contact_open" : "contact_closed")}</small></div></div>${handle}`;

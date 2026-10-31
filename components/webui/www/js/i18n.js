@@ -505,6 +505,7 @@ const WEB_I18N_BUILTIN = {
     "layout.inspector.camera_live": "Live picture (MJPEG)",
     "layout.inspector.camera_live_hint": "**Live view**\n\nStreams while the tile is visible. Tap to enlarge.\n\n**Camera requirement**\n\nOnly MJPEG streams are supported. The image rate depends on the source.",
     "layout.inspector.bambu_camera": "Live camera (optional, MJPEG)",
+    "layout.preview.camera_unavailable": "Unavailable",
     "layout.preview.camera_connecting": "Connecting…",
     "layout.inspector.lock_confirm": "Ask before unlocking or opening",
     "layout.inspector.price_cheap_times": "Cheap times (shade and name the cheapest hours)",

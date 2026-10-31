@@ -83,3 +83,21 @@ test("wallbox headers follow the panel's height threshold and never invent missi
   assert.equal((live.match(/evcc-arm below/g) || []).length, 4);
   assert.match(live, /<svg[^>]*color:#43bf79/);
 });
+
+
+test("camera preview distinguishes unavailable, unknown and restored entities in both modes", () => {
+  const { fn, run } = loadEditor();
+  for (const [language, text] of [["en", "Unavailable"], ["de", "Nicht verfügbar"]]) {
+    run(`editor.i18nMap = WEB_I18N_BUILTIN.${language}`);
+    for (const live of [false, true]) {
+      const widget = { type: "camera_tile", id: "cam", entity_id: "camera.test", camera_live: live,
+        show_name: false, rect: { w: 160, h: 120 } };
+      for (const state of ["unavailable", "unknown"]) {
+        run(`editor.states.set("camera.test", "${state}")`);
+        assert.ok(fn("tilePreviewMarkup")(widget).includes(text));
+      }
+      run('editor.states.set("camera.test", "idle")');
+      assert.ok(!fn("tilePreviewMarkup")(widget).includes(text));
+    }
+  }
+});
