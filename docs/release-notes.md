@@ -107,8 +107,8 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
       silicon, not v3.x. See [hardware](choose-display.md).
     - The Alarm tile was tried against a template alarm with and without a numeric
       code (2026-10-15); a wrong code and text codes have not been tried.
-    - Factory reset, the doorbell with unlock and car pre-conditioning were tried on a
-      device (2026-10-31). Fan controls still need a device trial.
+    - Factory reset, the doorbell with unlock, car pre-conditioning and fan controls were
+      tried on a device (2026-10-31).
 
 ### Upgrading from upstream v0.8.2
 
