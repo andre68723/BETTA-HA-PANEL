@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "app_config.h"
+#include "util/chip_temperature.h"
 #include "ui/display_geometry.h"
 #include "ui/text_font.h"
 #include "ui/text_scale.h"
@@ -496,6 +497,16 @@ esp_err_t api_version_get_handler(httpd_req_t *req)
     cJSON_AddNumberToObject(touch_obj, "ui_lost", (double)touch->ui_lost);
 
     cJSON_AddNumberToObject(root, "uptime_s", (double)(esp_timer_get_time() / 1000000));
+    const chip_temperature_snapshot_t temperature = chip_temperature_snapshot();
+    cJSON *chip_temp = cJSON_AddObjectToObject(root, "chip_temperature");
+    if (chip_temp) {
+        cJSON_AddBoolToObject(chip_temp, "available", temperature.available);
+        if (temperature.available) cJSON_AddNumberToObject(chip_temp, "celsius", temperature.celsius);
+        else cJSON_AddNullToObject(chip_temp, "celsius");
+        cJSON_AddNumberToObject(chip_temp, "sample_age_ms", temperature.sampled_us ?
+            (double)(esp_timer_get_time() - temperature.sampled_us) / 1000 : -1);
+        cJSON_AddStringToObject(chip_temp, "error", esp_err_to_name(temperature.error));
+    }
     sample_cpu_load();
     if (s_cpu_load[0] >= 0) {
         cJSON *cpu = cJSON_AddObjectToObject(root, "cpu");

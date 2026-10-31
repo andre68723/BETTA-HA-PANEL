@@ -17,6 +17,7 @@
 
 #include "api/http_server.h"
 #include "app_config.h"
+#include "util/chip_temperature.h"
 #include "app_events.h"
 #include "drivers/display_init.h"
 #include "drivers/touch_init.h"
@@ -273,6 +274,8 @@ void app_main(void)
     esp_err_t layout_init_err = layout_store_init();
     if (layout_init_err != ESP_OK) ESP_LOGW(TAG_APP, "Layout initialization deferred: %s", esp_err_to_name(layout_init_err));
     ESP_ERROR_CHECK(theme_store_init());
+    esp_err_t chip_temp_err = chip_temperature_init();
+    if (chip_temp_err != ESP_OK) ESP_LOGW(TAG_APP, "Chip temperature unavailable: %s", esp_err_to_name(chip_temp_err));
     ESP_ERROR_CHECK(http_server_start());
     if (wifi_ready) {
         esp_err_t update_err =

@@ -29,7 +29,7 @@ Changes since [v0.9.1](#v091).
 The page icon list gains **Humidity** and **Air quality**.
 
 The original JC reports lock, refresh, rotation and transfer times through `GET /api/version`,
-with a bounded list of slow operations and caller addresses. Minute log summaries aid flicker
+with a bounded list of slow operations and caller addresses. All panels expose cached chip temperature in the same API. Minute log summaries aid flicker
 diagnosis; these measurements do not establish or repair its cause. Periodic state recovery
 now skips applied changes and releases the display lock between entries.
 

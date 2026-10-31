@@ -72,6 +72,17 @@ and unchanged layouts/settings. The owner confirmed physical image orientation
 and page navigation by touch on all three. Tab5 was mounted at 270 degrees;
 this check does not qualify physical touch mapping in every automatic orientation.
 
+## Chip temperature diagnostics
+
+All P4 variants expose `chip_temperature` through `GET /api/version`: `available`,
+`celsius`, `sample_age_ms` and `error`. This is internal chip temperature, not room
+or case temperature. The IDF sensor uses its 20–100 °C range (nominal error up to 2 °C).
+`util/chip_temperature.c` samples once at startup and every ten seconds on the existing
+ESP timer task. HTTP reads only the cached snapshot. Read failures set `available=false`
+and `celsius=null`; age refers to the last successful sample, or -1 if none exists.
+Initialization failure logs once and never prevents boot. No UI field, HA entity,
+new task, temperature alarm or persistent history is added.
+
 ## Original JC display timing
 
 The original `paneljc` build includes `display_timing` in `/api/version`. It measures BETTA's lock

@@ -341,6 +341,7 @@ idf_component_register(
         "util/cover_guard.c"
         "settings/settings_validate.c"
         "util/json_util.c"
+        "util/chip_temperature.c"
         "util/ringbuf.c"
         "util/boot_guard.c"
         "util/boot_guard_esp.c"
@@ -421,6 +422,7 @@ idf_component_register(
         littlefs
         webui
         esp_driver_i2s
+        esp_driver_tsens
         esp_driver_jpeg
         espcoredump
 )
