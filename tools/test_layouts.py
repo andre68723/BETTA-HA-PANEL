@@ -286,6 +286,7 @@ def generate(board, entities):
     _, _, max_pages = BOARDS[board]
     layouts = {}
     _TAG_COUNTS.clear()
+    POPUPS.clear()  # ids repeat on every board with another pagination
     for suite_id, suite in all_suites().items():
         pages = [build_page(suite_id, suite["title"], n + 1, placed, entities)
                  for n, placed in enumerate(place(by_height(suite["cases"]), board))]
