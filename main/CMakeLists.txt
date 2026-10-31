@@ -427,6 +427,14 @@ idf_component_register(
 
 # ESP-Hosted (P4 + C6 coprocessor) is used by every variant.
 idf_component_optional_requires(PRIVATE esp_wifi_remote esp_hosted)
+if(CONFIG_APP_PANEL_VARIANT_10INCH_JC AND NOT CONFIG_APP_PANELJC_PANEL_V2)
+    target_sources(${COMPONENT_LIB} PRIVATE "drivers/display_timing_dpi.c")
+    target_sources(${COMPONENT_LIB} PRIVATE "drivers/display_timing.c")
+    # Keep the wrapper even when its only callers are in the later adapter archive.
+    target_link_options(${COMPONENT_LIB} INTERFACE
+        "-Wl,--wrap=esp_lcd_dpi_panel_register_event_callbacks"
+        "-Wl,-u,__wrap_esp_lcd_dpi_panel_register_event_callbacks")
+endif()
 if(CONFIG_APP_FEATURE_AMBIENT_CAMERA)
     idf_component_optional_requires(PRIVATE espressif__esp_video)
 endif()

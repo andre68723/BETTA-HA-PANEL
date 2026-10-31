@@ -27,6 +27,7 @@
 #include "drivers/ambient_camera.h"
 #include "drivers/display_init.h"
 #include "drivers/display_backlight.h"
+#include "drivers/display_timing.h"
 #include "drivers/touch_track.h"
 #include "net/wifi_diag_store.h"
 #include "net/c6_memory.h"
@@ -323,6 +324,10 @@ esp_err_t api_version_get_handler(httpd_req_t *req)
             cJSON_AddNumberToObject(memory, "free_psram", (double)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
         }
     }
+
+#if CONFIG_APP_PANEL_VARIANT_10INCH_JC && !CONFIG_APP_PANELJC_PANEL_V2
+    display_timing_json(root);
+#endif
 
     char query[24] = {0};
     if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {

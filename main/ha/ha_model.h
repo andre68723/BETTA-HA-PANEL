@@ -44,6 +44,20 @@ esp_err_t ha_model_set_entity_name(const char *entity_id, const char *name);
 /* Copies the shared display name when available; leaves out unchanged otherwise. */
 bool ha_model_get_entity_name(const char *entity_id, char *out, size_t out_len);
 bool ha_model_get_state(const char *entity_id, ha_state_t *out_state);
+typedef struct {
+    size_t slot; /* Stable until reset; revision remains monotonic across resets. */
+    uint32_t revision;
+} ha_state_version_t;
+typedef struct {
+    char entity_id[APP_MAX_ENTITY_ID_LEN];
+    ha_state_version_t version;
+} ha_model_change_t;
+bool ha_model_get_state_versioned(const char *entity_id, ha_state_t *out_state, ha_state_version_t *version);
+/* Latest cached changes after a cursor, ordered by revision (modulo uint32).
+ * A partial batch advances only through its last entry. Copy outside the display lock;
+ * advance the consumer's cursor only after processing the entire batch. */
+esp_err_t ha_model_changes(uint32_t after, ha_model_change_t *out, size_t capacity,
+                           size_t *count, uint32_t *next);
 uint32_t ha_model_state_revision(void);
 size_t ha_model_list_entities(
     const char *domain_filter, const char *search, ha_entity_info_t *out_entities, size_t max_out);

@@ -72,6 +72,40 @@ and unchanged layouts/settings. The owner confirmed physical image orientation
 and page navigation by touch on all three. Tab5 was mounted at 270 degrees;
 this check does not qualify physical touch mapping in every automatic orientation.
 
+## Original JC display timing
+
+The original `paneljc` build includes `display_timing` in `/api/version`. It measures BETTA's lock
+waits and outermost recursive holds, LVGL refresh cycles, rotation, the bitmap callback,
+transfer submission and actual DMA completion separately. Each metric reports count,
+total/max milliseconds, slow count (100 ms or longer), errors and the maximum's caller PC.
+The last 16 slow operations or lock failures retain uptime, duration, caller/owner PCs,
+known application-owner task and whether a refresh was active. Decode PCs against that
+running image's archived ELF. Aggregates overlap and must not be added as CPU time.
+
+Application-owner tracking covers `display_lock()` calls, not the adapter's private mutex
+operations; `untracked` is not proof that the mutex was free. Refresh duration includes
+waiting for partial transfers, not just CPU drawing. The normal lock deadlines and
+rendering remain unchanged. Minute warnings summarize new timeouts/slow records;
+there is no per-frame log, WebUI row or persistent history. ISR completion accounting uses
+fixed internal RAM and IRAM code; JSON snapshots use a short copy and PSRAM allocation.
+`display_timing_dpi.c` wraps only the DMA-completion callback, preserving all other callbacks,
+user context and callback return values. No frame sampler or DSI register overrides are installed.
+
+## Incremental model recovery
+
+HA states carry a cache revision in a separate PSRAM table. `ha_model_changes()` returns
+small ordered batches of the latest changed entities. Normal entity events still apply
+immediately; the UI remembers applied slot revisions and skips them during recovery.
+It processes at most one unapplied entity per UI turn, releasing the display lock between
+entries. A failed lock retains both the entry and its cursor. Updates arriving during a
+batch remain eligible for the next batch. Rename revisions and cache reset are covered.
+The cursor uses serial uint32 ordering (consumer lag below 2^31 revisions).
+
+This replaces the periodic full-layout replay, which held the JC's display lock for about
+two seconds. Initial layout priming, HA reconnect and the exceptional failed-event fallback
+keep their existing complete refresh paths. Single entity/widget application can still be
+slow; timing diagnostics distinguish that from the removed periodic sweep.
+
 ## Vendored PPA driver (temporary)
 
 `components/esp_driver_ppa` is ESP-IDF 6.1's driver with upstream commit `469aa16` (esp-idf#19096, #19023): the

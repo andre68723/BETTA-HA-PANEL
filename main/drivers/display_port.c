@@ -3,6 +3,12 @@
  */
 #include "drivers/display_port.h"
 #include "drivers/display_rotation.h"
+#include "drivers/display_timing.h"
+
+#if CONFIG_APP_PANEL_VARIANT_10INCH_JC && !CONFIG_APP_PANELJC_PANEL_V2
+#define DISPLAY_TIMING_ENABLED 1
+#include "esp_timer.h"
+#endif
 
 #include <stdlib.h>
 #include "app_config.h"
@@ -87,7 +93,7 @@ static esp_err_t rotate_ppa(display_port_context_t *ctx, const void *pixels,
 }
 #endif
 
-static esp_err_t draw_bitmap(lv_display_t *disp, esp_lcd_panel_handle_t panel,
+static esp_err_t draw_bitmap_impl(lv_display_t *disp, esp_lcd_panel_handle_t panel,
                              int x1, int y1, int x2, int y2,
                              const void *pixels, void *user_ctx)
 {
@@ -103,8 +109,14 @@ static esp_err_t draw_bitmap(lv_display_t *disp, esp_lcd_panel_handle_t panel,
     uint8_t *output = (uint8_t *)pixels;
     if (rotation) {
         if (!ctx->scratch || count > ctx->capacity / sizeof(uint16_t)) return ESP_ERR_INVALID_SIZE;
+#if DISPLAY_TIMING_ENABLED
+        const int64_t rotation_start = esp_timer_get_time();
+#endif
 #if CONFIG_APP_DISPLAY_PPA
         esp_err_t err = rotate_ppa(ctx, pixels, logical, physical, rotation);
+#if DISPLAY_TIMING_ENABLED
+        display_timing_measure(DISPLAY_TIME_ROTATION, rotation_start, err != ESP_OK);
+#endif
         if (err != ESP_OK) return err;
 #else
         /* The adapter callback receives tightly packed RGB565 after its stride
@@ -113,13 +125,38 @@ static esp_err_t draw_bitmap(lv_display_t *disp, esp_lcd_panel_handle_t panel,
                           (physical.x2 - physical.x1) * 2,
                           (lv_display_rotation_t)rotation, LV_COLOR_FORMAT_RGB565);
         if (ctx->swap_bytes) lv_draw_sw_rgb565_swap(ctx->scratch, count);
+#if DISPLAY_TIMING_ENABLED
+        display_timing_measure(DISPLAY_TIME_ROTATION, rotation_start, false);
+#endif
 #endif
         output = ctx->scratch;
     } else if (ctx->swap_bytes) {
         lv_draw_sw_rgb565_swap(output, count);
     }
-    return esp_lcd_panel_draw_bitmap(panel, physical.x1, physical.y1,
-                                     physical.x2, physical.y2, output);
+#if DISPLAY_TIMING_ENABLED
+    const int64_t submit_start = esp_timer_get_time();
+    display_timing_transfer_begin();
+#endif
+    esp_err_t result = esp_lcd_panel_draw_bitmap(panel, physical.x1, physical.y1,
+                                                physical.x2, physical.y2, output);
+#if DISPLAY_TIMING_ENABLED
+    if (result != ESP_OK) display_timing_transfer_failed();
+    display_timing_measure(DISPLAY_TIME_SUBMIT, submit_start, result != ESP_OK);
+#endif
+    return result;
+}
+
+static esp_err_t draw_bitmap(lv_display_t *disp, esp_lcd_panel_handle_t panel,
+                             int x1, int y1, int x2, int y2, const void *pixels, void *user)
+{
+#if DISPLAY_TIMING_ENABLED
+    const int64_t start = esp_timer_get_time();
+#endif
+    esp_err_t result = draw_bitmap_impl(disp, panel, x1, y1, x2, y2, pixels, user);
+#if DISPLAY_TIMING_ENABLED
+    display_timing_measure(DISPLAY_TIME_FLUSH, start, result != ESP_OK);
+#endif
+    return result;
 }
 
 static void context_destroy(display_port_context_t *ctx)
@@ -218,6 +255,9 @@ lv_display_t *display_port_add_dsi(esp_lcd_panel_handle_t panel,
         if (disp) {
             const esp_lv_adapter_draw_bitmap_callbacks_t callbacks = {.custom_draw_bitmap = draw_bitmap};
             if (esp_lv_adapter_set_draw_bitmap_callbacks(disp, &callbacks, ctx) == ESP_OK) {
+#if DISPLAY_TIMING_ENABLED
+                display_timing_attach(disp);
+#endif
                 ESP_LOGI(TAG_DISPLAY, "esp_lvgl_adapter DSI: partial RGB565, PSRAM double buffers, %zu pixels, rotation=%s",
                          pixels, rotate ?
 #if CONFIG_APP_DISPLAY_PPA

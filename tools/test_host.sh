@@ -55,6 +55,9 @@ cc -std=gnu11 -Wall -Wextra -Werror -g -I main "${cjson_flags[@]}" \
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/simulator/stubs "${variant_flags[@]}" \
   tests/host/test_entity_names.c main/ha/ha_model.c -o "$out/test_entity_names"
 "$out/test_entity_names"
+cc -std=gnu11 -Wall -Wextra -Werror -g -I main -I tests/simulator/stubs "${variant_flags[@]}" \
+  tests/host/test_model_changes.c -o "$out/test_model_changes"
+"$out/test_model_changes"
 
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main \
   tests/host/test_display_preview.c main/drivers/display_policy.c main/settings/brightness_model.c \
@@ -64,6 +67,9 @@ cc -std=gnu11 -Wall -Wextra -Werror -g -I main \
   tests/host/test_display_rotation.c main/drivers/display_rotation.c \
   -o "$out/test_display_rotation"
 "$out/test_display_rotation"
+cc -std=gnu11 -Wall -Wextra -Werror -g -I main \
+  tests/host/test_display_timing.c -o "$out/test_display_timing"
+"$out/test_display_timing"
 TZ=Europe/Berlin "$out/test_host"
 
 # C6 diagnostic snapshots: lifecycle/retry policy and versioned incident records, no radio.
