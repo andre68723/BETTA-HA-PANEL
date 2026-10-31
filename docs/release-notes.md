@@ -21,8 +21,8 @@ Changes since [v0.9.1](#v091).
 - **Car** keeps the range, charge and charging power inside the rings; a small card has slimmer bands.
 - **Media player** shows the name above the text column, not on the artwork, in the wide layout.
 - **Printer** shares the button row by caption length, so Abort is not cut. **Energy timeline** keeps its time labels whole on the Tab5.
-- **Sensor** lists drop the heading when it would hide the first row. Temperatures read 21.8°C on the Sensor and Air quality tiles.
-- **Cover** shows its progress in the accent colour in Matte.
+- **Sensor** lists drop the heading when it would hide the first row. Temperatures read 21.8°C on the Sensor and Air quality tiles. **Cover** shows its progress in the accent colour in Matte.
+- **Air quality**: a tap on a value opens its history graph; the details list every reading as a row that opens its graph, without source IDs.
 
 ### Panel and editor
 

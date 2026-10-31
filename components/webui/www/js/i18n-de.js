@@ -9,7 +9,6 @@
  */
 Object.assign(WEB_I18N_BUILTIN, {
   de: {
-    "air.unbound": "Nicht zugewiesen",
     "air.title": "Luftqualität",
     "air.humidity": "Luftfeuchte",
     "air.temperature": "Temperatur",
@@ -25,7 +24,6 @@ Object.assign(WEB_I18N_BUILTIN, {
     "air.poor": "Schlecht",
     "air.not_evaluated": "Nicht bewertet",
     "air.partial": "Teildaten",
-    "air.measured_scope": "Nur zugewiesene Messgrößen bewertet",
     "air.dry": "Luftfeuchte niedrig",
     "air.humid": "Luftfeuchte hoch · Lüften prüfen",
     "air.fresh_air": "Luftaustausch · CO₂ erhöht",
@@ -41,7 +39,6 @@ Object.assign(WEB_I18N_BUILTIN, {
     "air.no_advice": "Zu wenige bewertete Daten für einen Hinweis",
     "air.absolute": "Absolute Feuchte: innen / außen",
     "air.weather_reference": "Wetterdienst als Referenz; keine lokale Außenmessung. Messalter unbekannt.",
-    "air.age_limit": "HA-Verfügbarkeit belegt kein Messalter. Nicht zugewiesene Schadstoffe werden nicht bewertet. Ein offenes Fenster belegt keinen ausreichenden Luftaustausch.",
     "air.open": "Offen",
     "air.closed": "Geschlossen",
     "air.enum_extremely_poor": "Äußerst schlecht",
@@ -56,7 +53,7 @@ Object.assign(WEB_I18N_BUILTIN, {
     "air.sources_hint": "**Luftfeuchte (erforderlich)**\n\nDie Hauptmessgröße des Raums. Wähle einen Sensor mit Geräteklasse Luftfeuchtigkeit und Einheit %. Die Kachel zeigt sie zwischen den Messwerten und bewertet sie einzeln.\n\n**Temperatur, CO₂, PM2.5 (optional)**\n\nJeder zugewiesene Sensor ergänzt einen Messwert auf der Kachel und wird, wo es Bereiche gibt, einzeln bewertet. Die Sensoren müssen passende Geräteklasse und Einheit melden (°C oder °F, ppm, µg/m³); alles andere wird ignoriert und als Teildaten markiert.\n\n**VOC (optional)**\n\nNur als Wert angezeigt. VOC wird nicht bewertet und ändert weder Statusfarbe noch Hinweis.\n\n**Außenvergleich (optional)**\n\nWähle Außentemperatur und Außenfeuchte als Paar, jeweils aus einem Sensor oder einer Wetter-Entität. Die Kachel nutzt sie nur, um einzuschätzen, ob Lüften den Raum trocknen würde (absolute Feuchte, innen minus außen). Wetter-Entitäten sind eine Referenz des Anbieters, keine lokale Messung. Beim Ausschalten bleiben beide Zuweisungen erhalten.\n\n**Fensterkontakt (optional)**\n\nEin Binärsensor eines Fensters, einer Tür oder Öffnung, der in den Details Offen oder Geschlossen anzeigt. Er dient nur der Information: Ein offenes Fenster belegt keinen ausreichenden Luftaustausch, und es wird nichts automatisch geöffnet, geschlossen oder gezählt.\n\n**Gerätebewertung (optional)**\n\nDie eigene Bewertung des Geräts, zum Beispiel der Awair-Score oder die IKEA-Luftqualität. Sie erscheint als beschriftete Zeile und ändert nie Statusfarbe, Hinweis oder Abdeckung.",
     "air.invalid_binding": "Ungültige Entität für {role}.",
     "layout.widgets.add_room_air": "+ Luftqualität",
-    "inspector.help.widget_air_quality_tile": "Zeigt die **Raumluftqualität** als einen BETTA-Status aus der Feuchte, mit optionaler Temperatur, CO₂ und PM2.5 aus sensor.*-Entitäten; Antippen öffnet schreibgeschützte Details.",
+    "inspector.help.widget_air_quality_tile": "Zeigt die **Raumluftqualität** als einen BETTA-Status aus der Feuchte, mit optionaler Temperatur, CO₂ und PM2.5 aus sensor.*-Entitäten; ein Tipp auf einen Wert öffnet seinen Verlauf, ein Tipp daneben die Details.",
     "layout.inspector.air_temperature": "Temperatur",
     "layout.inspector.air_co2": "CO₂",
     "layout.inspector.air_pm25": "PM2.5",

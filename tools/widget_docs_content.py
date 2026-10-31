@@ -11,7 +11,7 @@ panel         what the tile shows and how it reacts to touch, as list items
 
 WIDGETS = {
     "air_quality_tile": {'summary': 'Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and '
-                'PM2.5 from `sensor.*` entities; a tap opens read-only details.',
+                'PM2.5 from `sensor.*` entities; a tap on a value opens its history graph, a tap elsewhere the details.',
      'entities': [('Humidity', '`sensor.*`', True),
                   ('Temperature, CO₂, PM2.5, VOC and device rating', '`sensor.*`', False),
                   ('Outdoor temperature and humidity', '`sensor.*`, `weather.*`', False),
@@ -34,15 +34,15 @@ WIDGETS = {
      'panel': ['A neutral card like the Room widget: the name on top, the readings (up to three, four on wide '
                'tiles) as value over label in the middle, and chips at the bottom: the BETTA status '
                '(Good, Fair, Poor) and, only when there is something to do, the short advice. Colour appears only in the chips and in the readings '
-               'that are rated amber or red. Tap for every bound value.',
+               'that are rated amber or red. A tap on a value opens its history graph; a tap on the status, the advice or a gap opens the details.',
                               'The worst usable indoor band controls green/amber/red. A configured humidity, CO₂ or '
                'PM2.5 reading that is missing or unsupported adds a partial-data marker; if the '
                'remaining bands are green, the status is neutral.',
                'Temperature is context. VOC is displayed but not evaluated; Awair scores and IKEA '
                'ratings never drive BETTA colour or advice.',
-               'The popup shows per-reading status, source IDs, simultaneous reasons, outdoor absolute '
-               'humidity and moisture conflicts. Window state does not prove effective ventilation.',
-               'HA availability is not sample age. Unbound pollutants are outside the evaluation. No '
+               'The details show the status and every advice first, then each bound reading with its level; a tap on a row opens its history graph. '
+               'Outdoor absolute humidity and moisture conflicts appear below. Window state does not prove effective ventilation.',
+               'Unbound pollutants are outside the evaluation. No '
                'outdoor PM input, automatic actions or countdown.',
                'Display bands: humidity green 40–60 %, amber 30–<40 or >60–70 %, red below 30 '
                'or above 70 %; CO₂ green below 1000 ppm, amber 1000–<2000, red from 2000 ppm; PM2.5 '

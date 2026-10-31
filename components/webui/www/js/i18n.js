@@ -9,7 +9,6 @@
  */
 const WEB_I18N_BUILTIN = {
   en: {
-    "air.unbound": "Not configured",
     "air.title": "Air quality",
     "air.humidity": "Humidity",
     "air.temperature": "Temperature",
@@ -25,7 +24,6 @@ const WEB_I18N_BUILTIN = {
     "air.poor": "Poor",
     "air.not_evaluated": "Not evaluated",
     "air.partial": "Partial data",
-    "air.measured_scope": "Only bound measurements evaluated",
     "air.dry": "Humidity low",
     "air.humid": "Humidity high · check airing",
     "air.fresh_air": "Air exchange · CO₂ elevated",
@@ -41,7 +39,6 @@ const WEB_I18N_BUILTIN = {
     "air.no_advice": "Insufficient evaluated data for advice",
     "air.absolute": "Absolute humidity: indoor / outdoor",
     "air.weather_reference": "Weather provider reference; not a local outdoor measurement. Sample age unknown.",
-    "air.age_limit": "HA availability is not sample freshness. Unbound pollutants are not evaluated. An open window does not prove sufficient air exchange.",
     "air.open": "Open",
     "air.closed": "Closed",
     "air.enum_extremely_poor": "Extremely poor",
@@ -56,7 +53,7 @@ const WEB_I18N_BUILTIN = {
     "air.sources_hint": "**Humidity (required)**\n\nThe room's main reading. Choose a sensor with device class humidity and unit %. The tile shows it among the readings and rates it on its own.\n\n**Temperature, CO₂, PM2.5 (optional)**\n\nEach assigned sensor adds a reading to the tile and is rated on its own where bands exist. Sensors must report the matching device class and unit (°C or °F, ppm, µg/m³); anything else is ignored and marked as partial data.\n\n**VOC (optional)**\n\nShown as a value only. VOC is not rated and never changes the status colour or the advice.\n\n**Outdoor comparison (optional)**\n\nChoose outdoor temperature and humidity as a pair, each from a sensor or a weather entity. The tile uses them only to judge whether airing would dry the room (absolute humidity, indoor minus outdoor). Weather entities are a provider reference, not a local measurement. Switching the comparison off keeps both assignments.\n\n**Window contact (optional)**\n\nA binary sensor of a window, door or opening that shows Open or Closed in the details. It is for information only: an open window does not prove enough air exchange, and nothing is opened, closed or timed automatically.\n\n**Device rating (optional)**\n\nThe device's own rating, for example an Awair score or the IKEA air quality. It is shown as a labelled line and never changes the status colour, the advice or the coverage.",
     "air.invalid_binding": "Invalid entity for {role}.",
     "layout.widgets.add_room_air": "+ Air quality",
-    "inspector.help.widget_air_quality_tile": "Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and PM2.5 from sensor.* entities; a tap opens read-only details.",
+    "inspector.help.widget_air_quality_tile": "Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and PM2.5 from sensor.* entities; a tap on a value opens its history graph, a tap elsewhere the details.",
     "layout.inspector.air_temperature": "Temperature",
     "layout.inspector.air_co2": "CO₂",
     "layout.inspector.air_pm25": "PM2.5",

@@ -2,7 +2,7 @@
 
 # Air quality
 
-Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and PM2.5 from `sensor.*` entities; a tap opens read-only details.
+Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and PM2.5 from `sensor.*` entities; a tap on a value opens its history graph, a tap elsewhere the details.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/air_quality_glow.png"><img src="../img/gallery/air_quality_glow.png" alt="Air quality, Glow style" loading="lazy" width="360" height="260" style="width: 288px"></a></figure>
@@ -37,11 +37,11 @@ Bind each role explicitly using the reported device class and unit; the tile sho
 
 ## On the panel
 
-- A neutral card like the Room widget: the name on top, the readings (up to three, four on wide tiles) as value over label in the middle, and chips at the bottom: the BETTA status (Good, Fair, Poor) and, only when there is something to do, the short advice. Colour appears only in the chips and in the readings that are rated amber or red. Tap for every bound value.
+- A neutral card like the Room widget: the name on top, the readings (up to three, four on wide tiles) as value over label in the middle, and chips at the bottom: the BETTA status (Good, Fair, Poor) and, only when there is something to do, the short advice. Colour appears only in the chips and in the readings that are rated amber or red. A tap on a value opens its history graph; a tap on the status, the advice or a gap opens the details.
 - The worst usable indoor band controls green/amber/red. A configured humidity, CO₂ or PM2.5 reading that is missing or unsupported adds a partial-data marker; if the remaining bands are green, the status is neutral.
 - Temperature is context. VOC is displayed but not evaluated; Awair scores and IKEA ratings never drive BETTA colour or advice.
-- The popup shows per-reading status, source IDs, simultaneous reasons, outdoor absolute humidity and moisture conflicts. Window state does not prove effective ventilation.
-- HA availability is not sample age. Unbound pollutants are outside the evaluation. No outdoor PM input, automatic actions or countdown.
+- The details show the status and every advice first, then each bound reading with its level; a tap on a row opens its history graph. Outdoor absolute humidity and moisture conflicts appear below. Window state does not prove effective ventilation.
+- Unbound pollutants are outside the evaluation. No outdoor PM input, automatic actions or countdown.
 - Display bands: humidity green 40–60 %, amber 30–<40 or >60–70 %, red below 30 or above 70 %; CO₂ green below 1000 ppm, amber 1000–<2000, red from 2000 ppm; PM2.5 green below 15 µg/m³, amber 15–<35, red from 35 µg/m³.
 - CO₂ follows the [UBA traffic-light reference](https://www.umweltbundesamt.de/richtig-lueften-in-schulen) with explicit BETTA boundaries. Humidity and PM bands are configurable product display choices, not health limits. The [WHO PM2.5 reference](https://cdn.who.int/media/docs/default-source/who-compendium-on-health-and-environment/who_compendium_chapter2.pdf) of 15 µg/m³ is a 24-hour average; this widget does not calculate that average.
 - Band exits use 2 percentage points RH, 50 ppm CO₂ and 3 µg/m³ PM2.5 of hysteresis. New warnings appear immediately; improving advice settles for 60 seconds. Outdoor drying starts at an indoor-minus-outdoor difference of 1 g/m³; this is a configurable benefit margin, not an airflow prediction.
