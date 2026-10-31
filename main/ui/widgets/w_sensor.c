@@ -35,6 +35,7 @@
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
+    char name[APP_MAX_NAME_LEN]; /* the full name for the history popup; the tile label may end in dots */
     lv_obj_t *card;
     lv_obj_t *font_root;
     bool list_row;
@@ -469,7 +470,7 @@ static void w_sensor_event_cb(lv_event_t *event)
     } else if (code == LV_EVENT_SIZE_CHANGED) {
         sensor_apply_layout(ctx);
     } else if (code == LV_EVENT_CLICKED && ctx->history_popup) {
-        ui_history_popup_open(ctx->entity_id, lv_label_get_text(ctx->title_label), ctx->value_text, ctx->numeric, "");
+        ui_history_popup_open(ctx->entity_id, ctx->name, ctx->value_text, ctx->numeric, "");
     }
 }
 
@@ -515,6 +516,7 @@ static esp_err_t sensor_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;
     }
+    snprintf(ctx->name, sizeof(ctx->name), "%s", def->title[0] ? def->title : def->id);
 
     ctx->card = card;
     ctx->font_root = font_root != NULL ? font_root : card;
@@ -583,7 +585,10 @@ void w_sensor_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
     if (strcmp(ctx->entity_id, state->entity_id) != 0) return;
     if (ctx->list_row) {
         char name[APP_MAX_NAME_LEN];
-        if (ha_model_get_entity_name(state->entity_id, name, sizeof(name))) lv_label_set_text(ctx->title_label, name);
+        if (ha_model_get_entity_name(state->entity_id, name, sizeof(name))) {
+            snprintf(ctx->name, sizeof(ctx->name), "%s", name);
+            lv_label_set_text(ctx->title_label, name);
+        }
     }
     if (sensor_state_is_unavailable(state->state)) {
         sensor_apply_unavailable(ctx);
