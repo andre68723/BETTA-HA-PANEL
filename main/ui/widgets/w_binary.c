@@ -41,7 +41,7 @@ typedef enum {
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
-    char name[APP_MAX_NAME_LEN]; /* the full name for the history popup; the tile label may end in dots */
+    char name[APP_MAX_ENTITY_ID_LEN]; /* the full name (or entity id) for the history popup; the tile label may end in dots */
     lv_obj_t *card;
     lv_obj_t *ring;
     lv_obj_t *dot;
