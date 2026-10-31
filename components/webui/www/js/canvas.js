@@ -172,7 +172,7 @@ function renderPages() {
     const label = document.createElement("span");
     const badge = pageIconEmoji(page);
     label.textContent = `${badge ? badge + " " : ""}${page.title || page.id}`;
-    label.title = `[${page.id}] ${isEnergyPage(page) ? "energy" : (isHousePage(page) ? "house" : "page")}`;
+    label.title = `[${page.id}] ${t(isEnergyPage(page) ? "layout.pages.kind_energy" : (isHousePage(page) ? "layout.pages.kind_house" : "layout.pages.kind_page"))}`;
     label.className = "list-item-label";
     li.appendChild(label);
     li.onclick = () => {

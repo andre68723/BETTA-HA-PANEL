@@ -88,7 +88,7 @@ Once the server starts, press Enter in the terminal to open the default browser,
 (`http://127.0.0.1:8766/` by default). No `ui` parameter is needed; `/` uses the view chosen at startup.
 Sources are served directly from `components/webui/www/`; refresh after edits.
 Only Python's standard library is needed. The default wide-board demo contains every widget type, optional
-bindings and house/energy pages on ten pages. A Stocks & ETFs page compares List, Charts and Tiles
+bindings and house/energy pages on ten pages. A Stocks & ETFs page compares List, Charts and cards
 with the same sensors; the local search offers ten synthetic quotes, including unbound choices. Save writes `.local/editor-local/paneljc-all-widgets-state.json`; Export downloads
 JSON. The local toolbar identifies the test environment. Ctrl+C stops the server.
 
