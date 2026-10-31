@@ -306,6 +306,22 @@ static void render(room_air_t *ctx)
         if (ctx->input[priority[i]].bound) { pick[priority[i]] = true; ++cols; }
     const int zone_top = top, zone_h = (show_advice ? chip_y - 6 : h) - zone_top;
     const int block_h = value_h + meta_h + 2;
+    /* A reading is quantity and unit together: with too little width drop the lowest priority column rather than cut a value. */
+    while (cols > 1) {
+        bool fits = true;
+        for (unsigned i = 0; i < sizeof(priority) / sizeof(priority[0]); ++i) {
+            if (!pick[priority[i]]) continue;
+            value_text(ctx, priority[i], value, sizeof(value));
+            const lv_coord_t room = w / cols - 4;
+            const lv_font_t *font = ui_text_fit(value, ui_font_role(UI_TEXT_VALUE), room, value_h);
+            lv_point_t size;
+            lv_text_get_size(&size, value, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+            if (size.x > room) { fits = false; break; }
+        }
+        if (fits) break;
+        for (int i = (int)(sizeof(priority) / sizeof(priority[0])) - 1; i >= 0; --i)
+            if (pick[priority[i]]) { pick[priority[i]] = false; --cols; break; }
+    }
     const bool rating = ctx->input[AIR_RATING].bound || ctx->input[AIR_WINDOW].bound;
     const bool with_label = zone_h >= block_h;
     const bool rating_fits = rating && with_label && zone_h >= block_h + meta_h + 6;

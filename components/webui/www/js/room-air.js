@@ -122,7 +122,7 @@ function airPreviewMarkup(widget, name) {
   };
   const fmt = (id, role) => {
     const state = editor.states.get(id), unit = (entityDisplayInfo(id).unit || "").replace("μg/m³", "µg/m³");
-    return id && state != null && !["unknown", "unavailable", ""].includes(String(state)) ? `${rounded(state, role)}${unit ? ` ${unit}` : ""}` : "—";
+    return id && state != null && !["unknown", "unavailable", ""].includes(String(state)) ? `${rounded(state, role)}${unit ? `${unit.startsWith("°") ? "" : " "}${unit}` : ""}` : "—";
   };
   const box = (cls, x, y, width, height, text, style = "") =>
     `<div class="air-preview-row ${cls}" style="left:${x}px;top:${y}px;width:${width}px;height:${height}px;${style}">${escapeHtml(text)}</div>`;

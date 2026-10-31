@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <string.h>
 #include <strings.h>
 
@@ -215,6 +216,20 @@ static void car_layout_extras(w_car_widget_ctx_t *ctx, lv_coord_t w, lv_coord_t 
     lv_obj_set_pos(only, pad, y);
 }
 
+/* Width of a label's current text, and the height of the free disc's chord at a half-width. */
+static lv_coord_t car_label_text_w(lv_obj_t *label)
+{
+    lv_point_t size;
+    lv_text_get_size(&size, lv_label_get_text(label), lv_obj_get_style_text_font(label, LV_PART_MAIN), 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    return size.x;
+}
+
+static lv_coord_t car_disc_half(lv_coord_t radius, lv_coord_t half_width)
+{
+    if (half_width >= radius) return 0;
+    return (lv_coord_t)sqrtf((float)(radius * radius - half_width * half_width));
+}
+
 static void car_layout(w_car_widget_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->card == NULL) {
@@ -249,7 +264,14 @@ static void car_layout(w_car_widget_ctx_t *ctx)
     lv_obj_set_size(ctx->outer_arc, arc_size, arc_size);
     lv_obj_set_pos(ctx->outer_arc, arc_x, arc_top);
     /* Inner band 6 px inside the outer one. */
-    const lv_coord_t inset = lv_obj_get_style_arc_width(ctx->outer_arc, LV_PART_MAIN) + 6;
+    /* A small card gets slimmer bands: the free disc inside them must hold the range, the charge and the power. */
+    const bool slim = min_dim < 240;
+    const lv_coord_t band[2] = {slim ? 12 : 16, slim ? 9 : 12};
+    lv_obj_set_style_arc_width(ctx->outer_arc, band[0], LV_PART_MAIN);
+    lv_obj_set_style_arc_width(ctx->outer_arc, band[0] - 2, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_width(ctx->inner_arc, band[1], LV_PART_MAIN);
+    lv_obj_set_style_arc_width(ctx->inner_arc, band[1] - 2, LV_PART_INDICATOR);
+    const lv_coord_t inset = band[0] + (slim ? 4 : 6);
     lv_obj_set_size(ctx->inner_arc, arc_size - 2 * inset, arc_size - 2 * inset);
     lv_obj_set_pos(ctx->inner_arc, arc_x + inset, arc_top + inset);
 
@@ -290,6 +312,41 @@ static void car_layout(w_car_widget_ctx_t *ctx)
         lv_obj_set_hidden(ctx->power_label, !power_fits || ctx->power_entity_id[0] == '\0');
     }
 #endif
+    /* The readings live in the free disc inside the inner band. Corners of the range line and of the power line
+     * must stay inside it; the band's rounded ends sit outside the disc. Otherwise the power line gives way. */
+    lv_obj_update_layout(ctx->card);
+    const lv_coord_t disc = r - inset - lv_obj_get_style_arc_width(ctx->inner_arc, LV_PART_MAIN);
+    const lv_coord_t range_top = -car_disc_half(disc, car_label_text_w(ctx->range_label) / 2);
+    if (lv_obj_get_y(ctx->range_label) - center_y < range_top) lv_obj_set_y(ctx->range_label, center_y + range_top);
+    lv_obj_update_layout(ctx->card);
+    /* The percentage group starts below the range line, as far down as that takes. */
+    const lv_coord_t range_bottom = lv_obj_get_y(ctx->range_label) + lv_font_get_line_height(lv_obj_get_style_text_font(ctx->range_label, LV_PART_MAIN)) - center_y;
+    /* The name sits in the ring's open segment; the readings end above it. */
+    const lv_coord_t name_top = ui_widget_name_enabled(ctx->title_label) ? lv_obj_get_y(ctx->title_label) - center_y : LV_COORD_MAX;
+    lv_coord_t soc_shift = range_bottom - (lv_obj_get_y(ctx->soc_label) - center_y);
+    const lv_coord_t soc_room = name_top - 1 - lv_obj_get_height(ctx->soc_label) - (lv_obj_get_y(ctx->soc_label) - center_y);
+    if (soc_shift > soc_room) soc_shift = soc_room; /* line boxes may touch where the glyphs do not */
+    if (soc_shift > 0) {
+        lv_obj_set_y(ctx->soc_label, lv_obj_get_y(ctx->soc_label) + soc_shift);
+        lv_obj_set_y(ctx->soc_unit_label, lv_obj_get_y(ctx->soc_unit_label) + soc_shift);
+        lv_obj_update_layout(ctx->card);
+    }
+    /* Where the name left too little room for both, the range line rises again rather than sit on the percentage. */
+    const lv_coord_t residual = range_bottom - (lv_obj_get_y(ctx->soc_label) - center_y);
+    if (residual > 0) {
+        lv_obj_set_y(ctx->range_label, lv_obj_get_y(ctx->range_label) - residual);
+        lv_obj_update_layout(ctx->card);
+    }
+    if (!lv_obj_is_hidden(ctx->power_label)) {
+        const lv_coord_t soc_bottom = lv_obj_get_y(ctx->soc_label) + lv_obj_get_height(ctx->soc_label) - center_y;
+        const lv_coord_t power_top = LV_MAX(lv_obj_get_y(ctx->power_label) - center_y, soc_bottom);
+        const lv_coord_t power_bottom = power_top + lv_font_get_line_height(lv_obj_get_style_text_font(ctx->power_label, LV_PART_MAIN));
+        if (power_bottom > name_top || power_bottom - 4 > car_disc_half(disc, car_label_text_w(ctx->power_label) / 2)) {
+            lv_obj_set_hidden(ctx->power_label, true); /* too small a ring for all three lines: the power gives way */
+        } else {
+            lv_obj_set_y(ctx->power_label, center_y + power_top);
+        }
+    }
     car_layout_extras(ctx, w, h, extras);
 }
 

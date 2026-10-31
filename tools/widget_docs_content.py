@@ -116,6 +116,7 @@ WIDGETS = {
         "options": [("Optional entities", "only configured roles are shown; choose a free function with Add assignment, then select its entity; × removes a binding")],
         "panel": ["Rings for the battery level and, when set, the range and charging power.",
                   "From 200 × 330 px the lock state and interior temperature share a line under the rings, with the preconditioning button across the card below it; the Inspector says when the tile is too small for them.",
+                  "On a card under 240 px the bands are slimmer, and the charging power is left out when it does not fit between the readings and the name.",
                   "Preconditioning is a button; everything else is read-only. For a `climate.*`, `switch.*` or `input_boolean.*` the button reads **Sending...** after the call until the entity changes between on and off (at most 60 seconds); taps in between are ignored."],
     },
     "climate_tile": {
@@ -330,7 +331,7 @@ WIDGETS = {
         "summary": "Shows the **value** of a `sensor.*` or `binary_sensor.*` entity, formatted by its device class, with optional name, age and Recorder history.",
         "entities": [("Sensor", "`sensor.*`, `binary_sensor.*`", True)],
         "requirements": None,
-        "options": [("View", "Single value or List, with up to eight sensor or binary-sensor entities; Add sensors selects and orders the entries, ↑ moves and × removes a row. Lists use each entity’s default device-class formatting and scroll when needed"),
+        "options": [("View", "Single value or List, with up to eight sensor or binary-sensor entities; Add sensors selects and orders the entries, ↑ moves and × removes a row. Lists use each entity’s default device-class formatting and scroll when needed; the heading is left out when it would leave less than one row. Temperatures read like the other tiles, for example 21.8°C"),
                     ("Show name", "the widget name; on by default"),
                     ("Show last-updated time", "the age of the value; on by default"),
                     ("Unit, Format, Time format, Currency", "by device class, see below. The inspector header shows the class and unit as chips (\"No device class\" when Home Assistant gives none) and offers only that class's choices"),

@@ -249,7 +249,7 @@ esp_err_t w_cover_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     ctx->bar = lv_bar_create(card);
     lv_bar_set_range(ctx->bar, 0, 100);
     ui_style_inset_track(ctx->bar, lv_color_mix(lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), 26));
-    lv_obj_set_style_bg_color(ctx->bar, ui_style_control_on(lv_color_hex(APP_UI_COLOR_STATE_ON)), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(ctx->bar, ui_style_accent(lv_color_hex(APP_UI_COLOR_STATE_ON)), LV_PART_INDICATOR);
     if (ui_style_is_flat()) {
         lv_obj_set_style_bg_color(ctx->bar, lv_color_hex(APP_UI_COLOR_CARD_BORDER), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(ctx->bar, LV_OPA_COVER, LV_PART_MAIN);

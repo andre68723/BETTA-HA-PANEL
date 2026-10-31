@@ -802,7 +802,7 @@ test("sensor preview: formats the state like the panel by device class", () => {
     editor.states = new Map([["sensor.temperature", "21.5"], ["sensor.power", "2350"], ["sensor.runtime", "3725"],
       ["sensor.cost", "12.34"], ["sensor.pickup", "2026-10-21"], ["sensor.risk", "no_risk"], ["binary_sensor.door", "on"]]);`);
   const value = (id, extra = {}) => run(`previewSensorValue(${JSON.stringify({ entity_id: id, ...extra })})`);
-  assert.equal(value("sensor.temperature"), "21,5 °C");
+  assert.equal(value("sensor.temperature"), "21.5°C");
   assert.equal(value("sensor.temperature", { sensor_unit: "degree" }), "21,5°");
   assert.equal(value("sensor.temperature", { sensor_unit: "hide" }), "21,5");
   assert.equal(value("sensor.power"), "2350 W");

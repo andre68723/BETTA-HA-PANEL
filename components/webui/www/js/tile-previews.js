@@ -268,8 +268,11 @@ function previewSensorNumber(raw, unit, dc, mode) {
   }
   // A currency code rounds like Home Assistant's frontend; the panel does so only without a display precision.
   if (numeric && dc === "monetary" && /^[A-Z]{3}$/.test(unit)) number = Number(raw).toFixed(unit === "JPY" ? 0 : 2);
-  if (numeric) number = previewLocalizeNumber(number);
+  // A temperature reads the same on every tile (ui_format_temp_c): decimal point, the unit against the number.
+  const temperature = (mode === "default" || !mode) && (unit === "°C" || unit === "°F");
+  if (numeric && !temperature) number = previewLocalizeNumber(number);
   if (mode === "hide" || !unit) return number;
+  if (temperature) return `${number}${unit}`;
   if (mode === "degree" && unit.startsWith("°")) return `${number}°`;
   if (mode !== "code" && dc === "monetary") return `${number} ${PREVIEW_CURRENCY_SYMBOLS[unit] || unit}`;
   return `${number} ${unit}`;

@@ -22,7 +22,7 @@ None beyond the entities.
 
 | Option | Effect |
 | --- | --- |
-| View | Single value or List, with up to eight sensor or binary-sensor entities; Add sensors selects and orders the entries, ↑ moves and × removes a row. Lists use each entity’s default device-class formatting and scroll when needed |
+| View | Single value or List, with up to eight sensor or binary-sensor entities; Add sensors selects and orders the entries, ↑ moves and × removes a row. Lists use each entity’s default device-class formatting and scroll when needed; the heading is left out when it would leave less than one row. Temperatures read like the other tiles, for example 21.8°C |
 | Show name | the widget name; on by default |
 | Show last-updated time | the age of the value; on by default |
 | Unit, Format, Time format, Currency | by device class, see below. The inspector header shows the class and unit as chips ("No device class" when Home Assistant gives none) and offers only that class's choices |
