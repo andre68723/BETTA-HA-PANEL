@@ -41,6 +41,21 @@ static const char *const role_names[AIR_ROLE_COUNT] = {
     "Humidity", "Temperature", "CO₂", "PM2.5", "VOC", "Outdoor temperature", "Outdoor humidity", "Window", "Device rating"
 };
 static const char *role_name(int role) { return ui_i18n_get(role_keys[role], role_names[role]); }
+static const char *const short_keys[AIR_ROLE_COUNT] = {
+    "air.humidity_short", "air.temperature_short", NULL, NULL, NULL, "air.out_temperature_short", NULL, NULL, NULL
+};
+static const char *const short_names[AIR_ROLE_COUNT] = {"Humidity", "Temp.", NULL, NULL, NULL, "Out. temp.", NULL, NULL, NULL};
+
+/* The caption under a reading: the long name while it fits the column, else its short form. */
+static const char *column_name(int role, int width, int height)
+{
+    const char *full = role_name(role);
+    if (short_keys[role] == NULL) return full;
+    const lv_font_t *font = ui_text_fit(full, ui_font_role(UI_TEXT_META), width, height);
+    lv_point_t size;
+    lv_text_get_size(&size, full, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    return size.x <= width ? full : ui_i18n_get(short_keys[role], short_names[role]);
+}
 static int64_t now_ms(void) { return esp_timer_get_time() / 1000; }
 
 static const char *band_name(air_band_t band)
@@ -409,7 +424,7 @@ static void render(room_air_t *ctx)
         lv_obj_set_style_text_color(ctx->col_value[col], lv_color_hex(band == AIR_FAIR || band == AIR_POOR ? band_color(band) :
             ctx->input[role].valid ? APP_UI_COLOR_TEXT_PRIMARY : APP_UI_COLOR_TEXT_MUTED), 0);
         if (with_label) {
-            place(ctx->col_label[col], UI_TEXT_META, false, x, by + value_h + 2, cw - 4, role_name(role), LV_TEXT_ALIGN_CENTER);
+            place(ctx->col_label[col], UI_TEXT_META, false, x, by + value_h + 2, cw - 4, column_name(role, cw - 4, meta_h), LV_TEXT_ALIGN_CENTER);
             lv_obj_set_style_text_color(ctx->col_label[col], lv_color_hex(APP_UI_COLOR_TEXT_MUTED), 0);
         }
         ++col;
