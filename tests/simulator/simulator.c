@@ -1349,6 +1349,8 @@ int main(int argc, char **argv)
     for (int i = 0; tap_id[0] != '\0' && i < created; i++) {
         if (strcmp(widgets[i].def.id, tap_id) == 0) lv_obj_send_event(widgets[i].instance.obj, LV_EVENT_CLICKED, NULL);
     }
+    /* The test pages need to know whether the tap opened a dialog; the card goes onto the top layer. */
+    if (tap_id[0] != '\0') printf("tap_widget %s popup=%d\n", tap_id, lv_obj_get_child_count(lv_layer_top()) > 0);
     /* "open_popup": "wifi" | "ha" | "mqtt" opens the top bar's connectivity popup (data comes from pages_stubs.c). */
     const char *popup = json_string(root, "open_popup");
     if (strcmp(popup, "wifi") == 0) ui_conn_popup_show_wifi();

@@ -12,26 +12,15 @@ Changes since [v0.9.1](#v091).
 
 | Widget | Status | What is new or changed |
 | --- | --- | --- |
-| [Air quality](widgets/air_quality_tile.md) | <span class="release-status release-status--new">New</span> | One BETTA status (Good, Fair, Poor) and a short advice as chips, with humidity, CO₂, PM2.5 and temperature as readings on a neutral card like the Room widget, from basic sensors up to IKEA ALPSTUGA and Awair Element. Read-only details with outdoor absolute-humidity comparison and window state; VOC and device ratings are display-only. |
+| [Air quality](widgets/air_quality_tile.md) | <span class="release-status release-status--new">New</span> | One BETTA status (Good, Fair, Poor) from humidity, with optional temperature, CO₂ and PM2.5 as readings on a neutral card like the Room widget and one advice chip when something needs action. It works from basic sensors up to IKEA ALPSTUGA and Awair Element; VOC and device ratings are display-only. A tap on a reading opens its history graph; a tap elsewhere opens the details with the advice, every reading as a row that opens its graph, the outdoor absolute-humidity comparison and the window state. The page icon list gains matching **Humidity** and **Air quality** symbols. |
+| [Stocks & ETFs](widgets/stock_quotes.md) | <span class="release-status release-status--changed">Changed</span> | The Tiles view is part of Charts now, as the switch **Show as cards** with up to four columns. **Show the start price** adds the period's first price (**Start 126.84 €**) under the price. The 30-day period reads **1M**. A saved Tiles view opens as charts with cards. |
+| [Room card](widgets/room_tile.md) | <span class="release-status release-status--changed">Changed</span> | An optional icon before the name. |
+| [Fan](widgets/fan_tile.md) | <span class="release-status release-status--changed">Changed</span> | The rotor is drawn as three swept blades. |
 | [Parqet portfolio](widgets/parqet_portfolio.md) | <span class="release-status release-status--changed">Changed</span> | The interval buttons follow the panel language like the Stocks & ETFs period buttons (**1T** instead of **1D** in German). |
 
 ### Widgets: fitting and contrast
 
-- **Air quality** shows only the readings whose number and unit fit the width.
-- **Car** keeps the range, charge and charging power inside the rings; a small card has slimmer bands.
-- **Media player** shows the name above the text column, not on the artwork, in the wide layout.
-- **Printer** shares the button row by caption length, so Abort is not cut. **Energy timeline** keeps its time labels whole on the Tab5.
-- **Sensor** lists drop the heading when it would hide the first row. Temperatures read 21.8°C on the Sensor and Air quality tiles. **Cover** shows its progress in the accent colour in Matte.
-- **Air quality**: a tap on a value opens its history graph; the details list every reading as a row that opens its graph, without source IDs.
-
-### Panel and editor
-
-The page icon list gains **Humidity** and **Air quality**. Camera tiles visibly mark unavailable entities and hide old pictures until fresh frames return.
-
-The original JC reports lock, refresh, rotation and transfer times through `GET /api/version`,
-with a bounded list of slow operations and caller addresses. All panels expose cached chip temperature in the same API. Minute log summaries aid flicker
-diagnosis; these measurements do not establish or repair its cause. Periodic state recovery
-now skips applied changes and releases the display lock between entries.
+Layout fixes for cut-off or overlapping text and weak contrast on Air quality, Car, Media player, Printer, Vacuum, Fan, Energy timeline, Sensor and Cover. Temperatures on Sensor and Air quality read 21.8°C.
 
 ## v0.9.1
 

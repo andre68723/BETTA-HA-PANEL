@@ -210,7 +210,7 @@
  "tests/simulator/energy_regression.c": "4b12a4aba1a4a5edb4b01bb785f22cb0d8a7be7fa593e7af8356643655a77c55",
  "tests/simulator/energy_timeline_stub.c": "d3dacbe46f5158d5fddb6c92d872febf8382762b186803efaa6573f8036bd27a",
  "tests/simulator/font_budget_regression.c": "0e753e00dcc3fc5a2532a2bce43194a41aee07291bca5563d4bc2a3b0aa745dd",
- "tests/simulator/gallery_data.json": "0ea18c8823d2ccaf909da8f07e55a7ac460cd711ec439cdb1606094bc18a4b57",
+ "tests/simulator/gallery_data.json": "39bdc770c1a8ea7de5e55ae16c05c4501e86990f5d3f352e3da465b31c435f6e",
  "tests/simulator/history_regression.c": "9b32977dc7b6a134a5b0f5edfd7e4ecbbd9591d346198ca5df27caf4e0b38389",
  "tests/simulator/host_adapters.c": "37ae0f6420efcde35c722ec73e204dfb8ab00a281bdb2904b51281892358625d",
  "tests/simulator/host_adapters.h": "0224299bfe11c1ddbc5b990405bfe904176dfeefba84db6d0ded8ea30d4260e3",

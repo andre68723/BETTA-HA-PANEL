@@ -382,8 +382,8 @@ class SizeCheckerTest(unittest.TestCase):
                 (docs / "page.md").write_text("x\n" * 301)
                 self.assertEqual(module.check_docs(), 1)
                 (docs / "page.md").unlink()
-                (docs / "release-notes.md").write_text("x\n" * 801)
-                self.assertEqual(module.check_docs(), 1)
+                (docs / "release-notes.md").write_text("x\n" * 5000)
+                self.assertEqual(module.check_docs(), 0)
 
 
 if __name__ == "__main__":

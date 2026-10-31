@@ -133,6 +133,10 @@ host clock), so two runs give identical images. Per text step the run reports:
 - layout findings of `check_widget_layout.py`, in every style, German and English;
 - content findings in the first style: a widget with an existing entity that shows a loading or unavailable text, and
   texts its case lists in `expect` but does not draw (at text step 0; larger text may leave optional rows out);
+- popups: a case with `"popup": true` is tapped once, as a finger would, and its dialog is rendered in every style and
+  language under **Popups**; a tap that opens no dialog or a dialog that fails the popup audit is a finding. Only the
+  catalogue case carries the flag (the generated topics repeat it), and only popups a tap on the tile opens: dialogs behind
+  an inner button or a hit area (Printer status, Air quality value) stay with the regression suites;
 - demo entities without a state (`Demo-Daten`), and widget types or validated field values without a case.
 
 **Cases**

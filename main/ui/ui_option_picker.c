@@ -121,6 +121,7 @@ lv_obj_t *ui_option_picker_open(const ui_option_picker_cfg_t *cfg)
     lv_obj_set_style_text_color(title, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
     lv_obj_set_width(title, card_w - 2 * card_pad - 64);
+    lv_obj_set_height(title, lv_font_get_line_height(ui_font_role(UI_TEXT_VALUE))); /* one line: a longer title ends in dots instead of running into the options */
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 4);
 
     lv_obj_t *close = ui_popup_close_button(card, lv_color_hex(APP_UI_COLOR_NAV_BTN_BG_IDLE), picker_close_cb, picker);

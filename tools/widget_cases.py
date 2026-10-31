@@ -37,7 +37,7 @@ def expand(case):
     for key, value in case.items():
         if key in MACROS and value is True:
             fields.update({field: "{" + role + "}" for field, role in MACROS[key].items()})
-        elif key not in ("w", "h", "expect", "sim", "sim_state", "gallery", "bindings"):
+        elif key not in ("w", "h", "expect", "sim", "sim_state", "gallery", "bindings", "popup"):
             fields[key] = value
     return fields
 

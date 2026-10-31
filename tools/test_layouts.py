@@ -123,6 +123,9 @@ def all_suites():
     suites["zustaende"] = {"title": "Zustände", "cases": state_cases(suites)}
     suites["grenzen"] = {"title": "Grenzen", "cases": limits_cases(suites)}
     suites["maximal"] = {"title": "Maximal", "cases": maximum_cases(suites)}
+    for suite in ("zustaende", "grenzen", "maximal"):
+        for case in suites[suite]["cases"]:
+            case.pop("popup", None)  # a derived case repeats a catalogue case: its dialog is rendered once, there
     return suites
 
 
@@ -215,6 +218,7 @@ def stable_tag(suite_id, case):
 
 EXPECT = {}  # widget id -> texts its case expects to be visible (the case's "expect")
 SIM_STATES = {}  # widget id -> binding field/state overrides, applied to independent simulator-only entities
+POPUPS = set()  # widget ids whose case has "popup": a tap opens a dialog, rendered and audited as its own image
 SIM_FIELDS = {}  # widget id -> simulator-only fields (the case's "sim", e.g. to-do "items"); never in a panel layout
 PLACEHOLDER = re.compile(r"lädt\s*(…|\.\.\.)|loading|nicht verfügbar|unavailable|unbekannt|unknown", re.I)
 
@@ -266,6 +270,8 @@ def build_page(suite_id, title, number, placed, entities):
         WIDGET_TAGS[f"{page_id}_{index}"] = stable_tag(suite_id, case)
         EXPECT[f"{page_id}_{index}"] = case.get("expect", [])
         SIM_STATES[f"{page_id}_{index}"] = case.get("sim_state", {})
+        if case.get("popup"):
+            POPUPS.add(f"{page_id}_{index}")
         if "sim" in case:
             SIM_FIELDS[f"{page_id}_{index}"] = case["sim"]
     return {"id": page_id, "title": f"{title} {number}", "widgets": widgets}
@@ -362,7 +368,25 @@ def render_board(board, styles, steps, languages, out, suite=None, theme="dark_v
                         *dump], env=env, check=True, capture_output=True)
         Image.open(png).convert("RGB").save(png, optimize=True)
 
-    jobs = []
+    def popup_shot(job):
+        """One tap on the widget, as a finger would: the dialog must open and pass the simulator's popup audit."""
+        stem, page, widget_id, style, step, language = job
+        folder = out / f"{style}-{step}-{language}"
+        popup_fixture = out / f"{widget_id}.popup.fixture.json"
+        png = folder / f"popup-{widget_id}.png"
+        result = subprocess.run([str(binary), "--fixture", str(popup_fixture), "--page", page["id"], "--style", style, "--theme", theme,
+                                 "--language", language, "--text-step", str(step), "--exit-after-ms", "600", "--screenshot", str(png)],
+                                env=env, capture_output=True, text=True)
+        where = f"{WIDGET_TAGS.get(widget_id, widget_id)} ({style}, {language})"
+        if result.returncode:
+            detail = (result.stderr.strip() or result.stdout.strip()).splitlines()
+            return step, stem, f"Popup {where}: simulator exited {result.returncode}: {detail[-1] if detail else 'no diagnostic output'}"
+        if f"tap_widget {widget_id} popup=1" not in result.stdout:
+            return step, stem, f"Popup {where}: the tap opened no dialog"
+        Image.open(png).convert("RGB").save(png, optimize=True)
+        return step, stem, None
+
+    jobs, popup_jobs = [], []
     for stem, layout in layouts.items():
         fixture_path = out / f"{stem}.fixture.json"
         pages = [dict(page, widgets=[dict(widget, **SIM_FIELDS.get(widget["id"], {})) for widget in page["widgets"]])
@@ -370,14 +394,21 @@ def render_board(board, styles, steps, languages, out, suite=None, theme="dark_v
         pages, fixture_states = state_fixture(pages, states, SIM_STATES)
         fixture = dict(layout, pages=pages, states=fixture_states, ha_online=True, **extra)
         fixture_path.write_text(json.dumps(fixture, ensure_ascii=False), encoding="utf-8")
+        for page in pages:
+            for widget in page["widgets"]:
+                if widget["id"] in POPUPS:
+                    (out / f"{widget['id']}.popup.fixture.json").write_text(json.dumps(dict(fixture, tap_widget=widget["id"]), ensure_ascii=False), encoding="utf-8")
         for style in styles:
             for step in steps:
                 for language in languages:
                     (out / f"{style}-{step}-{language}").mkdir(exist_ok=True)
                     (out / f"dump-{step}").mkdir(exist_ok=True)
                     jobs += [(fixture_path, page, style, step, language) for page in layout["pages"]]
+                    popup_jobs += [(stem, page, widget["id"], style, step, language)
+                                   for page in layout["pages"] for widget in page["widgets"] if widget["id"] in POPUPS]
     with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
         list(pool.map(shot, jobs))
+        popup_problems = [found for found in pool.map(popup_shot, popup_jobs) if found[2]]
 
     def check(job):
         stem, step = job
@@ -395,6 +426,8 @@ def render_board(board, styles, steps, languages, out, suite=None, theme="dark_v
             dumps = {page["id"]: [json.loads(line) for line in (out / f"dump-{step}" / f"{page['id']}.jsonl").read_text().splitlines() if line]
                      for page in layouts[stem]["pages"] if page["widgets"]}
             problems[step][stem] = found + [f"Inhalt: {problem}" for problem in content_problems(layouts[stem], dumps, step == 0)]
+    for step, stem, found in popup_problems:
+        problems[step][stem].append(found)
     for step in steps:
         problems[step]["Demo-Daten"] = [f"no demo state for {entity}" for entity in gaps]
     return layouts, problems
@@ -571,6 +604,17 @@ def view(boards, styles, steps, languages, out, open_browser, theme="dark_v2"):
                         f'loading="lazy"><div class="overlay"></div></div><figcaption>{html.escape(page_label(page))}</figcaption></figure>')
             figures = "".join(figure(page) for page in layout["pages"])
             body.append(f'<section id="{board}-{stem}"><h2>{html.escape(suite_label(stem))}</h2><div class="pages">{figures}</div></section>')
+        opened = [(stem, page, widget) for stem, layout in layouts.items() for page in layout["pages"] for widget in page["widgets"] if widget["id"] in POPUPS]
+        if opened:
+            width_px, height_px, content_h = IMAGE_GEOMETRY[board]
+            cards = "".join(
+                f'<figure data-geometry="{width_px},{height_px},{(height_px - content_h) // 2},{width_px},{content_h}" data-widgets="[]">'
+                f'<div class="stage" style="aspect-ratio:{width_px}/{height_px}"><img data-board="{board}" data-page="popup-{widget["id"]}" '
+                f'alt="{html.escape(WIDGET_TAGS.get(widget["id"], widget["type"]))}" loading="lazy"><div class="overlay"></div></div>'
+                f'<figcaption>{html.escape(WIDGET_TAGS.get(widget["id"], widget["type"]))} · {html.escape(page_label(page))}</figcaption></figure>'
+                for _, page, widget in opened)
+            body.append(f'<section id="{board}-popups"><h2>Popups (Tipp auf die Kachel)</h2><div class="pages">{cards}</div></section>')
+            links += f' <a href="#{board}-popups">Popups</a>'
         width = "420px" if board == "panel4" else "560px"
         sections.append(f'<div class="board" data-board="{board}" style="--w:{width}"><nav>{links}</nav><main>{"".join(findings)}{"".join(body)}</main></div>')
         print(f"{board}: {sum(len(l['pages']) for l in layouts.values())} pages, "
