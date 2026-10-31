@@ -162,7 +162,7 @@ static const sim_widget_type_t k_types[] = {
     {"vacuum_tile", w_vacuum_create, w_vacuum_apply_state},
     {"solar_forecast", w_solar_forecast_create, w_solar_forecast_apply_state},
     {"wallbox_evcc", w_wallbox_evcc_create, w_wallbox_evcc_apply_state},
-    {"room_air_tile", w_room_air_create, w_room_air_apply_state},
+    {"air_quality_tile", w_room_air_create, w_room_air_apply_state},
     {"bambu_printer", w_bambu_printer_create, w_bambu_printer_apply_state},
     {"car_widget", w_car_widget_create, w_car_widget_apply_state},
     {"todo_list", w_todo_create, w_todo_apply_state},
@@ -323,7 +323,7 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
         def->forecast_day_7_entity_id[0] = '\0';
         evcc_header_from_json(json, def->style_variant, sizeof(def->style_variant), &def->gauge_max, site);
     }
-    if (!strcmp(def->type, "room_air_tile")) {
+    if (!strcmp(def->type, "air_quality_tile")) {
         air_slots_from_json(json, def->entity_id, def->secondary_entity_id, def->tertiary_entity_id, def->extra_entity_id);
         (void)air_config_from_json(json, &def->air_config);
     }

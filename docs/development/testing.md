@@ -121,7 +121,7 @@ idle, running, paused, returning, selected Off, alert and unavailable control st
 `scripts/test_pages.sh panel4 tab5 paneljc` (`test_layouts.py view`) renders every page with the demo entities and opens an
 overview with board, style, text step and language buttons. `--styles`, `--text-steps` and `--languages` choose the
 renders (default: four styles, step 0, German). The launcher builds each requested size, writes
-`${TMPDIR:-/tmp}/betta-test-pages/simulator.log`, then opens the browser; `--no-open` skips opening.
+`${TMPDIR:-/tmp}/betta-test-pages/simulator.log`, prints progress, then opens the browser on Enter; `--no-open` skips the prompt.
 Run it by its path from any working directory. Topic links remain below the fixed size/style bar;
 States & controls, Small tiles & edge cases and Large tiles identify their respective coverage.
 Part numbers split topics to fit the board page/layout limits. The overview is a static

@@ -134,7 +134,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "wallbox_evcc") return ["select"];
   if (type === "empty_tile") return [];
   if (type === "sensor") return ["sensor", "binary_sensor"];
-  if (type === "room_air_tile") return ["sensor"];
+  if (type === "air_quality_tile") return ["sensor"];
   if (type === "graph" || type === "gauge" || type === "solar_forecast" || type === "energy_price_forecast" || type === "parqet_portfolio" || type === "stock_quotes" || type === "car_widget" || type === "bambu_printer" || type === "energy_timeline") return ["sensor"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
@@ -424,9 +424,9 @@ function refreshEntitySourceWarning(widget = selectedWidget()) {
   const warning = el.entitySourceWarning;
   if (!warning) return;
   const invalid = [], pending = [];
-  if (["room_air_tile", "energy_timeline", "energy_price_forecast", "parqet_portfolio"].includes(widget?.type)) {
+  if (["air_quality_tile", "energy_timeline", "energy_price_forecast", "parqet_portfolio"].includes(widget?.type)) {
     const fields = [["entity_id", "primary", "layout.inspector.entity_" + widget.type]];
-    if (widget.type === "room_air_tile") fields.push(...AIR_ROLES.map(([key, , , role]) => [key, `air_${role}`, `air.${role}`]));
+    if (widget.type === "air_quality_tile") fields.push(...AIR_ROLES.map(([key, , , role]) => [key, `air_${role}`, `air.${role}`]));
     if (widget.type === "parqet_portfolio") fields.push(
       ["secondary_entity_id", "secondary", "layout.inspector.secondary_entity_parqet_portfolio"],
       ["tertiary_entity_id", "tertiary", "layout.inspector.tertiary_entity_parqet_portfolio"],
@@ -448,7 +448,7 @@ function refreshEntitySourceWarning(widget = selectedWidget()) {
   }
   warning.textContent = invalid.length ? t(invalid.length === 1 ? "entity_source.invalid_summary_one" : "entity_source.invalid_summary_many", { count: invalid.length }) : "";
   warning.classList.toggle("hidden", !invalid.length);
-  const helpKey = { room_air_tile: "air.sources_hint", energy_timeline: "layout.inspector.energy_timeline_hint", energy_price_forecast: "entity_source.price_help",
+  const helpKey = { air_quality_tile: "air.sources_hint", energy_timeline: "layout.inspector.energy_timeline_hint", energy_price_forecast: "entity_source.price_help",
     parqet_portfolio: "entity_source.parqet_help" }[widget?.type];
   const help = widget?.type === "energy_timeline" ? el.energyTimelineHint : el.entitySourceHint;
   if (el.entitySourceHint) el.entitySourceHint.classList.toggle("hidden", !helpKey || widget?.type === "energy_timeline");
@@ -700,7 +700,7 @@ function preferredInspectorPrimaryDomain(input) {
 
 // Extra widget bindings use the same search and change event as the primary three fields.
 const INSPECTOR_EXTRA_ENTITY_FIELDS = [
-  ...AIR_ROLES.map(([, field, domains, role]) => ["room_air_tile", `air_${role}`, `fAir${field}`, domains, `air_${role}`]),
+  ...AIR_ROLES.map(([, field, domains, role]) => ["air_quality_tile", `air_${role}`, `fAir${field}`, domains, `air_${role}`]),
   ["energy_timeline", "etl_charge", "fEtlCharge", "sensor", "etl_charge"],
   ["energy_timeline", "etl_discharge", "fEtlDischarge", "sensor", "etl_discharge"],
   ["energy_timeline", "etl_soc", "fEtlSoc", "sensor", "etl_soc"],

@@ -361,7 +361,7 @@ static void render(room_air_t *ctx)
 static void timer_cb(lv_timer_t *timer)
 {
     room_air_t *ctx = lv_timer_get_user_data(timer);
-    ui_fonts_tile_begin("room_air_tile", lv_obj_get_width(ctx->card), lv_obj_get_height(ctx->card));
+    ui_fonts_tile_begin("air_quality_tile", lv_obj_get_width(ctx->card), lv_obj_get_height(ctx->card));
     render(ctx);
     ui_fonts_tile_end();
 }

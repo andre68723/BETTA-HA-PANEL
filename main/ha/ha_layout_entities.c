@@ -204,7 +204,7 @@ void ha_layout_entities_collect(cJSON *root, ha_layout_entity_set_t *set)
                 ha_layout_collect_field(widget, "battery_entity_id", set); /* vacuum tile: optional charge sensor */
                 ha_layout_collect_field(widget, "dividends_entity_id", set); /* portfolio tile: optional dividends sensor */
                 ha_layout_collect_field(widget, "return_entity_id", set); /* portfolio tile: optional unrealised return sensor */
-                if (cJSON_IsString(type) && !strcmp(type->valuestring, "room_air_tile")) {
+                if (cJSON_IsString(type) && !strcmp(type->valuestring, "air_quality_tile")) {
                     for (int role = 0; role < AIR_ROLE_COUNT; ++role)
                         ha_layout_collect_field(widget, air_bindings[role].key, set);
                 }

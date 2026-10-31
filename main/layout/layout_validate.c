@@ -718,9 +718,9 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         }
     }
 
-    if (cJSON_IsString(type) && !strcmp(type->valuestring, "room_air_tile")) {
+    if (cJSON_IsString(type) && !strcmp(type->valuestring, "air_quality_tile")) {
         const cJSON *outdoor = cJSON_GetObjectItemCaseSensitive(widget, "air_outdoor_enabled");
-        if (outdoor && !cJSON_IsBool(outdoor)) layout_validation_add(result, "room_air_tile: air_outdoor_enabled must be boolean");
+        if (outdoor && !cJSON_IsBool(outdoor)) layout_validation_add(result, "air_quality_tile: air_outdoor_enabled must be boolean");
         for (int role = 0; role < AIR_ROLE_COUNT; ++role) {
             const cJSON *v = cJSON_GetObjectItemCaseSensitive(widget, air_bindings[role].key);
             if (!v || (cJSON_IsString(v) && !v->valuestring[0])) continue;
@@ -731,7 +731,7 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
                     ((role == AIR_OUT_TEMPERATURE || role == AIR_OUT_HUMIDITY) && entity_in_domain(v->valuestring, "weather"));
             }
             if (!ok) {
-                snprintf(msg, sizeof(msg), "room_air_tile: invalid %s (%s)", air_bindings[role].key, air_bindings[role].domains);
+                snprintf(msg, sizeof(msg), "air_quality_tile: invalid %s (%s)", air_bindings[role].key, air_bindings[role].domains);
                 layout_validation_add(result, msg);
             }
         }

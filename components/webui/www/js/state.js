@@ -16,7 +16,7 @@ function widgetSizeLimitsForCanvas(type) {
   };
 
   switch (type) {
-    case "room_air_tile":
+    case "air_quality_tile":
       return { minW: 280, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "sensor":
       return { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };

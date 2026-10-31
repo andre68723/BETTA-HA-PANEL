@@ -257,7 +257,7 @@ function stockPreviewMarkup(widget, name, height) {
         const amount = delta === "both"
           ? `<small class="tp-stock-card-amount ${sign(q.change)}">${number(amountOf(q), 2, true)} ${escapeHtml(q.currency)}</small>` : "";
         const start = widget.stock_previous === true
-          ? `<small class="tp-stock-card-start">${escapeHtml(t("preview.stock.since", { price: `${number(q.price - amountOf(q), 2)} ${q.currency}` }))}</small>` : "";
+          ? `<small class="tp-stock-card-start">${escapeHtml(t("preview.stock.start", { price: `${number(q.price - amountOf(q), 2)} ${q.currency}` }))}</small>` : "";
         const points = Array.from({ length: 24 }, (_, k) => {
           const y = 50 - q.change * 6 * (k / 23) + 8 * Math.sin(k / 3 + i);
           return `${(k / 23 * 100).toFixed(1)},${Math.max(4, Math.min(96, y)).toFixed(1)}`;

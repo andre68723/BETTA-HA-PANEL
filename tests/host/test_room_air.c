@@ -116,7 +116,7 @@ static void hysteresis(void)
 
 static void slots_and_subscriptions(void)
 {
-    cJSON *root = cJSON_Parse("{\"pages\":[{\"id\":\"demo\",\"widgets\":[{\"type\":\"room_air_tile\",\"entity_id\":\"sensor.humidity\",\"temperature_entity_id\":\"sensor.temp\",\"co2_entity_id\":\"sensor.co2\",\"pm25_entity_id\":\"sensor.pm\",\"voc_entity_id\":\"sensor.voc\",\"outdoor_temperature_entity_id\":\"weather.demo\",\"outdoor_humidity_entity_id\":\"weather.demo\",\"window_entity_id\":\"binary_sensor.window\",\"native_rating_entity_id\":\"sensor.rating\"}]}]}");
+    cJSON *root = cJSON_Parse("{\"pages\":[{\"id\":\"demo\",\"widgets\":[{\"type\":\"air_quality_tile\",\"entity_id\":\"sensor.humidity\",\"temperature_entity_id\":\"sensor.temp\",\"co2_entity_id\":\"sensor.co2\",\"pm25_entity_id\":\"sensor.pm\",\"voc_entity_id\":\"sensor.voc\",\"outdoor_temperature_entity_id\":\"weather.demo\",\"outdoor_humidity_entity_id\":\"weather.demo\",\"window_entity_id\":\"binary_sensor.window\",\"native_rating_entity_id\":\"sensor.rating\"}]}]}");
     assert(root);
     char ids[16][APP_MAX_ENTITY_ID_LEN] = {0};
     ha_layout_entity_set_t set = {.ids = (char *)ids, .capacity = 16};

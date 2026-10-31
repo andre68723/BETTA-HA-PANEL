@@ -2,7 +2,7 @@
 // Optional bindings keep their original inputs, validation, search rules and JSON keys.
 // Only configured roles are visible; choosing a free role opens its existing entity picker.
 const OPTIONAL_ENTITY_ROLES = {
-  room_air_tile: AIR_ROLES.map(([, field, , role]) => [`fAir${field}`, `air_${role}`]),
+  air_quality_tile: AIR_ROLES.map(([, field, , role]) => [`fAir${field}`, `air_${role}`]),
   car_widget: [["fSecondaryEntity", "secondary"], ["fTertiaryEntity", "tertiary"],
     ["fCarPrecond", "car_precond"], ["fCarLock", "car_lock"], ["fCarTemp", "car_temp"]],
   parqet_portfolio: [["fSecondaryEntity", "secondary"], ["fParqetReturn", "parqet_return"],

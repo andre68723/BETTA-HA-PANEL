@@ -22,7 +22,7 @@ test("Room air preview keeps missing inputs and native ratings separate from BET
     editor.entities=[{id:'sensor.rh',device_class:'humidity',unit:'%'},{id:'sensor.co2',device_class:'carbon_dioxide',unit:'ppm'},
       {id:'sensor.voc',device_class:'volatile_organic_compounds_parts',unit:'ppb'}];
     editor.states=new Map([['sensor.rh','50'],['sensor.co2','2000'],['sensor.voc','718'],['sensor.rating','100']]);
-    var widget={type:'room_air_tile',entity_id:'sensor.rh',co2_entity_id:'sensor.co2',native_rating_entity_id:'sensor.rating',rect:{w:360,h:260}};`);
+    var widget={type:'air_quality_tile',entity_id:'sensor.rh',co2_entity_id:'sensor.co2',native_rating_entity_id:'sensor.rating',rect:{w:360,h:260}};`);
   assert.equal(run("airPreviewData(widget).overall"), 2);
   run("editor.states.set('sensor.rh','unavailable')");
   assert.equal(run("airPreviewData(widget).overall"), 2);
@@ -43,7 +43,7 @@ test("Room air field events save JSON, retain disabled outdoor sources and reloa
     document.getElementById=id=>nodes[id]||null;
     for(const [key,field] of AIR_ROLES) el['fAir'+field]=input();
     nodes.airOutdoorEnabled=input();
-    var widget={type:'room_air_tile',entity_id:'sensor.rh',outdoor_temperature_entity_id:'weather.demo',outdoor_humidity_entity_id:'weather.demo'};
+    var widget={type:'air_quality_tile',entity_id:'sensor.rh',outdoor_temperature_entity_id:'weather.demo',outdoor_humidity_entity_id:'weather.demo'};
     var saved='';
     autoApplyInspector=()=>{if(airSaveInspector(widget,widget.type))saved=JSON.stringify(widget);};
     airLoadInspector(widget);bindAirInspector();
@@ -64,9 +64,9 @@ test("Room air field events save JSON, retain disabled outdoor sources and reloa
 
 test("Humidity picker rejects percent scores and battery; PM accepts both micro spellings", () => {
   const { run } = loadEditor();
-  for (const dc of ["battery", ""]) assert.equal(run(`widgetEntitySourceMatches({id:'sensor.score',device_class:${JSON.stringify(dc)},unit:'%',search_flags:1},'room_air_tile')`), false);
-  assert.equal(run("widgetEntitySourceMatches({id:'sensor.rh',device_class:'humidity',unit:'%',search_flags:1},'room_air_tile')"), true);
-  for (const unit of ["µg/m³", "μg/m³"]) assert.equal(run(`widgetEntitySourceMatches({id:'sensor.pm',device_class:'pm25',unit:${JSON.stringify(unit)},search_flags:1},'room_air_tile','air_pm25')`), true);
+  for (const dc of ["battery", ""]) assert.equal(run(`widgetEntitySourceMatches({id:'sensor.score',device_class:${JSON.stringify(dc)},unit:'%',search_flags:1},'air_quality_tile')`), false);
+  assert.equal(run("widgetEntitySourceMatches({id:'sensor.rh',device_class:'humidity',unit:'%',search_flags:1},'air_quality_tile')"), true);
+  for (const unit of ["µg/m³", "μg/m³"]) assert.equal(run(`widgetEntitySourceMatches({id:'sensor.pm',device_class:'pm25',unit:${JSON.stringify(unit)},search_flags:1},'air_quality_tile','air_pm25')`), true);
 });
 
 test("Room air search helpers keep PM2.5 out of VOC and offer weather for outdoor roles", () => {

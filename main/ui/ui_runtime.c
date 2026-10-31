@@ -707,7 +707,7 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
         }
         if (found) {
             ui_widget_factory_apply_state(&s_widgets[i], &s_state_scratch);
-        } else if (mark_unavailable_if_missing && (!strcmp(s_widgets[i].type, "room_air_tile") ||
+        } else if (mark_unavailable_if_missing && (!strcmp(s_widgets[i].type, "air_quality_tile") ||
                    (!strcmp(s_widgets[i].type, "sensor") && !strcmp(s_widgets[i].display_mode, "list")))) {
             snprintf(s_state_scratch.entity_id, sizeof(s_state_scratch.entity_id), "%s", entity_id);
             snprintf(s_state_scratch.state, sizeof(s_state_scratch.state), "unavailable");
@@ -748,7 +748,7 @@ static void ui_runtime_apply_widget_current_state(ui_widget_instance_t *widget, 
         bool found = ha_model_get_state(widget->entity_id, &s_state_scratch);
         if (found) {
             ui_widget_factory_apply_state(widget, &s_state_scratch);
-        } else if (!strcmp(widget->type, "room_air_tile")) {
+        } else if (!strcmp(widget->type, "air_quality_tile")) {
             snprintf(s_state_scratch.entity_id, sizeof(s_state_scratch.entity_id), "%s", widget->entity_id);
             snprintf(s_state_scratch.state, sizeof(s_state_scratch.state), "unavailable");
             ui_widget_factory_apply_state(widget, &s_state_scratch);
@@ -766,7 +766,7 @@ static void ui_runtime_apply_widget_current_state(ui_widget_instance_t *widget, 
         memset(&s_state_scratch, 0, sizeof(s_state_scratch));
         if (ha_model_get_state(ids[i], &s_state_scratch)) {
             ui_widget_factory_apply_state(widget, &s_state_scratch);
-        } else if (!strcmp(widget->type, "room_air_tile")) {
+        } else if (!strcmp(widget->type, "air_quality_tile")) {
             snprintf(s_state_scratch.entity_id, sizeof(s_state_scratch.entity_id), "%s", ids[i]);
             snprintf(s_state_scratch.state, sizeof(s_state_scratch.state), "unavailable");
             ui_widget_factory_apply_state(widget, &s_state_scratch);
@@ -973,7 +973,7 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
         memset(out->extra_entity_id, 0, sizeof(out->extra_entity_id));
         evcc_slots_from_json(widget_json, out->entity_id, out->secondary_entity_id, out->tertiary_entity_id, out->extra_entity_id, UI_WIDGET_EXTRA_ENTITIES);
     }
-    if (!strcmp(out->type, "room_air_tile")) {
+    if (!strcmp(out->type, "air_quality_tile")) {
         air_slots_from_json(widget_json, out->entity_id, out->secondary_entity_id, out->tertiary_entity_id, out->extra_entity_id);
         if (!air_config_from_json(widget_json, &out->air_config)) return false;
     }
@@ -1492,7 +1492,7 @@ static void ui_runtime_check_alerts(const char *entity_id)
 /* Device tests without touch (POST /api/ui/tap): only tiles whose tap opens a read-only popup answer, so a test can never
  * switch a light or unlock a door. The popup a tap opened is remembered so it can be dismissed the same way. */
 static const char *const k_test_tap_types[] = {"weather_3day", "energy_timeline", "room_tile", "sensor", "binary_tile",
-                                               "contact_tile", "solar_forecast", "car_widget", "graph", "room_air_tile"};
+                                               "contact_tile", "solar_forecast", "car_widget", "graph", "air_quality_tile"};
 static lv_obj_t *s_test_popup = NULL;
 
 static bool layer_top_has_child(const lv_obj_t *obj)

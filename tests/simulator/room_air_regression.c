@@ -31,7 +31,7 @@ void sim_room_air_regression(void)
     char language[APP_UI_LANGUAGE_MAX_LEN]; snprintf(language, sizeof(language), "%s", ui_i18n_get_language());
     CHECK(ui_i18n_init("en") == ESP_OK);
     ui_widget_def_t def = {.w=480, .h=320};
-    strcpy(def.type, "room_air_tile"); strcpy(def.title, "Room air test");
+    strcpy(def.type, "air_quality_tile"); strcpy(def.title, "Room air test");
     strcpy(def.entity_id, "sensor.air_rh"); strcpy(def.secondary_entity_id, "sensor.air_temp");
     strcpy(def.tertiary_entity_id, "sensor.air_co2"); strcpy(def.extra_entity_id[0], "sensor.air_pm");
     strcpy(def.extra_entity_id[2], "weather.air"); strcpy(def.extra_entity_id[3], "weather.air");

@@ -10,7 +10,7 @@ panel         what the tile shows and how it reacts to touch, as list items
 """
 
 WIDGETS = {
-    "room_air_tile": {'summary': 'Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and '
+    "air_quality_tile": {'summary': 'Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and '
                 'PM2.5 from `sensor.*` entities; a tap opens read-only details.',
      'entities': [('Humidity', '`sensor.*`', True),
                   ('Temperature, CO₂, PM2.5, VOC and device rating', '`sensor.*`', False),
@@ -269,7 +269,7 @@ WIDGETS = {
         "options": [("Quote 1 to 8", "the same list for List and Charts; Add quote opens a multiple selection with numbered slots for up to eight sensors; changes apply together; ↑ moves a quote up, × removes it, an emptied row closes the gap"),
                     ("View", "**List**: name, price and the last session's change; **Charts**: a small chart per quote, in rows under each other"),
                     ("Show as cards", "Charts only: a card per quote with name, price, the period change and a chart, in as many columns as fit, up to four, and in one on a narrow tile"),
-                    ("Show the start price", "Cards only: the period's first price (**since 126.84 €**) under the price, the figure the change is measured from"),
+                    ("Show the start price", "Cards only: the period's first price (**Start 126.84 €**) under the price, the figure the change is measured from"),
                     ("Period", "1 day, 1 week, 1 month, year to date or 1 year: the charts' first period and the one the details open with"),
                     ("Change", "percent, amount, or both"),
                     ("Show the symbol", "the ticker under the name (list), after it (charts) or beside it (cards)"),

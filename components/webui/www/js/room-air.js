@@ -31,7 +31,7 @@ function airNormalize(role, state, unit) {
 }
 
 function airLoadInspector(widget) {
-  const active = widget?.type === "room_air_tile";
+  const active = widget?.type === "air_quality_tile";
   document.getElementById("airSources")?.classList.toggle("hidden", !active);
   for (const [key, field] of AIR_ROLES) if (el[`fAir${field}`]) el[`fAir${field}`].value = active ? widget[key] || "" : "";
   const enabled = document.getElementById("airOutdoorEnabled");
@@ -46,7 +46,7 @@ function airRefreshOutdoor() {
 }
 
 function airSaveInspector(widget, type) {
-  if (type !== "room_air_tile") return true;
+  if (type !== "air_quality_tile") return true;
   const next = {};
   for (const [key, field, domains] of AIR_ROLES) {
     const id = el[`fAir${field}`]?.value.trim() ?? widget[key] ?? "";

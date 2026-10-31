@@ -43,7 +43,7 @@ Each widget guide lists its own requirements at the top; this is the overview.
 | Energy page, mode Home Assistant Energy | sources set up in HA's Energy dashboard | [below](#energy-and-rooms) |
 | Energy timeline | cumulative kWh counters with `state_class` `total` or `total_increasing` | [Energy timeline](widgets/energy_timeline.md) |
 | Energy page: seven-day details | Gas, Water or Solar as cumulative counters with long-term statistics (volume or energy unit) | [Seven-day details](pages.md#seven-day-details) |
-| Air quality | a humidity sensor; optional temperature, CO₂, PM2.5, VOC, native rating, outdoor sensor/weather pair and window contact | [Room air](widgets/room_air_tile.md) |
+| Air quality | a humidity sensor; optional temperature, CO₂, PM2.5, VOC, native rating, outdoor sensor/weather pair and window contact | [Room air](widgets/air_quality_tile.md) |
 | Room cards, house page | areas (and optionally floors) with devices or entities assigned | [below](#energy-and-rooms) |
 | History popups, graph from Home Assistant | Recorder history of the entity; for the 7-day view a `measurement` sensor with long-term statistics | [History](history.md#choose-the-history-view) |
 | Wallbox | evcc server and HACS ha-evcc integration; enable loadpoint entities and the site's PV, battery, grid and home power sensors for the flow header; bindings are detected from the same instance | [Wallbox](widgets/wallbox.md) |

@@ -21,7 +21,7 @@ every widget type at its minimum size, with a long title, and a few with a missi
 
 simulate renders the suites with the demo entities in the SDL simulator: tools/check_widget_layout.py checks every
 page and a PNG per page goes to the output directory (default /private/tmp/betta-testenv/sim/<board>). view does that
-for all boards (or the ones named), writes an overview page with the images and findings and opens it in the browser.
+for all boards (or the ones named), writes an overview page with the images and findings, prints progress while rendering and opens the page in the browser on Enter.
 
 load replaces a panel's layout with a suite after saving the panel's own layout once to
 .claude/layout-backups/testenv-<ip>.json; further loads keep that saved layout. restore puts it back, checks it and
@@ -39,6 +39,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -538,8 +539,18 @@ def view(boards, styles, steps, languages, out, open_browser, theme="dark_v2"):
     """Render the boards' suites, write an overview page and open it."""
     names = {"paneljc": '10" 1280 × 680', "tab5": '5" Tab5 1280 × 600', "panel4": '4" 720 × 600'}
     sections, total = [], 0
-    for board in boards:
+    started, done = time.monotonic(), threading.Event()
+
+    def heartbeat(board, index):
+        while not done.wait(10):
+            print(f"  ... still rendering {board} ({index}/{len(boards)}), {int(time.monotonic() - started)} s elapsed", flush=True)
+
+    for index, board in enumerate(boards, 1):
+        print(f"[{index}/{len(boards)}] rendering {board} ...", flush=True)
+        done.clear()
+        threading.Thread(target=heartbeat, args=(board, index), daemon=True).start()
         layouts, problems = render_board(board, styles, steps, languages, out / board, theme=theme)
+        done.set()
         links = " ".join(f'<a href="#{board}-{stem}">{html.escape(suite_label(stem))}</a>' for stem in layouts)
         findings = []
         for step in steps:
@@ -584,7 +595,13 @@ def view(boards, styles, steps, languages, out, open_browser, theme="dark_v2"):
     index.write_text(page, encoding="utf-8")
     print(f"overview: {index}")
     if open_browser:
-        subprocess.run(["open", str(index)], check=False)
+        print(f"Done in {int(time.monotonic() - started)} s. Press Enter to open the overview in the browser (Ctrl-C skips).", flush=True)
+        try:
+            if sys.stdin.isatty():
+                input()
+                subprocess.run(["open", str(index)], check=False)
+        except (EOFError, KeyboardInterrupt):
+            print()
     return 1 if total or missing else 0
 
 

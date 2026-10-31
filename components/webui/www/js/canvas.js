@@ -285,7 +285,7 @@ function renderPagesMini() {
 // Maps a widget's `type` value to the i18n key of its "+ <Name>" Add-menu label (the only place
 // each type already has a translated display name), used to build the inspector's live heading.
 const WIDGET_TYPE_LABEL_KEYS = {
-  room_air_tile: "layout.widgets.add_room_air",
+  air_quality_tile: "layout.widgets.add_room_air",
   sensor: "layout.widgets.add_sensor",
   button: "layout.widgets.add_button",
   slider: "layout.widgets.add_slider",
@@ -1155,7 +1155,7 @@ function renderInspector() {
     el.fShowName.disabled = !widgetSupportsName(widget.type);
   }
   // The optional icon before the name exists on the room cards only (Room and Room air), off by default.
-  const iconTypes = ["room_tile", "room_air_tile"];
+  const iconTypes = ["room_tile", "air_quality_tile"];
   if (el.fShowIconRow) el.fShowIconRow.classList.toggle("hidden", !iconTypes.includes(widget.type));
   if (el.fShowIcon) el.fShowIcon.checked = iconTypes.includes(widget.type) && widget.show_icon === true;
   if (el.fSensorShowAge) {
@@ -1843,7 +1843,7 @@ function addWidget(type, options = {}) {
       ? DEFAULT_SOLCAST_ENTITIES.remaining
       : pickDefaultEntityForWidgetType(type, sliderDomain);
   const secondaryEntityId = type === "heating_tile" ? pickDefaultSecondaryEntity("heating_tile", "sensor") : "";
-  const defaultW = type === "room_air_tile" ? 360 : type === "weather_3day" ? 360
+  const defaultW = type === "air_quality_tile" ? 360 : type === "weather_3day" ? 360
       : type === "solar_forecast" ? 460
       : type === "car_widget" ? 280
       : type === "wallbox_evcc" ? 360
@@ -1866,7 +1866,7 @@ function addWidget(type, options = {}) {
       : type === "vacuum_tile" ? 360
       : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 300
       : 220;
-  const defaultH = type === "room_air_tile" ? 240 : type === "weather_3day" ? 260
+  const defaultH = type === "air_quality_tile" ? 240 : type === "weather_3day" ? 260
       : type === "solar_forecast" ? 250
       : type === "car_widget" ? 340
       : type === "wallbox_evcc" ? 300
@@ -2157,7 +2157,7 @@ function applyInspector(options = {}) {
   } else {
     delete widget.show_name;
   }
-  if (["room_tile", "room_air_tile"].includes(widgetType) && el.fShowIcon?.checked) widget.show_icon = true;
+  if (["room_tile", "air_quality_tile"].includes(widgetType) && el.fShowIcon?.checked) widget.show_icon = true;
   else delete widget.show_icon; // default: off
   delete widget.sensor_show_label;
   if (widgetType === "camera_tile" && el.fCameraLive?.checked) widget.camera_live = true;

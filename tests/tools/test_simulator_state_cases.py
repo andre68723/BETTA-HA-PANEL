@@ -98,7 +98,8 @@ class SharedCatalogueTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             output = Path(folder)
             with patch.object(test_layouts, "render_board", return_value=(layouts, {0: {}})) as render, \
-                 patch.object(test_layouts.subprocess, "run") as browser, contextlib.redirect_stdout(io.StringIO()):
+                 patch.object(test_layouts.subprocess, "run") as browser, patch.object(test_layouts.sys.stdin, "isatty", return_value=True), \
+                 patch("builtins.input", return_value=""), contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(test_layouts.view(["panel4", "tab5", "paneljc"], ["flat"], [0], ["de", "en"],
                                                   output, True, "classic_v1"), 0)
                 self.assertEqual([call.args[0] for call in render.call_args_list], ["panel4", "tab5", "paneljc"])

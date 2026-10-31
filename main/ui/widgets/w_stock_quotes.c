@@ -530,14 +530,14 @@ static void qs_layout_card(w_qs_ctx_t *ctx, qs_item_t *it, int x, int y, int cw,
         qs_place(it->price, QS_CARD_PAD, price_y, inner - dw - QS_GAP, label_h);
     }
     /* the period's start price: where the change begins, as the details name it */
-    const bool has_start = ctx->previous && numeric && it->change.from_reference && isfinite((float)it->change.base);
+    const bool has_start = ctx->previous && numeric && it->change.base > 0.0 && isfinite((float)it->change.base);
     lv_obj_set_hidden(it->start, !has_start);
     if (has_start) {
         char base[40];
         ha_quote_t ref = it->quote;
         ref.price = it->change.base;
         qs_price_text(&ref, base, sizeof(base));
-        snprintf(text, sizeof(text), "%s %s", ui_i18n_get("stock.since", "since"), base);
+        snprintf(text, sizeof(text), "%s %s", ui_i18n_get("stock.start", "Start"), base);
         qs_set_text(it->start, text);
         lv_obj_set_style_text_align(it->start, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
         qs_place(it->start, QS_CARD_PAD, price_y + label_h + ((stacked ? 1 : 0) + (both ? 1 : 0)) * meta_h, inner, meta_h);

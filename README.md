@@ -37,7 +37,7 @@ below says what has been tried on a device.
 - **Control your home:** lights, heating, blinds, fans, media players, vacuums,
   scenes and locks, with controls matched to each entity's capabilities.
 - **See what matters:** sensor values, Recorder history, weather, solar forecasts,
-  energy flows, a 24-hour energy timeline and [air quality](docs/widgets/room_air_tile.md) with humidity, CO₂ and PM2.5 status.
+  energy flows, a 24-hour energy timeline and [air quality](docs/widgets/air_quality_tile.md) with humidity, CO₂ and PM2.5 status.
 - **Make it yours:** Flat, Glow, Glass or Matte appearance, six color themes,
   English/German UI and custom themes or translations.
 - **Manage the panel:** brightness and night mode, HTTP/MQTT notifications,
