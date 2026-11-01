@@ -331,7 +331,7 @@ def main():
         grouped.setdefault(row["tiles"][0][1]["type"], []).append(row)
     limits = size_limits()
     variants = variant_minimums()
-    expected = set(limits) - {"roborock_tile"}
+    expected = set(limits) - {"roborock_tile", "weather_3day"}  # the legacy forecast type is the Weather days view
     if set(WIDGETS) != expected:
         raise RuntimeError(f"Update tools/widget_docs_content.py: missing {expected - set(WIDGETS)}, unknown {set(WIDGETS) - expected}")
     catalog = []
@@ -341,8 +341,8 @@ def main():
         info = WIDGETS[kind]
         check_summary(kind, limits[kind][4], info["summary"])
         figures = preview_figures(grouped.get(kind, []))
-        if kind == "weather_3day":
-            figures = preview_figures([{"tiles": [("weather-forecast-report", {"title": "Forecast with optional DWD report"})]}], "examples") + figures
+        if kind == "weather_tile":
+            figures = preview_figures([{"tiles": [("weather-forecast-report", {"title": "Forecast days with optional DWD report"})]}], "examples") + figures
         sections = [HEADER, "", f"# {title}", "", info["summary"], ""]
         if figures:
             sections += figure_block(figures[:1], captions=False)

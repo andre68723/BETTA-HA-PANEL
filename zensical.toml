@@ -69,8 +69,7 @@ nav = [
       { "Todo list" = "widgets/todo_list.md" },
       { "Vacuum" = "widgets/vacuum_tile.md" },
       { "Wallbox" = "widgets/wallbox.md" },
-      { "Weather (now)" = "widgets/weather_tile.md" },
-      { "Weather forecast" = "widgets/weather_3day.md" },
+      { "Weather" = "widgets/weather_tile.md" },
     ] },
     { "Look and behaviour" = [
       { "Appearance" = "appearance.md" },

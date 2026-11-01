@@ -905,7 +905,7 @@ static bool sim_house_room_cb(const ui_widget_def_t *def, lv_obj_t *parent, void
         return false;
     }
     init_instance(&entry->def, &entry->instance);
-    ui_fonts_tile_begin(entry->def.type, entry->def.w, entry->def.h);
+    ui_fonts_tile_begin(ui_widget_factory_caps_type(&entry->def), entry->def.w, entry->def.h);
     const esp_err_t create_err = entry->type->create(&entry->def, parent, &entry->instance);
     ui_fonts_tile_end();
     if (create_err != ESP_OK) {
@@ -1232,7 +1232,7 @@ int main(int argc, char **argv)
             continue;
         }
         init_instance(&entry->def, &entry->instance);
-        ui_fonts_tile_begin(entry->def.type, entry->def.w, entry->def.h);
+        ui_fonts_tile_begin(ui_widget_factory_caps_type(&entry->def), entry->def.w, entry->def.h);
         const esp_err_t content_err = entry->type->create(&entry->def, content, &entry->instance);
         ui_fonts_tile_end();
         if (content_err != ESP_OK) {
@@ -1280,7 +1280,7 @@ int main(int argc, char **argv)
         }
         for (int i = 0; i < created; i++) {
             if (widget_uses_entity(&widgets[i].def, state.entity_id)) {
-                ui_fonts_tile_begin(widgets[i].def.type, widgets[i].def.w, widgets[i].def.h);
+                ui_fonts_tile_begin(ui_widget_factory_caps_type(&widgets[i].def), widgets[i].def.w, widgets[i].def.h);
                 widgets[i].type->apply(&widgets[i].instance, &state);
                 ui_fonts_tile_end();
                 sim_style_card(&widgets[i].instance);

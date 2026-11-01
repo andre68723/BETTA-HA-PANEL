@@ -118,7 +118,7 @@ function inspectorHelpParagraphs(text) {
 function inspectorHelpTopic() {
   const widget = selectedWidget();
   if (widget) {
-    const type = widget.type === "roborock_tile" ? "vacuum_tile" : widget.type;
+    const type = widget.type === "roborock_tile" ? "vacuum_tile" : widget.type === "weather_3day" ? "weather_tile" : widget.type;
     if (!WIDGET_NAME_TYPES.has(type)) return null;
     // The popup repeats the guide's summary (tools/check_web.py compares them), so it links to the guide's top.
     return { type, url: "https://andre68723.github.io/BETTA-HA-PANEL/widgets/" + (type === "wallbox_evcc" ? "wallbox" : type) + ".html" };

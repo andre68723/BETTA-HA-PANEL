@@ -390,35 +390,26 @@ WIDGETS = {
         "panel": ["Status, power, charged energy, remaining time and the current SOC on a green bar.",
                   "The optional header sits above the modes: the charging power against its maximum, or the site's flow as in the evcc app: one bar of the sources (PV, battery, grid) with their values in kW, brackets with icons above for the sources and below for the consumers (home, car, battery charge, export). On the 10-inch panel it needs about 410 px (power) or 450 px (flow) of height, more with larger text, and stays off on a shorter card; the Inspector names the height."],
     },
-    "weather_3day": {
-        "summary": "Compares **forecast days** of a `weather.*` entity: temperatures and precipitation in configurable columns.",
-        "entities": [("Weather", "`weather.*`", True), ("DWD weather report", "`sensor.*`", False)],
-        "requirements": "A **[weather](https://www.home-assistant.io/integrations/weather/)** entity with daily forecasts. The report text "
-                        "needs the **[DWD Weather integration](https://github.com/FL550/dwd_weather)** and its separate *Weather report* sensor "
-                        "(see [DWD report setup](../home-assistant.md#what-a-feature-needs)); the report is German.",
-        "options": [("Visible days", "fewer days give each column more room; Auto shows as many as are readable"),
-                    ("Show rain chance and amount", "on by default"),
-                    ("Show name", "off by default")],
-        "panel": ["A tap on a day opens a popup with pressure, wind, UV and that day's report.",
-                  "With the report, a tap on the temperature shows the full text; a wide header shows a summary (about 150 × 40 px free)."],
-    },
     "weather_tile": {
-        "summary": "Shows the **current conditions** of a `weather.*` entity, with optional hourly forecasts and a detail popup for readings and the DWD weather report.",
+        "summary": "Shows the **weather** of a `weather.*` entity: current conditions with optional hourly forecasts, or the **forecast days** as columns; a button pair switches between them.",
         "entities": [("Weather", "`weather.*`", True), ("DWD weather report", "`sensor.*`", False)],
-        "requirements": "Current conditions need a weather entity. **Show hourly forecast** needs that provider's hourly forecasts; "
-                        "daily forecasts are not substituted. The optional German report needs the **[DWD Weather integration](https://github.com/FL550/dwd_weather)** "
-                        "and its separate *Weather report* sensor; enable it in Home Assistant if it is disabled.",
-        "options": [("Show hourly forecast", "off by default; adds a horizontal strip of up to 24 upcoming hours with time, condition and temperature"),
-                    ("View", "**Today** (default) or **Forecast days**: the view the tile starts with; the forecast days need at least 260 × 220 px"),
-                    ("Visible days / Show rain chance and amount", "shown whenever the forecast days can appear, as for the forecast tile"),
-                    ("Show selector buttons on the tile", "off by default; two buttons above the tile switch between today and the forecast days, as the period buttons of Stocks do"),
-                    ("DWD weather report", "optional sensor, shown in the detail popup"),
+        "requirements": "A **[weather](https://www.home-assistant.io/integrations/weather/)** entity: current conditions need no forecast, the days need daily forecasts. "
+                        "**Show hourly forecast** needs that provider's hourly forecasts; daily forecasts are not substituted. The optional German report needs the "
+                        "**[DWD Weather integration](https://github.com/FL550/dwd_weather)** and its separate *Weather report* sensor "
+                        "(see [DWD report setup](../home-assistant.md#what-a-feature-needs)); enable it in Home Assistant if it is disabled.",
+        "options": [("View", "**Today** (default) or **Forecast days**: the view the tile starts with; the forecast days need at least 260 × 220 px"),
+                    ("Show day selection", "off by default; two buttons at the top of the tile switch between today and the forecast days, as the period buttons of Stocks do"),
+                    ("Show hourly forecast", "off by default; adds a horizontal strip of up to 24 upcoming hours with time, condition and temperature"),
+                    ("Visible days", "forecast days only; fewer days give each column more room, Auto shows as many as are readable"),
+                    ("Show rain chance and amount", "forecast days only; on by default"),
+                    ("DWD weather report", "optional sensor, shown in the details and on the forecast days"),
                     ("Show name", "off by default, to leave room for the conditions")],
         "panel": ["The hourly strip appears only when a full column fits below the current weather; a tile that is too short shows the current weather alone.",
-                  "A tap opens today's details: temperatures, the available humidity, pressure, wind and visibility, and the optional DWD report.",
+                  "A tap on today opens its details: temperatures, the available humidity, pressure, wind and visibility, and the optional DWD report. A tap on a forecast day opens that day's pressure, wind, UV and report; with the report, a tap on the temperature shows the full text, and a wide header shows a summary (about 150 × 40 px free).",
                   "With hourly forecasts, scroll horizontally for later hours; scrolling does not open the popup. The strip shows the next 24 hours from now, so it usually crosses midnight: a divider and the weekday mark the first column of the new day. Times use the panel's time zone.",
                   "Hourly forecasts are fetched only while the tile is visible and refreshed every 15 minutes. A missing hourly forecast is shown explicitly; current conditions remain available.",
-                  "Without the hourly strip, today's low and precipitation appear when there is room. The tile uses the same Meteocons as the daily forecast.",
+                  "Without the hourly strip, today's low and precipitation appear when there is room. Today and the days use the same Meteocons.",
+                  "Layouts saved with the former Weather forecast tile are converted to this tile (View: Forecast days) when they are opened in the editor; the panel keeps displaying the old type until then.",
                   "Close details with the close button or a tap outside; they also close automatically after one minute."],
     },
 }

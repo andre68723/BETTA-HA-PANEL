@@ -166,6 +166,8 @@ typedef struct {
  * that depends on being on screen, so showing their page needs no state re-apply. */
 bool ui_widget_factory_needs_refresh_on_show(const char *type);
 
+/* The type whose text caps apply to a tile: a weather tile that shows days uses the forecast caps. */
+const char *ui_widget_factory_caps_type(const ui_widget_def_t *def);
 esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance);

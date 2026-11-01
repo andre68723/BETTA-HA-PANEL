@@ -138,7 +138,7 @@ before committing it.
 Use `--first-light-only` for the matched single-light panel/editor tutorial.
 Use `--panels-only`, `--editor-only`, `--appearance-only`, `--setup-only` or
 `--topbar-only` to regenerate one set. Use `--weather-report-only` for the
-Weather forecast guide's four 10-inch previews with synthetic English report text,
+Weather guide's four 10-inch previews with synthetic English report text,
 cropped from the real widget at 680 × 520 pixels;
 use `--history-only` for the 24-hour temperature Graph (Recorder mode) and the
 Binary sensor motion-activity popup. Graph fixtures can set `history_step_minutes`

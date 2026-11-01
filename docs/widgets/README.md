@@ -2,7 +2,7 @@
 
 # Widget library
 
-35 widgets, grouped by what you want to do. Each guide starts with a summary and a preview, then lists the entities, requirements, options, behaviour on the panel and size limits. The previews are rendered by the LVGL simulator in the Glow style with synthetic data (click to enlarge); the other styles keep the same functions.
+34 widgets, grouped by what you want to do. Each guide starts with a summary and a preview, then lists the entities, requirements, options, behaviour on the panel and size limits. The previews are rendered by the LVGL simulator in the Glow style with synthetic data (click to enlarge); the other styles keep the same functions.
 
 To add one, open a page in the [web editor](../editor.md#layout-workspace), choose the widget in **Add**, pick its entity by clicking its entity row, size it and **Save** the layout. Start with [your first light](../getting-started.md#5-control-your-first-light). Whole pages (room overview, energy dashboard) are in [Pages and layouts](../pages.md); for a different look, use [Appearance](../appearance.md).
 
@@ -164,17 +164,11 @@ Forecasts, solar production and the energy balance.
 
 <div class="grid cards" markdown>
 
--   [![Weather (now)](../img/gallery/weather_now_glow.png)](weather_tile.md)
+-   [![Weather](../img/gallery/weather_now_glow.png)](weather_tile.md)
 
-    **[Weather (now)](weather_tile.md)**
+    **[Weather](weather_tile.md)**
 
-    Shows the **current conditions** of a `weather.*` entity, with optional hourly forecasts and a detail popup for readings and the DWD weather report.
-
--   [![Weather forecast](../img/gallery/weather_forecast_glow.png)](weather_3day.md)
-
-    **[Weather forecast](weather_3day.md)**
-
-    Compares **forecast days** of a `weather.*` entity: temperatures and precipitation in configurable columns.
+    Shows the **weather** of a `weather.*` entity: current conditions with optional hourly forecasts, or the **forecast days** as columns; a button pair switches between them.
 
 -   [![Solar forecast](../img/gallery/solar_forecast_glow.png)](solar_forecast.md)
 

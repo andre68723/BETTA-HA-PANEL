@@ -367,7 +367,7 @@ static void ui_widget_factory_apply_state_inner(ui_widget_instance_t *instance, 
 }
 
 /* A weather tile that can show the forecast days is laid out and capped like the forecast tile. */
-static const char *widget_caps_type(const ui_widget_def_t *def)
+const char *ui_widget_factory_caps_type(const ui_widget_def_t *def)
 {
     if (strcmp(def->type, "weather_tile") == 0 && (def->weather_selector || def->weather_days)) return "weather_3day";
     return def->type;
@@ -377,12 +377,12 @@ static const char *widget_caps_type(const ui_widget_def_t *def)
  * widgets restyle their own background (ui_style_apply_card()). */
 esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance)
 {
-    ui_fonts_tile_begin(def != NULL ? widget_caps_type(def) : NULL, def != NULL ? def->w : 0, def != NULL ? def->h : 0);
+    ui_fonts_tile_begin(def != NULL ? ui_widget_factory_caps_type(def) : NULL, def != NULL ? def->w : 0, def != NULL ? def->h : 0);
     esp_err_t err = ui_widget_factory_create_inner(def, parent, out_instance);
     ui_fonts_tile_end();
     if (err == ESP_OK && out_instance != NULL) {
-        if (def != NULL && strcmp(widget_caps_type(def), def->type) != 0) {
-            snprintf(out_instance->caps_type, sizeof(out_instance->caps_type), "%s", widget_caps_type(def));
+        if (def != NULL && strcmp(ui_widget_factory_caps_type(def), def->type) != 0) {
+            snprintf(out_instance->caps_type, sizeof(out_instance->caps_type), "%s", ui_widget_factory_caps_type(def));
         }
         ui_style_apply_card(out_instance->obj);
     }

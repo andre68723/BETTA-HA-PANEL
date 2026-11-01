@@ -20,8 +20,8 @@ or footer drift.
 
 ## Shared name visibility
 
-Every current widget type with its own name accepts `show_name` (boolean, default `true`, except the weather tiles
-`weather_tile` and `weather_3day`, whose default is `false`: they show the weather, not the place's name).
+Every current widget type with its own name accepts `show_name` (boolean, default `true`, except the weather tile
+`weather_tile`, whose default is `false`: it shows the weather, not the place's name).
 The editor calls it **Show name** / **Name anzeigen**, beside the Name input. It covers
 both a custom `title` and the entity name used as its fallback. Hiding it frees its
 reserved space; values, units, states, update ages, forecast day labels, song titles,
