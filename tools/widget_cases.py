@@ -43,7 +43,7 @@ def expand(case):
 
 
 REPO = Path(__file__).resolve().parent.parent
-CASES = REPO / "tools/test_layout_cases.json"
+CASES = REPO / "tools/widget_catalog.json"
 
 
 def catalogue():

@@ -440,7 +440,7 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     }
 }
 
-void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values, bool available)
+static void weather_render_view(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values, bool available)
 {
     if (card == NULL || ctx == NULL) {
         return;
@@ -657,4 +657,34 @@ void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_val
         }
     }
 
+}
+
+/* What the other view left on the card: the forecast columns, their header icon and the old row view. The header labels
+ * go back to the centered, wrapping look the today view starts from. */
+static void weather_hide_days_view(w_weather_tile_ctx_t *ctx)
+{
+    weather_columns_hide(ctx);
+    for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
+        if (ctx->rows[i].container != NULL) lv_obj_set_hidden(ctx->rows[i].container, true);
+    }
+    lv_obj_set_style_text_align(ctx->temp_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_text_align(ctx->meta_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_text_align(ctx->condition_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+}
+
+void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values, bool available)
+{
+    if (card == NULL || ctx == NULL) {
+        return;
+    }
+    if (ctx->selector) {
+        if (ctx->show_forecast) {
+            weather_now_hide(&ctx->now_view);
+            weather_hourly_hide(ctx);
+        } else {
+            weather_hide_days_view(ctx);
+        }
+    }
+    weather_render_view(card, ctx, values, available);
+    if (ctx->selector) weather_chips_update(card, ctx);
 }

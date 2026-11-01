@@ -84,7 +84,6 @@ function bindUi() {
   el.addLightTileBtn.onclick = () => openLightEntityPicker("light_tile");
   el.addHeatingTileBtn.onclick = () => openLightEntityPicker("heating_tile");
   el.addWeatherTileBtn.onclick = () => openLightEntityPicker("weather_tile");
-  el.addWeather3DayBtn.onclick = () => openLightEntityPicker("weather_3day");
   if (el.addSolarForecastBtn) {
     el.addSolarForecastBtn.onclick = () => addWidget("solar_forecast");
   }
@@ -469,6 +468,11 @@ if (el.addBambuPrinterBtn) {
   bindInspectorAutoApply(el.fSolarForecastBarMax, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSolarForecastBarOrientation, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fWeatherHourly, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fWeatherView, ["change"], { softEntityValidation: true });
+  for (const control of [el.fWeatherView, el.fWeatherSelector]) control?.addEventListener("change", () => updateWeatherViewRows(el.fWeatherView.value, el.fWeatherSelector.checked));
+  bindInspectorAutoApply(el.fWeatherDays, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fWeatherTilePrecip, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fWeatherSelector, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fWeatherShowPrecip, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fRoomControls, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fForecastDays, ["change"], { softEntityValidation: true });

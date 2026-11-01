@@ -5,7 +5,7 @@
 
 Renders the gallery fixture (tests/simulator/gallery_data.json), the Matte
 comparison fixture (tests/simulator/matte_reference.json), and the edge
-cases in tests/simulator/layout_cases.json (gallery tiles at their minimum and
+cases in tests/simulator/tile_size_cases.json (gallery tiles at their minimum and
 large sizes and every variant) with the SDL simulator in every appearance style, reads each widget's object rectangles
 from the simulator's --dump-layout output and reports:
 
@@ -30,7 +30,7 @@ from ui_styles import STYLES
 from check_readability import problems as readability_problems, coverage_problems
 
 REPO = Path(__file__).resolve().parent.parent
-CASES = REPO / "tests/simulator/layout_cases.json"
+CASES = REPO / "tests/simulator/tile_size_cases.json"
 MATTE_REFERENCE = REPO / "tests/simulator/matte_reference.json"
 # English in every style, and German, whose longer words ("nicht verfügbar") overflow first, once.
 PASSES = [(style, "en") for style in STYLES] + [("flat", "de"), ("matte", "de")]

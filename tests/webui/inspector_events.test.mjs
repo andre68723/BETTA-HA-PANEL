@@ -276,7 +276,7 @@ for (const [input, type, entity, property, firstChecked, firstValue, secondValue
   ["fShowName", "sensor", "sensor.temperature", "show_name", false, false, undefined],
   ["fSensorShowAge", "sensor", "sensor.temperature", "sensor_show_age", false, false, undefined],
   ["fWeatherHourly", "weather_tile", "weather.home", "weather_hourly", true, true, undefined],
-  ["fWeatherShowPrecip", "weather_3day", "weather.home", "show_precipitation", false, false, undefined],
+  ["fWeatherTilePrecip", "weather_tile", "weather.home", "show_precipitation", false, false, undefined],
   ["fAlignForecast", "solar_forecast", "sensor.solar", "align_forecast", true, true, undefined],
 ]) {
   test(`${input} on ${type}: change, save, restore Inspector and reverse`, async () => {

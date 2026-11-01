@@ -121,7 +121,7 @@ class SharedCatalogueTest(unittest.TestCase):
             (root / "tests/simulator").mkdir(parents=True)
             (root / "tests/simulator/CMakeLists.txt").write_text("")
             (root / "tools").mkdir()
-            inputs = ["tools/test_layout_cases.json", "tools/widget_cases.py"]
+            inputs = ["tools/widget_cases.py", "tools/widget_catalog.json"]
             for name in inputs:
                 (root / name).write_text("before")
             with patch.object(gallery_freshness, "REPO", root), patch.object(gallery_freshness, "SOURCES_JSON", root / "sources.json"):

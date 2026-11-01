@@ -300,7 +300,8 @@
       "widgets": [
         {
           "id": "w_weather_3day",
-          "type": "weather_3day",
+          "type": "weather_tile",
+          "weather_view": "days",
           "title": "weather_3day",
           "rect": {
             "x": 20,
@@ -310,8 +311,7 @@
           },
           "entity_id": "weather.t",
           "forecast_days": 5,
-          "show_precipitation": false,
-          "align_forecast": true
+          "show_precipitation": false
         }
       ]
     },
@@ -330,6 +330,7 @@
             "h": 250
           },
           "entity_id": "sensor.rem",
+          "align_forecast": true,
           "forecast_today_entity_id": "sensor.a",
           "forecast_tomorrow_entity_id": "sensor.b",
           "forecast_day_3_entity_id": "sensor.c",
@@ -527,6 +528,8 @@
           "entity_id": "weather.home",
           "secondary_entity_id": "sensor.weather_report",
           "weather_hourly": true,
+          "weather_selector": true,
+          "weather_view": "days",
           "rect": {
             "x": 0,
             "y": 0,

@@ -699,3 +699,6 @@ input[type="time"] {
 
 /* Tiles that overlap cover each other on the panel (overlappingWidgetIds() in js/canvas.js). */
 #canvas .widget-box.overlapping { outline: 3px dashed var(--danger); outline-offset: -3px; }
+
+/* Weather view rows that do not apply to the chosen view stay visible but greyed out. */
+.is-inactive { opacity: .45; }

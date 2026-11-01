@@ -161,6 +161,7 @@ function initInspectorLayout() {
   follow(byId("priceOptions"), [label(el.fPriceSelector)], "controls");
   follow(byId("parqetOptions"), [label(el.fParqetSelector)], "controls");
   follow(byId("stockOptions"), [el.fStockSelectorRow], "controls");
+  follow(byId("weatherNowOptions"), [el.fWeatherSelectorRow], "controls");
   follow(byId("roomEntitiesFields"), [label(el.fRoomControls), byId("fRoomControlsHint")], "controls");
   follow(byId("vacuumOptions"), [label(el.fVacuumDefaultMode), byId("fVacuumDefaultModeHint")], "controls");
   // The old groups are emptied; Placement is a section like the others, collapsed, at the end.

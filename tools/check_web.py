@@ -349,6 +349,10 @@ def creatable_widget_types(bind_js, config_js, custom_js=""):
     return types
 
 
+# Widget types the editor no longer offers to create: it rewrites them to their current form when a layout loads.
+LEGACY_EDITOR_TYPES = {"weather_3day"}
+
+
 def check_widget_type_tables():
     """Report missing registrations per supported C type; this is not behavioral or visual parity."""
     from check_simulator_fields import function_body
@@ -368,6 +372,8 @@ def check_widget_type_tables():
     groups = [kind for _, _, kinds in GROUPS for kind in kinds]
     for kind in sorted(set(size_limits()) - {"roborock_tile"}):
         missing = [place for place, types in registrations.items() if kind not in types]
+        if kind in LEGACY_EDITOR_TYPES:  # the editor rewrites these on load; the panel still reads them
+            missing = [place for place in missing if place != "editor.add"]
         if groups.count(kind) != 1:
             missing.append("docs.group (expected once)")
         if missing:

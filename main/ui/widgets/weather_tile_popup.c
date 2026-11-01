@@ -677,5 +677,5 @@ void weather_col_clicked_cb(lv_event_t *event)
 void weather_now_clicked_cb(lv_event_t *event)
 {
     w_weather_tile_ctx_t *ctx = lv_event_get_user_data(event);
-    if (ctx != NULL && ctx->available) weather_show_day_popup(ctx, 0);
+    if (ctx != NULL && ctx->available && !ctx->show_forecast) weather_show_day_popup(ctx, 0);
 }

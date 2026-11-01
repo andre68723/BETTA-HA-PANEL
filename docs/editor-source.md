@@ -217,7 +217,7 @@ plus contact sheets under `/private/tmp/`):
 
 ```bash
 uv run --locked --group screenshots python tools/compare_editor_previews.py [--style matte] [widget ids]
-... --cases [tile names] [--all-sizes]   # smallest and largest size of each tile in layout_cases.json, fresh renders
+... --cases [tile names] [--all-sizes]   # smallest and largest size of each tile in tile_size_cases.json, fresh renders
 ... --pages                              # whole house and energy page
 ```
 

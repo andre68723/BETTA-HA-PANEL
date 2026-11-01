@@ -48,7 +48,7 @@ SDL_VIDEODRIVER=dummy scripts/simulator.sh panel4 --fixture <file> --page <id> -
 
 ## Test pages
 
-`scripts/test_pages.sh panel4 tab5 paneljc` builds all three sizes, checks and renders the catalog,
+`scripts/layout_report.sh panel4 tab5 paneljc` builds all three sizes, checks and renders the catalog,
 logs the run and opens the overview. Options, topic coverage, clock and device-loading limits have
 one reference: [Test layouts](development/testing.md#test-layouts).
 
@@ -82,7 +82,7 @@ edge cases; `check_widget_layout.py --fixture` checks it) and `dutch-characters.
 ## Gallery
 
 `python3 tools/generate_simulator_gallery.py` renders the [gallery](gallery.md) from gallery-tagged cases in
-`tools/test_layout_cases.json` and the synthetic states in `tests/simulator/gallery_data.json`, in all four styles on the fixed clock (15 October 2026, 12:00 Berlin; `--now real` for the host clock), so a new run
+`tools/widget_catalog.json` and the synthetic states in `tests/simulator/gallery_data.json`, in all four styles on the fixed clock (15 October 2026, 12:00 Berlin; `--now real` for the host clock), so a new run
 changes only images whose widget changed; `--variant paneljc|tab5` renders the house and energy pages at that size
 ([10-inch](gallery-sim-paneljc.md), [5-inch](gallery-sim-tab5.md)). It needs Pillow and no panel; see
 [Gallery](development/testing.md#gallery).
@@ -93,5 +93,5 @@ changes only images whose widget changed; `--variant paneljc|tab5` renders the h
   todo have no gallery image. Unsupported types are reported and skipped.
 - The top bar and navigation are the firmware's `ui_pages.c` fed by `tests/simulator/pages_stubs.c` (Wi-Fi and Home
   Assistant show as connected). The navigation lists at most `APP_MAX_PAGES` pages, ending at the selected one.
-- States are a snapshot and can differ from a device screenshot (`scripts/screenshot.sh <ip>`). Check on the panel before
+- States are a snapshot and can differ from a device screenshot (`scripts/panel_screenshot.sh <ip>`). Check on the panel before
   claiming hardware behaviour.

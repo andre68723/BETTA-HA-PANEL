@@ -109,6 +109,12 @@ function normalizeLayoutWidgets(layout) {
       if (widget.type === "roborock_tile") {
         widget.type = "vacuum_tile"; // legacy name
       }
+      if (widget.type === "weather_3day") {
+        // The forecast tile is the weather tile's forecast-days view; the panel still reads the old name.
+        widget.type = "weather_tile";
+        widget.weather_view = "days";
+        delete widget.align_forecast;
+      }
       if (widget.type === "binary_tile" && widget.display_mode === "door" && widget.rect) {
         // Grow a door-look tile to the size the panel actually draws it (see widgetSizeType()).
         widget.rect = clampRectToCanvas(widget.rect, "contact_tile");

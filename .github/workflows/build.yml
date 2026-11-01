@@ -113,7 +113,7 @@ jobs:
           fi
           flag=""
           case "$version" in *-*) flag="--prerelease" ;; esac
-          scripts/release_notes.sh "$version" "${GITHUB_SHA::7}" > notes.md
+          scripts/release_body.sh "$version" "${GITHUB_SHA::7}" > notes.md
           if [ "$DRY_RUN" = "true" ]; then
             echo "Dry run, would publish $version ($flag) from $GITHUB_SHA with:"
             ls dist/*.bin dist/SHA256SUMS

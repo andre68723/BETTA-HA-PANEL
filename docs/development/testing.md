@@ -72,14 +72,14 @@ object's rectangle (`--dump-layout`). It fails when two texts overlap, a text ov
 bar or picture, or anything reaches outside its tile. `check.sh`, CI and `tools/generate_simulator_gallery.py` run it
 (panel4; `--variant paneljc|tab5` for the 1280 px geometry; the panel4-only readability fixtures are skipped there). It
 also renders the Matte comparison (`tests/simulator/matte_reference.json`) and edge cases
-(`tests/simulator/layout_cases.json`: tiles at minimum and large sizes and in every variant). A text recorded as essential
+(`tests/simulator/tile_size_cases.json`: tiles at minimum and large sizes and in every variant). A text recorded as essential
 (`ui_text_record(label, role, true)`) also fails when it is cut: record states, readings and button words that way, while
 names may end in dots.
 
 - Rectangles cannot see a ring's shape, and a widget that leaves content out passes: look at the images for text on
   arcs and knobs and for whether a tile still shows what it is for.
-- A new or changed widget layout needs a tile in the gallery fixture (a `gallery` tag in `tools/test_layout_cases.json`,
-  projected by `build_spec()` in `tools/gallery_content.py`) and its minimum size and variants in `layout_cases.json`.
+- A new or changed widget layout needs a tile in the gallery fixture (a `gallery` tag in `tools/widget_catalog.json`,
+  projected by `build_spec()` in `tools/gallery_content.py`) and its minimum size and variants in `tile_size_cases.json`.
 - Two LVGL traps behind most findings: an object placed with `lv_obj_align()` keeps that anchor, so a later
   `lv_obj_set_pos()` offsets from it (use `lv_obj_align(obj, LV_ALIGN_TOP_LEFT, x, y)`); sizes read right after creation
   are 0 until `lv_obj_update_layout()` runs.
@@ -98,18 +98,18 @@ fixtures for numeric and discrete details.
 
 ## Screenshots
 
-`scripts/screenshot.sh <panel-ip> [out.png]` saves what the panel shows (popups and the update screen included) via
+`scripts/panel_screenshot.sh <panel-ip> [out.png]` saves what the panel shows (popups and the update screen included) via
 `GET /api/screenshot.bmp`. Do not give `curl` a short timeout: the image is about 3 MB on the 10-inch panel and a timeout
 truncates it silently.
 
 ## Test layouts
 
-`tools/test_layout_cases.json` is the shared widget catalog. A case's `gallery` metadata selects its preview title,
+`tools/widget_catalog.json` is the shared widget catalog. A case's `gallery` metadata selects its preview title,
 size and order; `gallery_caps` holds descriptions shared by preview variants. Cases needed only for a gallery image
 live in `gallery_only`: they never enter topic packs, generated edge/state cases or test coverage counts.
 Cases define a topic, 10-inch size and `{role}` entities, optional `expect` texts and simulator-only `sim` fields.
 
-`tools/test_layouts.py` builds test pages for every widget and variant from `tools/test_layout_cases.json`, grouped by
+`tools/test_layouts.py` builds test pages for every widget and variant from `tools/widget_catalog.json`, grouped by
 topic (energy, climate, controls, status, devices, finance) and placed for each board: `paneljc` (1280 x 680), `tab5`
 (1280 x 600) and `panel4` (720 x 600). Cases keep their 10-inch size, tallest first; a topic that exceeds the board's
 pages or 32 KB is split. Two generated topics add every type at its minimum size with a long name, without its name and
@@ -118,7 +118,7 @@ idle, running, paused, returning, selected Off, alert and unavailable control st
 
 **Simulator**
 
-`scripts/test_pages.sh panel4 tab5 paneljc` (`test_layouts.py view`) renders every page with the demo entities and opens an
+`scripts/layout_report.sh panel4 tab5 paneljc` (`test_layouts.py view`) renders every page with the demo entities and opens an
 overview with board, style, text step and language buttons. `--styles`, `--text-steps` and `--languages` choose the
 renders (default: four styles, step 0, German). The launcher builds each requested size, writes
 `${TMPDIR:-/tmp}/betta-test-pages/simulator.log`, prints progress, then opens the browser on Enter; `--no-open` skips the prompt.

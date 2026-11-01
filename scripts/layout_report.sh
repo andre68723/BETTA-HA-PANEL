@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 andre68723
 # Build widget test pages, log the run and show the progress, and open the checked overview in the browser on Enter.
-#   scripts/test_pages.sh [board ...] [--styles flat,...] [--text-steps 0,1,2] [--languages de,en]
+#   scripts/layout_report.sh [board ...] [--styles flat,...] [--text-steps 0,1,2] [--languages de,en]
 # Defaults: all three sizes, four styles, German, text step 0; --no-open only generates files.
 set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

@@ -4,7 +4,11 @@
 """Serve the current web editor with synthetic API responses and local saves. No firmware build, panel or HA connection."""
 import argparse
 import copy
+import datetime
 import json
+import os
+import subprocess
+import tempfile
 from functools import partial
 from http.server import SimpleHTTPRequestHandler
 from pathlib import Path
@@ -16,9 +20,11 @@ import webbrowser
 from urllib.parse import parse_qs, urlsplit
 
 from generate_docs_examples import DemoHTTPServer, WWW, demo_api, fixtures
-from generate_simulator_gallery import DATA, GEOMETRY, demo_page, prepare_fixture
+from generate_simulator_gallery import DATA, FIXED_NOW, GEOMETRY, build_simulator, demo_page, prepare_fixture
 
 ROOT = Path(__file__).resolve().parent.parent
+SIMULATOR_LOCK = threading.Lock()  # one build/render at a time: the simulator build directory is shared
+SIMULATOR_STYLES = ('flat', 'glow', 'glass', 'matte')
 SUPPORT = Path(__file__).resolve().parent / 'editor_local'
 CSP = "default-src 'self'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'"
 
@@ -34,7 +40,7 @@ def demo_fixture(variant):
     if variant == 'tab5':
         fixture['pages'][0] = demo_page(gallery, variant)
     elif variant != 'panel4':
-        choices = [('weather_3day', 'Wetter', (20, 20, 600, 280)),
+        choices = [('weather_tile', 'Wetter', (20, 20, 600, 280)),
                    ('light_tile', 'Stehlampe', (650, 20, 280, 320)),
                    ('sensor', 'Luftfeuchte', (960, 20, 300, 160)),
                    ('media_player', 'Wohnzimmer', (20, 330, 600, 310)),
@@ -43,7 +49,7 @@ def demo_fixture(variant):
         for kind, title, rect in choices:
             item = copy.deepcopy(templates[kind])
             item.update(id='demo_' + kind, title=title, rect=dict(zip(('x', 'y', 'w', 'h'), rect)))
-            if kind == 'weather_3day': item['forecast_days'] = 4
+            if kind == 'weather_tile': item.update(weather_selector=True, forecast_days=4)
             if kind == 'sensor': item['entity_id'] = 'sensor.demo_humidity'
             widgets.append(item)
         fixture['pages'][0].update(title='Wohnzimmer', widgets=widgets)
@@ -77,6 +83,8 @@ def demo_responses(variant, fixture_path=None, all_widgets=False):
         # Synthetic picture URLs are unnecessary here; no external resource is fetched.
         if 'entity_picture' in state.get('attributes', {}): state['attributes']['entity_picture'] = ''
     responses = demo_api(fixture)
+    # What the LVGL preview adds around the edited layout: the demo's states and its other simulator inputs.
+    responses['__simulator__'] = {key: copy.deepcopy(value) for key, value in fixture.items() if key not in ('pages', 'alerts')}
     # Explicit synthetic integration metadata also makes unbound quote samples searchable.
     quote_ids = {s['entity_id'] for s in fixture['states'] if s.get('platform') == 'easy_stock'}
     for entity in responses['/api/entities']['items']:
@@ -128,6 +136,28 @@ class Store:
         temporary = self.path.with_suffix('.tmp')
         temporary.write_text(json.dumps(saved, ensure_ascii=False, indent=2), encoding='utf-8')
         temporary.replace(self.path)
+
+
+def render_lvgl(variant, layout, base, page_id, style, text_step, language):
+    """The page as the LVGL simulator draws it (a BMP), for the layout as edited. Raises ValueError for bad input."""
+    pages = copy.deepcopy(layout.get('pages') or [])
+    page = next((item for item in pages if item.get('id') == page_id), pages[0] if pages else None)
+    if page is None: raise ValueError('The layout has no page')
+    if style not in SIMULATOR_STYLES: style = 'glow'
+    text_step = text_step if type(text_step) is int and 0 <= text_step <= 2 else 0
+    language = language if language in ('de', 'en') else 'de'
+    fixture = dict(base, version=1, alerts=layout.get('alerts', []), pages=pages)
+    now = str(int(datetime.datetime.fromisoformat(FIXED_NOW).timestamp()))  # the gallery's fixed clock: dated demo data fits
+    with SIMULATOR_LOCK, tempfile.TemporaryDirectory(prefix='betta_editor_sim_') as temp:
+        binary = build_simulator(variant)
+        source, image = Path(temp) / 'layout.json', Path(temp) / 'page.bmp'
+        source.write_text(json.dumps(fixture, ensure_ascii=False), encoding='utf-8')
+        subprocess.run([str(binary), '--fixture', str(source), '--page', page['id'], '--theme', 'dark_v2', '--style', style,
+                        '--text-step', str(text_step), '--language', language, '--screenshot', str(image),
+                        '--exit-after-ms', '300'],
+                       env=dict(os.environ, SDL_VIDEODRIVER='dummy', BETTA_SIM_NOW=now), check=True,
+                       capture_output=True, timeout=60)
+        return image.read_bytes()
 
 
 def build_server(port=8766, variant='paneljc', fixture_path=None, state_path=None, spike_dir=None,
@@ -230,6 +260,17 @@ def build_server(port=8766, variant='paneljc', fixture_path=None, state_path=Non
             except (ValueError, UnicodeError): return self.reply({'error': 'Invalid JSON'}, 400)
             if not isinstance(body, dict): return self.reply({'error': 'Expected a JSON object'}, 400)
             path = urlsplit(self.path).path
+            if path == '/api/local/simulator' and self.command == 'POST':
+                with store.lock:
+                    layout = body.get('layout') if isinstance(body.get('layout'), dict) else responses['/api/layout']
+                    base = copy.deepcopy(responses['__simulator__'])
+                try:
+                    image = render_lvgl(variant, layout, base, body.get('page_id'), body.get('style'),
+                                        body.get('text_step'), body.get('language'))
+                except ValueError as error: return self.reply({'error': str(error)}, 400)
+                except (OSError, subprocess.SubprocessError) as error:
+                    return self.reply({'error': 'The simulator could not render the page: ' + str(error)[:300]}, 500)
+                return self.send(image, 'image/bmp')
             with store.lock:
                 if path == '/api/display/test' and self.command == 'POST':
                     action, percent, kind = body.get('action'), body.get('percent'), body.get('kind')

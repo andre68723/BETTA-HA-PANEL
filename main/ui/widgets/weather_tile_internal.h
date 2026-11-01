@@ -184,8 +184,11 @@ typedef struct weather_tile_ctx {
     ha_weather_hourly_t hourly;
     struct weather_tile_ctx *hourly_next;
     lv_obj_t *hourly_strip, *hourly_status, *hourly_icon;
-    struct { lv_obj_t *box, *time, *icon, *temp; } hours[HA_WEATHER_HOURS_MAX];
-    bool show_forecast;
+    struct { lv_obj_t *box, *time, *icon, *temp, *sep; } hours[HA_WEATHER_HOURS_MAX];
+    bool show_forecast; /* the forecast days view is showing (fixed for weather_3day, switchable with the chips) */
+    bool selector;      /* weather_tile: chips "Today | Days" below the content */
+    lv_obj_t *chip[2];
+    lv_coord_t chip_base_pad; /* the card's top padding before the chips take their strip */
     bool hide_name;
     bool show_precip;
     int forecast_days;
@@ -311,6 +314,10 @@ void weather_now_clicked_cb(lv_event_t *event);
 void weather_hourly_start(w_weather_tile_ctx_t *ctx);
 void weather_hourly_stop(w_weather_tile_ctx_t *ctx);
 bool weather_hourly_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values);
+void weather_hourly_hide(w_weather_tile_ctx_t *ctx);
+/* Chips of a switchable tile: created once, placed below the content area, the active view filled. */
+void weather_chips_create(lv_obj_t *card, w_weather_tile_ctx_t *ctx);
+void weather_chips_update(lv_obj_t *card, w_weather_tile_ctx_t *ctx);
 #ifdef BETTA_SIMULATOR
 void weather_hourly_simulator_reply(uint32_t token, const cJSON *result);
 #endif

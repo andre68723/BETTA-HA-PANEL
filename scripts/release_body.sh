@@ -5,7 +5,7 @@
 # Prints the body of a GitHub release: what the images are, which hardware was tried and how to install. The changes of
 # the version are in docs/release-notes.md (linked); the workflow appends GitHub's generated list of merged work.
 #
-#   scripts/release_notes.sh <version> <commit>      e.g.  scripts/release_notes.sh v0.9.2 1a2b3c4
+#   scripts/release_body.sh <version> <commit>      e.g.  scripts/release_body.sh v0.9.2 1a2b3c4
 set -euo pipefail
 
 if [ $# -ne 2 ]; then

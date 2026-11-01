@@ -162,7 +162,6 @@
               <button id="addLightTileBtn" type="button">+ Light Tile</button>
               <button id="addHeatingTileBtn" type="button">+ Heating Tile</button>
               <button id="addWeatherTileBtn" type="button">+ Weather</button>
-              <button id="addWeather3DayBtn" type="button">+ Weather Forecast</button>
               <button id="addSolarForecastBtn" type="button">+ Solar Forecast</button>
               <button id="addPriceForecastBtn" type="button">+ Energy Price Forecast</button>
               <button id="addParqetPortfolioBtn" type="button">+ Parqet Portfolio</button>
@@ -1839,8 +1838,25 @@
                     <div class="meta" id="fReadabilityHint"></div>
                   </div>
                   <div id="weatherNowOptions" class="slider-options hidden">
-                    <label class="row"><input id="fWeatherHourly" type="checkbox" /><span id="fWeatherHourlyLabel">Show hourly forecast</span></label>
+                    <label><span id="fWeatherViewLabel">View</span>
+                      <select id="fWeatherView">
+                        <option value="now">Today</option>
+                        <option value="days">Forecast days</option>
+                      </select>
+                    </label>
+                    <div id="fWeatherViewHint" class="meta"></div>
+                    <label class="row" id="fWeatherHourlyRow"><input id="fWeatherHourly" type="checkbox" /><span id="fWeatherHourlyLabel">Show hourly forecast</span></label>
                     <div id="fWeatherHourlyHint" class="meta"></div>
+                    <label id="fWeatherDaysRow"><span id="fWeatherDaysLabel">Visible days</span>
+                      <select id="fWeatherDays">
+                        <option value="">Default</option>
+                        <option value="0">Auto (readable columns)</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
+                      </select>
+                    </label>
+                    <label class="row" id="fWeatherTilePrecipRow"><input id="fWeatherTilePrecip" type="checkbox" checked /><span id="fWeatherTilePrecipLabel">Show rain chance and amount</span></label>
+                    <label class="row" id="fWeatherSelectorRow"><input id="fWeatherSelector" type="checkbox" /><span id="fWeatherSelectorLabel">Show selector buttons on the tile</span></label>
                   </div>
                   <div id="weatherForecastOptions" class="slider-options hidden">
                     <label class="row">
@@ -2003,7 +2019,6 @@
         <div class="add-tile-group">
           <div class="add-tile-group-label">Info</div>
           <button class="btn small add-tile-type" type="button" data-add-target="addWeatherTileBtn">Weather</button>
-          <button class="btn small add-tile-type" type="button" data-add-target="addWeather3DayBtn">Weather Forecast</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addSolarForecastBtn">Solar Forecast</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addPriceForecastBtn">Energy Price Forecast</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addEmptyTileBtn">Empty Tile</button>

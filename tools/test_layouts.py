@@ -13,7 +13,7 @@
 check (part of scripts/check.sh) needs no simulator: every widget type and enumerated value has a case, and every
 board's layouts fit its pages, 32 KB and canvas without overlaps.
 
-The suites are in tools/test_layout_cases.json: widgets at their 10-inch size with "{role}" entities. generate places
+The suites are in tools/widget_catalog.json: widgets at their 10-inch size with "{role}" entities. generate places
 them on pages for a board (paneljc, tab5, panel4), splitting a suite where it exceeds the board's pages or the 32 KB
 layout limit, and replaces the roles from an entity map: the local .local/test-layouts/entities.json (real Home
 Assistant entities, not committed) when it exists, else tools/test_layout_entities_demo.json. A "grenzen" suite adds

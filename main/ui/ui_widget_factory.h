@@ -73,6 +73,8 @@ typedef struct {
     bool align_forecast; /* solar: dated columns with Rest in the header */
     bool weather_hourly; /* weather_tile: optional real hourly forecast strip, default false */
     bool show_precipitation; /* weather_3day: rain chance and amount, default true */
+    bool weather_selector; /* weather_tile: chips to switch between today (hours) and the forecast days, default false */
+    bool weather_days; /* weather_tile: starts in the forecast days view (weather_view "days"), default false */
     bool show_icon; /* room_tile, air_quality_tile: a small icon before the name, default false */
     bool room_controls; /* room_tile: a control row (lights, switches, covers) when the card is large enough, default false */
     float gauge_min; /* gauge: bottom of the bar's range, default 0 */
@@ -157,6 +159,7 @@ typedef struct {
     bool visible;
     void *ctx;
     lv_obj_t *obj;
+    char caps_type[24]; /* the type whose text caps apply when it differs from `type` (a weather tile that shows days) */
 } ui_widget_instance_t;
 
 /* False for tiles that are updated whenever their entity changes (hidden or not) and keep nothing

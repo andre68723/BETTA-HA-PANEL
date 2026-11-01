@@ -41,7 +41,7 @@ Merging a pull request into `main` publishes the release; nothing is pushed or r
    (`v0.9.2-rc1` for a test version, `v0.9.2` for a release) and describe it in `docs/release-notes.md`.
 2. If a release with that name exists it does nothing, so merges without a version change publish nothing.
 3. Otherwise it creates the tag on the merged commit and the GitHub release with the images, `SHA256SUMS`, the text of
-   `scripts/release_notes.sh` and GitHub's list of merged work. A version with a suffix (`-rc1`) is a pre-release.
+   `scripts/release_body.sh` and GitHub's list of merged work. A version with a suffix (`-rc1`) is a pre-release.
 
 `workflow_dispatch` runs the same steps; on any ref but `main`, or with `dry_run`, it stops before creating anything and
 prints the release it would publish. To publish by hand instead: set the version,

@@ -24,13 +24,17 @@ Current conditions need a weather entity. **Show hourly forecast** needs that pr
 | Option | Effect |
 | --- | --- |
 | Show hourly forecast | off by default; adds a horizontal strip of up to 24 upcoming hours with time, condition and temperature |
+| View | **Today** (default) or **Forecast days**: the view the tile starts with; the forecast days need at least 260 × 220 px |
+| Visible days / Show rain chance and amount | shown whenever the forecast days can appear, as for the forecast tile |
+| Show selector buttons on the tile | off by default; two buttons above the tile switch between today and the forecast days, as the period buttons of Stocks do |
 | DWD weather report | optional sensor, shown in the detail popup |
 | Show name | off by default, to leave room for the conditions |
 
 ## On the panel
 
+- The hourly strip appears only when a full column fits below the current weather; a tile that is too short shows the current weather alone.
 - A tap opens today's details: temperatures, the available humidity, pressure, wind and visibility, and the optional DWD report.
-- With hourly forecasts, scroll horizontally for later hours; scrolling does not open the popup. Times use the panel's time zone.
+- With hourly forecasts, scroll horizontally for later hours; scrolling does not open the popup. The strip shows the next 24 hours from now, so it usually crosses midnight: a divider and the weekday mark the first column of the new day. Times use the panel's time zone.
 - Hourly forecasts are fetched only while the tile is visible and refreshed every 15 minutes. A missing hourly forecast is shown explicitly; current conditions remain available.
 - Without the hourly strip, today's low and precipitation appear when there is room. The tile uses the same Meteocons as the daily forecast.
 - Close details with the close button or a tap outside; they also close automatically after one minute.

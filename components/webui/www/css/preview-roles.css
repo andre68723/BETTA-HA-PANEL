@@ -452,3 +452,7 @@ body[data-ui-style] #canvas .widget-box .control-alert { --control-fill: var(--p
 #canvas .air-preview-extra { color: var(--pv-muted); text-align: center; }
 #canvas .air-preview-col-label { color: var(--pv-muted); text-align: center; }
 #canvas .air-preview-col-value { font-size: var(--value); text-align: center; }
+
+.tp-weather-chips { display: flex; flex: none; justify-content: center; gap: 6px; margin-bottom: 4px; }
+.tp-weather-chips span { min-width: 56px; padding: 2px 10px; border-radius: 8px; text-align: center; background: var(--surf-2); color: var(--text-soft, var(--text)); font-size: 13px; }
+.tp-weather-chips span.on { background: var(--accent-soft, #9bb7cf); color: #14202c; }

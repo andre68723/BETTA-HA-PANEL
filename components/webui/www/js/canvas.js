@@ -470,7 +470,6 @@ function renderWidgets() {
     el.addLightTileBtn,
     el.addHeatingTileBtn,
     el.addWeatherTileBtn,
-    el.addWeather3DayBtn,
     el.addSolarForecastBtn,
     el.addPriceForecastBtn,
     el.addCarWidgetBtn,
@@ -547,6 +546,17 @@ function renderWidgets() {
       event.preventDefault();
       openWidgetActions(page.id, widget.id, actionsBtn, { x: event.clientX, y: event.clientY });
     };
+    const dupBtn = document.createElement("button");
+    dupBtn.type = "button";
+    dupBtn.className = "row-icon-btn";
+    dupBtn.title = t("layout.widgets.duplicate");
+    dupBtn.textContent = "⧉";
+    dupBtn.setAttribute("aria-label", t("layout.widgets.duplicate"));
+    dupBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      duplicateWidget(widget.id);
+    };
+    actions.appendChild(dupBtn);
     actions.appendChild(actionsBtn);
     const delBtn = document.createElement("button");
     delBtn.type = "button";
@@ -569,6 +579,21 @@ function renderWidgets() {
 }
 
 // The list names a widget by its title, or by its kind when it has none; the search still matches type and entity ID.
+// The rows under the weather view choice: hours belong to today, days and rain to the days, the start view to the switch.
+function updateWeatherViewRows(view, selector) {
+  // A row that does not apply to the chosen view stays in place, greyed out and with its value kept.
+  const grey = (rowId, inputId, off) => {
+    document.getElementById(rowId)?.classList.toggle("is-inactive", off);
+    const input = document.getElementById(inputId);
+    if (input) input.disabled = off;
+  };
+  const hours = view === "now" || selector, days = view === "days" || selector; // the buttons make both views reachable
+  grey("fWeatherHourlyRow", "fWeatherHourly", !hours);
+  document.getElementById("fWeatherHourlyHint")?.classList.toggle("is-inactive", !hours);
+  grey("fWeatherDaysRow", "fWeatherDays", !days);
+  grey("fWeatherTilePrecipRow", "fWeatherTilePrecip", !days);
+}
+
 function widgetDisplayLabel(widget) {
   return (widget.title || "").trim() || widgetTypeLabel(widget.type);
 }
@@ -1168,6 +1193,14 @@ function renderInspector() {
   updateGaugeBarStyleVisibility();
   if (el.weatherNowOptions) el.weatherNowOptions.classList.toggle("hidden", widget.type !== "weather_tile");
   if (el.fWeatherHourly) el.fWeatherHourly.checked = widget.type === "weather_tile" && widget.weather_hourly === true;
+  // One view choice drives the rows below it: hours only while today shows, days and rain only while the days can show.
+  const weatherTile = widget.type === "weather_tile";
+  const weatherView = widget.weather_view === "days" ? "days" : "now";
+  if (el.fWeatherView) el.fWeatherView.value = weatherTile ? weatherView : "now";
+  if (el.fWeatherSelector) el.fWeatherSelector.checked = weatherTile && widget.weather_selector === true;
+  if (el.fWeatherDays) el.fWeatherDays.value = weatherTile && Number.isInteger(widget.forecast_days) ? String(widget.forecast_days) : "";
+  if (el.fWeatherTilePrecip) el.fWeatherTilePrecip.checked = !weatherTile || widget.show_precipitation !== false;
+  updateWeatherViewRows(weatherView, widget.weather_selector === true);
   if (el.weatherForecastOptions) {
     el.weatherForecastOptions.classList.toggle("hidden", widget.type !== "weather_3day");
   }
@@ -2144,13 +2177,23 @@ function applyInspector(options = {}) {
     delete widget.room_extra_mode;
     delete widget.room_extra_entity_id;
   }
-  if (widgetType === "weather_3day" && el.fWeatherShowPrecip && !el.fWeatherShowPrecip.checked) {
+  const weatherViewChoice = widgetType === "weather_tile" ? el.fWeatherView?.value || "now" : "now";
+  const weatherButtons = widgetType === "weather_tile" && el.fWeatherSelector?.checked === true;
+  // The greyed rows keep their values: the panel ignores a hours or days option its view never shows.
+  const precipBox = widgetType === "weather_tile" ? el.fWeatherTilePrecip : el.fWeatherShowPrecip;
+  if ((widgetType === "weather_3day" || widgetType === "weather_tile") && precipBox && !precipBox.checked) {
     widget.show_precipitation = false;
   } else {
     delete widget.show_precipitation; // default: shown
   }
   if (widgetType === "weather_tile" && el.fWeatherHourly?.checked) widget.weather_hourly = true;
   else delete widget.weather_hourly;
+  if (weatherButtons) widget.weather_selector = true;
+  else delete widget.weather_selector;
+  if (widgetType === "weather_tile" && weatherViewChoice === "days") widget.weather_view = "days";
+  else delete widget.weather_view;
+  if (widgetType === "weather_tile" && el.fWeatherDays?.value !== "") widget.forecast_days = clamp(Number(el.fWeatherDays.value), 0, 7);
+  else if (widgetType === "weather_tile") delete widget.forecast_days;
   saveReadabilityFields(widget);
   if (widgetSupportsName(widgetType) && el.fShowName && el.fShowName.checked !== widgetNameDefault(widgetType)) {
     widget.show_name = el.fShowName.checked; // only a deviation from the type's default is stored

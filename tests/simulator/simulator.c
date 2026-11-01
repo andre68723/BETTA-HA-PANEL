@@ -305,6 +305,9 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     def->align_forecast = json_bool(json, "align_forecast", false);
     def->show_precipitation = json_bool(json, "show_precipitation", true);
     def->weather_hourly = json_bool(json, "weather_hourly", false);
+    def->weather_selector = json_bool(json, "weather_selector", false);
+    const cJSON *weather_view = cJSON_GetObjectItemCaseSensitive(json, "weather_view");
+    def->weather_days = cJSON_IsString(weather_view) && weather_view->valuestring && strcmp(weather_view->valuestring, "days") == 0;
     def->room_controls = json_bool(json, "room_controls", false);
     def->show_icon = json_bool(json, "show_icon", false);
     const cJSON *room_entities = cJSON_GetObjectItemCaseSensitive(json, "room_entities");

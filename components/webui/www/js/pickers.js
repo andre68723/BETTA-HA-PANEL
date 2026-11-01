@@ -608,7 +608,7 @@ function entityFirstDomainSuggestions(entityId, deviceClass) {
     case "media_player":
       return [{ key: "media", type: "media_player" }];
     case "weather":
-      return [{ key: "weather", type: "weather_tile" }, { key: "forecast", type: "weather_3day" }];
+      return [{ key: "weather", type: "weather_tile" }];
     case "todo":
       return [{ key: "todo", type: "todo_list" }];
     default:

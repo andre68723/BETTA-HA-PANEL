@@ -366,14 +366,24 @@ static void ui_widget_factory_apply_state_inner(ui_widget_instance_t *instance, 
     }
 }
 
+/* A weather tile that can show the forecast days is laid out and capped like the forecast tile. */
+static const char *widget_caps_type(const ui_widget_def_t *def)
+{
+    if (strcmp(def->type, "weather_tile") == 0 && (def->weather_selector || def->weather_days)) return "weather_3day";
+    return def->type;
+}
+
 /* The style's card surface goes on after creation and after every state update, because the
  * widgets restyle their own background (ui_style_apply_card()). */
 esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance)
 {
-    ui_fonts_tile_begin(def != NULL ? def->type : NULL, def != NULL ? def->w : 0, def != NULL ? def->h : 0);
+    ui_fonts_tile_begin(def != NULL ? widget_caps_type(def) : NULL, def != NULL ? def->w : 0, def != NULL ? def->h : 0);
     esp_err_t err = ui_widget_factory_create_inner(def, parent, out_instance);
     ui_fonts_tile_end();
     if (err == ESP_OK && out_instance != NULL) {
+        if (def != NULL && strcmp(widget_caps_type(def), def->type) != 0) {
+            snprintf(out_instance->caps_type, sizeof(out_instance->caps_type), "%s", widget_caps_type(def));
+        }
         ui_style_apply_card(out_instance->obj);
     }
     return err;
@@ -382,7 +392,7 @@ esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent,
 void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
 {
     const bool tile = instance != NULL && instance->obj != NULL;
-    if (tile) ui_fonts_tile_begin(instance->type, (int)lv_obj_get_width(instance->obj), (int)lv_obj_get_height(instance->obj));
+    if (tile) ui_fonts_tile_begin(instance->caps_type[0] ? instance->caps_type : instance->type, (int)lv_obj_get_width(instance->obj), (int)lv_obj_get_height(instance->obj));
     ui_widget_factory_apply_state_inner(instance, state);
     if (tile) ui_fonts_tile_end();
     if (instance != NULL) {
@@ -470,7 +480,7 @@ static void ui_widget_factory_mark_unavailable_inner(ui_widget_instance_t *insta
 void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance)
 {
     const bool tile = instance != NULL && instance->obj != NULL;
-    if (tile) ui_fonts_tile_begin(instance->type, (int)lv_obj_get_width(instance->obj), (int)lv_obj_get_height(instance->obj));
+    if (tile) ui_fonts_tile_begin(instance->caps_type[0] ? instance->caps_type : instance->type, (int)lv_obj_get_width(instance->obj), (int)lv_obj_get_height(instance->obj));
     ui_widget_factory_mark_unavailable_inner(instance);
     if (tile) ui_fonts_tile_end();
 }
@@ -523,7 +533,7 @@ static void ui_widget_factory_set_visible_inner(ui_widget_instance_t *instance, 
 void ui_widget_factory_set_visible(ui_widget_instance_t *instance, bool visible)
 {
     const bool tile = instance != NULL && instance->obj != NULL;
-    if (tile) ui_fonts_tile_begin(instance->type, (int)lv_obj_get_width(instance->obj), (int)lv_obj_get_height(instance->obj));
+    if (tile) ui_fonts_tile_begin(instance->caps_type[0] ? instance->caps_type : instance->type, (int)lv_obj_get_width(instance->obj), (int)lv_obj_get_height(instance->obj));
     ui_widget_factory_set_visible_inner(instance, visible);
     if (tile) ui_fonts_tile_end();
 }

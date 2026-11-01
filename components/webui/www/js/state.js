@@ -107,6 +107,8 @@ function widgetSizeType(widget) {
   if (widget?.type === "binary_tile" && widget.display_mode === "door") return "contact_tile";
   // The flat horizontal gauge has its own limits (s_variant_sizes in widget_types.c).
   if (widget?.type === "gauge" && widget.style_variant === "horizontal") return "gauge_horizontal";
+  // A weather tile that can show the forecast days needs the room of the forecast tile (layout_validate.c).
+  if (widget?.type === "weather_tile" && (widget.weather_selector === true || widget.weather_view === "days")) return "weather_3day";
   return widget?.type;
 }
 
@@ -316,7 +318,6 @@ const el = {
   lightEntityPickerRooms: document.getElementById("lightEntityPickerRooms"),
   addHeatingTileBtn: document.getElementById("addHeatingTileBtn"),
   addWeatherTileBtn: document.getElementById("addWeatherTileBtn"),
-  addWeather3DayBtn: document.getElementById("addWeather3DayBtn"),
   addSolarForecastBtn: document.getElementById("addSolarForecastBtn"),
   addCarWidgetBtn: document.getElementById("addCarWidgetBtn"),
   addBambuPrinterBtn: document.getElementById("addBambuPrinterBtn"),
@@ -519,6 +520,11 @@ bambuFields: document.getElementById("bambuFields"),
   fEntityClass: document.getElementById("fEntityClass"),
   weatherNowOptions: document.getElementById("weatherNowOptions"),
   fWeatherHourly: document.getElementById("fWeatherHourly"),
+  fWeatherView: document.getElementById("fWeatherView"),
+  fWeatherSelector: document.getElementById("fWeatherSelector"),
+  fWeatherSelectorRow: document.getElementById("fWeatherSelectorRow"),
+  fWeatherDays: document.getElementById("fWeatherDays"),
+  fWeatherTilePrecip: document.getElementById("fWeatherTilePrecip"),
   weatherForecastOptions: document.getElementById("weatherForecastOptions"),
   fWeatherShowPrecip: document.getElementById("fWeatherShowPrecip"),
   fForecastDays: document.getElementById("fForecastDays"),

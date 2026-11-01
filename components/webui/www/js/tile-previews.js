@@ -729,7 +729,11 @@ function tilePreviewMarkup(widget) {
   const w = Number(widget.rect && widget.rect.w) || 0;
   const h = Number(widget.rect && widget.rect.h) || 0;
   const handle = '<div class="resize-handle"></div>';
-  switch (widget.type) {
+  // A weather tile that starts in the forecast days draws like the forecast tile; its switch shows below the content.
+  const weatherDays = widget.type === "weather_tile" && widget.weather_view === "days";
+  const weatherChips = widget.type === "weather_tile" && widget.weather_selector === true
+    ? `<div class="tp-weather-chips"><span${weatherDays ? "" : ' class="on"'}>${escapeHtml(t("preview.weather.today"))}</span><span${weatherDays ? ' class="on"' : ""}>${escapeHtml(t("preview.weather.days"))}</span></div>` : "";
+  switch (weatherDays ? "weather_3day" : widget.type) {
     case "weather_3day": {
       const cols = forecastPreviewCount(widget);
       const current = previewWeatherCondition(widget);
@@ -756,22 +760,28 @@ function tilePreviewMarkup(widget) {
       const head = fixed
         ? `<div class="tp-wx-head tp-wx-fixed${shortHead ? " tp-wx-short" : ""}" style="--icon:${iconPx}px"><i>${current.icon}</i><div><b>21.5 °C</b><small>${current.text}${shortHead ? " | " : "<br>"}38 %</small></div>${report && w - 32 - iconPx - 218 >= 150 ? `<p>${escapeHtml(report)}</p>` : ""}</div>`
         : `<div class="tp-wx-head"><i>${current.icon}</i><b>21.5 °C</b><small>${current.text} | 38 %</small></div>`;
-      return `<div class="tp tp-weather3${fixed ? " tp-weather3-fixed" : ""}">${name('div', 'class="tp-name"')}
+      return `<div class="tp tp-weather3${fixed ? " tp-weather3-fixed" : ""}">${weatherChips}${name('div', 'class="tp-name"')}
         ${head}<div class="tp-days" style="--cols:${cols}">${cards}</div></div>${handle}`;
     }
     case "weather_tile": {
       const current = previewWeatherCondition(widget);
-      if (widget.weather_hourly === true) {
+      const hourlyMeta = textRoleSize("meta", 20);
+      const hourlyChipsH = Math.round(hourlyMeta * 1.5) + 14;
+      const chipsH = widget.weather_selector === true ? hourlyChipsH : 0;
+      // Like the panel (weather_hourly.c): a tile too short for one full column shows the current weather alone.
+      const stripFits = h - 28 - chipsH - (widgetShowsName(widget) ? Math.round(hourlyMeta * 1.5) + 6 : 0) - 64 - 8 >= hourlyMeta * 3 + 24 + 16;
+      if (widget.weather_hourly === true && stripFits) {
         const meta = textRoleSize("meta", 20), value = textRoleSize("value", 32);
         const innerH = h - 28, titleH = widgetShowsName(widget) ? Math.round(meta * 1.5) + 6 : 0;
         const large = w - 28 >= 400 && innerH >= titleH + 112 + meta * 3 + 72;
         const icon = large ? 112 : 64, headH = Math.max(icon, Math.round((value + meta) * 1.5) + 4);
         const iconHour = innerH - titleH - headH - 8 >= meta * 3 + 64 ? 48 : 24;
         const cols = Array.from({length: 24}, (_, i) => `<div class="tp-weather-hour"><small>${String((10+i)%24).padStart(2,"0")}:00</small><i style="height:${iconHour}px">${current.icon}</i><small>${12+i%4}°C</small></div>`).join("");
-        return `<div class="tp tp-weather-hourly">${name('div', 'class="tp-name"')}<div class="tp-weather-hourly-head" style="height:${headH}px"><i style="width:${icon}px;height:${icon}px">${current.icon}</i><div><b>21.5 °C</b><small>${current.text}</small></div></div><div class="tp-weather-hours">${cols}</div></div>${handle}`;
+        return `<div class="tp tp-weather-hourly">${weatherChips}${name('div', 'class="tp-name"')}<div class="tp-weather-hourly-head" style="height:${headH}px"><i style="width:${icon}px;height:${icon}px">${current.icon}</i><div><b>21.5 °C</b><small>${current.text}</small></div></div><div class="tp-weather-hours">${cols}</div></div>${handle}`;
       }
-      const extras = h >= 200 ? `<div class="tp-weather-extras"><small>${escapeHtml(t("preview.weather.low"))} 12°C</small><small>0.8 mm</small></div><small class="tp-weather-hum">${escapeHtml(t("preview.weather.humidity"))} 38 %</small>` : "";
-      return `<div class="tp tp-weather${h < 222 ? " tp-weather-short" : ""}">${name('div', 'class="tp-name"')}
+      const hNow = h - (widget.weather_selector === true ? hourlyChipsH : 0); // the chips take a strip off the top
+      const extras = hNow >= 200 ? `<div class="tp-weather-extras"><small>${escapeHtml(t("preview.weather.low"))} 12°C</small><small>0.8 mm</small></div><small class="tp-weather-hum">${escapeHtml(t("preview.weather.humidity"))} 38 %</small>` : "";
+      return `<div class="tp tp-weather${hNow < 222 ? " tp-weather-short" : ""}">${weatherChips}${name('div', 'class="tp-name"')}
         <div class="tp-weather-main"><i class="tp-big">${current.icon}</i><b>21.5 °C</b></div><small>${current.text}</small>${extras}</div>${handle}`;
     }
     case "media_player": {
