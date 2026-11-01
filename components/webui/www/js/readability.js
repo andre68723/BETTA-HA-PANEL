@@ -25,7 +25,7 @@ function forecastPreviewCount(widget, maximum = 7) {
   return clamp(Math.floor((width + 6) / 60), 3, Math.min(maximum, 6)); // layouts saved before "Visible days" keep six columns
 }
 function forecastDaysSupported(widget) {
-  return ["weather_3day", "solar_forecast"].includes(widget.type);
+  return widget.type === "solar_forecast" || (widget.type === "weather_tile" && widget.weather_view === "days");
 }
 // Solar columns follow the weather's day grid only with vertical bars; with horizontal bars the options have no effect and
 // stay hidden (their saved values are kept, the panel ignores them).

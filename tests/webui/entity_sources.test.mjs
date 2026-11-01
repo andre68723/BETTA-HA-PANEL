@@ -148,7 +148,7 @@ test("measurement fields reject incompatible classes and units, retaining unavai
 test("integration and attribute contracts exclude superficially similar sources", () => {
   const { fn } = loadEditor();
   for (const [type, slot, flag] of [["stock_quotes", "primary", 8], ["stock_quotes", "stock_8", 8],
-    ["sonos_favorites", "primary", 16], ["sonos_favorites", "secondary", 4], ["weather_3day", "secondary", 2],
+    ["sonos_favorites", "primary", 16], ["sonos_favorites", "secondary", 4], ["weather_tile", "secondary", 2],
     ["bambu_printer", "primary", 160]]) {
     const sources = [{ id: "sensor.good", search_flags: flag }, { id: "sensor.fake", symbol: "FAKE", device_class: "monetary", search_flags: 1 }];
     assert.deepEqual(ids(fn("applyEntityClassRule")(sources, type, slot)), ["sensor.good"], `${type}/${slot}`);

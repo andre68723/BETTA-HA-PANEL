@@ -733,8 +733,8 @@ function tilePreviewMarkup(widget) {
   const weatherDays = widget.type === "weather_tile" && widget.weather_view === "days";
   const weatherChips = widget.type === "weather_tile" && widget.weather_selector === true
     ? `<div class="tp-weather-chips"><span${weatherDays ? "" : ' class="on"'}>${escapeHtml(t("preview.weather.today"))}</span><span${weatherDays ? ' class="on"' : ""}>${escapeHtml(t("preview.weather.days"))}</span></div>` : "";
-  switch (weatherDays ? "weather_3day" : widget.type) {
-    case "weather_3day": {
+  switch (weatherDays ? "weather_days" : widget.type) {
+    case "weather_days": {
       const cols = forecastPreviewCount(widget);
       const current = previewWeatherCondition(widget);
       const days = [t("preview.weather.today"), ...[1, 2, 3, 4, 5, 6].map(previewWeekday)];

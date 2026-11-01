@@ -331,7 +331,7 @@ def main():
         grouped.setdefault(row["tiles"][0][1]["type"], []).append(row)
     limits = size_limits()
     variants = variant_minimums()
-    expected = set(limits) - {"roborock_tile", "weather_3day"}  # the legacy forecast type is the Weather days view
+    expected = set(limits) - {"roborock_tile"}
     if set(WIDGETS) != expected:
         raise RuntimeError(f"Update tools/widget_docs_content.py: missing {expected - set(WIDGETS)}, unknown {set(WIDGETS) - expected}")
     catalog = []

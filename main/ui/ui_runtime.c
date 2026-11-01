@@ -1540,7 +1540,7 @@ static void ui_runtime_check_alerts(const char *entity_id)
 
 /* Device tests without touch (POST /api/ui/tap): only tiles whose tap opens a read-only popup answer, so a test can never
  * switch a light or unlock a door. The popup a tap opened is remembered so it can be dismissed the same way. */
-static const char *const k_test_tap_types[] = {"weather_3day", "energy_timeline", "room_tile", "sensor", "binary_tile",
+static const char *const k_test_tap_types[] = {"weather_tile", "energy_timeline", "room_tile", "sensor", "binary_tile",
                                                "contact_tile", "solar_forecast", "car_widget", "graph", "air_quality_tile"};
 static lv_obj_t *s_test_popup = NULL;
 

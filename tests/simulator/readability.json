@@ -6,8 +6,9 @@
       "title": "Old School",
       "widgets": [
         {
-          "id": "page_1_weather_3day_1",
-          "type": "weather_3day",
+          "id": "page_1_weather_days_1",
+          "type": "weather_tile",
+          "weather_view": "days",
           "title": "Regional weather",
           "entity_id": "weather.readability_16",
           "secondary_entity_id": "",
@@ -120,7 +121,8 @@
       "widgets": [
         {
           "id": "page_esp_weather",
-          "type": "weather_3day",
+          "type": "weather_tile",
+          "weather_view": "days",
           "title": "Regional weather",
           "entity_id": "weather.readability_16",
           "secondary_entity_id": "",
@@ -274,8 +276,9 @@
       "title": "Old School comparison",
       "widgets": [
         {
-          "id": "page_1_weather_3day_1",
-          "type": "weather_3day",
+          "id": "page_1_weather_days_1",
+          "type": "weather_tile",
+          "weather_view": "days",
           "title": "Regional weather",
           "entity_id": "weather.readability_16",
           "secondary_entity_id": "",
@@ -393,7 +396,8 @@
       "widgets": [
         {
           "id": "page_esp_weather",
-          "type": "weather_3day",
+          "type": "weather_tile",
+          "weather_view": "days",
           "title": "Regional weather",
           "entity_id": "weather.readability_16",
           "secondary_entity_id": "",
@@ -533,7 +537,8 @@
       "widgets": [
         {
           "id": "edge_weather",
-          "type": "weather_3day",
+          "type": "weather_tile",
+          "weather_view": "days",
           "title": "Längere Wetterbezeichnung für die Küche",
           "entity_id": "weather.edge",
           "secondary_entity_id": "",

@@ -332,7 +332,6 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("fWeatherTilePrecipLabel", "layout.inspector.weather_show_precip");
   setTextById("fWeatherSelectorLabel", "layout.inspector.weather_selector");
   setTextById("fWeatherViewHint", "layout.inspector.weather_view_hint");
-  setTextById("fWeatherShowPrecipLabel", "layout.inspector.weather_show_precip");
   setTextById("fShowNameLabel", "layout.inspector.show_name");
   setTextById("fShowIconLabel", "layout.inspector.show_icon");
   setTextById("fSensorShowAgeLabel", "layout.inspector.sensor_show_age");

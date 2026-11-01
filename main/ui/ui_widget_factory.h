@@ -72,7 +72,7 @@ typedef struct {
     int forecast_days; /* weather/solar: -1 legacy, 0 measured auto, 1..7 */
     bool align_forecast; /* solar: dated columns with Rest in the header */
     bool weather_hourly; /* weather_tile: optional real hourly forecast strip, default false */
-    bool show_precipitation; /* weather_3day: rain chance and amount, default true */
+    bool show_precipitation; /* weather tile days view: rain chance and amount, default true */
     bool weather_selector; /* weather_tile: chips to switch between today (hours) and the forecast days, default false */
     bool weather_days; /* weather_tile: starts in the forecast days view (weather_view "days"), default false */
     bool show_icon; /* room_tile, air_quality_tile: a small icon before the name, default false */

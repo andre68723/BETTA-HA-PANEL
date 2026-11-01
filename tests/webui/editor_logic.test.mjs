@@ -322,7 +322,7 @@ test("weather previews share condition icons and localize the low-temperature ro
   run('editor.states.set("weather.test", "rainy"); editor.i18nLanguage = "en";');
   const tile = { type: "weather_tile", entity_id: "weather.test", rect: { w: 220, h: 240 } };
   const now = fn("tilePreviewMarkup")(tile);
-  const forecast = fn("tilePreviewMarkup")({ ...tile, type: "weather_3day" });
+  const forecast = fn("tilePreviewMarkup")({ ...tile, weather_view: "days" });
   assert.ok(now.includes("🌧️") && forecast.includes("🌧️"));
   assert.ok(now.includes("Low 12°C") && now.includes("0.8 mm"));
   run('editor.i18nLanguage = "de"; editor.i18nMap = WEB_I18N_BUILTIN.de;');
@@ -349,10 +349,10 @@ test("weather tiles hide the place name by default and store only a deviation", 
   const { fn } = loadEditor();
   const show = fn("widgetShowsName");
   assert.equal(show({type:"weather_tile"}), false);
-  assert.equal(show({type:"weather_3day"}), false);
-  assert.equal(show({type:"weather_3day",show_name:true}), true);
+  assert.equal(show({type:"weather_tile",weather_view:"days"}), false);
+  assert.equal(show({type:"weather_tile",weather_view:"days",show_name:true}), true);
   assert.equal(show({type:"light_tile"}), true);
-  const layout={pages:[{widgets:[{type:"weather_tile"},{type:"weather_3day",show_name:true},
+  const layout={pages:[{widgets:[{type:"weather_tile"},{type:"weather_tile",weather_view:"days",show_name:true},
     {type:"weather_tile",show_name:false},{type:"light_tile",show_name:true}]}]};
   fn("normalizeLayoutWidgets")(layout);
   assert.equal(layout.pages[0].widgets[0].show_name,undefined);
@@ -378,7 +378,6 @@ test("all named widget previews hide only the display name in English and German
       const hidden=renderer(w);
       assert.ok(!hidden.includes("NAME SENTINEL"),type+" hidden");
       if(type==="media_player") assert.ok(hidden.includes(lang==="de"?"Musiktitel":"Song title"));
-      if(type==="weather_3day") assert.ok(hidden.includes("22°"));
       if(type==="sensor") assert.ok(hidden.includes("1250 W"));
     }
   }
@@ -411,7 +410,7 @@ test("the crash banner shows a stored dump until that dump is dismissed", () => 
 
 test("forecast readability is opt-in and keeps saved geometry and rain settings", () => {
   const { fn, run } = loadEditor({ width: 720, height: 600 });
-  const original = { type: "weather_3day", rect: { x: 0, y: 0, w: 540, h: 220 }, show_precipitation: false };
+  const original = { type: "weather_tile", weather_view: "days", rect: { x: 0, y: 0, w: 540, h: 220 }, show_precipitation: false };
   assert.equal(fn("forecastPreviewCount")(original), 6);
   assert.equal(fn("forecastPreviewCount")({ ...original, forecast_days: 3 }), 3);
   assert.equal(fn("forecastPreviewCount")({ ...original, forecast_days: 0 }), 3);

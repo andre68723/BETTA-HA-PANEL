@@ -41,24 +41,24 @@ static float weather_temp_from_celsius(float celsius, const char *unit)
     return celsius;
 }
 
-static float weather_3day_scale_min(const char *unit)
+static float weather_day_scale_min(const char *unit)
 {
-    return weather_temp_from_celsius(WEATHER_3DAY_SCALE_MIN_C, unit);
+    return weather_temp_from_celsius(WEATHER_DAY_SCALE_MIN_C, unit);
 }
 
-static float weather_3day_scale_mix(const char *unit)
+static float weather_day_scale_mix(const char *unit)
 {
-    return weather_temp_from_celsius(WEATHER_3DAY_SCALE_MIX_C, unit);
+    return weather_temp_from_celsius(WEATHER_DAY_SCALE_MIX_C, unit);
 }
 
-static float weather_3day_scale_warm(const char *unit)
+static float weather_day_scale_warm(const char *unit)
 {
-    return weather_temp_from_celsius(WEATHER_3DAY_SCALE_WARM_C, unit);
+    return weather_temp_from_celsius(WEATHER_DAY_SCALE_WARM_C, unit);
 }
 
-static float weather_3day_scale_max(const char *unit)
+static float weather_day_scale_max(const char *unit)
 {
-    return weather_temp_from_celsius(WEATHER_3DAY_SCALE_MAX_C, unit);
+    return weather_temp_from_celsius(WEATHER_DAY_SCALE_MAX_C, unit);
 }
 
 static lv_color_t weather_color_lerp(lv_color_t a, lv_color_t b, float t)
@@ -70,17 +70,17 @@ static lv_color_t weather_color_lerp(lv_color_t a, lv_color_t b, float t)
     return lv_color_make(r, g, bl);
 }
 
-lv_color_t weather_3day_temp_color(float value, const char *unit)
+lv_color_t weather_day_temp_color(float value, const char *unit)
 {
-    float t0 = weather_3day_scale_min(unit);
-    float t1 = weather_3day_scale_mix(unit);
-    float t2 = weather_3day_scale_warm(unit);
-    float t3 = weather_3day_scale_max(unit);
+    float t0 = weather_day_scale_min(unit);
+    float t1 = weather_day_scale_mix(unit);
+    float t2 = weather_day_scale_warm(unit);
+    float t3 = weather_day_scale_max(unit);
 
-    lv_color_t c0 = lv_color_hex(WEATHER_3DAY_FILL_COLD);
-    lv_color_t c1 = lv_color_hex(WEATHER_3DAY_FILL_MIXED);
-    lv_color_t c2 = lv_color_hex(WEATHER_3DAY_FILL_WARM);
-    lv_color_t c3 = lv_color_hex(WEATHER_3DAY_FILL_HOT);
+    lv_color_t c0 = lv_color_hex(WEATHER_DAY_FILL_COLD);
+    lv_color_t c1 = lv_color_hex(WEATHER_DAY_FILL_MIXED);
+    lv_color_t c2 = lv_color_hex(WEATHER_DAY_FILL_WARM);
+    lv_color_t c3 = lv_color_hex(WEATHER_DAY_FILL_HOT);
 
     value = weather_clampf(value, t0, t3);
 
@@ -144,21 +144,21 @@ void weather_set_row_icon(lv_obj_t *label, const char *condition_key)
         return;
     }
 
-    lv_obj_set_style_text_font(label, WEATHER_3DAY_META_FONT, LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, WEATHER_DAY_META_FONT, LV_PART_MAIN);
     lv_obj_set_style_text_color(label, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
     lv_obj_set_style_transform_zoom(label, 256, LV_PART_MAIN);
     lv_label_set_text(label, "-");
 }
 
-void weather_build_3day_rows(const weather_values_t *values, weather_3day_row_t rows[WEATHER_3DAY_ROWS])
+void weather_build_day_rows(const weather_values_t *values, weather_day_row_t rows[WEATHER_DAY_ROWS])
 {
     if (values == NULL || rows == NULL) {
         return;
     }
 
-    memset(rows, 0, sizeof(weather_3day_row_t) * WEATHER_3DAY_ROWS);
+    memset(rows, 0, sizeof(weather_day_row_t) * WEATHER_DAY_ROWS);
 
-    weather_3day_row_t *current = &rows[0];
+    weather_day_row_t *current = &rows[0];
     current->valid = true;
     weather_copy_text(current->day, sizeof(current->day), ui_i18n_get("weather.now", "Now"));
     /* "Now" must reflect the live weather entity state, not today's forecast summary. */
@@ -200,9 +200,9 @@ void weather_build_3day_rows(const weather_values_t *values, weather_3day_row_t 
     current->precip_mm = values->today_precip_mm;
     current->precip_prob = values->today_precip_prob;
 
-    for (int i = 0; i < WEATHER_3DAY_MAX_FORECAST; i++) {
+    for (int i = 0; i < WEATHER_DAY_MAX_FORECAST; i++) {
         const weather_forecast_t *src = &values->forecast[i];
-        weather_3day_row_t *dst = &rows[i + 1];
+        weather_day_row_t *dst = &rows[i + 1];
         if (!src->valid) {
             continue;
         }
@@ -230,8 +230,8 @@ void weather_build_3day_rows(const weather_values_t *values, weather_3day_row_t 
     }
 }
 
-void weather_compute_3day_range(
-    const weather_3day_row_t rows[WEATHER_3DAY_ROWS], float *out_min, float *out_max)
+void weather_compute_day_range(
+    const weather_day_row_t rows[WEATHER_DAY_ROWS], float *out_min, float *out_max)
 {
     if (rows == NULL || out_min == NULL || out_max == NULL) {
         return;
@@ -241,8 +241,8 @@ void weather_compute_3day_range(
     float min_temp = 0.0f;
     float max_temp = 0.0f;
 
-    for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
-        const weather_3day_row_t *row = &rows[i];
+    for (int i = 0; i < WEATHER_DAY_ROWS; i++) {
+        const weather_day_row_t *row = &rows[i];
         if (!row->valid) {
             continue;
         }

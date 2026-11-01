@@ -148,7 +148,7 @@ class AllWidgetsDemoTest(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         registry = (root / 'main/layout/widget_types.c').read_text().split('s_variant_sizes')[0]
         # The legacy forecast tile is shown by the weather tile's switch (weather_view / weather_selector).
-        types = set(re.findall(r'\{"([a-z0-9_]+)",\s*\{', registry)) - {'roborock_tile', 'weather_3day'}
+        types = set(re.findall(r'\{"([a-z0-9_]+)",\s*\{', registry)) - {'roborock_tile'}
         for variant in ('paneljc', 'paneljc-v2', 'panel10', 'tab5'):
             with self.subTest(variant=variant):
                 fixture = all_widgets_fixture(variant)

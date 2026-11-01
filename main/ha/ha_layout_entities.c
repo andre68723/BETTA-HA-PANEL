@@ -183,8 +183,7 @@ void ha_layout_entities_collect(cJSON *root, ha_layout_entity_set_t *set)
                 }
                 cJSON *type = cJSON_GetObjectItemCaseSensitive(widget, "type");
                 if (cJSON_IsString(type) && type->valuestring != NULL &&
-                    (strcmp(type->valuestring, "weather_3day") == 0 ||
-                     strcmp(type->valuestring, "weather_tile") == 0)) {
+                    strcmp(type->valuestring, "weather_tile") == 0) {
                     set->need_weather_forecast = true;
                 }
                 ha_layout_collect_field(widget, "entity_id", set);

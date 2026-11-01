@@ -5,7 +5,7 @@
 const ENTITY_SEARCH_PRIMARY = {
   air_quality_tile: "air_humidity", sensor: "domain", button: "domain", slider: "slider", gauge: "numeric", graph: "numeric",
   empty_tile: "none", light_tile: "domain", heating_tile: "domain", weather_tile: "domain",
-  weather_3day: "domain", solar_forecast: "solar", energy_price_forecast: "price",
+  solar_forecast: "solar", energy_price_forecast: "price",
   parqet_portfolio: "monetary", stock_quotes: "quote", car_widget: "battery",
   wallbox_evcc: "evcc", bambu_printer: "printer", todo_list: "domain", media_player: "domain",
   sonos_favorites: "sonos", cover_tile: "domain", fan_tile: "domain", contact_tile: "contact",
@@ -18,7 +18,6 @@ const ENTITY_SEARCH_SLOTS = {
     air_out_temperature: "air_out_temperature", air_out_humidity: "air_out_humidity", air_window: "contact", air_rating: "domain"},
   heating_tile: { secondary: "temperature" },
   weather_tile: { secondary: "report" },
-  weather_3day: { secondary: "report" },
   sonos_favorites: { secondary: "favorites" },
   vacuum_tile: { secondary: "domain", tertiary: "domain", vacuum_battery: "battery" },
   gauge: { secondary: "domain", tertiary: "domain" },

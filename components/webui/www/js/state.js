@@ -38,7 +38,7 @@ function widgetSizeLimitsForCanvas(type) {
       return { minW: 220, minH: 200, maxW: 480, maxH: 480 };
     case "weather_tile":
       return { minW: 220, minH: 200, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
-    case "weather_3day":
+    case "weather_days":
       return { minW: 260, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "solar_forecast":
       return { minW: 260, minH: 220, maxW: 640, maxH: 480 };
@@ -108,7 +108,7 @@ function widgetSizeType(widget) {
   // The flat horizontal gauge has its own limits (s_variant_sizes in widget_types.c).
   if (widget?.type === "gauge" && widget.style_variant === "horizontal") return "gauge_horizontal";
   // A weather tile that can show the forecast days needs the room of the forecast tile (layout_validate.c).
-  if (widget?.type === "weather_tile" && (widget.weather_selector === true || widget.weather_view === "days")) return "weather_3day";
+  if (widget?.type === "weather_tile" && (widget.weather_selector === true || widget.weather_view === "days")) return "weather_days";
   return widget?.type;
 }
 
@@ -525,8 +525,6 @@ bambuFields: document.getElementById("bambuFields"),
   fWeatherSelectorRow: document.getElementById("fWeatherSelectorRow"),
   fWeatherDays: document.getElementById("fWeatherDays"),
   fWeatherTilePrecip: document.getElementById("fWeatherTilePrecip"),
-  weatherForecastOptions: document.getElementById("weatherForecastOptions"),
-  fWeatherShowPrecip: document.getElementById("fWeatherShowPrecip"),
   fForecastDays: document.getElementById("fForecastDays"),
   fAlignForecast: document.getElementById("fAlignForecast"),
   fSolarForecastTodayLabel: document.getElementById("fSolarForecastTodayLabel"),

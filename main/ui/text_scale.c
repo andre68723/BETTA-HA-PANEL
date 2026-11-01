@@ -138,7 +138,7 @@ static const tile_cap_row_t k_tile_caps_adaptive[] = {
     {"todo_list", {220, 220, 220}, {200, 200, 200}, 0},
     {"vacuum_tile", {240, 240, 240}, {220, 220, 220}, 0},
     {"wallbox_evcc", {320, 320, 320}, {420, 420, 460}, 0},
-    {"weather_3day", {340, 630, 630}, {220, 220, 220}, 0},
+    {"weather_days", {340, 630, 630}, {220, 220, 220}, 0},
     {"weather_tile", {220, 220, 220}, {200, 200, 200}, 0},
     {"energy_page", {1000, 9999, 9999}, {1, 9999, 9999}, 0},
     /* TILE_CAPS_ADAPTIVE_END */
@@ -179,7 +179,7 @@ static const tile_cap_row_t k_tile_caps_wide[] = {
     {"todo_list", {220, 220, 220}, {200, 200, 200}, 0},
     {"vacuum_tile", {280, 560, 560}, {300, 300, 300}, 0},
     {"wallbox_evcc", {320, 320, 320}, {420, 420, 420}, 0},
-    {"weather_3day", {540, 630, 630}, {320, 320, 320}, 0},
+    {"weather_days", {540, 630, 630}, {320, 320, 320}, 0},
     {"weather_tile", {220, 220, 220}, {200, 200, 200}, 0},
     {"energy_page", {1000, 9999, 9999}, {1, 9999, 9999}, 0},
     /* TILE_CAPS_WIDE_END */

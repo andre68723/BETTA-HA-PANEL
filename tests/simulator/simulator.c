@@ -169,7 +169,6 @@ static const sim_widget_type_t k_types[] = {
     {"camera_tile", w_camera_create, w_camera_apply_state},
     {"weather", w_weather_tile_create, w_weather_tile_apply_state},
     {"weather_tile", w_weather_tile_create, w_weather_tile_apply_state},
-    {"weather_3day", w_weather_tile_create, w_weather_tile_apply_state},
 };
 
 static bool check_text_font_coverage(void)

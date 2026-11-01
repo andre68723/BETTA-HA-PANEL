@@ -100,7 +100,7 @@ static void weather_chip_clicked(lv_event_t *event)
     const bool days = lv_event_get_target(event) == ctx->chip[1];
     if (days == ctx->show_forecast) return;
     ctx->show_forecast = days;
-    ui_fonts_tile_begin("weather_3day", lv_obj_get_width(ctx->card), lv_obj_get_height(ctx->card));
+    ui_fonts_tile_begin("weather_days", lv_obj_get_width(ctx->card), lv_obj_get_height(ctx->card));
     weather_render(ctx->card, ctx, ctx->available ? &ctx->last_values : NULL, ctx->available);
     ui_fonts_tile_end();
 }
@@ -171,7 +171,7 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ui_style_title_fit(title, def->title[0] ? def->title : def->id);
     lv_obj_set_width(title, def->w - 32);
     lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
-    const lv_font_t *title_font = (strcmp(def->type, "weather_3day") == 0 || (strcmp(def->type, "weather_tile") == 0 && def->weather_days))
+    const lv_font_t *title_font = (strcmp(def->type, "weather_tile") == 0 && def->weather_days)
         ? ui_font_role(UI_TEXT_LABEL) : ui_font_role(UI_TEXT_META);
     lv_obj_set_style_text_font(title, title_font, LV_PART_MAIN);
     ui_text_record(title, UI_TEXT_LABEL, false);
@@ -214,11 +214,11 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->hide_name = def->hide_name;
     const bool merged = strcmp(def->type, "weather_tile") == 0;
     ctx->selector = merged && def->weather_selector;
-    ctx->show_forecast = strcmp(def->type, "weather_3day") == 0 || (merged && def->weather_days);
+    ctx->show_forecast = merged && def->weather_days;
     ctx->show_precip = def->show_precipitation;
     ctx->forecast_days = def->forecast_days;
     snprintf(ctx->entity_id, sizeof(ctx->entity_id), "%s", def->entity_id);
-    if (strcmp(def->type, "weather_3day") == 0 || strcmp(def->type, "weather_tile") == 0) {
+    if (merged) {
         snprintf(ctx->report_entity_id, sizeof(ctx->report_entity_id), "%s", def->secondary_entity_id);
     }
     ctx->condition_label = condition;
@@ -237,8 +237,8 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->last_condition_text[0] = '\0';
 
     if (ctx->show_forecast || ctx->selector) {
-        for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
-            weather_3day_row_widgets_t *row = &ctx->rows[i];
+        for (int i = 0; i < WEATHER_DAY_ROWS; i++) {
+            weather_day_row_widgets_t *row = &ctx->rows[i];
             row->container = lv_obj_create(card);
             lv_obj_set_scrollable(row->container, false);
             lv_obj_set_style_bg_opa(row->container, LV_OPA_TRANSP, LV_PART_MAIN);

@@ -24,7 +24,7 @@ typedef struct {
 static void rerender(w_weather_tile_ctx_t *ctx)
 {
     if (ctx->show_forecast) return; /* the strip is not showing: the data waits for the switch back to today */
-    ui_fonts_tile_begin(ctx->selector ? "weather_3day" : "weather_tile", lv_obj_get_width(ctx->card), lv_obj_get_height(ctx->card));
+    ui_fonts_tile_begin(ctx->selector ? "weather_days" : "weather_tile", lv_obj_get_width(ctx->card), lv_obj_get_height(ctx->card));
     weather_render(ctx->card, ctx, ctx->available ? &ctx->last_values : NULL, ctx->available);
     ctx->hourly_view_hour = (int64_t)time(NULL) / 3600;
     ui_fonts_tile_end();

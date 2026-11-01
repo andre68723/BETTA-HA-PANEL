@@ -33,7 +33,7 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
     const bool readable = false;
 #endif
     /* Old row view and its header icon stay out of the way. */
-    for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
+    for (int i = 0; i < WEATHER_DAY_ROWS; i++) {
         if (ctx->rows[i].container != NULL) {
             lv_obj_set_hidden(ctx->rows[i].container, true);
         }
@@ -66,7 +66,9 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
     } else {
         lv_obj_set_hidden(ctx->col_main_icon, true);
     }
-    const lv_coord_t text_x = main_dsc != NULL ? icon_px + 6 : 0;
+    /* The scaled image keeps its native box around the icon, so the text starts after that box. */
+    const lv_coord_t icon_box = large ? WEATHER_ICON_LARGE_PX : WEATHER_ICON_SMALL_PX;
+    const lv_coord_t text_x = main_dsc != NULL ? (icon_box + icon_px) / 2 + 6 : 0;
     const lv_coord_t text_w = cw - text_x;
 
     char temp_text[32] = "--";
@@ -74,7 +76,7 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
         snprintf(temp_text, sizeof(temp_text), "%.1f %s", (double)values->temp, values->unit);
     }
     lv_label_set_text(ctx->temp_label, temp_text);
-    const lv_font_t *temp_font = readable ? ui_font_role(UI_TEXT_VALUE) : (short_head ? ui_font_role(UI_TEXT_META) : WEATHER_3DAY_TEMP_FONT);
+    const lv_font_t *temp_font = readable ? ui_font_role(UI_TEXT_VALUE) : (short_head ? ui_font_role(UI_TEXT_META) : WEATHER_DAY_TEMP_FONT);
     lv_obj_set_style_text_font(ctx->temp_label, temp_font, LV_PART_MAIN);
     lv_obj_set_style_text_align(ctx->temp_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     lv_label_set_long_mode(ctx->temp_label, LV_LABEL_LONG_CLIP);
@@ -90,7 +92,7 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
         snprintf(meta_text, sizeof(meta_text), "%s", display_condition);
     }
     lv_label_set_text(ctx->meta_label, meta_text);
-    const lv_font_t *meta_font = readable ? ui_font_role(UI_TEXT_META) : (short_head ? ui_font_role(UI_TEXT_META) : WEATHER_3DAY_META_FONT);
+    const lv_font_t *meta_font = readable ? ui_font_role(UI_TEXT_META) : (short_head ? ui_font_role(UI_TEXT_META) : WEATHER_DAY_META_FONT);
     lv_obj_set_style_text_font(ctx->meta_label, meta_font, LV_PART_MAIN);
     lv_obj_set_style_text_align(ctx->meta_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     const bool one_line_meta = short_head || readable; /* one line: a longer text ends in dots, it never grows into the next row */
@@ -109,6 +111,9 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
     if (block_y < head_y) {
         block_y = head_y;
     }
+    /* The labels come from the today view centered; a position relative to the left edge needs the left alignment back. */
+    lv_obj_set_align(ctx->temp_label, LV_ALIGN_TOP_LEFT);
+    lv_obj_set_align(ctx->meta_label, LV_ALIGN_TOP_LEFT);
     lv_obj_set_pos(ctx->temp_label, text_x, block_y);
     /* the temperature's own width places what follows it (it grows with the text size) */
     lv_point_t temp_size;
@@ -124,12 +129,23 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
     ctx->report_w = readable ? 0 : cw - ctx->report_x;
     ctx->report_y = head_y;
     ctx->report_h = icon_px;
+    if (!inline_head && ctx->report_w > 0) {
+        /* The report starts right of the condition, which a longer translation ("Teilweise bewölkt") would otherwise run into. */
+        lv_point_t cond_size;
+        lv_text_get_size(&cond_size, display_condition, meta_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        lv_obj_update_layout(card);
+        const lv_coord_t clear_x = lv_obj_get_x(ctx->meta_label) + cond_size.x + 12;
+        if (clear_x > ctx->report_x) {
+            ctx->report_w -= clear_x - ctx->report_x;
+            ctx->report_x = clear_x;
+        }
+    }
     weather_report_update_label(ctx);
 
     /* Forecast cards. */
-    weather_3day_row_t *rows = ctx->render_rows;
+    weather_day_row_t *rows = ctx->render_rows;
     memset(rows, 0, sizeof(ctx->render_rows));
-    weather_build_3day_rows(values, rows);
+    weather_build_day_rows(values, rows);
     weather_copy_text(rows[0].day, sizeof(rows[0].day), ui_i18n_get("weather.today", "Today"));
 
     const lv_coord_t gap = 6;
@@ -142,15 +158,15 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
     if (count > WEATHER_COLS_LEGACY_MAX) {
         count = WEATHER_COLS_LEGACY_MAX;
     }
-    if (count > WEATHER_3DAY_ROWS) {
-        count = WEATHER_3DAY_ROWS;
+    if (count > WEATHER_DAY_ROWS) {
+        count = WEATHER_DAY_ROWS;
     }
     if (count < 3) {
         count = 3;
     }
     if (dated) count = ui_day_grid_count(grid_w, ctx->forecast_days, WEATHER_COLS_MAX);
     if (ctx->forecast_days >= 0) {
-        weather_3day_row_t dated[WEATHER_3DAY_ROWS]; memcpy(dated, rows, sizeof(dated));
+        weather_day_row_t dated[WEATHER_DAY_ROWS]; memcpy(dated, rows, sizeof(dated));
         for (int i = 0; i < count; i++) {
             char date[11]; ui_day_grid_date(i, date);
             if (!date[0]) break;
@@ -159,7 +175,7 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
             weather_copy_text(rows[i].date, sizeof(rows[i].date), date);
             weather_day_from_datetime(date, rows[i].day, sizeof(rows[i].day));
             if (!i) weather_copy_text(rows[i].day, sizeof(rows[i].day), ui_i18n_get("weather.today", "Today"));
-            for (int j = 0; j < WEATHER_3DAY_ROWS; j++)
+            for (int j = 0; j < WEATHER_DAY_ROWS; j++)
                 if (dated[j].valid && !strcmp(dated[j].date, date)) { rows[i] = dated[j]; break; }
         }
     }
@@ -196,7 +212,7 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
 
     for (int i = 0; i < WEATHER_COLS_MAX; i++) {
         weather_col_widgets_t *col = &ctx->cols[i];
-        const weather_3day_row_t *row = (i < count) ? &rows[i] : NULL;
+        const weather_day_row_t *row = (i < count) ? &rows[i] : NULL;
         if (row == NULL || !row->valid || col_h < 70) {
             lv_obj_set_hidden(col->box, true);
             continue;
@@ -286,7 +302,7 @@ static bool weather_render_columns(lv_obj_t *card, w_weather_tile_ctx_t *ctx, co
     return true;
 }
 
-static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values, bool available)
+static void weather_render_days(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values, bool available)
 {
     if (card == NULL || ctx == NULL) {
         return;
@@ -302,7 +318,7 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     lv_coord_t icon_y = ctx->hide_name ? 0 : 20;
 
     lv_obj_set_style_text_font(ctx->temp_label, WEATHER_TEMP_FONT, LV_PART_MAIN);
-    lv_obj_set_style_text_font(ctx->meta_label, WEATHER_3DAY_SUBMETA_FONT, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ctx->meta_label, WEATHER_DAY_SUBMETA_FONT, LV_PART_MAIN);
     lv_obj_set_style_text_align(ctx->temp_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_align(ctx->meta_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_width(ctx->temp_label, card_w - 32);
@@ -313,37 +329,37 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     const lv_coord_t meta_y = temp_y + lv_font_get_line_height(WEATHER_TEMP_FONT);
     lv_obj_set_pos(ctx->meta_label, 16, meta_y > 102 - (ctx->hide_name ? 28 : 0) ? meta_y : 102 - (ctx->hide_name ? 28 : 0));
 
-    for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
-        weather_3day_row_widgets_t *row = &ctx->rows[i];
+    for (int i = 0; i < WEATHER_DAY_ROWS; i++) {
+        weather_day_row_widgets_t *row = &ctx->rows[i];
         if (row->container == NULL) {
             continue;
         }
 
-        lv_obj_set_style_text_font(row->day_label, WEATHER_3DAY_ROW_FONT, LV_PART_MAIN);
+        lv_obj_set_style_text_font(row->day_label, WEATHER_DAY_ROW_FONT, LV_PART_MAIN);
         lv_obj_set_style_text_color(row->day_label, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
         lv_obj_set_style_text_align(row->day_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_label_set_long_mode(row->day_label, LV_LABEL_LONG_CLIP);
 
-        lv_obj_set_style_text_font(row->icon_label, WEATHER_3DAY_ROW_FONT, LV_PART_MAIN);
+        lv_obj_set_style_text_font(row->icon_label, WEATHER_DAY_ROW_FONT, LV_PART_MAIN);
         lv_obj_set_style_text_color(row->icon_label, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
         lv_obj_set_style_text_align(row->icon_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_label_set_long_mode(row->icon_label, LV_LABEL_LONG_CLIP);
 
-        lv_obj_set_style_text_font(row->low_label, WEATHER_3DAY_ROW_FONT, LV_PART_MAIN);
+        lv_obj_set_style_text_font(row->low_label, WEATHER_DAY_ROW_FONT, LV_PART_MAIN);
         lv_obj_set_style_text_color(row->low_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
         lv_obj_set_style_text_align(row->low_label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
 
-        lv_obj_set_style_text_font(row->high_label, WEATHER_3DAY_ROW_FONT, LV_PART_MAIN);
+        lv_obj_set_style_text_font(row->high_label, WEATHER_DAY_ROW_FONT, LV_PART_MAIN);
         lv_obj_set_style_text_color(row->high_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
         lv_obj_set_style_text_align(row->high_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
 
-        lv_obj_set_style_bg_color(row->bar_track, lv_color_hex(WEATHER_3DAY_TRACK_BG), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(row->bar_track, lv_color_hex(WEATHER_DAY_TRACK_BG), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(row->bar_track, LV_OPA_60, LV_PART_MAIN);
         lv_obj_set_style_border_width(row->bar_track, 0, LV_PART_MAIN);
         lv_obj_set_style_radius(row->bar_track, ui_style_track_radius(), LV_PART_MAIN);
 
-        lv_obj_set_style_bg_color(row->bar_fill, lv_color_hex(WEATHER_3DAY_FILL_COLD), LV_PART_MAIN);
-        lv_obj_set_style_bg_grad_color(row->bar_fill, lv_color_hex(WEATHER_3DAY_FILL_HOT), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(row->bar_fill, lv_color_hex(WEATHER_DAY_FILL_COLD), LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_color(row->bar_fill, lv_color_hex(WEATHER_DAY_FILL_HOT), LV_PART_MAIN);
         lv_obj_set_style_bg_grad_dir(row->bar_fill, LV_GRAD_DIR_HOR, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(row->bar_fill, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_border_width(row->bar_fill, 0, LV_PART_MAIN);
@@ -360,9 +376,9 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
         lv_obj_set_hidden(ctx->condition_label, true);
         lv_label_set_text(ctx->temp_label, "--");
         lv_label_set_text(ctx->meta_label, ui_i18n_get("weather.unavailable", "Unavailable"));
-        weather_set_3day_rows_layout(card, ctx, WEATHER_3DAY_ROWS_TOP - (ctx->hide_name ? 28 : 0));
-        for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
-            weather_set_3day_row_values(&ctx->rows[i], NULL, "C", 0.0f, 1.0f);
+        weather_set_day_rows_layout(card, ctx, WEATHER_DAY_ROWS_TOP - (ctx->hide_name ? 28 : 0));
+        for (int i = 0; i < WEATHER_DAY_ROWS; i++) {
+            weather_set_day_row_values(&ctx->rows[i], NULL, "C", 0.0f, 1.0f);
         }
         weather_hide_lottie(ctx);
         return;
@@ -397,7 +413,7 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
         lv_label_set_long_mode(ctx->condition_label, LV_LABEL_LONG_WRAP);
         lv_obj_set_width(ctx->condition_label, card_w - icon_x - 28);
         lv_obj_set_style_text_align(ctx->condition_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-        lv_obj_set_style_text_font(ctx->condition_label, WEATHER_3DAY_META_FONT, LV_PART_MAIN);
+        lv_obj_set_style_text_font(ctx->condition_label, WEATHER_DAY_META_FONT, LV_PART_MAIN);
         lv_obj_set_style_text_color(ctx->condition_label, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
         lv_obj_align(ctx->condition_label, LV_ALIGN_TOP_LEFT, icon_x, icon_y + 16);
         lv_label_set_text(ctx->condition_label, display_condition);
@@ -427,16 +443,16 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     }
     lv_label_set_text(ctx->meta_label, meta_text);
 
-    weather_set_3day_rows_layout(card, ctx, WEATHER_3DAY_ROWS_TOP - (ctx->hide_name ? 28 : 0));
+    weather_set_day_rows_layout(card, ctx, WEATHER_DAY_ROWS_TOP - (ctx->hide_name ? 28 : 0));
 
-    weather_3day_row_t *rows = ctx->render_rows;
+    weather_day_row_t *rows = ctx->render_rows;
     memset(rows, 0, sizeof(ctx->render_rows));
-    weather_build_3day_rows(values, rows);
+    weather_build_day_rows(values, rows);
     float range_min = 0.0f;
     float range_max = 1.0f;
-    weather_compute_3day_range(rows, &range_min, &range_max);
-    for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
-        weather_set_3day_row_values(&ctx->rows[i], &rows[i], values->unit, range_min, range_max);
+    weather_compute_day_range(rows, &range_min, &range_max);
+    for (int i = 0; i < WEATHER_DAY_ROWS; i++) {
+        weather_set_day_row_values(&ctx->rows[i], &rows[i], values->unit, range_min, range_max);
     }
 }
 
@@ -450,14 +466,14 @@ static void weather_render_view(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
 
     if (ctx->show_forecast) {
-        weather_render_3day(card, ctx, values, available);
+        weather_render_days(card, ctx, values, available);
         return;
     }
 
     ctx->available = available && values != NULL;
     if (ctx->available) {
         ctx->last_values = *values;
-        weather_build_3day_rows(values, ctx->render_rows);
+        weather_build_day_rows(values, ctx->render_rows);
     } else {
         memset(ctx->render_rows, 0, sizeof(ctx->render_rows));
     }
@@ -664,7 +680,7 @@ static void weather_render_view(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
 static void weather_hide_days_view(w_weather_tile_ctx_t *ctx)
 {
     weather_columns_hide(ctx);
-    for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
+    for (int i = 0; i < WEATHER_DAY_ROWS; i++) {
         if (ctx->rows[i].container != NULL) lv_obj_set_hidden(ctx->rows[i].container, true);
     }
     lv_obj_set_style_text_align(ctx->temp_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);

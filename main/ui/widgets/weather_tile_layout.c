@@ -4,7 +4,7 @@
  */
 #include "ui/widgets/weather_tile_internal.h"
 
-static int weather_3day_visible_rows(lv_obj_t *card, lv_coord_t rows_top, int max_rows)
+static int weather_day_visible_rows(lv_obj_t *card, lv_coord_t rows_top, int max_rows)
 {
     if (card == NULL) {
         return 2;
@@ -13,17 +13,17 @@ static int weather_3day_visible_rows(lv_obj_t *card, lv_coord_t rows_top, int ma
     if (card_h <= 0) {
         card_h = lv_obj_get_style_height(card, LV_PART_MAIN);
     }
-    if (rows_top < WEATHER_3DAY_ROWS_TOP) {
-        rows_top = WEATHER_3DAY_ROWS_TOP;
+    if (rows_top < WEATHER_DAY_ROWS_TOP) {
+        rows_top = WEATHER_DAY_ROWS_TOP;
     }
-    lv_coord_t rows_bottom = card_h - WEATHER_3DAY_ROWS_BOTTOM_PAD;
+    lv_coord_t rows_bottom = card_h - WEATHER_DAY_ROWS_BOTTOM_PAD;
     lv_coord_t available_h = rows_bottom - rows_top;
-    if (available_h <= WEATHER_3DAY_ROW_HEIGHT) {
+    if (available_h <= WEATHER_DAY_ROW_HEIGHT) {
         /* Always keep at least the "Now" row plus one forecast day so the
          * tile still conveys a forecast idea even on a very short card. */
         return 2;
     }
-    int fit = (int)((available_h + WEATHER_3DAY_ROW_GAP) / (WEATHER_3DAY_ROW_HEIGHT + WEATHER_3DAY_ROW_GAP));
+    int fit = (int)((available_h + WEATHER_DAY_ROW_GAP) / (WEATHER_DAY_ROW_HEIGHT + WEATHER_DAY_ROW_GAP));
     if (fit < 2) {
         fit = 2;
     }
@@ -33,7 +33,7 @@ static int weather_3day_visible_rows(lv_obj_t *card, lv_coord_t rows_top, int ma
     return fit;
 }
 
-void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *ctx, lv_coord_t requested_rows_top)
+void weather_set_day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *ctx, lv_coord_t requested_rows_top)
 {
     if (card == NULL || ctx == NULL) {
         return;
@@ -49,27 +49,27 @@ void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *ctx, lv_
     }
 
     /* Fixed row metrics -- visible count adapts, spacing does not. */
-    const lv_coord_t row_h = WEATHER_3DAY_ROW_HEIGHT;
-    const lv_coord_t row_gap = WEATHER_3DAY_ROW_GAP;
+    const lv_coord_t row_h = WEATHER_DAY_ROW_HEIGHT;
+    const lv_coord_t row_gap = WEATHER_DAY_ROW_GAP;
     lv_coord_t rows_top = requested_rows_top;
-    if (rows_top < WEATHER_3DAY_ROWS_TOP) {
-        rows_top = WEATHER_3DAY_ROWS_TOP;
+    if (rows_top < WEATHER_DAY_ROWS_TOP) {
+        rows_top = WEATHER_DAY_ROWS_TOP;
     }
     /* Layouts saved before "Visible days" keep their six rows. */
-    const int visible = weather_3day_visible_rows(card, rows_top, ctx->forecast_days < 0 ? WEATHER_COLS_LEGACY_MAX : WEATHER_3DAY_ROWS);
-    lv_coord_t rows_bottom = card_h - WEATHER_3DAY_ROWS_BOTTOM_PAD;
+    const int visible = weather_day_visible_rows(card, rows_top, ctx->forecast_days < 0 ? WEATHER_COLS_LEGACY_MAX : WEATHER_DAY_ROWS);
+    lv_coord_t rows_bottom = card_h - WEATHER_DAY_ROWS_BOTTOM_PAD;
     lv_coord_t used_h = (lv_coord_t)(visible * row_h + (visible - 1) * row_gap);
     if (used_h > (rows_bottom - rows_top)) {
-        /* Shouldn't happen because weather_3day_visible_rows sized to fit,
+        /* Shouldn't happen because weather_day_visible_rows sized to fit,
          * but guard anyway so we never overflow the card. */
         rows_top = rows_bottom - used_h;
-        if (rows_top < WEATHER_3DAY_ROWS_TOP) {
-            rows_top = WEATHER_3DAY_ROWS_TOP;
+        if (rows_top < WEATHER_DAY_ROWS_TOP) {
+            rows_top = WEATHER_DAY_ROWS_TOP;
         }
     }
 
-    for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
-        weather_3day_row_widgets_t *row = &ctx->rows[i];
+    for (int i = 0; i < WEATHER_DAY_ROWS; i++) {
+        weather_day_row_widgets_t *row = &ctx->rows[i];
         if (row->container == NULL) {
             continue;
         }
@@ -117,7 +117,7 @@ void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *ctx, lv_
         lv_coord_t track_h = (row_h >= 24) ? 16 : 14;
         const lv_font_t *text_font = lv_obj_get_style_text_font(row->low_label, LV_PART_MAIN);
         if (text_font == NULL) {
-            text_font = WEATHER_3DAY_META_FONT;
+            text_font = WEATHER_DAY_META_FONT;
         }
         lv_coord_t text_h = (text_font != NULL) ? (lv_coord_t)lv_font_get_line_height(text_font) : row_h;
         lv_coord_t track_y = (text_h - track_h) / 2;
@@ -137,7 +137,7 @@ void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *ctx, lv_
     }
 }
 
-void weather_set_3day_row_values(weather_3day_row_widgets_t *widgets, const weather_3day_row_t *row,
+void weather_set_day_row_values(weather_day_row_widgets_t *widgets, const weather_day_row_t *row,
     const char *unit, float range_min, float range_max)
 {
     if (widgets == NULL || widgets->container == NULL) {
@@ -216,8 +216,8 @@ void weather_set_3day_row_values(weather_3day_row_widgets_t *widgets, const weat
             fill_end = track_w;
         }
 
-        lv_color_t start_color = weather_3day_temp_color(low_temp, unit);
-        lv_color_t end_color = weather_3day_temp_color(high_temp, unit);
+        lv_color_t start_color = weather_day_temp_color(low_temp, unit);
+        lv_color_t end_color = weather_day_temp_color(high_temp, unit);
         lv_obj_set_style_bg_color(widgets->bar_fill, start_color, LV_PART_MAIN);
         lv_obj_set_style_bg_grad_color(widgets->bar_fill, end_color, LV_PART_MAIN);
         lv_obj_set_style_bg_grad_dir(widgets->bar_fill, LV_GRAD_DIR_HOR, LV_PART_MAIN);
@@ -526,7 +526,7 @@ void weather_set_image_if_changed(lv_obj_t *img, const lv_image_dsc_t *dsc)
 }
 
 /* Rain chance and amount as up to two lines; returns the line count (0 = nothing to show). */
-int weather_set_col_rain(lv_obj_t *label, const weather_3day_row_t *row, const char *unit, int max_lines, lv_coord_t width)
+int weather_set_col_rain(lv_obj_t *label, const weather_day_row_t *row, const char *unit, int max_lines, lv_coord_t width)
 {
     (void)width;
     char text[40] = "";

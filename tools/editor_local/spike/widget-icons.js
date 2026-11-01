@@ -20,7 +20,6 @@ const SPIKE_WIDGET_ICONS = {
   scene_tile: '<path d="m9 3 2 6 6 2-6 2-2 6-2-6-6-2 6-2zM18 2v5m-2-2h5m-2 12v5m-2-2h5"/>',
   room_tile: '<path d="m2 11 10-8 10 8M5 10v11h14V10M9 21v-7h6v7M2 3h4m14 0h2v4"/>',
   weather_tile: '<circle cx="8" cy="8" r="4"/><path d="M8 1V0M1 8H0M3 3 2 2M15 8h1M8 15v1M10 21H7a4 4 0 1 1 2-7 5 5 0 1 1 9 7Z"/>',
-  weather_3day: '<path d="M4 3v3m6-3v3m6-3v3M2 8h20M2 5h20v16H2zM5 12v5m5-5v5m5-5v5m4-5v5"/><circle cx="5" cy="13" r="1"/><path d="m9 15 1-2 1 2m3 0 1 2 1-2"/>',
   solar_forecast: '<circle cx="17" cy="5" r="3"/><path d="M17 0v1m5 4h1m-2-4-1 1M3 12h15l3 9H1zM3 16h16M7 12l-1 9m7-9 1 9M12 8v1m10 0-1-1"/>',
   energy_timeline: '<path d="m12 1-7 11h6l-1 8 9-12h-6l2-7M2 22h20M3 18v4m4-2v2m10-5v5m4-9v9"/>',
   media_player: '<rect x="2" y="3" width="20" height="15" rx="2"/><path d="m10 7 5 4-5 4zM8 22h8M12 18v4"/>',

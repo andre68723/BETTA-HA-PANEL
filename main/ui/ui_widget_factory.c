@@ -214,7 +214,7 @@ static esp_err_t ui_widget_factory_create_inner(const ui_widget_def_t *def, lv_o
     if (strcmp(def->type, "heating_tile") == 0) {
         return w_heating_tile_create(def, parent, out_instance);
     }
-    if (strcmp(def->type, "weather_tile") == 0 || strcmp(def->type, "weather_3day") == 0) {
+    if (strcmp(def->type, "weather_tile") == 0) {
         return w_weather_tile_create(def, parent, out_instance);
     }
     if (strcmp(def->type, "solar_forecast") == 0) {
@@ -311,7 +311,7 @@ static void ui_widget_factory_apply_state_inner(ui_widget_instance_t *instance, 
         w_light_tile_apply_state(instance, state);
     } else if (strcmp(instance->type, "heating_tile") == 0) {
         w_heating_tile_apply_state(instance, state);
-    } else if (strcmp(instance->type, "weather_tile") == 0 || strcmp(instance->type, "weather_3day") == 0) {
+    } else if (strcmp(instance->type, "weather_tile") == 0) {
         w_weather_tile_apply_state(instance, state);
     } else if (strcmp(instance->type, "solar_forecast") == 0) {
         w_solar_forecast_apply_state(instance, state);
@@ -369,7 +369,7 @@ static void ui_widget_factory_apply_state_inner(ui_widget_instance_t *instance, 
 /* A weather tile that can show the forecast days is laid out and capped like the forecast tile. */
 const char *ui_widget_factory_caps_type(const ui_widget_def_t *def)
 {
-    if (strcmp(def->type, "weather_tile") == 0 && (def->weather_selector || def->weather_days)) return "weather_3day";
+    if (strcmp(def->type, "weather_tile") == 0 && (def->weather_selector || def->weather_days)) return "weather_days";
     return def->type;
 }
 
@@ -421,7 +421,7 @@ static void ui_widget_factory_mark_unavailable_inner(ui_widget_instance_t *insta
         w_light_tile_mark_unavailable(instance);
     } else if (strcmp(instance->type, "heating_tile") == 0) {
         w_heating_tile_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "weather_tile") == 0 || strcmp(instance->type, "weather_3day") == 0) {
+    } else if (strcmp(instance->type, "weather_tile") == 0) {
         w_weather_tile_mark_unavailable(instance);
     } else if (strcmp(instance->type, "solar_forecast") == 0) {
         w_solar_forecast_mark_unavailable(instance);

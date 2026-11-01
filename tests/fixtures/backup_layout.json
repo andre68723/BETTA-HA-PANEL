@@ -295,14 +295,14 @@
       ]
     },
     {
-      "id": "p_weather_3day",
-      "title": "weather_3day",
+      "id": "p_weather_days",
+      "title": "weather_days",
       "widgets": [
         {
-          "id": "w_weather_3day",
+          "id": "w_weather_days",
           "type": "weather_tile",
           "weather_view": "days",
-          "title": "weather_3day",
+          "title": "weather_days",
           "rect": {
             "x": 20,
             "y": 20,

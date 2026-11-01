@@ -550,10 +550,10 @@ const navigationSize=new ResizeObserver(measureNavigation);
 apply();"""
 
 
-SUITE_LABELS = {
-    "energie": "Energie & Prognosen", "klima": "Klima & Wetter", "steuerung": "Schalten & Bedienen", "raeume": "Räume & Luftqualität",
-    "status": "Sensoren & Status", "geraete": "Fahrzeuge & Geräte", "finanzen": "Finanzen & Kurse",
-    "zustaende": "Zustände & Bedienung", "grenzen": "Kleine Kacheln & Sonderfälle", "maximal": "Große Kacheln",
+SUITE_LABELS = {  # one suite per widget group of the library, in its order; the last three are derived from the others
+    "werte": "Werte & Verläufe", "steuerung": "Bedienen & Schalten", "raeume": "Räume & Luftqualität", "wetter": "Wetter",
+    "energie": "Energie & Prognosen", "finanzen": "Finanzen & Kurse", "medien": "Medien & Aufgaben", "geraete": "Geräte & Fahrzeuge",
+    "zustaende": "Zustandsvarianten", "grenzen": "Kleinste Größen & Sonderfälle", "maximal": "Größte Größen",
 }
 
 

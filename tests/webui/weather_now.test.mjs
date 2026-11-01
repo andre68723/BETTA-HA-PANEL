@@ -26,15 +26,3 @@ test("hourly weather preview retains the current header and 24 scrollable sample
   assert.equal((hourly.match(/class="tp-weather-hour"/g)||[]).length,24);
   assert.ok(hourly.includes('10:00'));
 });
-
-test("a saved forecast tile (weather_3day) loads as the weather tile's forecast days view", () => {
-  const { run } = loadEditor();
-  const layout = { pages: [{ id: "p", title: "p", widgets: [
-    { id: "w", type: "weather_3day", entity_id: "weather.home", rect: { x: 0, y: 0, w: 360, h: 260 }, forecast_days: 5, show_precipitation: false, align_forecast: true }] }] };
-  const widget = JSON.parse(run(`(function(){ const l = ${JSON.stringify(layout)}; normalizeLayoutWidgets(l); return JSON.stringify(l.pages[0].widgets[0]); })()`));
-  assert.equal(widget.type, "weather_tile");
-  assert.equal(widget.weather_view, "days");
-  assert.equal(widget.forecast_days, 5);
-  assert.equal(widget.show_precipitation, false);
-  assert.equal("align_forecast" in widget, false);
-});

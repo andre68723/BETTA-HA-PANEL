@@ -142,7 +142,7 @@ function allowedEntityDomainsForWidgetType(
   }
   if (type === "light_tile") return ["light"];
   if (type === "heating_tile") return ["climate"];
-  if (type === "weather_tile" || type === "weather_3day") return ["weather"];
+  if (type === "weather_tile") return ["weather"];
   if (type === "todo_list") return ["todo"];
   if (type === "media_player" || type === "sonos_favorites") return ["media_player"];
   if (type === "vacuum_tile" || type === "roborock_tile") return ["vacuum"];
@@ -178,7 +178,7 @@ function expectedDomainForWidgetType(
 }
 
 function secondaryEntityConfigForWidgetType(type) {
-  if (type === "weather_3day" || type === "weather_tile") {
+  if (type === "weather_tile") {
     return {
       enabled: true,
       domain: "sensor",

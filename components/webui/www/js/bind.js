@@ -473,7 +473,6 @@ if (el.addBambuPrinterBtn) {
   bindInspectorAutoApply(el.fWeatherDays, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fWeatherTilePrecip, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fWeatherSelector, ["change"], { softEntityValidation: true });
-  bindInspectorAutoApply(el.fWeatherShowPrecip, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fRoomControls, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fForecastDays, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fAlignForecast, ["change"], { softEntityValidation: true });

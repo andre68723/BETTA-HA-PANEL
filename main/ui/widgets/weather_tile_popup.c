@@ -481,7 +481,7 @@ void weather_report_clicked_cb(lv_event_t *event)
 /* "Sonntag, 20.09." (today: "Heute, Samstag, 19.09."). */
 static void weather_day_full_title(const w_weather_tile_ctx_t *ctx, int index, char *out, size_t out_size)
 {
-    const weather_3day_row_t *row = &ctx->render_rows[index];
+    const weather_day_row_t *row = &ctx->render_rows[index];
     time_t now = time(NULL);
     struct tm lt;
     localtime_r(&now, &lt);
@@ -508,10 +508,10 @@ static void weather_day_full_title(const w_weather_tile_ctx_t *ctx, int index, c
 
 static void weather_show_day_popup(w_weather_tile_ctx_t *ctx, int index)
 {
-    if (ctx == NULL || ctx->popup != NULL || index < 0 || index >= WEATHER_3DAY_ROWS) {
+    if (ctx == NULL || ctx->popup != NULL || index < 0 || index >= WEATHER_DAY_ROWS) {
         return;
     }
-    const weather_3day_row_t *row = &ctx->render_rows[index];
+    const weather_day_row_t *row = &ctx->render_rows[index];
     if (!row->valid) {
         return;
     }
@@ -598,7 +598,7 @@ static void weather_show_day_popup(w_weather_tile_ctx_t *ctx, int index)
     }
     lv_obj_t *temp = lv_label_create(card);
     lv_label_set_text(temp, temps);
-    lv_obj_set_style_text_font(temp, WEATHER_3DAY_TEMP_FONT, LV_PART_MAIN);
+    lv_obj_set_style_text_font(temp, WEATHER_DAY_TEMP_FONT, LV_PART_MAIN);
     lv_obj_set_style_text_color(temp, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_pos(temp, text_x, head_y + 8 + lv_font_get_line_height(ui_font_role(UI_TEXT_META)) * 2);
 
