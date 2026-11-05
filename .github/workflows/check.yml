@@ -34,13 +34,18 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
         with:
           node-version: 24
-      # A stalled package mirror once held this step for 18 minutes: bound each connection, retry, and cap the step.
+      # A stalled package mirror once held this step for 18 minutes and another time for 3 minutes on one download:
+      # bound each connection, restart a stalled install (downloaded packages are kept) and cap the step.
       - name: Install system packages
-        timeout-minutes: 6
+        timeout-minutes: 14
         run: |
           apt_opts="-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
           sudo apt-get $apt_opts update
-          sudo apt-get $apt_opts install -y libcjson-dev pkg-config cmake libsdl2-dev python3-pil
+          for attempt in 1 2 3; do
+            sudo timeout 240 apt-get $apt_opts install -y libcjson-dev pkg-config cmake libsdl2-dev python3-pil && exit 0
+            echo "apt-get install attempt $attempt failed or stalled"
+          done
+          exit 1
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4  # v10.1.0
         with:
           version: '0.12.21'
