@@ -140,6 +140,12 @@ features = ["navigation.tabs", "navigation.top", "navigation.footer", "content.c
 [project.plugins.search]
 enabled = true
 
+# Lossless/near-lossless PNG and JPEG optimisation of the documentation images at build time.
+[project.plugins.optimize]
+enabled = true
+cache = true
+print_gain_summary = true
+
 # Bundle the supported worker shim so file:// search needs no CDN.
 [project.plugins.offline]
 enabled = true

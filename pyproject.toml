@@ -9,7 +9,7 @@ dependencies = []
 
 [dependency-groups]
 checks = ["fonttools==4.63.0", "brotli==1.2.0", "pillow==12.3.0"]
-docs = ["zensical==0.0.67"]
+docs = ["zensical==0.0.74"]
 screenshots = ["pillow==12.3.0", "playwright==1.63.0"]
 
 [tool.uv]

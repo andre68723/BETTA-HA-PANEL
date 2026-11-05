@@ -65,7 +65,8 @@ the repository root:
 uv run --locked --only-group docs zensical serve
 ```
 
-Open `http://localhost:8000`. For the same validation as CI:
+Open `http://localhost:8000`. The build optimises PNG and JPEG images (`[project.plugins.optimize]`) and needs
+`pngquant` on the PATH (`brew install pngquant`, `apt-get install pngquant`); the source files stay unchanged. For the same validation as CI:
 
 ```bash
 uv run --locked --only-group docs zensical build --clean --strict

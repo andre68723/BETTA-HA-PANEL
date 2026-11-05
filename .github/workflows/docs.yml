@@ -38,6 +38,10 @@ jobs:
           version: '0.12.21'
           python-version: '3.13'
           enable-cache: false
+      - name: Install pngquant for image optimisation
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends pngquant
       - name: Build and validate documentation
         run: uv run --locked --only-group docs zensical build --clean --strict
       - name: Upload Pages site
