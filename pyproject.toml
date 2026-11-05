@@ -20,5 +20,5 @@ package = false
 [tool.betta.ci]
 python = "3.13"
 node = "24"
-uv = "0.12.21"
+uv = "0.13.7"
 idf = "6.1"
