@@ -149,7 +149,7 @@ checks() {
   fi
 }
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-dummy}" SDL_RENDER_DRIVER="${SDL_RENDER_DRIVER:-software}"
-sim_inputs='main tests/simulator scripts/simulator.sh tools/check_widget_layout.py tools/check_readability.py tools/ui_styles.py tools/generate_simulator_gallery.py tools/gallery_content.py tools/widget_cases.py tools/test_layout_cases.json tools/test_layout_entities_demo.json'
+sim_inputs='main tests/simulator scripts/simulator.sh tools/check_widget_layout.py tools/check_readability.py tools/ui_styles.py tools/generate_simulator_gallery.py tools/gallery_content.py tools/widget_cases.py tools/widget_catalog.json tools/test_layout_entities_demo.json'
 changed_files=()
 # Register inputs first without executing checks; reuse these exact lists for selection.
 checks

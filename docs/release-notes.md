@@ -4,6 +4,48 @@
 
 Changes of **this fork**, compared with upstream v0.8.2. The release notes of the original project (v0.8.2 and earlier, by Cpt_Kirk) are kept unchanged in [Upstream release notes](release-notes-upstream.md).
 
+## v0.9.2-rc1
+
+Changes since [v0.9.1](#v091).
+
+### Widgets: new and changed
+
+| Widget | Status | What is new or changed |
+| --- | --- | --- |
+| [Air quality](widgets/air_quality_tile.md) | <span class="release-status release-status--new">New</span> | One BETTA status (Good, Fair, Poor) from humidity, with optional temperature, CO₂ and PM2.5 as readings on a neutral card like the Room widget and one advice chip when something needs action. It works from basic sensors up to IKEA ALPSTUGA and Awair Element; VOC and device ratings are display-only. A tap on a reading opens its history graph; a tap elsewhere opens the details with the advice, every reading as a row that opens its graph, the outdoor absolute-humidity comparison and the window state. The page icon list gains matching **Humidity** and **Air quality** symbols. |
+| [Stocks & ETFs](widgets/stock_quotes.md) | <span class="release-status release-status--changed">Changed</span> | The Tiles view is part of Charts now, as the switch **Show as cards** with up to four columns. **Show the start price** adds the period's first price (**Start 126.84 €**) under the price. The 30-day period reads **1M**. A saved Tiles view opens as charts with cards. |
+| [Weather](widgets/weather_tile.md) | <span class="release-status release-status--changed">Changed</span> | Weather and Weather forecast are one tile. **View** sets whether it starts with today or the forecast days; **Show day selection** adds two buttons at the top to switch, like the Stocks periods. The hourly strip marks midnight with a divider and the weekday and drops out when the tile is too short. Layouts with the former Weather forecast tile are converted when opened in the editor; the panel keeps showing them unchanged until then. The local editor can render the page in the LVGL simulator. |
+| [Room card](widgets/room_tile.md) | <span class="release-status release-status--changed">Changed</span> | An optional icon before the name. |
+| [Fan](widgets/fan_tile.md) | <span class="release-status release-status--changed">Changed</span> | The rotor is drawn as three swept blades. |
+| [Parqet portfolio](widgets/parqet_portfolio.md) | <span class="release-status release-status--changed">Changed</span> | The interval buttons follow the panel language like the Stocks & ETFs period buttons (**1T** instead of **1D** in German). |
+
+### Waveshare 10.1-inch LCD-X target
+
+`panel10` now targets the ready-made **ESP32-P4-WIFI6-Touch-LCD-10.1** with
+Waveshare LCD-X BSP 2.0.3, JD9365 and GT9271. The preset selects P4 Rev3.0+;
+older silicon and the separate Nano plus DSI kit are outside this profile.
+Fixed landscape, shared PPA rotation, two DPI framebuffers, PWM brightness and
+existing Wi-Fi/OTA behavior remain. The built-in OV5647 supports optional local
+light/presence sensing; ES8311 output supports notification/doorbell chimes.
+Camera automation and sound retain their off defaults. Microphones are unused.
+Sources are the official Waveshare LCD-X BSP/examples and Espressif's OV5647
+sensor driver, with original Apache-2.0 notices retained. A local read-only
+metering query supplies actual exposure/gain. The camera test has a fixed
+30-second deadline and capture waits are bounded. This is build-checked preparation; local hardware validation is pending.
+
+### Widgets: fitting and contrast
+
+Layout fixes for cut-off or overlapping text and weak contrast on Air quality, Car, Media player, Printer, Vacuum, Fan, Energy timeline, Sensor and Cover. Temperatures on Sensor and Air quality read 21.8°C.
+
+### Panel and editor
+
+- **ESP-Hosted 3.1.0 and LVGL adapter 0.7.5:** a C6 on another firmware version is updated once after the first boot of this image, with one extra restart. The SDIO receive staging uses one slot instead of two, which leaves panel4 about 16 KB more internal memory; Panel JC and Tab5 are unchanged.
+- **Home Assistant states:** changed states are reconciled from the cache revisions instead of a periodic full replay, which reduces display lock contention.
+- **Camera:** an unavailable camera shows its unavailable state instead of the last picture.
+- **History popups:** Sensor, Binary and Contact show the configured name and the full state text instead of the shortened tile label; the minimum of the chart summary shows its unit like the maximum.
+- **Device status:** `/api/version` reports the cached chip temperature of the P4.
+- **Editor texts:** remaining editor texts are translated and German terms are consistent.
+
 ## v0.9.1
 
 Changes since [v0.9.0](#v090).
@@ -89,8 +131,8 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
       silicon, not v3.x. See [hardware](choose-display.md).
     - The Alarm tile was tried against a template alarm with and without a numeric
       code (2026-10-15); a wrong code and text codes have not been tried.
-    - Some interactions still need device trials, including doorbell camera and
-      unlock, factory reset/restore, car pre-conditioning and fan controls.
+    - Factory reset, the doorbell with unlock, car pre-conditioning and fan controls were
+      tried on a device (2026-10-31).
 
 ### Upgrading from upstream v0.8.2
 
@@ -272,8 +314,7 @@ font and icon changes apply across the visible widgets.
 | [Todo list](widgets/todo_list.md) | <span class="release-status release-status--changed">Changed</span> | Improved state handling, controls and layout. |
 | [Vacuum](widgets/vacuum_tile.md) | <span class="release-status release-status--changed">Changed</span> | General vacuum tile replaces the Roborock-specific type and also serves Matter-based vacuums; legacy layout name remains compatible. A suction-level picker follows the vacuum's supported fan speeds. The Locate button is gone, the charge comes from a battery sensor (Home Assistant 2026.9 removed the vacuum's own battery value; the editor suggests the sensor of a new card), and with **History on tap** a long press opens the last 24 hours of activity. |
 | [Wallbox](widgets/wallbox.md) | <span class="release-status release-status--new">New</span> | Minimal evcc loadpoint control through Home Assistant: direct Off, Smart/Fast mode, vehicle assignment and target SOC with Apply, plus status, power, charged energy, remaining time and a solid green horizontal SOC bar. Sessions lists completed charges; without a cable, the modes remain visible and the last session replaces SOC/target. The editor detects loadpoint bindings without a full registry dump and prefers the number charge limit. Commands wait for HA state confirmation; physical charger acceptance remains open. |
-| [Weather (now)](widgets/weather_tile.md) | <span class="release-status release-status--changed">Changed</span> | Shared condition icons, extra readings and optional Show name. |
-| [Weather forecast](widgets/weather_3day.md) | <span class="release-status release-status--changed">Changed</span> | Available highs/lows/rain, daily report details, compact fitting and optional Show name. |
+| [Weather](widgets/weather_tile.md) | <span class="release-status release-status--changed">Changed</span> | Shared condition icons, extra readings, available highs/lows/rain, daily report details, compact fitting and optional Show name. |
 
 See [Integrations](home-assistant.md) for entity requirements and [Widget anatomy](widget-anatomy.md) for sizing and touch guidance.
 

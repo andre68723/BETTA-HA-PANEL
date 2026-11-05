@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1
 # Copyright (c) 2026 Cpt_Kirk
 #
-# Panel variant overlay: 10.1" 1280x800 (Waveshare 10.1" MIPI-DSI).
+# Panel variant overlay: 10.1" 1280x800 (Waveshare ESP32-P4-WIFI6-Touch-LCD-10.1, LCD-X).
 # Apply together with the common sdkconfig.defaults via
 #   idf.py -D SDKCONFIG_DEFAULTS="config/sdkconfig.defaults;config/sdkconfig.defaults.panel10" ...
 # or the CMake preset "panel10" (see CMakePresets.json).
@@ -9,6 +9,10 @@
 # --- Panel variant selector (drives app_config.h + display/touch init) ---
 # CONFIG_APP_PANEL_VARIANT_4INCH_720 is not set
 CONFIG_APP_PANEL_VARIANT_10INCH_1280=y
+
+# Ready-made LCD-X target: ESP32-P4 Rev3.x (not the separate Nano + DSI kit).
+# CONFIG_ESP32P4_SELECTS_REV_LESS_V3 is not set
+CONFIG_ESP32P4_REV_MIN_300=y
 
 # PSRAM profile (Hex 200MHz) is shared across both variants and lives in
 # sdkconfig.defaults. This overlay only carries 10.1"-specific tuning.
@@ -20,6 +24,24 @@ CONFIG_APP_PANEL_VARIANT_10INCH_1280=y
 CONFIG_BSP_LCD_COLOR_FORMAT_RGB565=y
 # CONFIG_BSP_LCD_COLOR_FORMAT_RGB888 is not set
 CONFIG_BSP_LCD_TYPE_800_1280_10_1_INCH=y
-CONFIG_BSP_LCD_MIPI_DSI_LANE_BITRATE_MBPS=1500
+# The LCD-X BSP supplies the 1500 Mbps lane bitrate.
+CONFIG_BSP_LCD_DPI_BUFFER_NUMS=2
 CONFIG_ESP_LCD_TOUCH_MAX_POINTS=10
 CONFIG_LV_USE_LODEPNG=y
+
+# OV5647 camera driver available; saved light/presence options default off.
+# Two 800x640 RGB565 capture buffers use 2,048,000 bytes of PSRAM.
+CONFIG_APP_FEATURE_AMBIENT_CAMERA=y
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+CONFIG_CAMERA_OV5647=y
+CONFIG_CAMERA_OV5647_MIPI_RAW8_800X640_50FPS=y
+# CONFIG_CAMERA_OV5647_MIPI_RAW8_800X800_50FPS is not set
+CONFIG_CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW8_800X640_50FPS=y
+CONFIG_VFS_MAX_COUNT=16
+CONFIG_ESP_VIDEO_ENABLE_MIPI_CSI_VIDEO_DEVICE=y
+CONFIG_ESP_VIDEO_ENABLE_ISP_VIDEO_DEVICE=y
+CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER=y
+# CONFIG_ESP_VIDEO_ENABLE_DATA_PREPROCESSING is not set
+CONFIG_ESP_VIDEO_DISABLE_MIPI_CSI_DRIVER_BACKUP_BUFFER=y
+# CONFIG_ESP_VIDEO_ENABLE_SWAP_SHORT is not set
+# CONFIG_ESP_VIDEO_ENABLE_SWAP_BYTE is not set

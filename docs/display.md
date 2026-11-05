@@ -74,7 +74,7 @@ option returns to the first page or keeps the last one. A night level of 0 % alw
 
 ## Room light and presence
 
-The camera of the Guition JC8012P4A1 and the M5Stack Tab5 senses light and movement. It records and streams nothing.
+The camera of the Guition JC8012P4A1, M5Stack Tab5 and Waveshare LCD-X 10.1-inch senses light and movement. It records and streams nothing.
 
 - **Adapt to room light** scales active and dimmed brightness; night brightness stays as chosen.
 - **Wake on approach** wakes a dimmed or protected display on movement. Set the sensitivity; **Wake at night** is a

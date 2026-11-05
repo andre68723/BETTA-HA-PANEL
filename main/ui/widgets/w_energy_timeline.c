@@ -289,6 +289,30 @@ static void etl_nested_draw_cb(lv_event_t *e)
 
 /* style_variant "nested": the rings inside each other at the left, one row per value beside them, and the timeline
  * below when the card is tall enough for it. */
+/* Time labels are as wide as the text needs: at the larger Tab5 text a fixed 64 px cut "20:00" to "20...". */
+static lv_coord_t etl_tick_w(void)
+{
+    lv_point_t size;
+    lv_text_get_size(&size, "88:88", ui_font_role(UI_TEXT_META), 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    return size.x + 6 > 64 ? size.x + 6 : 64;
+}
+
+/* Every second label when the times are wider than the space between them: whole times, fewer of them. */
+static bool etl_tick_shown(int i, lv_coord_t plot_w)
+{
+    return etl_tick_w() <= plot_w / ETL_TICKS || i % 2 == 0;
+}
+
+static const char *etl_ring_caption(int ring)
+{
+    switch (ring) {
+    case ETL_RING_HOME: return ui_i18n_get("energytl.home_s", "Home");
+    case ETL_RING_EXPORT: return ui_i18n_get("energytl.export_s", "Feed-in");
+    case ETL_RING_SOLAR: return ui_i18n_get("energytl.solar_s", "Solar");
+    default: return ui_i18n_get("energytl.battery_s", "Battery");
+    }
+}
+
 static void etl_layout_nested(w_etl_ctx_t *ctx, lv_coord_t w, lv_coord_t h, int rings)
 {
     const lv_coord_t pad = ETL_PAD;
@@ -359,10 +383,11 @@ static void etl_layout_nested(w_etl_ctx_t *ctx, lv_coord_t w, lv_coord_t h, int 
     for (int i = 0; i < ETL_TICKS; i++) lv_obj_set_hidden(ctx->tick[i], !with_plot);
     if (!with_plot) return;
     const lv_coord_t plot_w = w - 2 * pad;
+    for (int i = 0; i < ETL_TICKS; i++) lv_obj_set_hidden(ctx->tick[i], !etl_tick_shown(i, plot_w));
     lv_obj_set_size(ctx->plot, plot_w, inner_h - block_h - 6 - line - 2);
     lv_obj_set_pos(ctx->plot, pad, plot_y);
     for (int i = 0; i < ETL_TICKS; i++) {
-        lv_obj_set_size(ctx->tick[i], 64, line);
+        lv_obj_set_size(ctx->tick[i], etl_tick_w(), line);
         lv_obj_set_pos(ctx->tick[i], pad + (lv_coord_t)((int32_t)plot_w * i * (ET_SLOTS / ETL_TICKS) / ET_SLOTS),
                        top + inner_h - line);
     }
@@ -395,7 +420,6 @@ static void etl_layout(w_etl_ctx_t *ctx)
     }
     lv_obj_set_hidden(ctx->nest, true);
     lv_obj_set_hidden(ctx->plot, false);
-    for (int i = 0; i < ETL_TICKS; i++) lv_obj_set_hidden(ctx->tick[i], false);
 
     const lv_coord_t top = pad + (title_h > 0 ? title_h : line) + 4;
     const lv_coord_t inner_h = h - top - pad;
@@ -458,6 +482,7 @@ static void etl_layout(w_etl_ctx_t *ctx)
         lv_obj_set_size(ctx->ring_unit[i], inner, uh > 0 ? uh : 1);
         lv_obj_set_pos(ctx->ring_unit[i], rx + arc_w + 1, text_top + vh);
         lv_obj_set_size(ctx->ring_caption[i], cell_w - 2, line);
+        lv_obj_set_style_text_font(ctx->ring_caption[i], ui_text_fit(etl_ring_caption(i), ui_font_role(UI_TEXT_META), cell_w - 2, line), LV_PART_MAIN);
         lv_obj_set_pos(ctx->ring_caption[i], cx - (cell_w - 2) / 2, top + ring_area_h + 1);
         slot++;
     }
@@ -493,7 +518,8 @@ static void etl_layout(w_etl_ctx_t *ctx)
     lv_obj_set_pos(ctx->plot, pad, plot_y);
     const lv_coord_t plot_w = w - 2 * pad;
     for (int i = 0; i < ETL_TICKS; i++) {
-        lv_obj_set_size(ctx->tick[i], 64, tick_h);
+        lv_obj_set_hidden(ctx->tick[i], !etl_tick_shown(i, plot_w));
+        lv_obj_set_size(ctx->tick[i], etl_tick_w(), tick_h);
         lv_obj_set_pos(ctx->tick[i], pad + (lv_coord_t)((int32_t)plot_w * i * (ET_SLOTS / ETL_TICKS) / ET_SLOTS),
                        plot_y + plot_total - tick_h);
     }
@@ -572,11 +598,8 @@ static void etl_render(w_etl_ctx_t *ctx)
     etl_set_segments(ctx, ETL_RING_BATTERY, soc_parts, soc_colors, 100.0f);
 
     const float totals[ETL_RING_COUNT] = {t.home_kwh, t.export_kwh, t.solar_kwh, 0.0f};
-    const char *captions[ETL_RING_COUNT] = {
-        ui_i18n_get("energytl.home_s", "Home"), ui_i18n_get("energytl.export_s", "Feed-in"),
-        ui_i18n_get("energytl.solar_s", "Solar"), ui_i18n_get("energytl.battery_s", "Battery")};
     for (int i = 0; i < ETL_RING_COUNT; i++) {
-        lv_label_set_text(ctx->ring_caption[i], captions[i]);
+        lv_label_set_text(ctx->ring_caption[i], etl_ring_caption(i));
         if (i == ETL_RING_BATTERY) {
             if (ctx->has_soc) {
                 snprintf(value, sizeof(value), "%.0f", (double)ctx->soc);

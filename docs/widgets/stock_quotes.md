@@ -2,7 +2,7 @@
 
 # Stocks & ETFs
 
-Shows **up to eight quotes** of Easy Stock `sensor.*` entities as a list, as charts or as tiles, with the last session's change and a detail view over five periods.
+Shows **up to eight quotes** of Easy Stock `sensor.*` entities as a list or as charts (rows or cards), with the last session's change and a detail view over five periods.
 
 <div class="widget-previews">
 <figure><a href="../img/gallery/stocks_list_glow.png"><img src="../img/gallery/stocks_list_glow.png" alt="Stocks list, Glow style" loading="lazy" width="380" height="280" style="width: 304px"></a></figure>
@@ -29,7 +29,7 @@ The **[Easy Stock](https://github.com/derspe/ha-easy-stock)** integration from H
 | History before sensor creation | **Yes: up to one year of daily closes is downloaded at setup** |
 | 1D | Today's Recorder data; an explicit no-trading flag gives a flat 0% chart |
 | 1W | Home Assistant hourly means (trend) |
-| 30D, YTD, 1Y | Daily closes from the integration, as far back as its history reaches |
+| 1M, YTD, 1Y | Daily closes from the integration, as far back as its history reaches |
 | Currency | Sensor's native currency; Lovelace card conversion does not change BETTA |
 
 It supplies no exchange real-time guarantee. The panel refreshes histories every 15 minutes; quote freshness also depends on the integration's polling interval. For 1D, keep Recorder enabled for the sensors. Easy Stock's Lovelace card settings do not configure the panel.
@@ -42,12 +42,14 @@ Integration setup and options: [Easy Stock](https://github.com/derspe/ha-easy-st
 
 | Option | Effect |
 | --- | --- |
-| Quote 1 to 8 | the same list for List, Charts and Tiles; Add quote opens a multiple selection with numbered slots for up to eight sensors; changes apply together; ↑ moves a quote up, × removes it, an emptied row closes the gap |
-| View | **List**: name, price and the last session's change; **Charts**: a small chart per quote; **Tiles**: a card per quote with name, price, the period change and a chart, in two columns on a wide tile and one on a narrow one |
-| Period | 1 day, 1 week, 30 days, year to date or 1 year: the charts' first period and the one the details open with |
+| Quote 1 to 8 | the same list for List and Charts; Add quote opens a multiple selection with numbered slots for up to eight sensors; changes apply together; ↑ moves a quote up, × removes it, an emptied row closes the gap |
+| View | **List**: name, price and the last session's change; **Charts**: a small chart per quote, in rows under each other |
+| Show as cards | Charts only: a card per quote with name, price, the period change and a chart, in as many columns as fit, up to four, and in one on a narrow tile |
+| Show the start price | Cards only: the period's first price (**Start 126.84 €**) under the price, the figure the change is measured from |
+| Period | 1 day, 1 week, 1 month, year to date or 1 year: the charts' first period and the one the details open with |
 | Change | percent, amount, or both |
-| Show the symbol | the ticker under the name (list), after it (charts) or beside it (tiles) |
-| Show selector buttons on the tile | on by default, charts and tiles: the period buttons **1D, 1W, 30D, YTD, 1Y**; off shows the period above |
+| Show the symbol | the ticker under the name (list), after it (charts) or beside it (cards) |
+| Show selector buttons on the tile | on by default, charts and cards: the period buttons **1D, 1W, 1M, YTD, 1Y**; off shows the period above |
 
 <a href="../img/examples/inspector-stock_quotes.png"><img src="../img/examples/inspector-stock_quotes.png" alt="Inspector of the Stocks &amp; ETFs widget" loading="lazy" width="340" height="573"></a>
 
@@ -56,7 +58,7 @@ Integration setup and options: [Easy Stock](https://github.com/derspe/ha-easy-st
 ## On the panel
 
 - The price is the sensor's state with its currency; pence stay pence (GBp). A change that does not belong to the shown price is left out, a missing change shows `--`. Prices below 1 retain up to eight significant digits.
-- Tiles show the percentage change on the right with an up/down arrow. With both changes enabled, the amount sits below the price. Rows and tiles scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market state, the time of the last update in Home Assistant, and a chart over **1D, 1W, 30D, YTD, 1Y**.
+- Cards show the percentage change on the right with an up/down arrow. With both changes enabled, the amount sits below the price. Rows and cards scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market state, the time of the last update in Home Assistant, and a chart over **1D, 1W, 1M, YTD, 1Y**.
 - Every chart names its source: **Closes** (Easy Stock, against the close before the period), **Recorded** (a day of Home Assistant's records from local midnight, against the previous close) or Home Assistant's daily, weekly or hourly means, whose change is a **trend**, not a market return. A shorter history says from when it starts.
 - **1D means today**, from local midnight to now in the panel's time zone. Keep the panel and Home Assistant in the same time zone. When Easy Stock explicitly reports no trading today, the 1D chart is flat at 0%; the list keeps the last session's change. Without that attribute, 1D uses the previous close as its reference.
 - Charts are fetched only for a page on screen, one at a time, and refreshed every 15 minutes.
@@ -68,8 +70,8 @@ Integration setup and options: [Easy Stock](https://github.com/derspe/ha-easy-st
 <figcaption>Stocks list (symbol, both changes)</figcaption></figure>
 <figure><a href="../img/gallery/stocks_charts_glow.png"><img src="../img/gallery/stocks_charts_glow.png" alt="Stocks charts, Glow style" loading="lazy" width="380" height="330" style="width: 304px"></a>
 <figcaption>Stocks charts</figcaption></figure>
-<figure><a href="../img/gallery/stocks_tiles_glow.png"><img src="../img/gallery/stocks_tiles_glow.png" alt="Stocks tiles, Glow style" loading="lazy" width="700" height="330" style="width: 560px"></a>
-<figcaption>Stocks tiles</figcaption></figure>
+<figure><a href="../img/gallery/stocks_cards_glow.png"><img src="../img/gallery/stocks_cards_glow.png" alt="Stocks cards, Glow style" loading="lazy" width="700" height="330" style="width: 560px"></a>
+<figcaption>Stocks cards</figcaption></figure>
 </div>
 
 ## Size

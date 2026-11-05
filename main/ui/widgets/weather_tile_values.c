@@ -19,7 +19,7 @@ static void weather_values_default(weather_values_t *values)
     values->wind_bearing = -1;
     values->today_precip_mm = -1.0f;
     values->today_precip_prob = -1;
-    for (size_t i = 0; i < WEATHER_3DAY_MAX_FORECAST; i++) {
+    for (size_t i = 0; i < WEATHER_DAY_MAX_FORECAST; i++) {
         values->forecast[i].precip_mm = -1.0f;
         values->forecast[i].precip_prob = -1;
         weather_copy_text(values->forecast[i].day, sizeof(values->forecast[i].day), "--");
@@ -130,7 +130,7 @@ void weather_extract_values(const ha_state_t *state, bool want_forecast, weather
         if (cJSON_IsArray(forecast)) {
             int count = cJSON_GetArraySize(forecast);
             int out_idx = 0;
-            for (int i = 0; i < count && out_idx < WEATHER_3DAY_MAX_FORECAST; i++) {
+            for (int i = 0; i < count && out_idx < WEATHER_DAY_MAX_FORECAST; i++) {
                 cJSON *item = cJSON_GetArrayItem(forecast, i);
                 if (!cJSON_IsObject(item)) {
                     continue;

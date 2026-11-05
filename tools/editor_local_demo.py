@@ -112,11 +112,13 @@ def all_widgets_fixture(variant):
         (None, 'Freifläche', (1020, 440, 220, 100), {}),
     ])
     page('Wetter & Energie', [
-        ('weather_now', 'Aktuelles Wetter', (20, 20, 220, 220), {}),
-        ('weather_forecast', 'Wetterbericht', (270, 20, 900, 220), dict(forecast_days=6, show_precipitation=True)),
-        ('solar_forecast', 'Solar horizontal', (20, 280, 380, 280), dict(solar_forecast_bar_max_kwh=60, forecast_days=5)),
-        ('solar_forecast_vertical', 'Solar vertikal', (420, 280, 260, 280), dict(solar_forecast_bar_max_kwh=60, forecast_days=5)),
-        ('energy_last_24_hours', 'Energie mit Batterie', (700, 280, 540, 280), {}),
+        ('weather_now', 'Aktuelles Wetter', (20, 20, 220, 260), {}),
+        ('weather_now', 'Wetter mit Stunden und Tagen', (270, 20, 640, 300),
+         dict(weather_hourly=True, weather_selector=True, forecast_days=6, show_precipitation=True)),
+        ('weather_now', 'Wetter, Start mit Tagen', (940, 20, 300, 300), dict(weather_selector=True, weather_view='days', forecast_days=3)),
+        ('solar_forecast', 'Solar horizontal', (20, 340, 380, 240), dict(solar_forecast_bar_max_kwh=60, forecast_days=5)),
+        ('solar_forecast_vertical', 'Solar vertikal', (420, 340, 260, 240), dict(solar_forecast_bar_max_kwh=60, forecast_days=5)),
+        ('energy_last_24_hours', 'Energie mit Batterie', (700, 340, 540, 240), {}),
     ])
     page('Medien & Finanzen', [
         ('media_player', 'Musik', (20, 20, 340, 360), {}),
@@ -140,7 +142,8 @@ def all_widgets_fixture(variant):
     ])
     page('Sensorlisten', [
         ('sensor', 'Einzelwert', (20, 20, 240, 180), {}),
-        ('sensor', 'Messwerte', (280, 20, 460, 540), dict(sensor_view='list', sensor_entities=[
+        ('air_quality', 'Luftqualität', (20, 220, 280, 320), {}),
+        ('sensor', 'Messwerte', (320, 20, 420, 540), dict(sensor_view='list', sensor_entities=[
             'sensor.demo_humidity', 'sensor.demo_power', 'sensor.demo_car_battery', 'sensor.demo_portfolio_value'])),
         ('sensor', 'Zustände', (760, 20, 500, 540), dict(entity_id='binary_sensor.demo_front_door', sensor_view='list',
             sensor_entities=['binary_sensor.demo_motion', 'sensor.demo_robot_battery'])),

@@ -134,6 +134,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "wallbox_evcc") return ["select"];
   if (type === "empty_tile") return [];
   if (type === "sensor") return ["sensor", "binary_sensor"];
+  if (type === "air_quality_tile") return ["sensor"];
   if (type === "graph" || type === "gauge" || type === "solar_forecast" || type === "energy_price_forecast" || type === "parqet_portfolio" || type === "stock_quotes" || type === "car_widget" || type === "bambu_printer" || type === "energy_timeline") return ["sensor"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
@@ -141,7 +142,7 @@ function allowedEntityDomainsForWidgetType(
   }
   if (type === "light_tile") return ["light"];
   if (type === "heating_tile") return ["climate"];
-  if (type === "weather_tile" || type === "weather_3day") return ["weather"];
+  if (type === "weather_tile") return ["weather"];
   if (type === "todo_list") return ["todo"];
   if (type === "media_player" || type === "sonos_favorites") return ["media_player"];
   if (type === "vacuum_tile" || type === "roborock_tile") return ["vacuum"];
@@ -177,7 +178,7 @@ function expectedDomainForWidgetType(
 }
 
 function secondaryEntityConfigForWidgetType(type) {
-  if (type === "weather_3day" || type === "weather_tile") {
+  if (type === "weather_tile") {
     return {
       enabled: true,
       domain: "sensor",
@@ -423,8 +424,9 @@ function refreshEntitySourceWarning(widget = selectedWidget()) {
   const warning = el.entitySourceWarning;
   if (!warning) return;
   const invalid = [], pending = [];
-  if (["energy_timeline", "energy_price_forecast", "parqet_portfolio"].includes(widget?.type)) {
+  if (["air_quality_tile", "energy_timeline", "energy_price_forecast", "parqet_portfolio"].includes(widget?.type)) {
     const fields = [["entity_id", "primary", "layout.inspector.entity_" + widget.type]];
+    if (widget.type === "air_quality_tile") fields.push(...AIR_ROLES.map(([key, , , role]) => [key, `air_${role}`, `air.${role}`]));
     if (widget.type === "parqet_portfolio") fields.push(
       ["secondary_entity_id", "secondary", "layout.inspector.secondary_entity_parqet_portfolio"],
       ["tertiary_entity_id", "tertiary", "layout.inspector.tertiary_entity_parqet_portfolio"],
@@ -446,7 +448,7 @@ function refreshEntitySourceWarning(widget = selectedWidget()) {
   }
   warning.textContent = invalid.length ? t(invalid.length === 1 ? "entity_source.invalid_summary_one" : "entity_source.invalid_summary_many", { count: invalid.length }) : "";
   warning.classList.toggle("hidden", !invalid.length);
-  const helpKey = { energy_timeline: "layout.inspector.energy_timeline_hint", energy_price_forecast: "entity_source.price_help",
+  const helpKey = { air_quality_tile: "air.sources_hint", energy_timeline: "layout.inspector.energy_timeline_hint", energy_price_forecast: "entity_source.price_help",
     parqet_portfolio: "entity_source.parqet_help" }[widget?.type];
   const help = widget?.type === "energy_timeline" ? el.energyTimelineHint : el.entitySourceHint;
   if (el.entitySourceHint) el.entitySourceHint.classList.toggle("hidden", !helpKey || widget?.type === "energy_timeline");
@@ -698,6 +700,7 @@ function preferredInspectorPrimaryDomain(input) {
 
 // Extra widget bindings use the same search and change event as the primary three fields.
 const INSPECTOR_EXTRA_ENTITY_FIELDS = [
+  ...AIR_ROLES.map(([, field, domains, role]) => ["air_quality_tile", `air_${role}`, `fAir${field}`, domains, `air_${role}`]),
   ["energy_timeline", "etl_charge", "fEtlCharge", "sensor", "etl_charge"],
   ["energy_timeline", "etl_discharge", "fEtlDischarge", "sensor", "etl_discharge"],
   ["energy_timeline", "etl_soc", "fEtlSoc", "sensor", "etl_soc"],
@@ -901,16 +904,21 @@ function inspectorEntityRowNames(ids) {
     const entity = id ? editor.entities.find(item => item?.id === id) : null;
     return entity?.name && entity.name !== id ? String(entity.name) : "";
   });
+  // The shared leading words (usually the device) are dropped from the rows that share them. Rows of another device, such as an
+  // outdoor weather entity, neither break the shortening of the others nor lose their own name.
   const named = names.filter(Boolean).map(name => name.split(" "));
-  let prefix = named.length >= 2 ? named[0] : [];
-  for (const words of named.slice(1)) {
+  const groups = new Map();
+  for (const words of named) groups.set(words[0], [...(groups.get(words[0]) || []), words]);
+  const biggest = [...groups.values()].reduce((best, group) => (group.length > best.length ? group : best), []);
+  let prefix = biggest.length >= 2 ? biggest[0] : [];
+  for (const words of biggest.slice(1)) {
     let i = 0;
     while (i < prefix.length && i < words.length && prefix[i] === words[i]) i++;
     prefix = prefix.slice(0, i);
   }
   return names.map(name => {
     const words = name.split(" ");
-    return name && prefix.length && words.length > prefix.length ? words.slice(prefix.length).join(" ") : name;
+    return name && prefix.length && words.length > prefix.length && prefix.every((word, i) => words[i] === word) ? words.slice(prefix.length).join(" ") : name;
   });
 }
 
@@ -1216,6 +1224,9 @@ async function refreshStates() {
                 [...(Array.isArray(attrs.raw_today) ? attrs.raw_today : []), ...(Array.isArray(attrs.raw_tomorrow) ? attrs.raw_tomorrow : [])].filter(row => row && typeof row.start === "string" && Number.isFinite(row.value)).length > 1),
             has_solar_forecast: Array.isArray(attrs.detailedForecast) || Array.isArray(attrs.fc_kw),
             vehicle_name: typeof attrs.vehicle?.name === "string" ? attrs.vehicle.name : "",
+            weather_temperature: typeof attrs.temperature === "number" ? attrs.temperature : null,
+            weather_humidity: typeof attrs.humidity === "number" ? attrs.humidity : null,
+            temperature_unit: attrs.temperature_unit || "",
             current_temperature: typeof attrs.current_temperature === "number" ? attrs.current_temperature : null,
             percentage: typeof attrs.percentage === "number" ? attrs.percentage : null,
             percentage_step: typeof attrs.percentage_step === "number" ? attrs.percentage_step : null,

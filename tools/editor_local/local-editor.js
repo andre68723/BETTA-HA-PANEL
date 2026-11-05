@@ -63,5 +63,52 @@ startEditor = async function (...args) {
     }
     location.assign('/?ui=' + encodeURIComponent(select.value));
   };
+  addLvglPreview(toolbar, config);
   window.localEditorReady = true;
 })();
+
+// LVGL preview: the page as the firmware's simulator draws it, for the layout as it is in the editor right now
+// (saved or not). The local server renders it with tools/editor_local.py (render_lvgl) and sends a BMP.
+function addLvglPreview(toolbar, config) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.id = 'localEditorLvgl';
+  button.textContent = 'LVGL-Vorschau';
+  toolbar.insertBefore(button, toolbar.querySelector('label'));
+  const dialog = document.createElement('div');
+  dialog.id = 'localEditorLvglDialog';
+  dialog.className = 'local-editor-lvgl hidden';
+  dialog.innerHTML = '<div class="local-editor-lvgl-card"><div class="local-editor-lvgl-head"><strong>LVGL-Vorschau</strong>' +
+    '<label>Stil <select id="localEditorLvglStyle"><option>glow</option><option>flat</option><option>glass</option><option>matte</option></select></label>' +
+    '<label>Textgröße <select id="localEditorLvglStep"><option value="0">0</option><option value="1">1</option><option value="2">2</option></select></label>' +
+    '<label>Sprache <select id="localEditorLvglLang"><option value="de">de</option><option value="en">en</option></select></label>' +
+    '<button type="button" id="localEditorLvglRefresh">Neu zeichnen</button><button type="button" id="localEditorLvglClose">Schließen</button>' +
+    '<span id="localEditorLvglStatus"></span></div><div class="local-editor-lvgl-body"><img id="localEditorLvglImage" alt="LVGL-Vorschau der Seite"></div></div>';
+  document.body.append(dialog);
+  const status = document.getElementById('localEditorLvglStatus');
+  const image = document.getElementById('localEditorLvglImage');
+  let url = null;
+  async function render() {
+    status.textContent = 'Zeichne ... (der erste Lauf baut den Simulator)';
+    try {
+      const response = await fetch('/api/local/simulator', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({layout: editor.layout, page_id: editor.selectedPageId,
+          style: document.getElementById('localEditorLvglStyle').value,
+          text_step: Number(document.getElementById('localEditorLvglStep').value),
+          language: document.getElementById('localEditorLvglLang').value})
+      });
+      if (!response.ok) throw new Error((await response.json()).error || response.statusText);
+      const blob = await response.blob();
+      if (url) URL.revokeObjectURL(url);
+      url = URL.createObjectURL(blob);
+      image.src = url;
+      status.textContent = 'Seite „' + (editor.layout.pages.find(page => page.id === editor.selectedPageId)?.title || editor.selectedPageId) + '“, ' + config.variant;
+    } catch (error) { status.textContent = 'Fehler: ' + error.message; }
+  }
+  button.onclick = () => { dialog.classList.remove('hidden'); render(); };
+  document.getElementById('localEditorLvglRefresh').onclick = render;
+  for (const id of ['localEditorLvglStyle', 'localEditorLvglStep', 'localEditorLvglLang']) document.getElementById(id).onchange = render;
+  document.getElementById('localEditorLvglClose').onclick = () => dialog.classList.add('hidden');
+  dialog.addEventListener('click', event => { if (event.target === dialog) dialog.classList.add('hidden'); });
+}

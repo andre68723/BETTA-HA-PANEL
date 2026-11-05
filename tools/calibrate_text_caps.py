@@ -12,7 +12,7 @@ inside them failed at cap k while as many tiles as possible passed. Thresholds n
   python3 tools/calibrate_text_caps.py            # print the table and the tiles that fail even at cap 0
   python3 tools/calibrate_text_caps.py --write    # also update the table in main/ui/text_scale.c
 
-The result depends on the fixtures: add a tile to tests/simulator/layout_cases.json when a size needs protection, then run it again.
+The result depends on the fixtures: add a tile to tests/simulator/tile_size_cases.json when a size needs protection, then run it again.
 """
 import argparse
 import json

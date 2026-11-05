@@ -10,6 +10,36 @@ panel         what the tile shows and how it reacts to touch, as list items
 """
 
 WIDGETS = {
+    "air_quality_tile": {'summary': 'Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and '
+                'PM2.5 from `sensor.*` entities; a tap on a value opens its history graph, a tap elsewhere the details.',
+     'entities': [('Humidity', '`sensor.*`', True),
+                  ('Temperature, CO₂, PM2.5, VOC and device rating', '`sensor.*`', False),
+                  ('Outdoor temperature and humidity', '`sensor.*`, `weather.*`', False),
+                  ('Window contact', '`binary_sensor.*`', False)],
+     'requirements': 'Bind each role explicitly using the reported device class and unit; the tile shows only '
+                     'what is bound. No direct device polling.\n\n'
+                     '| Level | Bound readings | Example |\n'
+                     '| --- | --- | --- |\n'
+                     '| 1 | Humidity and temperature | Zigbee temperature/humidity sensor, e.g. a Tuya sensor with display |\n'
+                     '| 2 | Level 1 plus CO₂, PM2.5 and the device\'s own rating | IKEA ALPSTUGA |\n'
+                     '| 3 | Level 2 plus VOC and more values | Awair Element |',
+     'options': [('Icon before the name',
+                  'a small air-quality symbol in front of the name, off by default; shown only with the name'),
+                 ('Sources',
+                  'optional roles stay independent; outdoor comparison can be disabled without losing '
+                  'its bindings'),
+                 ('Rating',
+                  'fixed, not adjustable; see [How the status is determined](#how-the-status-is-determined)')],
+     'panel': ['A neutral card like the Room widget: the name on top, the readings (up to three, four on wide '
+               'tiles) as value over label, and chips at the bottom with the status (Good, Fair, Poor) and, only '
+               'when there is something to do, a short advice. Colour appears only in the chips and in readings '
+               'rated amber or red.',
+               'A tap on a value opens its history graph; a tap on a chip or a gap opens the details: status and '
+               'advice first, then every bound reading with its level (a tap on a row opens its graph), the outdoor '
+               'absolute-humidity comparison and the window state.',
+               'Temperature is context only. VOC, Awair scores and IKEA ratings are displayed but never change the '
+               'status. Unbound pollutants are not evaluated, and the window state does not prove sufficient '
+               'ventilation.']},
     "alarm_tile": {
         "summary": "Shows the **state** of an `alarm_control_panel.*` entity and arms or disarms it, asking for a code when the entity needs one.",
         "entities": [("Alarm panel", "`alarm_control_panel.*`", True)],
@@ -57,6 +87,7 @@ WIDGETS = {
         "requirements": None,
         "options": [("Live picture (MJPEG)", "streams while visible; off by default. Only cameras with MJPEG; RTSP, H.264/H.265 and audio are not supported")],
         "panel": ["The snapshot refreshes every 10 seconds while visible; a tap loads a new one.",
+                  "Unavailable or unknown entities show Unavailable instead of an old picture, even with the name hidden. Live streams and full-screen views close; fresh pictures resume when the entity returns. Snapshot download errors show Picture unavailable and retry on the next refresh or tap.",
                   "With Live picture a tap opens a full-screen view. Streams pause on hidden pages, under popups and during display protection; at most two run at once.",
                   "The source camera decides how often a new image is available. The onboard ambient-light camera is separate."],
     },
@@ -69,6 +100,7 @@ WIDGETS = {
         "options": [("Optional entities", "only configured roles are shown; choose a free function with Add assignment, then select its entity; × removes a binding")],
         "panel": ["Rings for the battery level and, when set, the range and charging power.",
                   "From 200 × 330 px the lock state and interior temperature share a line under the rings, with the preconditioning button across the card below it; the Inspector says when the tile is too small for them.",
+                  "On a card under 240 px the bands are slimmer, and the charging power is left out when it does not fit between the readings and the name.",
                   "Preconditioning is a button; everything else is read-only. For a `climate.*`, `switch.*` or `input_boolean.*` the button reads **Sending...** after the call until the entity changes between on and off (at most 60 seconds); taps in between are ignored."],
     },
     "climate_tile": {
@@ -214,21 +246,23 @@ WIDGETS = {
                   "A gain or dividends sensor in another currency than the total value, or a percentage sensor without `%`, is left out and the line says **Unit differs**."],
     },
     "stock_quotes": {
-        "summary": "Shows **up to eight quotes** of Easy Stock `sensor.*` entities as a list, as charts or as tiles, with the last session's change and a detail view over five periods.",
+        "summary": "Shows **up to eight quotes** of Easy Stock `sensor.*` entities as a list or as charts (rows or cards), with the last session's change and a detail view over five periods.",
         "entities": [("Quote 1", "`sensor.*` of Easy Stock", True), ("Quote 2 to 8", "`sensor.*` of Easy Stock", False)],
         "requirements": "The **[Easy Stock](https://github.com/derspe/ha-easy-stock)** integration from HACS; its quotes come from Yahoo Finance. "
                         "The panel reads from Home Assistant's entity registry which integration a sensor belongs to; a sensor of "
                         "another integration shows **Not a quote**. Easy Stock's daily closes come from the integration's own history endpoint.",
-        "options": [("Quote 1 to 8", "the same list for List, Charts and Tiles; Add quote opens a multiple selection with numbered slots for up to eight sensors; changes apply together; ↑ moves a quote up, × removes it, an emptied row closes the gap"),
-                    ("View", "**List**: name, price and the last session's change; **Charts**: a small chart per quote; **Tiles**: a card per quote with name, price, the period change and a chart, in two columns on a wide tile and one on a narrow one"),
-                    ("Period", "1 day, 1 week, 30 days, year to date or 1 year: the charts' first period and the one the details open with"),
+        "options": [("Quote 1 to 8", "the same list for List and Charts; Add quote opens a multiple selection with numbered slots for up to eight sensors; changes apply together; ↑ moves a quote up, × removes it, an emptied row closes the gap"),
+                    ("View", "**List**: name, price and the last session's change; **Charts**: a small chart per quote, in rows under each other"),
+                    ("Show as cards", "Charts only: a card per quote with name, price, the period change and a chart, in as many columns as fit, up to four, and in one on a narrow tile"),
+                    ("Show the start price", "Cards only: the period's first price (**Start 126.84 €**) under the price, the figure the change is measured from"),
+                    ("Period", "1 day, 1 week, 1 month, year to date or 1 year: the charts' first period and the one the details open with"),
                     ("Change", "percent, amount, or both"),
-                    ("Show the symbol", "the ticker under the name (list), after it (charts) or beside it (tiles)"),
-                    ("Show selector buttons on the tile", "on by default, charts and tiles: the period buttons **1D, 1W, 30D, YTD, 1Y**; off shows the period above")],
+                    ("Show the symbol", "the ticker under the name (list), after it (charts) or beside it (cards)"),
+                    ("Show selector buttons on the tile", "on by default, charts and cards: the period buttons **1D, 1W, 1M, YTD, 1Y**; off shows the period above")],
         "panel": ["The price is the sensor's state with its currency; pence stay pence (GBp). A change that does not belong to the shown price "
                   "is left out, a missing change shows `--`. Prices below 1 retain up to eight significant digits.",
-                  "Tiles show the percentage change on the right with an up/down arrow. With both changes enabled, the amount sits below the price. Rows and tiles scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market "
-                  "state, the time of the last update in Home Assistant, and a chart over **1D, 1W, 30D, YTD, 1Y**.",
+                  "Cards show the percentage change on the right with an up/down arrow. With both changes enabled, the amount sits below the price. Rows and cards scroll when they do not fit; a tap (not a drag) opens the details: price, the last session's change, market "
+                  "state, the time of the last update in Home Assistant, and a chart over **1D, 1W, 1M, YTD, 1Y**.",
                   "Every chart names its source: **Closes** (Easy Stock, against the close before the period), **Recorded** (a day of "
                   "Home Assistant's records from local midnight, against the previous close) or Home Assistant's daily, weekly or hourly means, whose change "
                   "is a **trend**, not a market return. A shorter history says from when it starts.",
@@ -257,7 +291,8 @@ WIDGETS = {
         "requirements": None,
         "options": [("Room entities", "Add entity extends the list up to seven additional entities; ↑ reorders, × removes, and a click changes an entity; importing an area fills the list"),
                     ("Extra field", "humidity, cover (status and open/close) or media player (status and play/pause)"),
-                    ("Controls on the card", "lights, switches and covers as buttons, on a card of about 400 × 240 px")],
+                    ("Controls on the card", "lights, switches and covers as buttons, on a card of about 400 × 240 px"),
+                    ("Icon before the name", "a small room symbol in front of the name, off by default; shown only with the name")],
         "panel": ["A tap opens a popup with every entity and toggles for lights, switches, covers, fans and media players.",
                   "With **Controls on the card** lights and switches toggle together and covers get up and down."],
     },
@@ -280,7 +315,7 @@ WIDGETS = {
         "summary": "Shows the **value** of a `sensor.*` or `binary_sensor.*` entity, formatted by its device class, with optional name, age and Recorder history.",
         "entities": [("Sensor", "`sensor.*`, `binary_sensor.*`", True)],
         "requirements": None,
-        "options": [("View", "Single value or List, with up to eight sensor or binary-sensor entities; Add sensors selects and orders the entries, ↑ moves and × removes a row. Lists use each entity’s default device-class formatting and scroll when needed"),
+        "options": [("View", "Single value or List, with up to eight sensor or binary-sensor entities; Add sensors selects and orders the entries, ↑ moves and × removes a row. Lists use each entity’s default device-class formatting and scroll when needed; the heading is left out when it would leave less than one row. Temperatures read like the other tiles, for example 21.8°C"),
                     ("Show name", "the widget name; on by default"),
                     ("Show last-updated time", "the age of the value; on by default"),
                     ("Unit, Format, Time format, Currency", "by device class, see below. The inspector header shows the class and unit as chips (\"No device class\" when Home Assistant gives none) and offers only that class's choices"),
@@ -355,31 +390,26 @@ WIDGETS = {
         "panel": ["Status, power, charged energy, remaining time and the current SOC on a green bar.",
                   "The optional header sits above the modes: the charging power against its maximum, or the site's flow as in the evcc app: one bar of the sources (PV, battery, grid) with their values in kW, brackets with icons above for the sources and below for the consumers (home, car, battery charge, export). On the 10-inch panel it needs about 410 px (power) or 450 px (flow) of height, more with larger text, and stays off on a shorter card; the Inspector names the height."],
     },
-    "weather_3day": {
-        "summary": "Compares **forecast days** of a `weather.*` entity: temperatures and precipitation in configurable columns.",
-        "entities": [("Weather", "`weather.*`", True), ("DWD weather report", "`sensor.*`", False)],
-        "requirements": "A **[weather](https://www.home-assistant.io/integrations/weather/)** entity with daily forecasts. The report text "
-                        "needs the **[DWD Weather integration](https://github.com/FL550/dwd_weather)** and its separate *Weather report* sensor "
-                        "(see [DWD report setup](../home-assistant.md#what-a-feature-needs)); the report is German.",
-        "options": [("Visible days", "fewer days give each column more room; Auto shows as many as are readable"),
-                    ("Show rain chance and amount", "on by default"),
-                    ("Show name", "off by default")],
-        "panel": ["A tap on a day opens a popup with pressure, wind, UV and that day's report.",
-                  "With the report, a tap on the temperature shows the full text; a wide header shows a summary (about 150 × 40 px free)."],
-    },
     "weather_tile": {
-        "summary": "Shows the **current conditions** of a `weather.*` entity, with optional hourly forecasts and a detail popup for readings and the DWD weather report.",
+        "summary": "Shows the **weather** of a `weather.*` entity: current conditions with optional hourly forecasts, or the **forecast days** as columns; a button pair switches between them.",
         "entities": [("Weather", "`weather.*`", True), ("DWD weather report", "`sensor.*`", False)],
-        "requirements": "Current conditions need a weather entity. **Show hourly forecast** needs that provider's hourly forecasts; "
-                        "daily forecasts are not substituted. The optional German report needs the **[DWD Weather integration](https://github.com/FL550/dwd_weather)** "
-                        "and its separate *Weather report* sensor; enable it in Home Assistant if it is disabled.",
-        "options": [("Show hourly forecast", "off by default; adds a horizontal strip of up to 24 upcoming hours with time, condition and temperature"),
-                    ("DWD weather report", "optional sensor, shown in the detail popup"),
+        "requirements": "A **[weather](https://www.home-assistant.io/integrations/weather/)** entity: current conditions need no forecast, the days need daily forecasts. "
+                        "**Show hourly forecast** needs that provider's hourly forecasts; daily forecasts are not substituted. The optional German report needs the "
+                        "**[DWD Weather integration](https://github.com/FL550/dwd_weather)** and its separate *Weather report* sensor "
+                        "(see [DWD report setup](../home-assistant.md#what-a-feature-needs)); enable it in Home Assistant if it is disabled.",
+        "options": [("View", "**Today** (default) or **Forecast days**: the view the tile starts with; the forecast days need at least 260 × 220 px"),
+                    ("Show day selection", "off by default; two buttons at the top of the tile switch between today and the forecast days, as the period buttons of Stocks do"),
+                    ("Show hourly forecast", "off by default; adds a horizontal strip of up to 24 upcoming hours with time, condition and temperature"),
+                    ("Visible days", "forecast days only; fewer days give each column more room, Auto shows as many as are readable"),
+                    ("Show rain chance and amount", "forecast days only; on by default"),
+                    ("DWD weather report", "optional sensor, shown in the details and on the forecast days"),
                     ("Show name", "off by default, to leave room for the conditions")],
-        "panel": ["A tap opens today's details: temperatures, the available humidity, pressure, wind and visibility, and the optional DWD report.",
-                  "With hourly forecasts, scroll horizontally for later hours; scrolling does not open the popup. Times use the panel's time zone.",
+        "panel": ["The hourly strip appears only when a full column fits below the current weather; a tile that is too short shows the current weather alone.",
+                  "A tap on today opens its details: temperatures, the available humidity, pressure, wind and visibility, and the optional DWD report. A tap on a forecast day opens that day's pressure, wind, UV and report; with the report, a tap on the temperature shows the full text, and a wide header shows a summary (about 150 × 40 px free).",
+                  "With hourly forecasts, scroll horizontally for later hours; scrolling does not open the popup. The strip shows the next 24 hours from now, so it usually crosses midnight: a divider and the weekday mark the first column of the new day. Times use the panel's time zone.",
                   "Hourly forecasts are fetched only while the tile is visible and refreshed every 15 minutes. A missing hourly forecast is shown explicitly; current conditions remain available.",
-                  "Without the hourly strip, today's low and precipitation appear when there is room. The tile uses the same Meteocons as the daily forecast.",
+                  "Without the hourly strip, today's low and precipitation appear when there is room. Today and the days use the same Meteocons.",
+                  "Layouts saved with the former Weather forecast tile are converted to this tile (View: Forecast days) when they are opened in the editor; the panel keeps displaying the old type until then.",
                   "Close details with the close button or a tap outside; they also close automatically after one minute."],
     },
 }

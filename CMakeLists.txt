@@ -3,7 +3,7 @@
 # Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
 cmake_minimum_required(VERSION 3.16)
 
-set(BETTAOS_RELEASE_VERSION "v0.9.1")
+set(BETTAOS_RELEASE_VERSION "v0.9.2-rc1")
 # A test build can report another version without editing this file: BETTA_VERSION=v0.9.1 scripts/build.sh <variant> reconfigure build
 if(DEFINED ENV{BETTA_VERSION} AND NOT "$ENV{BETTA_VERSION}" STREQUAL "")
     set(BETTAOS_RELEASE_VERSION "$ENV{BETTA_VERSION}")
@@ -92,10 +92,6 @@ endif()
 # The component manager fetches BSPs inside project(). Their CMake requirements have already been
 # expanded by the time source patches run above. Add the IDF 6 split drivers to the actual targets as
 # well, so a first build from a clean checkout gets their include paths without a second configure.
-if(TARGET __idf_waveshare__esp32_p4_nano)
-    target_link_libraries(__idf_waveshare__esp32_p4_nano PUBLIC
-        idf::esp_driver_ledc idf::esp_driver_gpio idf::esp_driver_i2c idf::esp_driver_i2s idf::esp_driver_sdmmc)
-endif()
 if(TARGET __idf_waveshare__esp32_p4_wifi6_touch_lcd_4b)
     target_link_libraries(__idf_waveshare__esp32_p4_wifi6_touch_lcd_4b PUBLIC
         idf::esp_driver_i2s idf::esp_driver_sdmmc)

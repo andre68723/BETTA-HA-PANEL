@@ -28,9 +28,9 @@ bool test_sensor_value(void)
 
     char text[48];
     SV_CHECK(ha_sv_number_text("21.5", "21.46", "\u00B0C", "temperature", HA_SV_UNIT_DEFAULT, "de", text, sizeof(text)) &&
-          strcmp(text, "21,5 \u00B0C") == 0);
+          strcmp(text, "21.5\u00B0C") == 0);
     SV_CHECK(ha_sv_number_text("21.5", "21.46", "\u00B0C", "temperature", HA_SV_UNIT_DEFAULT, "en", text, sizeof(text)) &&
-          strcmp(text, "21.5 \u00B0C") == 0);
+          strcmp(text, "21.5\u00B0C") == 0);
     SV_CHECK(ha_sv_number_text("21.5", "21.5", "\u00B0C", "temperature", HA_SV_UNIT_DEGREE, "de", text, sizeof(text)) &&
           strcmp(text, "21,5\u00B0") == 0);
     SV_CHECK(ha_sv_number_text("48", "48", "%", "humidity", HA_SV_UNIT_HIDE, "de", text, sizeof(text)) && strcmp(text, "48") == 0);

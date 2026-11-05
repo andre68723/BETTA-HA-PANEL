@@ -164,6 +164,24 @@ def panel_details(kind):
     lines = []
     if kind in ("sensor", "binary_tile", "contact_tile", "lock_tile"):
         lines += history_popup(kind)
+    if kind == "air_quality_tile":
+        lines += ["### How the status is determined", "",
+                  "Humidity, CO₂ and PM2.5 are each rated green, amber or red against fixed bands. The worst of the bound "
+                  "readings sets the status: **Good** is green, **Fair** amber, **Poor** red. A reading that is bound but missing "
+                  "adds a partial-data marker, and when everything else is green the status then stays neutral (**Not evaluated**) "
+                  "instead of Good.", "",
+                  "| Reading | Green (Good) | Amber (Fair) | Red (Poor) |", "| --- | --- | --- | --- |",
+                  "| Humidity | 40 to 60 % | 30 to below 40 % or above 60 to 70 % | below 30 % or above 70 % |",
+                  "| CO₂ | below 1000 ppm | 1000 to below 2000 ppm | 2000 ppm and above |",
+                  "| PM2.5 | below 15 µg/m³ | 15 to below 35 µg/m³ | 35 µg/m³ and above |", "",
+                  "The bands are fixed. CO₂ follows the [UBA traffic-light reference](https://www.umweltbundesamt.de/richtig-lueften-in-schulen) "
+                  "with explicit BETTA boundaries; the humidity and PM2.5 bands are product display choices, not health limits. The "
+                  "[WHO PM2.5 reference](https://cdn.who.int/media/docs/default-source/who-compendium-on-health-and-environment/who_compendium_chapter2.pdf) "
+                  "of 15 µg/m³ is a 24-hour average, which this widget does not calculate.", "",
+                  "To keep the status from flickering, a reading must move 2 percentage points of humidity, 50 ppm CO₂ or 3 µg/m³ "
+                  "PM2.5 back across a boundary before the band improves. A new warning appears immediately; an improving advice "
+                  "settles for 60 seconds. With an outdoor pair, drying advice starts when the indoor absolute humidity is at least "
+                  "1 g/m³ above the outdoor one; that is a benefit margin, not a prediction of the airflow.", ""]
     if kind == "select_tile":
         lines += ["### Option picker", "",
                   "The current option is marked. Tap another option to request it, or close the popup to leave it unchanged. The tile "
@@ -323,8 +341,8 @@ def main():
         info = WIDGETS[kind]
         check_summary(kind, limits[kind][4], info["summary"])
         figures = preview_figures(grouped.get(kind, []))
-        if kind == "weather_3day":
-            figures = preview_figures([{"tiles": [("weather-forecast-report", {"title": "Forecast with optional DWD report"})]}], "examples") + figures
+        if kind == "weather_tile":
+            figures = preview_figures([{"tiles": [("weather-forecast-report", {"title": "Forecast days with optional DWD report"})]}], "examples") + figures
         sections = [HEADER, "", f"# {title}", "", info["summary"], ""]
         if figures:
             sections += figure_block(figures[:1], captions=False)
@@ -342,7 +360,7 @@ def main():
                 "| History before sensor creation | **Yes: up to one year of daily closes is downloaded at setup** |",
                 "| 1D | Today's Recorder data; an explicit no-trading flag gives a flat 0% chart |",
                 "| 1W | Home Assistant hourly means (trend) |",
-                "| 30D, YTD, 1Y | Daily closes from the integration, as far back as its history reaches |",
+                "| 1M, YTD, 1Y | Daily closes from the integration, as far back as its history reaches |",
                 "| Currency | Sensor's native currency; Lovelace card conversion does not change BETTA |", "",
                 "It supplies no exchange real-time guarantee. The panel refreshes histories every 15 minutes; quote freshness also "
                 "depends on the integration's polling interval. For 1D, keep Recorder enabled for the sensors. "

@@ -41,6 +41,7 @@ typedef enum {
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
+    char name[APP_MAX_ENTITY_ID_LEN]; /* the full name (or entity id) for the history popup; the tile label may end in dots */
     lv_obj_t *card;
     lv_obj_t *ring;
     lv_obj_t *dot;
@@ -251,8 +252,8 @@ static void binary_event_cb(lv_event_t *event)
     } else if (lv_event_get_code(event) == LV_EVENT_SIZE_CHANGED && ctx != NULL) {
         binary_layout(ctx);
     } else if (lv_event_get_code(event) == LV_EVENT_CLICKED && ctx != NULL && ctx->history_popup) {
-        ui_history_popup_open(ctx->entity_id, lv_label_get_text(ctx->title),
-                              lv_label_get_text(ctx->state), false, ctx->device_class);
+        ui_history_popup_open(ctx->entity_id, ctx->name,
+                              binary_state_text(ctx), false, ctx->device_class);
     }
 }
 
@@ -303,7 +304,8 @@ esp_err_t w_binary_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     ctx->dot = binary_round(ctx->ring);
 
     ctx->title = ui_widget_name_create(card, !def->hide_name);
-    lv_label_set_text(ctx->title, def->title[0] ? def->title : def->entity_id);
+    snprintf(ctx->name, sizeof(ctx->name), "%s", def->title[0] ? def->title : def->entity_id);
+    lv_label_set_text(ctx->title, ctx->name);
     lv_obj_set_style_text_font(ctx->title, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->title, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_label_set_long_mode(ctx->title, LV_LABEL_LONG_DOT);

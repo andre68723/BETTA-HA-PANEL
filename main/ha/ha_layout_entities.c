@@ -2,6 +2,7 @@
  * Copyright (c) 2026 Cpt_Kirk
  * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
+#include "layout/room_air_slots.h"
 #include "ha/ha_layout_entities.h"
 
 #include <stdlib.h>
@@ -182,8 +183,7 @@ void ha_layout_entities_collect(cJSON *root, ha_layout_entity_set_t *set)
                 }
                 cJSON *type = cJSON_GetObjectItemCaseSensitive(widget, "type");
                 if (cJSON_IsString(type) && type->valuestring != NULL &&
-                    (strcmp(type->valuestring, "weather_3day") == 0 ||
-                     strcmp(type->valuestring, "weather_tile") == 0)) {
+                    strcmp(type->valuestring, "weather_tile") == 0) {
                     set->need_weather_forecast = true;
                 }
                 ha_layout_collect_field(widget, "entity_id", set);
@@ -203,6 +203,10 @@ void ha_layout_entities_collect(cJSON *root, ha_layout_entity_set_t *set)
                 ha_layout_collect_field(widget, "battery_entity_id", set); /* vacuum tile: optional charge sensor */
                 ha_layout_collect_field(widget, "dividends_entity_id", set); /* portfolio tile: optional dividends sensor */
                 ha_layout_collect_field(widget, "return_entity_id", set); /* portfolio tile: optional unrealised return sensor */
+                if (cJSON_IsString(type) && !strcmp(type->valuestring, "air_quality_tile")) {
+                    for (int role = 0; role < AIR_ROLE_COUNT; ++role)
+                        ha_layout_collect_field(widget, air_bindings[role].key, set);
+                }
                 if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "bambu_printer") == 0) {
                     for (size_t b = 0; b < k_bambu_printer_binding_count; b++) {
                         ha_layout_collect_field(widget, k_bambu_printer_bindings[b].key, set);

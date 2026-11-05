@@ -1,6 +1,10 @@
 {
   "_comment": "Edge cases for tools/check_widget_layout.py: each case copies the gallery tile named in 'tile' (its type, entities and fields from tools/generate_gallery.py), then sets 'w'/'h' and any 'fields'. Minimum sizes are the P4 minimums from the gallery's capability notes; add a case whenever a widget gets a new size-dependent layout.",
   "cases": [
+    {"tile": "Air quality", "w": 280, "h": 220},
+    {"tile": "Air quality", "w": 280, "h": 220, "fields": {"show_name": false}},
+    {"tile": "Air quality", "w": 480, "h": 320},
+    {"tile": "Air quality", "w": 360, "h": 240, "fields": {"title": "Long room name with humidity and air quality"}},
     {"tile": "Vacuum", "w": 240, "h": 220, "fields": {"tertiary_entity_id": "select.demo_cleaning_mode"}},
     {"tile": "Vacuum", "w": 320, "h": 260, "fields": {"tertiary_entity_id": "select.demo_cleaning_mode"}},
     {"tile": "Vacuum", "w": 560, "h": 300, "fields": {"tertiary_entity_id": "select.demo_cleaning_mode"}},

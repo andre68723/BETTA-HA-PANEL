@@ -2,11 +2,13 @@
  * Copyright (c) 2026 Cpt_Kirk
  * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
+#include "layout/room_air_slots.h"
 #include "ha/ha_alarm_state.h"
 #include "ui/display_geometry.h"
 #include "layout/layout_orientation.h"
 #include "drivers/display_orientation.h"
 #include "ui/ui_runtime.h"
+#include "ui/model_reconcile.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,6 +59,7 @@ static void ui_runtime_copy_json_string(cJSON *obj, const char *key, char *dst, 
 static void ui_runtime_copy_text_field(cJSON *obj, const char *key, char *dst, size_t dst_size);
 
 #define UI_MODEL_RECONCILE_INTERVAL_MS 1000
+#define UI_MODEL_RECONCILE_BATCH 4
 
 static ui_widget_instance_t *s_widgets = NULL;
 static size_t s_widget_count = 0;
@@ -152,7 +155,10 @@ static bool s_initialized = false;
 static int64_t s_last_topbar_refresh_ms = 0;
 static int64_t s_last_model_reconcile_ms = 0;
 static uint32_t s_last_model_revision = 0;
-static bool s_model_reconcile_pending = false;
+static ui_applied_state_t *s_applied_states;
+static ha_model_change_t s_model_changes[UI_MODEL_RECONCILE_BATCH];
+static size_t s_model_change_count, s_model_change_index;
+static uint32_t s_model_next_revision;
 static bool s_pending_state_reconcile = false;
 static bool s_pending_topbar_refresh = false;
 static char s_topbar_left_slots[APP_TOPBAR_LEFT_SLOTS][APP_MAX_UI_OPTION_LEN] = { "date", "", "" };
@@ -166,6 +172,10 @@ static int64_t s_deferred_event_log_ms = 0;
 
 static esp_err_t ui_runtime_alloc_buffers(void)
 {
+    if (s_applied_states == NULL) {
+        s_applied_states = ui_calloc_prefer_psram(APP_HA_MAX_STATES, sizeof(*s_applied_states));
+        if (s_applied_states == NULL) return ESP_ERR_NO_MEM;
+    }
     if (s_widgets == NULL) {
         s_widgets = ui_calloc_prefer_psram(APP_MAX_WIDGETS_TOTAL, sizeof(*s_widgets));
         if (s_widgets == NULL) {
@@ -698,7 +708,8 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
     }
 
     memset(&s_state_scratch, 0, sizeof(s_state_scratch));
-    bool found = ha_model_get_state(entity_id, &s_state_scratch);
+    ha_state_version_t version;
+    bool found = ha_model_get_state_versioned(entity_id, &s_state_scratch, &version);
     for (size_t i = 0; i < s_widget_count; i++) {
         const bool is_primary = (strncmp(entity_id, s_widgets[i].entity_id, APP_MAX_ENTITY_ID_LEN) == 0);
         if (!is_primary && !ui_runtime_widget_uses_entity(&s_widgets[i], entity_id)) {
@@ -706,7 +717,8 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
         }
         if (found) {
             ui_widget_factory_apply_state(&s_widgets[i], &s_state_scratch);
-        } else if (mark_unavailable_if_missing && !strcmp(s_widgets[i].type, "sensor") && !strcmp(s_widgets[i].display_mode, "list")) {
+        } else if (mark_unavailable_if_missing && (!strcmp(s_widgets[i].type, "air_quality_tile") ||
+                   (!strcmp(s_widgets[i].type, "sensor") && !strcmp(s_widgets[i].display_mode, "list")))) {
             snprintf(s_state_scratch.entity_id, sizeof(s_state_scratch.entity_id), "%s", entity_id);
             snprintf(s_state_scratch.state, sizeof(s_state_scratch.state), "unavailable");
             ui_widget_factory_apply_state(&s_widgets[i], &s_state_scratch);
@@ -728,6 +740,9 @@ static void ui_runtime_apply_entity_state_ex(const char *entity_id, bool mark_un
     if (ui_runtime_is_topbar_stock_entity(entity_id)) {
         ui_runtime_refresh_topbar_stocks();
     }
+    if (found && s_applied_states != NULL && version.slot < APP_HA_MAX_STATES) {
+        s_applied_states[version.slot] = (ui_applied_state_t){.revision = version.revision, .valid = true};
+    }
 }
 
 static void ui_runtime_apply_entity_state(const char *entity_id)
@@ -746,6 +761,10 @@ static void ui_runtime_apply_widget_current_state(ui_widget_instance_t *widget, 
         bool found = ha_model_get_state(widget->entity_id, &s_state_scratch);
         if (found) {
             ui_widget_factory_apply_state(widget, &s_state_scratch);
+        } else if (!strcmp(widget->type, "air_quality_tile")) {
+            snprintf(s_state_scratch.entity_id, sizeof(s_state_scratch.entity_id), "%s", widget->entity_id);
+            snprintf(s_state_scratch.state, sizeof(s_state_scratch.state), "unavailable");
+            ui_widget_factory_apply_state(widget, &s_state_scratch);
         } else if (mark_unavailable_if_missing) {
             ui_widget_factory_mark_unavailable(widget);
         }
@@ -759,6 +778,10 @@ static void ui_runtime_apply_widget_current_state(ui_widget_instance_t *widget, 
         }
         memset(&s_state_scratch, 0, sizeof(s_state_scratch));
         if (ha_model_get_state(ids[i], &s_state_scratch)) {
+            ui_widget_factory_apply_state(widget, &s_state_scratch);
+        } else if (!strcmp(widget->type, "air_quality_tile")) {
+            snprintf(s_state_scratch.entity_id, sizeof(s_state_scratch.entity_id), "%s", ids[i]);
+            snprintf(s_state_scratch.state, sizeof(s_state_scratch.state), "unavailable");
             ui_widget_factory_apply_state(widget, &s_state_scratch);
         }
     }
@@ -811,6 +834,39 @@ static void ui_runtime_apply_all_states_preserve_missing(void)
         ui_pages_set_topbar_weather(false, 0.0f, NULL, 0U);
     }
     ui_runtime_refresh_topbar_stocks();
+}
+
+/* Event delivery remains immediate. This is recovery for changed cache entries
+ * whose events were lost, not a repaint of every binding on every model update.
+ * One unapplied entity per turn lets LVGL run between recovery operations. */
+static void ui_runtime_reconcile_step(int64_t now_ms)
+{
+    if (s_model_change_index == s_model_change_count) {
+        if (ha_model_state_revision() == s_last_model_revision ||
+            now_ms - s_last_model_reconcile_ms < UI_MODEL_RECONCILE_INTERVAL_MS) return;
+        if (ha_model_changes(s_last_model_revision, s_model_changes, UI_MODEL_RECONCILE_BATCH,
+                             &s_model_change_count, &s_model_next_revision) != ESP_OK) return;
+        s_model_change_index = 0;
+        s_last_model_reconcile_ms = now_ms;
+    }
+    while (s_model_change_index < s_model_change_count) {
+        const ha_model_change_t *change = &s_model_changes[s_model_change_index];
+        if (ui_model_already_applied(&s_applied_states[change->version.slot], change->version.revision)) {
+            ++s_model_change_index;
+            continue;
+        }
+        if (!display_lock(20)) return; /* Keep this entry and cursor for retry. */
+        ui_runtime_apply_entity_state_ex(change->entity_id, false);
+        display_unlock();
+        ++s_model_change_index;
+        break;
+    }
+    if (s_model_change_index == s_model_change_count) {
+        s_last_model_revision = s_model_next_revision;
+        /* Drain full batches without imposing a one-second delay per batch. */
+        if (s_model_change_count == UI_MODEL_RECONCILE_BATCH)
+            s_last_model_reconcile_ms = now_ms - UI_MODEL_RECONCILE_INTERVAL_MS;
+    }
 }
 
 static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out)
@@ -885,12 +941,16 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     out->forecast_days = cJSON_IsNumber(forecast_days) ? forecast_days->valueint : -1;
     out->align_forecast = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "align_forecast"));
     out->weather_hourly = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "weather_hourly"));
+    out->weather_selector = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "weather_selector"));
+    const cJSON *weather_view = cJSON_GetObjectItemCaseSensitive(widget_json, "weather_view");
+    out->weather_days = cJSON_IsString(weather_view) && weather_view->valuestring && strcmp(weather_view->valuestring, "days") == 0;
     out->show_precipitation = true;
     cJSON *show_precip = cJSON_GetObjectItemCaseSensitive(widget_json, "show_precipitation");
     if (cJSON_IsBool(show_precip)) {
         out->show_precipitation = cJSON_IsTrue(show_precip);
     }
     out->room_controls = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "room_controls"));
+    out->show_icon = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "show_icon"));
     out->hide_name = !widget_show_name(widget_json);
     out->lock_confirm = cJSON_IsTrue(lock_confirm);
     out->price_selector = cJSON_IsTrue(price_selector); /* off unless the layout says true: the running 24 hours */
@@ -962,6 +1022,10 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
         memset(out->extra_entity_id, 0, sizeof(out->extra_entity_id));
         evcc_slots_from_json(widget_json, out->entity_id, out->secondary_entity_id, out->tertiary_entity_id, out->extra_entity_id, UI_WIDGET_EXTRA_ENTITIES);
     }
+    if (!strcmp(out->type, "air_quality_tile")) {
+        air_slots_from_json(widget_json, out->entity_id, out->secondary_entity_id, out->tertiary_entity_id, out->extra_entity_id);
+        if (!air_config_from_json(widget_json, &out->air_config)) return false;
+    }
     if (strcmp(out->type, "bambu_printer") == 0) {
         /* Named bindings only: generic slots a hand-edited layout might carry must not leak into the widget. */
         out->entity_id[0] = out->secondary_entity_id[0] = out->tertiary_entity_id[0] = '\0';
@@ -1000,6 +1064,10 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
         ui_runtime_copy_json_string(widget_json, "stock_delta", out->stock_delta, sizeof(out->stock_delta));
         out->stock_ticker = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "stock_ticker"));
         out->stock_selector = !cJSON_IsFalse(cJSON_GetObjectItemCaseSensitive(widget_json, "stock_selector"));
+        out->stock_previous = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "stock_previous"));
+        /* Charts shown as cards: stock_cards on the chart view; the old "grid" view reads the same. */
+        if (strcmp(out->display_mode, "chart") == 0 && cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget_json, "stock_cards")))
+            snprintf(out->display_mode, sizeof(out->display_mode), "%s", "grid");
     }
     if (strcmp(out->type, "energy_timeline") == 0) {
         ui_runtime_copy_json_string(widget_json, "battery_charge_entity_id",
@@ -1472,8 +1540,8 @@ static void ui_runtime_check_alerts(const char *entity_id)
 
 /* Device tests without touch (POST /api/ui/tap): only tiles whose tap opens a read-only popup answer, so a test can never
  * switch a light or unlock a door. The popup a tap opened is remembered so it can be dismissed the same way. */
-static const char *const k_test_tap_types[] = {"weather_3day", "energy_timeline", "room_tile", "sensor", "binary_tile",
-                                               "contact_tile", "solar_forecast", "car_widget", "graph"};
+static const char *const k_test_tap_types[] = {"weather_tile", "energy_timeline", "room_tile", "sensor", "binary_tile",
+                                               "contact_tile", "solar_forecast", "car_widget", "graph", "air_quality_tile"};
 static lv_obj_t *s_test_popup = NULL;
 
 static bool layer_top_has_child(const lv_obj_t *obj)
@@ -1652,11 +1720,6 @@ static void ui_runtime_task(void *arg)
             esp_err_t reload_err = ui_runtime_reload_layout();
             if (reload_err != ESP_OK) ESP_LOGW(TAG_UI, "Saved configuration reload deferred: %s", esp_err_to_name(reload_err));
         }
-        uint32_t model_revision = ha_model_state_revision();
-        if (model_revision != s_last_model_revision) {
-            s_last_model_revision = model_revision;
-            s_model_reconcile_pending = true;
-        }
 
         if ((s_pending_state_reconcile || s_pending_topbar_refresh) && display_lock(20)) {
             if (s_pending_topbar_refresh) {
@@ -1684,14 +1747,7 @@ static void ui_runtime_task(void *arg)
             display_unlock();
         }
 
-        if (s_model_reconcile_pending && (now_ms - s_last_model_reconcile_ms) >= UI_MODEL_RECONCILE_INTERVAL_MS &&
-            display_lock(20)) {
-            /* Protect against missed per-entity events under burst: periodically reconcile from model snapshot. */
-            ui_runtime_apply_all_states_preserve_missing();
-            display_unlock();
-            s_model_reconcile_pending = false;
-            s_last_model_reconcile_ms = now_ms;
-        }
+        ui_runtime_reconcile_step(now_ms);
 
         if ((now_ms - s_last_topbar_refresh_ms) >= 1000) {
             if (display_lock(20)) {
@@ -1729,7 +1785,7 @@ esp_err_t ui_runtime_init(void)
     s_last_topbar_refresh_ms = esp_timer_get_time() / 1000;
     s_last_model_reconcile_ms = s_last_topbar_refresh_ms;
     s_last_model_revision = ha_model_state_revision();
-    s_model_reconcile_pending = false;
+    s_model_change_count = s_model_change_index = 0;
     s_pending_state_reconcile = false;
     s_pending_topbar_refresh = false;
     s_deferred_event_count = 0;

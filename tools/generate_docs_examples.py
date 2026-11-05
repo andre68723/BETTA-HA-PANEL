@@ -139,7 +139,7 @@ def render_panels(wide, compact, devices, output, appearance_only=False, setup_o
         popup["open_popup"] = kind
         popups.append(("paneljc", popup, "topbar", "glow", f"popup-{kind}"))
     report_fixture = copy.deepcopy(wide)
-    forecast = next(widget for widget in report_fixture["pages"][0]["widgets"] if widget["type"] == "weather_3day")
+    forecast = next(widget for widget in report_fixture["pages"][0]["widgets"] if widget["type"] == "weather_tile" and widget.get("weather_view") == "days")
     forecast.update(id="weather_report", rect={"x": 16, "y": 16, "w": 680, "h": 520})
     report_fixture["pages"] = [{"id": "weather_report", "title": "Weather report", "widgets": [forecast]}]
     report = next(state for state in report_fixture["states"] if state["entity_id"] == forecast["secondary_entity_id"])

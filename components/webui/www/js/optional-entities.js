@@ -2,6 +2,7 @@
 // Optional bindings keep their original inputs, validation, search rules and JSON keys.
 // Only configured roles are visible; choosing a free role opens its existing entity picker.
 const OPTIONAL_ENTITY_ROLES = {
+  air_quality_tile: AIR_ROLES.map(([, field, , role]) => [`fAir${field}`, `air_${role}`]),
   car_widget: [["fSecondaryEntity", "secondary"], ["fTertiaryEntity", "tertiary"],
     ["fCarPrecond", "car_precond"], ["fCarLock", "car_lock"], ["fCarTemp", "car_temp"]],
   parqet_portfolio: [["fSecondaryEntity", "secondary"], ["fParqetReturn", "parqet_return"],
@@ -93,6 +94,7 @@ function refreshOptionalEntities() {
     select.value = choices.some(([, slot]) => slot === previous) ? previous : choices[0]?.[1] || "";
     select.setAttribute("aria-label", t("layout.inspector.optional_role"));
     el.optionalEntityAdd.textContent = t("layout.inspector.optional_add");
+    if (el.optionalEntityCaption) el.optionalEntityCaption.textContent = t("layout.inspector.optional_caption");
     el.optionalEntityAdd.disabled = choices.length === 0;
   }
   refreshRoomEntityList();

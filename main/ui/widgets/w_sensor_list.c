@@ -15,17 +15,24 @@ void w_sensor_mark_unavailable(ui_widget_instance_t *instance);
 typedef struct {
     lv_obj_t *card;
     lv_obj_t *title;
+    bool title_enabled; /* the widget shows its name, when there is room for it */
     lv_obj_t *list;
     int count;
     ui_widget_instance_t row[UI_SENSOR_LIST_MAX];
 } sensor_list_ctx_t;
+
+#define SENSOR_LIST_ROW_H 80
 
 static void list_layout(sensor_list_ctx_t *ctx)
 {
     lv_obj_update_layout(ctx->card);
     const int width = lv_obj_get_content_width(ctx->card);
     const int height = lv_obj_get_content_height(ctx->card);
-    const int top = lv_obj_is_hidden(ctx->title) ? 0 : lv_font_get_line_height(ui_font_role(UI_TEXT_LABEL)) + 6;
+    /* A row is a whole sensor tile: where the heading would leave less than one, the heading gives way (rows name their entity). */
+    const int heading = lv_font_get_line_height(ui_font_role(UI_TEXT_LABEL)) + 6;
+    const bool heading_fits = height - heading >= SENSOR_LIST_ROW_H;
+    if (ctx->title_enabled) lv_obj_set_hidden(ctx->title, !heading_fits);
+    const int top = lv_obj_is_hidden(ctx->title) ? 0 : heading;
     lv_obj_set_pos(ctx->title, 0, 0);
     lv_obj_set_size(ctx->title, width, top > 0 ? top - 6 : 1);
     lv_obj_set_pos(ctx->list, 0, top);
@@ -55,6 +62,7 @@ esp_err_t w_sensor_list_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_
     lv_obj_set_style_text_color(ctx->title, theme_default_color_text_muted(), LV_PART_MAIN);
     lv_label_set_long_mode(ctx->title, LV_LABEL_LONG_DOT);
     lv_label_set_text(ctx->title, def->title[0] ? def->title : def->id);
+    ctx->title_enabled = !lv_obj_is_hidden(ctx->title);
     ctx->list = lv_obj_create(ctx->card);
     lv_obj_remove_style_all(ctx->list);
     lv_obj_set_flex_flow(ctx->list, LV_FLEX_FLOW_COLUMN);
@@ -71,7 +79,7 @@ esp_err_t w_sensor_list_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_
     row_def->hide_name = false; /* Rows always identify their entity, independently of the widget heading. */
     row_def->x = row_def->y = 0;
     row_def->w = lv_obj_get_content_width(ctx->list);
-    row_def->h = 80;
+    row_def->h = LV_MIN(SENSOR_LIST_ROW_H, lv_obj_get_content_height(ctx->list));
     for (int i = 0; i < UI_SENSOR_LIST_MAX; i++) {
         const char *id = i == 0 ? def->entity_id : def->extra_entity_id[i - 1];
         if (id[0] == '\0') continue;

@@ -1006,11 +1006,11 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     if (has_widget_title) {
         lv_obj_t *title = ui_widget_name_create(card, !def->hide_name);
         lv_label_set_text(title, def->title);
-        lv_obj_set_width(title, content_w);
+        lv_obj_set_width(title, landscape ? col_w : content_w); /* landscape: above the text column, never on the artwork */
         lv_obj_set_style_text_font(title, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
         lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
         ui_widget_name_one_line(title);
-        lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 0);
+        lv_obj_align(title, LV_ALIGN_TOP_LEFT, landscape ? col_x : 0, 0);
         ctx->title_label = title;
     }
 

@@ -27,6 +27,7 @@ None beyond the entities.
 ## On the panel
 
 - The snapshot refreshes every 10 seconds while visible; a tap loads a new one.
+- Unavailable or unknown entities show Unavailable instead of an old picture, even with the name hidden. Live streams and full-screen views close; fresh pictures resume when the entity returns. Snapshot download errors show Picture unavailable and retry on the next refresh or tap.
 - With Live picture a tap opens a full-screen view. Streams pause on hidden pages, under popups and during display protection; at most two run at once.
 - The source camera decides how often a new image is available. The onboard ambient-light camera is separate.
 

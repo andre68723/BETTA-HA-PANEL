@@ -82,6 +82,9 @@ by the SPDX/license header at the top of each such file. Notably:
 - third_party/waveshare__esp32_p4_wifi6_touch_lcd_4b/: official Waveshare BSP 3.0.1,
   Apache-2.0; original license in that directory, provenance and the single manifest
   constraint modification recorded in BETTA.md.
+- third_party/waveshare__esp32_p4_wifi6_touch_lcd_x/: official Waveshare LCD-X BSP
+  2.0.3, Apache-2.0; original license in that directory. BETTA.md records the
+  archive provenance, adapter constraint and silicon-specific DSI clock change.
 - main/drivers/gsl3680/: the GSL3680 touch driver (esp_lcd_gsl3680.c, esp_lcd_gsl3680.h,
   esp_lcd_gsl3680_fw.h), adapted from Espressif's esp_lcd_touch_gsl3680 in
   esp-arduino-libs/ESP32_Display_Panel (commit 92b790e), Apache-2.0, Copyright
@@ -102,7 +105,7 @@ by the SPDX/license header at the top of each such file. Notably:
   and touch_init_paneljc.c as cross-checks.
 - components/esp_cam_sensor/: Espressif's esp_cam_sensor 2.3.0 core (originally
   2.1.0), reduced to the OV02C10 driver for Guition, the SC202CS/SC2356 driver
-  for Tab5 and the DW9714 motor (Apache-2.0, Copyright Espressif Systems
+  for Tab5, OV5647 for Waveshare LCD-X and the DW9714 motor (Apache-2.0, Copyright Espressif Systems
   (Shanghai) CO LTD, license text in that directory). The OV02C10 driver was
   taken from the BETTA-kruzio project's copy because the registry version has
   no OV02C10 driver. CMakeLists.txt and Kconfig carry the fork's modification

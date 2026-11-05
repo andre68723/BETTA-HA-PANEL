@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Modified in 2026 by andre68723 for BETTA-HA-PANEL.
-# Espressif's esp_cam_sensor component is reduced to OV02C10, SC202CS and DW9714.
+# Espressif's esp_cam_sensor component is reduced to OV02C10, SC202CS, OV5647 and DW9714.
 # Original Apache-2.0 license: see LICENSE in this directory.
 
 menu "Espressif Camera Sensors Configurations"
@@ -8,6 +8,7 @@ menu "Espressif Camera Sensors Configurations"
         menu "Select and Set Camera Sensor"
             rsource "sensors/ov02c10/Kconfig.ov02c10"
             rsource "sensors/sc202cs/Kconfig.sc202cs"
+            rsource "sensors/ov5647/Kconfig.ov5647"
         endmenu
 
         config CAMERA_SENSOR_XCLK_INPUT_24M

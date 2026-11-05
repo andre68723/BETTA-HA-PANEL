@@ -2,6 +2,7 @@
  * Copyright (c) 2026 Cpt_Kirk
  * Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  */
+#include "layout/room_air_slots.h"
 #include "ha/ha_alarm_state.h"
 #include "ha/ha_sensor_value.h"
 #include "layout/layout_validate.h"
@@ -27,6 +28,9 @@
 
 #define GRAPH_POINT_COUNT_MIN 16
 #define GRAPH_POINT_COUNT_MAX 64
+/* A weather tile that can show the forecast days needs this much room (the days view and the day selection). */
+#define WEATHER_DAYS_MIN_W 260
+#define WEATHER_DAYS_MIN_H 220
 #define GRAPH_TIME_WINDOW_MIN_MIN 1
 #define GRAPH_TIME_WINDOW_MIN_MAX 1440
 
@@ -354,6 +358,11 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         layout_validation_add(result, msg);
     }
 
+    cJSON *show_icon = cJSON_GetObjectItemCaseSensitive(widget, "show_icon");
+    if (show_icon != NULL && !cJSON_IsBool(show_icon)) {
+        snprintf(msg, sizeof(msg), "widget show_icon must be true or false");
+        layout_validation_add(result, msg);
+    }
     if (show_name != NULL && !cJSON_IsBool(show_name)) {
         snprintf(msg, sizeof(msg), "widget show_name must be true or false");
         layout_validation_add(result, msg);
@@ -408,8 +417,17 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
     if (hourly != NULL && (!cJSON_IsBool(hourly) || !cJSON_IsString(type) || strcmp(type->valuestring, "weather_tile") != 0)) {
         layout_validation_add(result, "weather_hourly must be a boolean on weather_tile");
     }
+    cJSON *weather_selector = cJSON_GetObjectItemCaseSensitive(widget, "weather_selector");
+    if (weather_selector != NULL && (!cJSON_IsBool(weather_selector) || !cJSON_IsString(type) || strcmp(type->valuestring, "weather_tile") != 0)) {
+        layout_validation_add(result, "weather_selector must be a boolean on weather_tile");
+    }
+    cJSON *weather_view = cJSON_GetObjectItemCaseSensitive(widget, "weather_view");
+    if (weather_view != NULL && (!cJSON_IsString(weather_view) || !cJSON_IsString(type) || strcmp(type->valuestring, "weather_tile") != 0 ||
+                                 (strcmp(weather_view->valuestring, "now") != 0 && strcmp(weather_view->valuestring, "days") != 0))) {
+        layout_validation_add(result, "weather_view must be \"now\" or \"days\" on weather_tile");
+    }
 
-    if (cJSON_IsString(type) && type->valuestring != NULL && (strcmp(type->valuestring, "weather_3day") == 0 || strcmp(type->valuestring, "weather_tile") == 0) &&
+    if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "weather_tile") == 0 &&
         cJSON_IsString(secondary_entity_id) && secondary_entity_id->valuestring != NULL &&
         secondary_entity_id->valuestring[0] != '\0') {
         /* Optional DWD weather report sensor. */
@@ -498,7 +516,7 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
             }
         }
         static const char *const choices[][6] = {
-            {"stock_view", "list", "chart", "grid", NULL},
+            {"stock_view", "list", "chart", "grid", NULL}, /* "grid" is the former Tiles view: read as chart with stock_cards */
             {"stock_period", "1d", "1w", "30d", "ytd", "1y"},
             {"stock_delta", "percent", "absolute", "both", NULL},
         };
@@ -524,6 +542,14 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         if (stock_selector != NULL && !cJSON_IsBool(stock_selector)) {
             snprintf(msg, sizeof(msg), "widget %s: stock_selector must be true or false", wid);
             layout_validation_add(result, msg);
+        }
+        static const char *const stock_flags[] = {"stock_cards", "stock_previous"};
+        for (size_t k = 0; k < sizeof(stock_flags) / sizeof(stock_flags[0]); k++) {
+            cJSON *flag = cJSON_GetObjectItemCaseSensitive(widget, stock_flags[k]);
+            if (flag != NULL && !cJSON_IsBool(flag)) {
+                snprintf(msg, sizeof(msg), "widget %s: %s must be true or false", wid, stock_flags[k]);
+                layout_validation_add(result, msg);
+            }
         }
     }
 
@@ -704,6 +730,24 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
         }
     }
 
+    if (cJSON_IsString(type) && !strcmp(type->valuestring, "air_quality_tile")) {
+        const cJSON *outdoor = cJSON_GetObjectItemCaseSensitive(widget, "air_outdoor_enabled");
+        if (outdoor && !cJSON_IsBool(outdoor)) layout_validation_add(result, "air_quality_tile: air_outdoor_enabled must be boolean");
+        for (int role = 0; role < AIR_ROLE_COUNT; ++role) {
+            const cJSON *v = cJSON_GetObjectItemCaseSensitive(widget, air_bindings[role].key);
+            if (!v || (cJSON_IsString(v) && !v->valuestring[0])) continue;
+            bool ok = cJSON_IsString(v) && strlen(v->valuestring) < APP_MAX_ENTITY_ID_LEN && is_valid_entity_id(v->valuestring);
+            if (ok) {
+                ok = role == AIR_WINDOW ? entity_in_domain(v->valuestring, "binary_sensor") :
+                    entity_in_domain(v->valuestring, "sensor") ||
+                    ((role == AIR_OUT_TEMPERATURE || role == AIR_OUT_HUMIDITY) && entity_in_domain(v->valuestring, "weather"));
+            }
+            if (!ok) {
+                snprintf(msg, sizeof(msg), "air_quality_tile: invalid %s (%s)", air_bindings[role].key, air_bindings[role].domains);
+                layout_validation_add(result, msg);
+            }
+        }
+    }
     if (cJSON_IsString(type) && type->valuestring != NULL && strcmp(type->valuestring, "bambu_printer") == 0) {
         /* Explicit bindings (layout/bambu_printer_slots.h): sensors, three action buttons and an optional camera.
          * Overlong ids are rejected rather than truncated; the three buttons must be distinct. */
@@ -809,7 +853,7 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
     }
 
     if (cJSON_IsString(type) && type->valuestring &&
-        (!strcmp(type->valuestring, "weather_3day") || !strcmp(type->valuestring, "solar_forecast"))) {
+        (!strcmp(type->valuestring, "weather_tile") || !strcmp(type->valuestring, "solar_forecast"))) {
         cJSON *days = cJSON_GetObjectItemCaseSensitive(widget, "forecast_days");
         if (days != NULL && (!cJSON_IsNumber(days) || days->valuedouble != days->valueint || days->valueint < 0 || days->valueint > 7)) {
             snprintf(msg, sizeof(msg), "widget %s: forecast_days must be an integer from 0 (auto) to 7", cJSON_IsString(id) ? id->valuestring : "?");
@@ -1198,6 +1242,14 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
             const cJSON *look = cJSON_GetObjectItemCaseSensitive(widget, "style_variant");
             widget_size_limits_t limits = widget_size_limits_for(cJSON_IsString(type) ? type->valuestring : NULL,
                                                                  cJSON_IsString(look) ? look->valuestring : NULL);
+            /* A weather tile that can show the forecast days needs the room of the forecast tile. */
+            const cJSON *days_view = cJSON_GetObjectItemCaseSensitive(widget, "weather_view");
+            if (cJSON_IsString(type) && strcmp(type->valuestring, "weather_tile") == 0 &&
+                (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(widget, "weather_selector")) ||
+                 (cJSON_IsString(days_view) && strcmp(days_view->valuestring, "days") == 0))) {
+                limits.min_w = WEATHER_DAYS_MIN_W;
+                limits.min_h = WEATHER_DAYS_MIN_H;
+            }
             if (rw <= 0 || rh <= 0 || rx < 0 || ry < 0 || (rx + rw) > APP_CONTENT_BOX_WIDTH ||
                 (ry + rh) > APP_CONTENT_BOX_HEIGHT) {
                 snprintf(msg, sizeof(msg), "widget %s: rect out of bounds for content box",

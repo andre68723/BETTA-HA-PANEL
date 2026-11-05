@@ -138,7 +138,7 @@ function initInspectorLayout() {
   move("entities", byId("entitySourceHint"), byId("entitySourceWarning"), label(el.fEntity), label(el.fSecondaryEntity), label(el.fTertiaryEntity), byId("parqetEntities"));
   follow(byId("vacuumOptions"), [label(el.fVacuumBattery)], "entities");
   follow(byId("roomEntitiesFields"), [label(el.fRoomEntities), byId("roomEntityList"), byId("roomEntityAdd"), byId("fRoomEntitiesHint")], "entities");
-  move("entities", byId("carExtraFields"), byId("evccFields"), byId("bambuFields"), byId("energyTimelineFields"), byId("stockEntities"), byId("sensorListEntities"));
+  move("entities", byId("airSources"), byId("carExtraFields"), byId("evccFields"), byId("bambuFields"), byId("energyTimelineFields"), byId("stockEntities"), byId("sensorListEntities"));
   follow(byId("solarForecastFields"), [byId("fSolarForecastTodayLabel"), byId("fSolarForecastTomorrowLabel"),
     byId("fSolarForecastDay3Label"), byId("fSolarForecastDay4Label"), byId("fSolarForecastDay5Label"), byId("fSolarForecastDay6Label"), byId("fSolarForecastDay7Label")].map(label), "entities");
   follow(byId("sliderOptions"), [label(el.fSliderEntityDomain)], "entities");
@@ -146,7 +146,7 @@ function initInspectorLayout() {
   follow(byId("priceOptions"), [label(el.fPriceAverage)], "entities");
   move("entities", byId("optionalEntityControls"));
   // Display: what the tile shows.
-  move("display", label(el.fShowName), byId("binaryOptions"));
+  move("display", label(el.fShowName), el.fShowIconRow, byId("binaryOptions"));
   follow(byId("roomEntitiesFields"), [label(el.fRoomExtraMode), byId("fRoomExtraEntityWrap"), byId("fRoomExtraHint"), byId("fRoomExtraWarning")], "display");
   follow(byId("solarForecastFields"), [label(el.fSolarForecastBarMax)], "display");
   follow(byId("buttonOptions"), [label(el.fButtonAccentColor)], "display");
@@ -154,13 +154,14 @@ function initInspectorLayout() {
     byId("sensorOptions"), byId("cameraOptions"));
   follow(byId("priceOptions"), [label(el.fPriceCheapTimes), label(el.fPriceLine)], "display");
   move("display", byId("evccHeaderOptions"));
-  move("display", byId("stockOptions"), byId("parqetOptions"), byId("forecastReadabilityOptions"), byId("weatherForecastOptions"), byId("weatherNowOptions"),
+  move("display", byId("stockOptions"), byId("parqetOptions"), byId("forecastReadabilityOptions"), byId("weatherNowOptions"),
     byId("heatingOptions"), etlStyle, byId("energyTimelineColorOptions"));
   // Controls: what tap and long press do.
   move("controls", byId("historyOptions"), byId("lockOptions"), byId("alarmOptions"), byId("buttonOptions"));
   follow(byId("priceOptions"), [label(el.fPriceSelector)], "controls");
   follow(byId("parqetOptions"), [label(el.fParqetSelector)], "controls");
   follow(byId("stockOptions"), [el.fStockSelectorRow], "controls");
+  follow(byId("weatherNowOptions"), [el.fWeatherSelectorRow], "controls");
   follow(byId("roomEntitiesFields"), [label(el.fRoomControls), byId("fRoomControlsHint")], "controls");
   follow(byId("vacuumOptions"), [label(el.fVacuumDefaultMode), byId("fVacuumDefaultModeHint")], "controls");
   // The old groups are emptied; Placement is a section like the others, collapsed, at the end.

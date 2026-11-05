@@ -709,6 +709,11 @@ textarea {
   width: 720px;
   height: 600px;
   overflow: hidden;
+  /* The selection ring and its halo reach 8px beyond a tile: the clip edge sits that far outside the canvas, so a tile at the
+     canvas edge keeps a whole ring. The negative margin leaves the layout where it was. */
+  box-sizing: content-box;
+  padding: 8px;
+  margin: -8px;
 }
 
 .canvas {

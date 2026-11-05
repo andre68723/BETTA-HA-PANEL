@@ -4,6 +4,7 @@
  * A small desktop entry point for real firmware widget sources. The fixture
  * uses the firmware layout's pages/widgets shape and a separate states array.
  */
+#include "layout/room_air_slots.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -117,6 +118,8 @@ esp_err_t w_solar_forecast_create(const ui_widget_def_t *, lv_obj_t *, ui_widget
 void w_solar_forecast_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_wallbox_evcc_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_wallbox_evcc_apply_state(ui_widget_instance_t *, const ha_state_t *);
+esp_err_t w_room_air_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
+void w_room_air_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_bambu_printer_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
 void w_bambu_printer_apply_state(ui_widget_instance_t *, const ha_state_t *);
 esp_err_t w_car_widget_create(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
@@ -159,13 +162,13 @@ static const sim_widget_type_t k_types[] = {
     {"vacuum_tile", w_vacuum_create, w_vacuum_apply_state},
     {"solar_forecast", w_solar_forecast_create, w_solar_forecast_apply_state},
     {"wallbox_evcc", w_wallbox_evcc_create, w_wallbox_evcc_apply_state},
+    {"air_quality_tile", w_room_air_create, w_room_air_apply_state},
     {"bambu_printer", w_bambu_printer_create, w_bambu_printer_apply_state},
     {"car_widget", w_car_widget_create, w_car_widget_apply_state},
     {"todo_list", w_todo_create, w_todo_apply_state},
     {"camera_tile", w_camera_create, w_camera_apply_state},
     {"weather", w_weather_tile_create, w_weather_tile_apply_state},
     {"weather_tile", w_weather_tile_create, w_weather_tile_apply_state},
-    {"weather_3day", w_weather_tile_create, w_weather_tile_apply_state},
 };
 
 static bool check_text_font_coverage(void)
@@ -255,6 +258,7 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     /* As ui_runtime_widget_from_json(): the sensor's value format and unit style (missing here, the formats rendered raw). */
     copy_field(def->sensor_format, sizeof(def->sensor_format), json, "sensor_format");
     copy_field(def->sensor_unit, sizeof(def->sensor_unit), json, "sensor_unit");
+    if (strcmp(def->type, "roborock_tile") == 0) snprintf(def->type, sizeof(def->type), "%s", "vacuum_tile"); /* legacy name, as ui_runtime.c */
     if (strcmp(def->type, "energy_timeline") == 0) def->energy_palette = etl_palette_from_json(json);
     copy_field(def->graph_display_mode, sizeof(def->graph_display_mode), json, "graph_display_mode");
     copy_field(def->style_variant, sizeof(def->style_variant), json, "style_variant");
@@ -300,7 +304,11 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
     def->align_forecast = json_bool(json, "align_forecast", false);
     def->show_precipitation = json_bool(json, "show_precipitation", true);
     def->weather_hourly = json_bool(json, "weather_hourly", false);
+    def->weather_selector = json_bool(json, "weather_selector", false);
+    const cJSON *weather_view = cJSON_GetObjectItemCaseSensitive(json, "weather_view");
+    def->weather_days = cJSON_IsString(weather_view) && weather_view->valuestring && strcmp(weather_view->valuestring, "days") == 0;
     def->room_controls = json_bool(json, "room_controls", false);
+    def->show_icon = json_bool(json, "show_icon", false);
     const cJSON *room_entities = cJSON_GetObjectItemCaseSensitive(json, "room_entities");
     for (int i = 0; i < UI_WIDGET_EXTRA_ENTITIES; i++) {
         const cJSON *id = cJSON_GetArrayItem(room_entities, i);
@@ -316,6 +324,10 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
         def->forecast_day_6_entity_id[0] = '\0';
         def->forecast_day_7_entity_id[0] = '\0';
         evcc_header_from_json(json, def->style_variant, sizeof(def->style_variant), &def->gauge_max, site);
+    }
+    if (!strcmp(def->type, "air_quality_tile")) {
+        air_slots_from_json(json, def->entity_id, def->secondary_entity_id, def->tertiary_entity_id, def->extra_entity_id);
+        (void)air_config_from_json(json, &def->air_config);
     }
     if (strcmp(def->type, "bambu_printer") == 0) {
         bambu_printer_slots_from_json(json, def->entity_id, def->secondary_entity_id, def->tertiary_entity_id,
@@ -353,6 +365,9 @@ static void parse_widget_def(const cJSON *json, ui_widget_def_t *def)
         copy_field(def->stock_delta, sizeof(def->stock_delta), json, "stock_delta");
         def->stock_ticker = json_bool(json, "stock_ticker", false);
         def->stock_selector = json_bool(json, "stock_selector", true);
+        def->stock_previous = json_bool(json, "stock_previous", false);
+        if (strcmp(def->display_mode, "chart") == 0 && json_bool(json, "stock_cards", false))
+            snprintf(def->display_mode, sizeof(def->display_mode), "%s", "grid");
     }
     if (strcmp(def->type, "room_tile") == 0) {
         copy_field(def->display_mode, sizeof(def->display_mode), json, "room_extra_mode");
@@ -889,7 +904,7 @@ static bool sim_house_room_cb(const ui_widget_def_t *def, lv_obj_t *parent, void
         return false;
     }
     init_instance(&entry->def, &entry->instance);
-    ui_fonts_tile_begin(entry->def.type, entry->def.w, entry->def.h);
+    ui_fonts_tile_begin(ui_widget_factory_caps_type(&entry->def), entry->def.w, entry->def.h);
     const esp_err_t create_err = entry->type->create(&entry->def, parent, &entry->instance);
     ui_fonts_tile_end();
     if (create_err != ESP_OK) {
@@ -1216,7 +1231,7 @@ int main(int argc, char **argv)
             continue;
         }
         init_instance(&entry->def, &entry->instance);
-        ui_fonts_tile_begin(entry->def.type, entry->def.w, entry->def.h);
+        ui_fonts_tile_begin(ui_widget_factory_caps_type(&entry->def), entry->def.w, entry->def.h);
         const esp_err_t content_err = entry->type->create(&entry->def, content, &entry->instance);
         ui_fonts_tile_end();
         if (content_err != ESP_OK) {
@@ -1264,7 +1279,7 @@ int main(int argc, char **argv)
         }
         for (int i = 0; i < created; i++) {
             if (widget_uses_entity(&widgets[i].def, state.entity_id)) {
-                ui_fonts_tile_begin(widgets[i].def.type, widgets[i].def.w, widgets[i].def.h);
+                ui_fonts_tile_begin(ui_widget_factory_caps_type(&widgets[i].def), widgets[i].def.w, widgets[i].def.h);
                 widgets[i].type->apply(&widgets[i].instance, &state);
                 ui_fonts_tile_end();
                 sim_style_card(&widgets[i].instance);
@@ -1336,6 +1351,8 @@ int main(int argc, char **argv)
     for (int i = 0; tap_id[0] != '\0' && i < created; i++) {
         if (strcmp(widgets[i].def.id, tap_id) == 0) lv_obj_send_event(widgets[i].instance.obj, LV_EVENT_CLICKED, NULL);
     }
+    /* The test pages need to know whether the tap opened a dialog; the card goes onto the top layer. */
+    if (tap_id[0] != '\0') printf("tap_widget %s popup=%d\n", tap_id, lv_obj_get_child_count(lv_layer_top()) > 0);
     /* "open_popup": "wifi" | "ha" | "mqtt" opens the top bar's connectivity popup (data comes from pages_stubs.c). */
     const char *popup = json_string(root, "open_popup");
     if (strcmp(popup, "wifi") == 0) ui_conn_popup_show_wifi();

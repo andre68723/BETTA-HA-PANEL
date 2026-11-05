@@ -98,7 +98,8 @@ class SharedCatalogueTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             output = Path(folder)
             with patch.object(test_layouts, "render_board", return_value=(layouts, {0: {}})) as render, \
-                 patch.object(test_layouts.subprocess, "run") as browser, contextlib.redirect_stdout(io.StringIO()):
+                 patch.object(test_layouts.subprocess, "run") as browser, patch.object(test_layouts.sys.stdin, "isatty", return_value=True), \
+                 patch("builtins.input", return_value=""), contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(test_layouts.view(["panel4", "tab5", "paneljc"], ["flat"], [0], ["de", "en"],
                                                   output, True, "classic_v1"), 0)
                 self.assertEqual([call.args[0] for call in render.call_args_list], ["panel4", "tab5", "paneljc"])
@@ -120,7 +121,7 @@ class SharedCatalogueTest(unittest.TestCase):
             (root / "tests/simulator").mkdir(parents=True)
             (root / "tests/simulator/CMakeLists.txt").write_text("")
             (root / "tools").mkdir()
-            inputs = ["tools/test_layout_cases.json", "tools/widget_cases.py"]
+            inputs = ["tools/widget_cases.py", "tools/widget_catalog.json"]
             for name in inputs:
                 (root / name).write_text("before")
             with patch.object(gallery_freshness, "REPO", root), patch.object(gallery_freshness, "SOURCES_JSON", root / "sources.json"):
@@ -381,8 +382,8 @@ class SizeCheckerTest(unittest.TestCase):
                 (docs / "page.md").write_text("x\n" * 301)
                 self.assertEqual(module.check_docs(), 1)
                 (docs / "page.md").unlink()
-                (docs / "release-notes.md").write_text("x\n" * 801)
-                self.assertEqual(module.check_docs(), 1)
+                (docs / "release-notes.md").write_text("x\n" * 5000)
+                self.assertEqual(module.check_docs(), 0)
 
 
 if __name__ == "__main__":

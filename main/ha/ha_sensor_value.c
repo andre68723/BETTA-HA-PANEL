@@ -149,10 +149,12 @@ bool ha_sv_number_text(const char *value, const char *raw_state, const char *uni
             }
         }
     }
-    if (numeric) ha_sv_localize_number(number, language);
+    /* A temperature reads the same on every tile (ui_format_temp_c): decimal point, the unit against the number. */
+    const bool temperature = mode == HA_SV_UNIT_DEFAULT && (strcmp(unit, "°C") == 0 || strcmp(unit, "°F") == 0);
+    if (numeric && !temperature) ha_sv_localize_number(number, language);
 
     const char *shown = unit;
-    bool attach = false;
+    bool attach = temperature;
     if (mode == HA_SV_UNIT_HIDE) {
         shown = "";
     } else if (mode == HA_SV_UNIT_DEGREE && strncmp(unit, "°", 2) == 0) {

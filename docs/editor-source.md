@@ -37,6 +37,7 @@ www/js/settings.js    settings pages: Wi-Fi, OTA, device status, alerts, backup,
 www/js/brightness-test.js  temporary brightness tests: shared controls, serialized requests and device countdown
 www/js/update-check.js the panel's daily firmware update check: banner, OTA URL, its two settings
 www/js/entity-search-rules.js search eligibility by field and the rules shown in each picker
+www/js/room-air.js     Air quality bindings, evaluation fields and measured-value preview
 www/js/layout-model.js layout model, entity domains and suggestions, loading layout and entities
 www/js/pickers.js     entity pickers, the "+ Widget" dialog (widget types and entity search)
 www/js/readability.js panel4 role sizes, day-count and gauge-width hints for the previews (after pickers, before canvas)
@@ -87,7 +88,7 @@ Once the server starts, press Enter in the terminal to open the default browser,
 (`http://127.0.0.1:8766/` by default). No `ui` parameter is needed; `/` uses the view chosen at startup.
 Sources are served directly from `components/webui/www/`; refresh after edits.
 Only Python's standard library is needed. The default wide-board demo contains every widget type, optional
-bindings and house/energy pages on ten pages. A Stocks & ETFs page compares List, Charts and Tiles
+bindings and house/energy pages on ten pages. A Stocks & ETFs page compares List, Charts and cards
 with the same sensors; the local search offers ten synthetic quotes, including unbound choices. Save writes `.local/editor-local/paneljc-all-widgets-state.json`; Export downloads
 JSON. The local toolbar identifies the test environment. Ctrl+C stops the server.
 
@@ -216,7 +217,7 @@ plus contact sheets under `/private/tmp/`):
 
 ```bash
 uv run --locked --group screenshots python tools/compare_editor_previews.py [--style matte] [widget ids]
-... --cases [tile names] [--all-sizes]   # smallest and largest size of each tile in layout_cases.json, fresh renders
+... --cases [tile names] [--all-sizes]   # smallest and largest size of each tile in tile_size_cases.json, fresh renders
 ... --pages                              # whole house and energy page
 ```
 

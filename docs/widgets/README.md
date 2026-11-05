@@ -54,7 +54,7 @@ Numbers, trends and states you want to read at a glance.
 
     **[Stocks & ETFs](stock_quotes.md)**
 
-    Shows **up to eight quotes** of Easy Stock `sensor.*` entities as a list, as charts or as tiles, with the last session's change and a detail view over five periods.
+    Shows **up to eight quotes** of Easy Stock `sensor.*` entities as a list or as charts (rows or cards), with the last session's change and a detail view over five periods.
 
 </div>
 
@@ -150,6 +150,12 @@ Everything about one room in a single card.
 
     Groups a **room's values and controls** in one card, with a popup for its entities; any domain, filled from a Home Assistant area or by hand.
 
+-   [![Air quality](../img/gallery/air_quality_glow.png)](air_quality_tile.md)
+
+    **[Air quality](air_quality_tile.md)**
+
+    Shows the **room air quality** as one BETTA status from humidity, with optional temperature, CO₂ and PM2.5 from `sensor.*` entities; a tap on a value opens its history graph, a tap elsewhere the details.
+
 </div>
 
 ## Weather and energy
@@ -158,17 +164,11 @@ Forecasts, solar production and the energy balance.
 
 <div class="grid cards" markdown>
 
--   [![Weather (now)](../img/gallery/weather_now_glow.png)](weather_tile.md)
+-   [![Weather](../img/gallery/weather_now_glow.png)](weather_tile.md)
 
-    **[Weather (now)](weather_tile.md)**
+    **[Weather](weather_tile.md)**
 
-    Shows the **current conditions** of a `weather.*` entity, with optional hourly forecasts and a detail popup for readings and the DWD weather report.
-
--   [![Weather forecast](../img/gallery/weather_forecast_glow.png)](weather_3day.md)
-
-    **[Weather forecast](weather_3day.md)**
-
-    Compares **forecast days** of a `weather.*` entity: temperatures and precipitation in configurable columns.
+    Shows the **weather** of a `weather.*` entity: current conditions with optional hourly forecasts, or the **forecast days** as columns; a button pair switches between them.
 
 -   [![Solar forecast](../img/gallery/solar_forecast_glow.png)](solar_forecast.md)
 

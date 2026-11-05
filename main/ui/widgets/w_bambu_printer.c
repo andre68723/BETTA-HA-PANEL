@@ -645,12 +645,35 @@ static void bambu_layout(w_bambu_ctx_t *ctx)
     lv_coord_t btn_h = lv_font_get_line_height(label_font) + 18;
     if (btn_h < BAMBU_BTN_MIN_H) btn_h = BAMBU_BTN_MIN_H;
     const lv_coord_t btn_y = h - BAMBU_PAD - btn_h;
-    const lv_coord_t btn_w = (inner_w - 2 * BAMBU_GAP) / 3;
+    /* Equal thirds unless a caption needs more: the words share the row by their length, so "Abort" is never cut. */
+    const char *words[BTN_COUNT][2] = {{tr("bambu.pause", "Pause"), tr("bambu.resume", "Resume")},
+                                       {tr("bambu.status", "Status"), tr("bambu.status", "Status")},
+                                       {tr("bambu.stop", "Abort"), tr("bambu.stop", "Abort")}};
+    lv_coord_t need[BTN_COUNT], need_sum = 0;
+    const lv_coord_t row_w = inner_w - 2 * BAMBU_GAP;
     for (int i = 0; i < BTN_COUNT; i++) {
+        lv_coord_t widest = 0;
+        for (int k = 0; k < 2; k++) {
+            lv_point_t size;
+            lv_text_get_size(&size, words[i][k], ui_font_role(UI_TEXT_LABEL), 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+            if (size.x > widest) widest = size.x;
+        }
+        need[i] = widest + 18;
+        need_sum += need[i];
+    }
+    lv_coord_t btn_x = BAMBU_PAD, left = row_w;
+    for (int i = 0; i < BTN_COUNT; i++) {
+        /* Equal thirds while every word fits one; otherwise shares in proportion to the words. */
+        lv_coord_t btn_w = i == BTN_COUNT - 1 ? left : row_w / 3;
+        if (need_sum > row_w || need[0] > row_w / 3 || need[1] > row_w / 3 || need[2] > row_w / 3) {
+            btn_w = i == BTN_COUNT - 1 ? left : need[i] * row_w / need_sum;
+        }
         lv_obj_set_size(ctx->btn[i], btn_w, btn_h);
-        lv_obj_set_pos(ctx->btn[i], BAMBU_PAD + i * (btn_w + BAMBU_GAP), btn_y);
+        lv_obj_set_pos(ctx->btn[i], btn_x, btn_y);
         lv_obj_set_width(ctx->btn_label[i], btn_w - 8);
         lv_obj_center(ctx->btn_label[i]);
+        btn_x += btn_w + BAMBU_GAP;
+        left -= btn_w;
     }
     const lv_coord_t bar_y = btn_y - BAMBU_GAP - BAMBU_BAR_H;
     lv_obj_set_size(ctx->bar, inner_w, BAMBU_BAR_H);
@@ -741,13 +764,15 @@ static void set_label(lv_obj_t *label, const char *text, ui_text_role_t role, lv
 /* One text size for all three buttons: the smallest that fits the longest of Pause, Resume, Status and Stop. */
 static const lv_font_t *button_font(const w_bambu_ctx_t *ctx)
 {
-    const char *texts[] = {tr("bambu.pause", "Pause"), tr("bambu.resume", "Resume"), tr("bambu.status", "Status"),
-                           tr("bambu.stop", "Abort")};
-    const lv_coord_t btn_w = lv_obj_get_width(ctx->btn[0]);
-    const lv_coord_t btn_h = lv_obj_get_height(ctx->btn[0]);
+    static const struct { int button; const char *key, *fallback; } words[] = {
+        {BTN_PRIMARY, "bambu.pause", "Pause"}, {BTN_PRIMARY, "bambu.resume", "Resume"},
+        {BTN_STATUS, "bambu.status", "Status"}, {BTN_STOP, "bambu.stop", "Abort"}};
     const lv_font_t *best = NULL;
-    for (size_t i = 0; i < sizeof(texts) / sizeof(texts[0]); i++) {
-        const lv_font_t *font = ui_text_fit(texts[i], ui_font_role(UI_TEXT_LABEL), btn_w > 10 ? btn_w - 10 : btn_w, btn_h);
+    for (size_t i = 0; i < sizeof(words) / sizeof(words[0]); i++) {
+        const lv_coord_t btn_w = lv_obj_get_width(ctx->btn[words[i].button]);
+        const lv_coord_t btn_h = lv_obj_get_height(ctx->btn[words[i].button]);
+        const lv_font_t *font = ui_text_fit(tr(words[i].key, words[i].fallback), ui_font_role(UI_TEXT_LABEL),
+                                            btn_w > 10 ? btn_w - 10 : btn_w, btn_h);
         if (best == NULL || ui_font_text_px_of(font) < ui_font_text_px_of(best)) {
             best = font;
         }

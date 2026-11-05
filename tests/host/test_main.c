@@ -250,15 +250,16 @@ static void test_layout(void)
         "\"type\":\"light_tile\",\"title\":\"L\",\"entity_id\":\"light.a\",\"rect\":{\"x\":0,\"y\":0,\"w\":10,\"h\":10}", NULL);
 
     const char *forecast_rect = "\"rect\":{\"x\":0,\"y\":0,\"w\":320,\"h\":300}";
-    expect_valid("legacy forecast", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",%s", forecast_rect));
-    expect_valid("auto forecast", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":0,%s", forecast_rect));
-    expect_valid("six days", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":6,%s", forecast_rect));
-    expect_valid("seven days", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":7,%s", forecast_rect));
+    expect_valid("forecast days", W("\"type\":\"weather_tile\",\"weather_view\":\"days\",\"entity_id\":\"weather.a\",%s", forecast_rect));
+    expect_invalid("removed forecast type", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",%s", forecast_rect), NULL);
+    expect_valid("auto forecast", W("\"type\":\"weather_tile\",\"entity_id\":\"weather.a\",\"forecast_days\":0,%s", forecast_rect));
+    expect_valid("six days", W("\"type\":\"weather_tile\",\"entity_id\":\"weather.a\",\"forecast_days\":6,%s", forecast_rect));
+    expect_valid("seven days", W("\"type\":\"weather_tile\",\"entity_id\":\"weather.a\",\"forecast_days\":7,%s", forecast_rect));
     expect_valid("solar seven days with day 6 and 7", W("\"type\":\"solar_forecast\",\"entity_id\":\"sensor.a\",\"forecast_day_6_entity_id\":\"sensor.d6\",\"forecast_day_7_entity_id\":\"sensor.d7\",\"forecast_days\":7,%s", forecast_rect));
     expect_invalid("solar day 7 needs a sensor", W("\"type\":\"solar_forecast\",\"entity_id\":\"sensor.a\",\"forecast_day_7_entity_id\":\"light.d7\",%s", forecast_rect), "forecast_day_7_entity_id");
-    expect_invalid("fractional days", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":2.5,%s", forecast_rect), "forecast_days");
-    expect_invalid("too many days", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":8,%s", forecast_rect), "forecast_days");
-    expect_invalid("string days", W("\"type\":\"weather_3day\",\"entity_id\":\"weather.a\",\"forecast_days\":\"auto\",%s", forecast_rect), "forecast_days");
+    expect_invalid("fractional days", W("\"type\":\"weather_tile\",\"entity_id\":\"weather.a\",\"forecast_days\":2.5,%s", forecast_rect), "forecast_days");
+    expect_invalid("too many days", W("\"type\":\"weather_tile\",\"entity_id\":\"weather.a\",\"forecast_days\":8,%s", forecast_rect), "forecast_days");
+    expect_invalid("string days", W("\"type\":\"weather_tile\",\"entity_id\":\"weather.a\",\"forecast_days\":\"auto\",%s", forecast_rect), "forecast_days");
     expect_invalid("bad alignment", W("\"type\":\"solar_forecast\",\"entity_id\":\"sensor.a\",\"align_forecast\":1,%s", forecast_rect), "align_forecast");
     /* Binary tile: door look, and the legacy contact tile. */
     expect_valid("binary door look",
@@ -424,10 +425,9 @@ static void test_layout(void)
     const char *name_cases[] = {"{}", "{\"type\":\"sensor\",\"sensor_show_label\":false}",
         "{\"type\":\"sensor\",\"sensor_show_label\":false,\"show_name\":true}",
         "{\"type\":\"gauge\",\"sensor_show_label\":false}", "{\"show_name\":false}",
-        "{\"type\":\"weather_tile\"}", "{\"type\":\"weather_3day\"}",
-        "{\"type\":\"weather_tile\",\"show_name\":true}", "{\"type\":\"weather_3day\",\"show_name\":false}"};
-    const bool name_expected[] = {true, false, true, true, false, false, false, true, false};
-    for (unsigned i = 0; i < 9; i++) {
+        "{\"type\":\"weather_tile\"}", "{\"type\":\"weather_tile\",\"show_name\":true}"};
+    const bool name_expected[] = {true, false, true, true, false, false, true};
+    for (unsigned i = 0; i < 7; i++) {
         cJSON *name = cJSON_Parse(name_cases[i]);
         CHECK(widget_show_name(name) == name_expected[i]);
         cJSON_Delete(name);
@@ -902,7 +902,7 @@ static void test_ha_layout_entities(void)
         "{\"type\":\"energy_dashboard\",\"energy\":{\"source\":\"home_assistant\","
         "\"home_power_entity_id\":\"sensor.ignored\",\"solar_power_entity_id\":\"sensor.ha_solar\","
         "\"battery_soc_entity_id\":\"sensor.ha_battery\"}},"
-        "{\"widgets\":[{\"type\":\"weather_3day\",\"entity_id\":\"weather.home\","
+        "{\"widgets\":[{\"type\":\"weather_tile\",\"entity_id\":\"weather.home\","
         "\"secondary_entity_id\":\"sensor.outdoor\",\"forecast_today_entity_id\":\"sensor.forecast\","
         "\"room_entities\":[\"sensor.extra\",\"weather.home\"]},"
         "{\"type\":\"car\",\"entity_id\":\"sensor.car\",\"precond_entity_id\":\"switch.precond\"}]}]}";

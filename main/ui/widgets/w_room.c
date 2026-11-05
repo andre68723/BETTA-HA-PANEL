@@ -55,6 +55,7 @@ typedef struct {
     char title[APP_MAX_NAME_LEN];
     lv_obj_t *card;
     lv_obj_t *title_label;
+    lv_obj_t *title_icon; /* optional symbol before the name (show_icon) */
     lv_obj_t *temp_arc;
     lv_obj_t *temp_label;
     lv_obj_t *hum_label;
@@ -459,8 +460,13 @@ static void room_layout(w_room_ctx_t *ctx)
     const lv_coord_t temp_h = lv_font_get_line_height(ui_font_role(UI_TEXT_VALUE));
     const lv_coord_t chip_h = lv_font_get_line_height(ui_font_role(UI_TEXT_META)) + 10;
 
-    lv_obj_set_size(ctx->title_label, w - 2 * pad, title_h);
-    lv_obj_set_pos(ctx->title_label, pad, 10);
+    const lv_coord_t icon_w = ctx->title_icon != NULL && title_h > 0 ? lv_font_get_line_height(APP_FONT_SYMBOL_SMALL) + 6 : 0;
+    lv_obj_set_size(ctx->title_label, w - 2 * pad - icon_w, title_h);
+    lv_obj_set_pos(ctx->title_label, pad + icon_w, 10);
+    if (ctx->title_icon != NULL) {
+        lv_obj_set_hidden(ctx->title_icon, icon_w == 0);
+        lv_obj_set_pos(ctx->title_icon, pad, 10 + (title_h - lv_font_get_line_height(APP_FONT_SYMBOL_SMALL)) / 2);
+    }
 
     /* The ring needs enough free height between the title and the chip row, and enough width
      * next to it for the humidity label, to be worth drawing; a very small card falls back to
@@ -941,6 +947,13 @@ esp_err_t w_room_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_
     lv_obj_set_style_text_font(ctx->title_label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->title_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_label_set_long_mode(ctx->title_label, LV_LABEL_LONG_DOT);
+    if (def->show_icon) {
+        ctx->title_icon = lv_label_create(card);
+        lv_label_set_text(ctx->title_icon, APP_SYMBOL_ROOM);
+        lv_obj_set_style_text_font(ctx->title_icon, APP_FONT_SYMBOL_SMALL, LV_PART_MAIN);
+        lv_obj_set_style_text_color(ctx->title_icon, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
+        lv_obj_set_clickable(ctx->title_icon, false);
+    }
     ctx->temp_arc = lv_arc_create(card);
     room_style_temp_arc(ctx->temp_arc);
     lv_obj_set_hidden(ctx->temp_arc, true);

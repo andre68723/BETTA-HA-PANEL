@@ -149,7 +149,7 @@ static void render_plot(history_popup_t *popup, float lowest, float highest, siz
     chart_scale_unit_of(popup->current, unit, sizeof(unit));
     char low_text[24], high_text[24], summary[256];
     const int extreme_decimals = scale.decimals > 0 || scale.step >= 10.0f ? scale.decimals : 1; /* Min/Max show at least one digit below a step of 10 */
-    chart_scale_format(low_text, sizeof(low_text), lowest, extreme_decimals > 3 ? 3 : extreme_decimals, "");
+    chart_scale_format(low_text, sizeof(low_text), lowest, extreme_decimals > 3 ? 3 : extreme_decimals, unit);
     chart_scale_format(high_text, sizeof(high_text), highest, extreme_decimals > 3 ? 3 : extreme_decimals, unit);
     snprintf(summary, sizeof(summary), "%s  ·  %s %s  ·  %s %s", popup->current,
              ui_i18n_get("history.min", "Min"), low_text, ui_i18n_get("history.max", "Max"), high_text);
@@ -994,7 +994,7 @@ void ui_history_popup_open_evcc(const char *entity)
 
 static const char *const QUOTE_PERIOD_KEY[HA_QUOTE_PERIOD_COUNT] = {
     "stock.period.1d", "stock.period.1w", "stock.period.30d", "stock.period.ytd", "stock.period.1y"};
-static const char *const QUOTE_PERIOD_TEXT[HA_QUOTE_PERIOD_COUNT] = {"1D", "1W", "30D", "YTD", "1Y"};
+static const char *const QUOTE_PERIOD_TEXT[HA_QUOTE_PERIOD_COUNT] = {"1D", "1W", "1M", "YTD", "1Y"};
 
 static bool quote_german(void)
 {

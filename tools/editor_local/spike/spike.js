@@ -65,7 +65,7 @@
   const groups=[
     ['Werte & Verläufe',[['sensor','Sensor','chart'],['gauge','Gauge','chart'],['graph','Graph','chart'],['binary_tile','Status','grid'],['contact_tile','Kontakt','grid']]],
     ['Steuerung',[['light_tile','Licht','bulb'],['button','Button','grid'],['slider','Slider','grid'],['heating_tile','Heizung','grid'],['climate_tile','Klima','grid'],['cover_tile','Cover','grid'],['fan_tile','Lüfter','grid'],['lock_tile','Schloss','grid'],['select_tile','Auswahl','grid'],['datetime_tile','Datum/Zeit','grid'],['scene_tile','Szene','grid']]],
-    ['Räume, Wetter & Energie',[['room_tile','Raum','home'],['weather_tile','Wetter','grid'],['weather_3day','Vorhersage','grid'],['solar_forecast','Solar','chart'],['energy_timeline','Energie','chart']]],
+    ['Räume, Wetter & Energie',[['room_tile','Raum','home'],['weather_tile','Wetter','grid'],['solar_forecast','Solar','chart'],['energy_timeline','Energie','chart']]],
     ['Media & Geräte',[['media_player','Media','music'],['sonos_favorites','Sonos','music'],['bambu_printer','Bambu','grid'],['vacuum_tile','Saugroboter','grid'],['camera_tile','Kamera','grid'],['car_widget','Auto','grid'],['wallbox_evcc','Wallbox','grid'],['todo_list','Aufgaben','grid']]],
     ['Layout',[['empty_tile','Abstand','grid']]]
   ];

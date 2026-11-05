@@ -6,9 +6,10 @@
  * entry; a sensor of another integration is named as such instead of being read. Three views (display_mode):
  *   list   rows of name (and, with stock_ticker, the symbol), price and the last session's change;
  *   chart  a section per quote: price, the change over the chosen period against its reference, and a small chart; one
- *          row of period buttons (1D, 1W, 30D, YTD, 1Y, option stock_selector, on by default) applies to every chart of the tile;
- *   grid   one card per quote in two columns (one when the tile is narrow): name (and symbol), price, the period change
- *          and a small chart, with the same period buttons. Cards that do not fit scroll.
+ *          row of period buttons (1D, 1W, 1M, YTD, 1Y, option stock_selector, on by default) applies to every chart of the tile;
+ *   grid   (chart with stock_cards, or the former "grid" view) one card per quote in as many columns as fit, up to four: name (and
+ *          symbol), price, the period change, with stock_previous the period's start price, and a small chart, with the same period
+ *          buttons. Cards that do not fit scroll.
  * stock_period is the charts' first period and the one the detail popup opens with; stock_delta shows the change in
  * percent, as an amount or both. Rows scroll when they do not fit; a tap (not a drag) opens the detail popup.
  * Histories come from ui/quote_history_feed.c, only for charts on screen.
@@ -42,6 +43,7 @@
 #define QS_SPARK_MAX 120
 #define QS_PAD 12
 #define QS_GAP 8
+#define QS_MAX_COLUMNS 4 /* cards per row */
 /* A chart's span never drops below this share of its price: rounding noise must not look like a crash. */
 #define QS_MIN_SPAN 0.004f
 
@@ -76,6 +78,7 @@ typedef struct {
     lv_obj_t *trend;                    /* card view: direction beside the percentage */
     lv_obj_t *delta2;                   /* both changes: the separate amount in list and card views */
     lv_obj_t *sub;                      /* chart view: reference or source under the change */
+    lv_obj_t *start;                    /* cards: the period's start price under the price (stock_previous) */
     lv_obj_t *spark;
 } qs_item_t;
 
@@ -84,6 +87,7 @@ typedef struct w_qs_ctx {
     bool show_name;
     bool chart;
     bool grid;                          /* cards in columns; shares the history feed and period buttons with the chart view */
+    bool previous;                      /* cards: the period's start price under the price */
     bool ticker;
     bool selector;                      /* chart view: the period buttons (stock_selector) */
     qs_delta_t delta_mode;
@@ -109,7 +113,7 @@ static bool qs_history(const w_qs_ctx_t *ctx)
 
 static const char *const QS_PERIOD_KEY[HA_QUOTE_PERIOD_COUNT] = {
     "stock.period.1d", "stock.period.1w", "stock.period.30d", "stock.period.ytd", "stock.period.1y"};
-static const char *const QS_PERIOD_TEXT[HA_QUOTE_PERIOD_COUNT] = {"1D", "1W", "30D", "YTD", "1Y"};
+static const char *const QS_PERIOD_TEXT[HA_QUOTE_PERIOD_COUNT] = {"1D", "1W", "1M", "YTD", "1Y"};
 
 static bool qs_german(void)
 {
@@ -477,6 +481,7 @@ static void qs_layout_card(w_qs_ctx_t *ctx, qs_item_t *it, int x, int y, int cw,
     lv_obj_set_style_text_align(it->price, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     lv_obj_set_hidden(it->delta2, true);
     lv_obj_set_hidden(it->trend, true);
+    lv_obj_set_hidden(it->start, true);
     /* a quote that cannot be read says why, smaller, and shows neither change nor chart */
     const bool message = !known && strcmp(status, "--") != 0;
     ui_text_set(it->price, message ? UI_TEXT_META : UI_TEXT_LABEL, true);
@@ -491,7 +496,7 @@ static void qs_layout_card(w_qs_ctx_t *ctx, qs_item_t *it, int x, int y, int cw,
     uint32_t color = APP_UI_COLOR_TEXT_SOFT;
     const bool numeric = qs_card_delta(ctx, it, delta, sizeof(delta), &color);
     const bool both = ctx->delta_mode == QS_DELTA_BOTH;
-    const int spark_y = price_y + label_h + ((stacked ? 1 : 0) + (both ? 1 : 0)) * meta_h + 4;
+    const int spark_y = price_y + label_h + ((stacked ? 1 : 0) + (both ? 1 : 0) + (ctx->previous ? 1 : 0)) * meta_h + 4;
     lv_obj_set_hidden(it->delta, !numeric);
     if (numeric) {
         qs_set_text(it->delta, delta);
@@ -523,6 +528,19 @@ static void qs_layout_card(w_qs_ctx_t *ctx, qs_item_t *it, int x, int y, int cw,
         const int dw = qs_text_w(delta, ui_font_role(UI_TEXT_META)) + 2 +
                        (ctx->delta_mode != QS_DELTA_ABSOLUTE && it->change.change != 0.0 ? meta_h + 2 : 0);
         qs_place(it->price, QS_CARD_PAD, price_y, inner - dw - QS_GAP, label_h);
+    }
+    /* the period's start price: where the change begins, as the details name it */
+    const bool has_start = ctx->previous && numeric && it->change.base > 0.0 && isfinite((float)it->change.base);
+    lv_obj_set_hidden(it->start, !has_start);
+    if (has_start) {
+        char base[40];
+        ha_quote_t ref = it->quote;
+        ref.price = it->change.base;
+        qs_price_text(&ref, base, sizeof(base));
+        snprintf(text, sizeof(text), "%s %s", ui_i18n_get("stock.start", "Start"), base);
+        qs_set_text(it->start, text);
+        lv_obj_set_style_text_align(it->start, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+        qs_place(it->start, QS_CARD_PAD, price_y + label_h + ((stacked ? 1 : 0) + (both ? 1 : 0)) * meta_h, inner, meta_h);
     }
     const bool chart_ok = numeric && it->plot_count >= 2;
     lv_obj_set_hidden(it->spark, !chart_ok);
@@ -557,15 +575,18 @@ static void qs_layout_cards(w_qs_ctx_t *ctx, int list_w, int list_h)
             if (dw > delta_w) delta_w = dw;
         }
     }
-    /* two columns once each can hold the widest price and a readable name; otherwise one */
+    /* as many columns as fit, up to four: each holds the widest price and a readable name */
     const int min_col = price_w + 2 * QS_CARD_PAD + 8 > 9 * label_h ? price_w + 2 * QS_CARD_PAD + 8 : 9 * label_h;
-    const int cols = ctx->count > 1 && list_w >= 2 * min_col + QS_GAP ? 2 : 1;
+    int cols = (list_w + QS_GAP) / (min_col + QS_GAP);
+    if (cols > QS_MAX_COLUMNS) cols = QS_MAX_COLUMNS;
+    if (cols > ctx->count) cols = ctx->count;
+    if (cols < 1) cols = 1;
     const int cw = (list_w - (cols - 1) * QS_GAP) / cols;
     /* the change moves under the price for every card when it does not fit beside the widest one */
     const bool stacked = price_w + QS_GAP + delta_w + 2 * QS_CARD_PAD + 2 > cw;
     const int rows = (ctx->count + cols - 1) / cols;
     const int text_h = 2 * QS_CARD_PAD + 2 * label_h + 4 +
-                       ((stacked ? 1 : 0) + (ctx->delta_mode == QS_DELTA_BOTH ? 1 : 0)) * meta_h;
+                       ((stacked ? 1 : 0) + (ctx->delta_mode == QS_DELTA_BOTH ? 1 : 0) + (ctx->previous ? 1 : 0)) * meta_h;
     int spark_h = rows > 0 ? (list_h - (rows - 1) * QS_GAP) / rows - text_h : QS_SPARK_MIN;
     if (spark_h < QS_SPARK_MIN) spark_h = QS_SPARK_MIN;
     if (spark_h > QS_SPARK_MAX_H) spark_h = QS_SPARK_MAX_H;
@@ -788,6 +809,9 @@ static void qs_item_create(w_qs_ctx_t *ctx, qs_item_t *it, const char *entity_id
     if (ctx->grid) {
         it->trend = qs_label(it->row, UI_TEXT_META, APP_UI_COLOR_TEXT_SOFT);
         lv_obj_set_hidden(it->trend, true);
+        it->start = qs_label(it->row, UI_TEXT_META, APP_UI_COLOR_TEXT_MUTED);
+        lv_label_set_long_mode(it->start, LV_LABEL_LONG_DOT);
+        lv_obj_set_hidden(it->start, true);
     }
     it->delta2 = qs_label(it->row, UI_TEXT_META, APP_UI_COLOR_TEXT_SOFT);
     lv_obj_set_style_text_align(it->delta2, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
@@ -819,6 +843,7 @@ esp_err_t w_stock_quotes_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->chart = strcmp(def->display_mode, "chart") == 0;
     ctx->grid = strcmp(def->display_mode, "grid") == 0;
     ctx->ticker = def->stock_ticker;
+    ctx->previous = def->stock_previous;
     ctx->selector = def->stock_selector;
     ctx->delta_mode = strcmp(def->stock_delta, "absolute") == 0 ? QS_DELTA_ABSOLUTE
                       : strcmp(def->stock_delta, "both") == 0 ? QS_DELTA_BOTH : QS_DELTA_PERCENT;

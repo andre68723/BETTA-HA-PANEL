@@ -18,6 +18,7 @@ static SemaphoreHandle_t s_model_mutex = NULL;
 static ha_entity_info_t *s_entities = NULL;
 static size_t s_entity_count = 0;
 static ha_state_t *s_states = NULL;
+static uint32_t *s_state_versions = NULL;
 static size_t s_state_count = 0;
 static uint32_t s_state_revision = 0;
 
@@ -30,6 +31,10 @@ static void ha_model_free_buffers(void)
     if (s_states != NULL) {
         heap_caps_free(s_states);
         s_states = NULL;
+    }
+    if (s_state_versions != NULL) {
+        heap_caps_free(s_state_versions);
+        s_state_versions = NULL;
     }
     s_entity_count = 0;
     s_state_count = 0;
@@ -132,7 +137,10 @@ esp_err_t ha_model_init(void)
         s_states = (ha_state_t *)heap_caps_calloc(APP_HA_MAX_STATES, sizeof(ha_state_t), MALLOC_CAP_8BIT);
     }
 
-    if (s_entities == NULL || s_states == NULL) {
+    s_state_versions = heap_caps_calloc(APP_HA_MAX_STATES, sizeof(*s_state_versions), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (s_state_versions == NULL)
+        s_state_versions = heap_caps_calloc(APP_HA_MAX_STATES, sizeof(*s_state_versions), MALLOC_CAP_8BIT);
+    if (s_entities == NULL || s_states == NULL || s_state_versions == NULL) {
         ESP_LOGE(TAG_HA_MODEL, "Failed to allocate HA model buffers");
         ha_model_free_buffers();
         vSemaphoreDelete(s_model_mutex);
@@ -153,6 +161,7 @@ void ha_model_reset(void)
     xSemaphoreTake(s_model_mutex, portMAX_DELAY);
     memset(s_entities, 0, sizeof(ha_entity_info_t) * APP_HA_MAX_ENTITIES);
     memset(s_states, 0, sizeof(ha_state_t) * APP_HA_MAX_STATES);
+    memset(s_state_versions, 0, sizeof(*s_state_versions) * APP_HA_MAX_STATES);
     s_entity_count = 0;
     s_state_count = 0;
     s_state_revision++;
@@ -220,7 +229,11 @@ esp_err_t ha_model_set_entity_name(const char *entity_id, const char *name)
         fill_domain(entity_id, s_entities[idx].domain, sizeof(s_entities[idx].domain));
     }
     if (idx >= 0) {
-        if (strcmp(s_entities[idx].name, name) != 0) s_state_revision++;
+        if (strcmp(s_entities[idx].name, name) != 0) {
+            ++s_state_revision;
+            int state_idx = find_state_index(entity_id);
+            if (state_idx >= 0) s_state_versions[state_idx] = s_state_revision;
+        }
         safe_copy_cstr(s_entities[idx].name, sizeof(s_entities[idx].name), name);
     }
     xSemaphoreGive(s_model_mutex);
@@ -259,7 +272,8 @@ esp_err_t ha_model_upsert_state(const ha_state_t *state)
             xSemaphoreGive(s_model_mutex);
             return ESP_ERR_NO_MEM;
         }
-        s_states[s_state_count++] = *state;
+        idx = (int)s_state_count++;
+        s_states[idx] = *state;
         state_changed = true;
     }
 
@@ -273,6 +287,7 @@ esp_err_t ha_model_upsert_state(const ha_state_t *state)
 
     if (state_changed) {
         s_state_revision++;
+        s_state_versions[idx] = s_state_revision;
     }
 
     xSemaphoreGive(s_model_mutex);
@@ -280,6 +295,11 @@ esp_err_t ha_model_upsert_state(const ha_state_t *state)
 }
 
 bool ha_model_get_state(const char *entity_id, ha_state_t *out_state)
+{
+    return ha_model_get_state_versioned(entity_id, out_state, NULL);
+}
+
+bool ha_model_get_state_versioned(const char *entity_id, ha_state_t *out_state, ha_state_version_t *version)
 {
     if (s_model_mutex == NULL || s_states == NULL || entity_id == NULL || out_state == NULL) {
         return false;
@@ -289,10 +309,40 @@ bool ha_model_get_state(const char *entity_id, ha_state_t *out_state)
     int idx = find_state_index(entity_id);
     if (idx >= 0) {
         *out_state = s_states[idx];
+        if (version != NULL) {
+            version->slot = (size_t)idx;
+            version->revision = s_state_versions[idx];
+        }
         found = true;
     }
     xSemaphoreGive(s_model_mutex);
     return found;
+}
+
+esp_err_t ha_model_changes(uint32_t after, ha_model_change_t *out, size_t capacity,
+                           size_t *count, uint32_t *next)
+{
+    if (!s_model_mutex || !s_states || !out || !capacity || !count || !next) return ESP_ERR_INVALID_ARG;
+    *count = 0;
+    xSemaphoreTake(s_model_mutex, portMAX_DELAY);
+    *next = s_state_revision;
+    size_t pending = 0;
+    for (size_t i = 0; i < s_state_count; ++i) {
+        uint32_t distance = s_state_versions[i] - after;
+        if (!distance || distance >= UINT32_C(0x80000000)) continue;
+        ++pending;
+        size_t position = 0;
+        while (position < *count && (out[position].version.revision - after) < distance) ++position;
+        if (position >= capacity) continue;
+        size_t end = *count < capacity ? *count : capacity - 1;
+        for (size_t j = end; j > position; --j) out[j] = out[j - 1];
+        safe_copy_cstr(out[position].entity_id, sizeof(out[position].entity_id), s_states[i].entity_id);
+        out[position].version = (ha_state_version_t){.slot = i, .revision = s_state_versions[i]};
+        if (*count < capacity) ++*count;
+    }
+    if (pending > capacity) *next = out[*count - 1].version.revision;
+    xSemaphoreGive(s_model_mutex);
+    return ESP_OK;
 }
 
 size_t ha_model_list_entities(

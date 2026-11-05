@@ -14,8 +14,8 @@ add matching bottom information cards: **Display** (size and resolution) and
 | --- | --- | --- |
 | `panel4.png` | 4-inch · 720 × 720 | External speaker connector · BETTA chimes |
 | `tab5.png` | 5-inch · 1280 × 720 (landscape) | Built-in 1 W speaker · BETTA chimes |
-| `panel10.png` | 10.1-inch · 1280 × 800 | External speaker connector · BETTA audio disabled |
-| `paneljc.png` | 10.1-inch · 1280 × 800 (landscape) | External speaker connector · BETTA audio disabled |
+| `panel10.png` | 10.1-inch · 1280 × 800 | Camera sensing and notification/doorbell chimes |
+| `paneljc.png` | 10.1-inch · 1280 × 800 (landscape) | Camera sensing and notification/doorbell chimes |
 
 The Tab5 and JC values describe the landscape orientation shown, rather than
 the panels' native portrait scan order. Audio support does not establish
@@ -60,7 +60,16 @@ earlier Nano-board illustration with the blue LCD-X main board and narrow I/O
 board. The flashing callout identifies **USB TO UART**, the upper USB-C port.
 The lower port is USB OTG. The display shape follows the 10.1-inch dimensions.
 This is a schematic illustration, not a firmware compatibility or device-test
-claim; the current `panel10` source still uses the inherited Nano BSP.
+claim. The panel10 profile now selects the matching LCD-X BSP 2.0.3;
+hardware operation in this fork remains unverified. The image already depicts
+the ready-made LCD-X assembly. On 2026-11-05 the built-in Imagegen tool changed
+only the bottom legend to Display / Camera / Sound, reflecting optional ambient
+sensing and chimes. Hardware geometry and connector leaders were retained.
+Generated source: `01a1ad87-4c4b-77b0-a162-8c7ace356715/exec-6d46ab45-33db-43ea-a7ca-667cac3b3f40.png`.
+Edit prompt: preserve the entire hardware drawing and all leaders; replace only
+the two bottom legend boxes with three matching boxes: Display — 10.1-inch ·
+1280 × 800; Camera — Room light and presence sensing.; Sound — Notification
+and doorbell chimes. The guide retains the compile-only qualification.
 
 References: [LCD-X manufacturer guide](https://docs.waveshare.com/ESP32-P4-WIFI6-Touch-LCD-X#esp32-p4-wifi6-touch-lcd-101),
 [controller diagram](https://docs.waveshare.com/assets/images/ESP32-P4-WIFI6-Touch-LCD-7-details-intro-ef6edd5aef7620cef6e7e68953930c46.webp)

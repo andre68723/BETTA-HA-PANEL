@@ -92,6 +92,61 @@ static void w_weather_tile_event_cb(lv_event_t *event)
     }
 }
 
+/* Chips "Today | Days" above the content, in the card's top padding. */
+static void weather_chip_clicked(lv_event_t *event)
+{
+    w_weather_tile_ctx_t *ctx = lv_event_get_user_data(event);
+    if (ctx == NULL || ctx->card == NULL) return;
+    const bool days = lv_event_get_target(event) == ctx->chip[1];
+    if (days == ctx->show_forecast) return;
+    ctx->show_forecast = days;
+    ui_fonts_tile_begin("weather_days", lv_obj_get_width(ctx->card), lv_obj_get_height(ctx->card));
+    weather_render(ctx->card, ctx, ctx->available ? &ctx->last_values : NULL, ctx->available);
+    ui_fonts_tile_end();
+}
+
+void weather_chips_create(lv_obj_t *card, w_weather_tile_ctx_t *ctx)
+{
+    ctx->chip_base_pad = lv_obj_get_style_pad_top(card, LV_PART_MAIN);
+    for (int i = 0; i < 2; i++) {
+        lv_obj_t *chip = lv_label_create(card);
+        lv_obj_set_style_text_align(chip, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_set_style_radius(chip, ui_style_radius(8), LV_PART_MAIN);
+        lv_obj_set_style_pad_top(chip, 4, LV_PART_MAIN);
+        lv_label_set_long_mode(chip, LV_LABEL_LONG_DOT);
+        lv_obj_set_clickable(chip, true);
+        lv_obj_add_event_cb(chip, weather_chip_clicked, LV_EVENT_CLICKED, ctx);
+        ctx->chip[i] = chip;
+    }
+}
+
+void weather_chips_update(lv_obj_t *card, w_weather_tile_ctx_t *ctx)
+{
+    const lv_font_t *font = ui_font_role(UI_TEXT_META);
+    const lv_coord_t chip_h = lv_font_get_line_height(font) + 8;
+    /* the chips sit in a strip above the content, like the period buttons of Stocks; the extra top padding keeps every
+     * view below them, and is set before any size is read */
+    lv_obj_set_style_pad_top(card, ctx->chip_base_pad + chip_h + 6, LV_PART_MAIN);
+    lv_obj_update_layout(card);
+    const lv_coord_t inner_w = lv_obj_get_content_width(card);
+    const lv_coord_t chip_w = (inner_w - 6) / 2 < 120 ? (inner_w - 6) / 2 : 120;
+    const lv_coord_t x0 = (inner_w - (2 * chip_w + 6)) / 2;
+    const lv_coord_t y = -(chip_h + 6);
+    const char *texts[2] = {ui_i18n_get("weather.today", "Today"), ui_i18n_get("weather.view_days", "Days")};
+    for (int i = 0; i < 2; i++) {
+        const bool on = (i == 1) == ctx->show_forecast;
+        lv_obj_set_hidden(ctx->chip[i], false);
+        lv_obj_set_style_text_font(ctx->chip[i], font, LV_PART_MAIN);
+        lv_label_set_text(ctx->chip[i], texts[i]);
+        lv_obj_set_size(ctx->chip[i], chip_w, chip_h);
+        lv_obj_set_pos(ctx->chip[i], x0 + i * (chip_w + 6), y);
+        const lv_color_t bg = ui_style_control_color(on ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION, true);
+        ui_style_action_button(ctx->chip[i], NULL, on ? UI_CONTROL_SELECTED : UI_CONTROL_ACTION, true);
+        lv_obj_set_style_text_color(ctx->chip[i], ui_style_button_icon_color(bg), LV_PART_MAIN);
+        lv_obj_move_foreground(ctx->chip[i]);
+    }
+}
+
 esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance)
 {
     if (def == NULL || parent == NULL || out_instance == NULL) {
@@ -116,7 +171,7 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ui_style_title_fit(title, def->title[0] ? def->title : def->id);
     lv_obj_set_width(title, def->w - 32);
     lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
-    const lv_font_t *title_font = strcmp(def->type, "weather_3day") == 0
+    const lv_font_t *title_font = (strcmp(def->type, "weather_tile") == 0 && def->weather_days)
         ? ui_font_role(UI_TEXT_LABEL) : ui_font_role(UI_TEXT_META);
     lv_obj_set_style_text_font(title, title_font, LV_PART_MAIN);
     ui_text_record(title, UI_TEXT_LABEL, false);
@@ -157,11 +212,13 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->card = card;
     ctx->show_hourly = def->weather_hourly && strcmp(def->type, "weather_tile") == 0;
     ctx->hide_name = def->hide_name;
-    ctx->show_forecast = (strcmp(def->type, "weather_3day") == 0);
+    const bool merged = strcmp(def->type, "weather_tile") == 0;
+    ctx->selector = merged && def->weather_selector;
+    ctx->show_forecast = merged && def->weather_days;
     ctx->show_precip = def->show_precipitation;
     ctx->forecast_days = def->forecast_days;
     snprintf(ctx->entity_id, sizeof(ctx->entity_id), "%s", def->entity_id);
-    if (strcmp(def->type, "weather_3day") == 0 || strcmp(def->type, "weather_tile") == 0) {
+    if (merged) {
         snprintf(ctx->report_entity_id, sizeof(ctx->report_entity_id), "%s", def->secondary_entity_id);
     }
     ctx->condition_label = condition;
@@ -179,9 +236,9 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->last_condition_key[0] = '\0';
     ctx->last_condition_text[0] = '\0';
 
-    if (ctx->show_forecast) {
-        for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
-            weather_3day_row_widgets_t *row = &ctx->rows[i];
+    if (ctx->show_forecast || ctx->selector) {
+        for (int i = 0; i < WEATHER_DAY_ROWS; i++) {
+            weather_day_row_widgets_t *row = &ctx->rows[i];
             row->container = lv_obj_create(card);
             lv_obj_set_scrollable(row->container, false);
             lv_obj_set_style_bg_opa(row->container, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -236,10 +293,11 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 #endif
 
     lv_obj_add_event_cb(card, w_weather_tile_event_cb, LV_EVENT_DELETE, ctx);
-    if (!ctx->show_forecast) {
+    if (!ctx->show_forecast || ctx->selector) {
         lv_obj_set_clickable(card, true);
         lv_obj_add_event_cb(card, weather_now_clicked_cb, LV_EVENT_CLICKED, ctx);
     }
+    if (ctx->selector) weather_chips_create(card, ctx);
     if (ctx->show_hourly) weather_hourly_start(ctx);
     out_instance->ctx = ctx;
     out_instance->obj = card;

@@ -13,7 +13,7 @@ Direct entry points live in `scripts/`; internal checks, generators and shared m
 | --- | --- |
 | Daily checks | `uv run --locked --only-group checks scripts/check.sh --changed` |
 | Explain selection / fast stage / complete check level | Add `--list` / `--quick` / `--full --force` |
-| Widget overview, all sizes with logs and browser | `scripts/test_pages.sh panel4 tab5 paneljc` |
+| Widget overview, all sizes with logs and browser | `scripts/layout_report.sh panel4 tab5 paneljc` |
 | Larger text layout | `python3 tools/check_widget_layout.py --variant tab5 --text-step 2` |
 | One SDL render | `scripts/simulator.sh panel4 --fixture <file> --page <id> --style <style> --screenshot <file>` |
 | Gallery / widget guides | `python3 tools/generate_simulator_gallery.py` / `python3 tools/generate_widget_docs.py` |
@@ -33,7 +33,7 @@ level. Logs and warnings remain available on cached runs. No JSON interface or a
 | Widget/layout/font/gallery | `docs/appearance.md`, `docs/appearance-implementation.md`, `docs/widget-anatomy.md`, `docs/simulator.md`, `docs/development/testing.md` |
 | Editor/preview | `docs/editor-source.md`, `docs/appearance.md` |
 | Board/memory/build | `docs/choose-display.md`, matching `docs/hardware/` guide, `docs/development/build.md`, `docs/development/components.md` |
-| HA/MQTT/API | `docs/home-assistant.md`, relevant `main/ha/` or `main/api/` code; `docs/notifications.md` when relevant |
+| HA/MQTT/API | `docs/home-assistant.md`, relevant `main/ha/` or `main/api/` code; `docs/notifications.md` when relevant. Browser-only diagnostic export: `docs/development/tools.md#home-assistant-template-export`. |
 | User behavior | Matching user guide and current version in `docs/release-notes.md` |
 | Docs/screenshots/Pages | `docs/documentation.md`, matching topic, `zensical.toml` |
 | Device failures | `docs/coredump.md`, `docs/development/learnings.md`, board guide |
@@ -50,9 +50,9 @@ Panel10 and paneljc-v2 are compile-checked only; host/SDL success does not estab
   registration presence does not prove numeric, CMake, service or visual semantics.
 - Rendering: affected SDL layout checks and Gallery must pass; preserve render hashes before/after refactoring.
   The standard runner covers panel4/tab5/paneljc at text step 0; --full adds steps 1/2.
-- Widget cases: `tools/test_layout_cases.json` is the shared case catalog. Gallery tags select previews;
+- Widget cases: `tools/widget_catalog.json` is the shared case catalog. Gallery tags select previews;
   `gallery_only` cases do not enlarge packs. New types/validated enum values need cases; check.sh checks coverage.
-  test_pages checks placement/content on all three sizes. Never load a test layout on a household panel as fallback:
+  layout_report checks placement/content on all three sizes. Never load a test layout on a household panel as fallback:
   loading can delete panel-only graph history; see the test-layout guide.
 - Text growth: calibrate with `tools/calibrate_text_caps.py --write` (Tab5 adaptive profile; --variant paneljc for
   wide boards). Keep the measured table in `main/ui/text_scale.c`. Nested `ui_fonts_tile_begin/end` contexts must

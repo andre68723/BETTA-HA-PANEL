@@ -37,7 +37,7 @@ below says what has been tried on a device.
 - **Control your home:** lights, heating, blinds, fans, media players, vacuums,
   scenes and locks, with controls matched to each entity's capabilities.
 - **See what matters:** sensor values, Recorder history, weather, solar forecasts,
-  energy flows and a 24-hour energy timeline.
+  energy flows, a 24-hour energy timeline and [air quality](docs/widgets/air_quality_tile.md) with humidity, CO₂ and PM2.5 status.
 - **Make it yours:** Flat, Glow, Glass or Matte appearance, six color themes,
   English/German UI and custom themes or translations.
 - **Manage the panel:** brightness and night mode, HTTP/MQTT notifications,
@@ -52,7 +52,7 @@ The [feature guide](docs/features.md), [widget library](docs/widgets/README.md) 
 | --- | --- | --- | --- |
 | `panel4` | Waveshare ESP32-P4-WIFI6-Touch-LCD-4B, 4-inch | 720 × 720 | Runs on hardware |
 | `tab5` | **M5Stack Tab5**, 5-inch | 1280 × 720 / 720 × 1280, automatic rotation | ST7121/v1.3 device trial on 2026-10-05 |
-| `panel10` | Waveshare ESP32-P4-WIFI6-Touch-LCD-10.1 | 1280 × 800 | Profile compile checked with Nano BSP; LCD-X trial pending |
+| `panel10` | Waveshare ESP32-P4-WIFI6-Touch-LCD-10.1 | 1280 × 800 | Profile compile checked with the LCD-X BSP; not run on hardware |
 | `paneljc` | Guition JC8012P4A1, 10.1-inch, original/V1 panel | 1280 × 800 | Runs on hardware |
 | `paneljc-v2` | Guition JC8012P4A1, 10.1-inch, V2 panel | 1280 × 800 | Compile checked |
 

@@ -56,35 +56,35 @@
 /* Translated weather labels and readings use the shared accented text subset. */
 #define WEATHER_CONDITION_FONT ui_font_role(UI_TEXT_META)
 #define WEATHER_META_FONT_LARGE ui_font_role(UI_TEXT_META)
-#define WEATHER_3DAY_TEMP_FONT ui_font_role(UI_TEXT_VALUE)
-#define WEATHER_3DAY_META_FONT ui_font_role(UI_TEXT_META)
+#define WEATHER_DAY_TEMP_FONT ui_font_role(UI_TEXT_VALUE)
+#define WEATHER_DAY_META_FONT ui_font_role(UI_TEXT_META)
 
 /* Forecast row labels (day / low / high).  A bit larger than the muted
  * secondary meta text so the forecast values stay readable on the tile. */
-#define WEATHER_3DAY_ROW_FONT ui_font_role(UI_TEXT_META)
+#define WEATHER_DAY_ROW_FONT ui_font_role(UI_TEXT_META)
 
 /* Meta line below the big current temperature (condition + humidity).
  * One step up from the forecast-row font to keep the visual hierarchy
  * big temp -> meta -> forecast rows. */
-#define WEATHER_3DAY_SUBMETA_FONT ui_font_role(UI_TEXT_META)
+#define WEATHER_DAY_SUBMETA_FONT ui_font_role(UI_TEXT_META)
 
-#define WEATHER_3DAY_MAX_FORECAST 6
-#define WEATHER_3DAY_ROWS (1 + WEATHER_3DAY_MAX_FORECAST)
-#define WEATHER_3DAY_ROW_HEIGHT 44
-#define WEATHER_3DAY_ROW_GAP 4
-#define WEATHER_3DAY_ROWS_TOP 150
-#define WEATHER_3DAY_ROWS_BOTTOM_PAD 12
-#define WEATHER_3DAY_TRACK_BG 0x4A5D6D
-#define WEATHER_3DAY_FILL_COLD 0x4DA6FF
-#define WEATHER_3DAY_FILL_MIXED 0x9FCF73
-#define WEATHER_3DAY_FILL_WARM 0xF2D34D
-#define WEATHER_3DAY_FILL_HOT 0xE8783A
-#define WEATHER_3DAY_MARKER_RING 0x2E3C49
+#define WEATHER_DAY_MAX_FORECAST 6
+#define WEATHER_DAY_ROWS (1 + WEATHER_DAY_MAX_FORECAST)
+#define WEATHER_DAY_ROW_HEIGHT 44
+#define WEATHER_DAY_ROW_GAP 4
+#define WEATHER_DAY_ROWS_TOP 150
+#define WEATHER_DAY_ROWS_BOTTOM_PAD 12
+#define WEATHER_DAY_TRACK_BG 0x4A5D6D
+#define WEATHER_DAY_FILL_COLD 0x4DA6FF
+#define WEATHER_DAY_FILL_MIXED 0x9FCF73
+#define WEATHER_DAY_FILL_WARM 0xF2D34D
+#define WEATHER_DAY_FILL_HOT 0xE8783A
+#define WEATHER_DAY_MARKER_RING 0x2E3C49
 
-#define WEATHER_3DAY_SCALE_MIN_C 0.0f
-#define WEATHER_3DAY_SCALE_MIX_C 16.0f
-#define WEATHER_3DAY_SCALE_WARM_C 22.0f
-#define WEATHER_3DAY_SCALE_MAX_C 30.0f
+#define WEATHER_DAY_SCALE_MIN_C 0.0f
+#define WEATHER_DAY_SCALE_MIX_C 16.0f
+#define WEATHER_DAY_SCALE_WARM_C 22.0f
+#define WEATHER_DAY_SCALE_MAX_C 30.0f
 
 #define WEATHER_LOTTIE_MAX_SIZE 160
 
@@ -129,7 +129,7 @@ typedef struct {
     float today_precip_mm;
     int today_precip_prob;
     char precip_unit[8];
-    weather_forecast_t forecast[WEATHER_3DAY_MAX_FORECAST];
+    weather_forecast_t forecast[WEATHER_DAY_MAX_FORECAST];
 } weather_values_t;
 
 typedef struct {
@@ -141,7 +141,7 @@ typedef struct {
     lv_obj_t *bar_fill;
     lv_obj_t *bar_marker;
     lv_obj_t *high_label;
-} weather_3day_row_widgets_t;
+} weather_day_row_widgets_t;
 
 typedef struct {
     bool valid;
@@ -157,7 +157,7 @@ typedef struct {
     char date[11];
     float precip_mm;
     int precip_prob;
-} weather_3day_row_t;
+} weather_day_row_t;
 
 #define WEATHER_COLS_MAX 7
 #define WEATHER_COLS_LEGACY_MAX 6 /* layouts saved before "Visible days" keep their six columns */
@@ -184,8 +184,11 @@ typedef struct weather_tile_ctx {
     ha_weather_hourly_t hourly;
     struct weather_tile_ctx *hourly_next;
     lv_obj_t *hourly_strip, *hourly_status, *hourly_icon;
-    struct { lv_obj_t *box, *time, *icon, *temp; } hours[HA_WEATHER_HOURS_MAX];
-    bool show_forecast;
+    struct { lv_obj_t *box, *time, *icon, *temp, *sep; } hours[HA_WEATHER_HOURS_MAX];
+    bool show_forecast; /* the forecast days view is showing (set by weather_view, switchable with the chips) */
+    bool selector;      /* weather_tile: chips "Today | Days" below the content */
+    lv_obj_t *chip[2];
+    lv_coord_t chip_base_pad; /* the card's top padding before the chips take their strip */
     bool hide_name;
     bool show_precip;
     int forecast_days;
@@ -209,8 +212,8 @@ typedef struct weather_tile_ctx {
     lv_obj_t *condition_label;
     lv_obj_t *temp_label;
     lv_obj_t *meta_label;
-    weather_3day_row_widgets_t rows[WEATHER_3DAY_ROWS];
-    weather_3day_row_t render_rows[WEATHER_3DAY_ROWS];
+    weather_day_row_widgets_t rows[WEATHER_DAY_ROWS];
+    weather_day_row_t render_rows[WEATHER_DAY_ROWS];
     lv_obj_t *lottie_icon;
     void *lottie_buf;
     size_t lottie_buf_size;
@@ -270,17 +273,17 @@ const lv_font_t *weather_pick_render_icon_font(
 void weather_extract_values(const ha_state_t *state, bool want_forecast, weather_values_t *out);
 
 /* forecast */
-lv_color_t weather_3day_temp_color(float value, const char *unit);
+lv_color_t weather_day_temp_color(float value, const char *unit);
 float weather_normalize_temp(float value, float range_min, float range_max);
 void weather_format_temp(char *dst, size_t dst_size, float temp, const char *unit);
 void weather_set_row_icon(lv_obj_t *label, const char *condition_key);
-void weather_build_3day_rows(const weather_values_t *values, weather_3day_row_t rows[WEATHER_3DAY_ROWS]);
-void weather_compute_3day_range(
-    const weather_3day_row_t rows[WEATHER_3DAY_ROWS], float *out_min, float *out_max);
+void weather_build_day_rows(const weather_values_t *values, weather_day_row_t rows[WEATHER_DAY_ROWS]);
+void weather_compute_day_range(
+    const weather_day_row_t rows[WEATHER_DAY_ROWS], float *out_min, float *out_max);
 
 /* layout */
-void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *ctx, lv_coord_t requested_rows_top);
-void weather_set_3day_row_values(weather_3day_row_widgets_t *widgets, const weather_3day_row_t *row,
+void weather_set_day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *ctx, lv_coord_t requested_rows_top);
+void weather_set_day_row_values(weather_day_row_widgets_t *widgets, const weather_day_row_t *row,
     const char *unit, float range_min, float range_max);
 lv_coord_t weather_content_top_y(const w_weather_tile_ctx_t *ctx);
 lv_coord_t weather_content_bottom_y(lv_obj_t *card, const w_weather_tile_ctx_t *ctx);
@@ -294,7 +297,7 @@ bool weather_columns_wanted(lv_obj_t *card);
 void weather_columns_build(lv_obj_t *card, w_weather_tile_ctx_t *ctx);
 void weather_columns_hide(w_weather_tile_ctx_t *ctx);
 void weather_set_image_if_changed(lv_obj_t *img, const lv_image_dsc_t *dsc);
-int weather_set_col_rain(lv_obj_t *label, const weather_3day_row_t *row, const char *unit, int max_lines, lv_coord_t width);
+int weather_set_col_rain(lv_obj_t *label, const weather_day_row_t *row, const char *unit, int max_lines, lv_coord_t width);
 void weather_set_col_temp(lv_obj_t *label, bool has, float value);
 
 /* popup */
@@ -311,6 +314,10 @@ void weather_now_clicked_cb(lv_event_t *event);
 void weather_hourly_start(w_weather_tile_ctx_t *ctx);
 void weather_hourly_stop(w_weather_tile_ctx_t *ctx);
 bool weather_hourly_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values);
+void weather_hourly_hide(w_weather_tile_ctx_t *ctx);
+/* Chips of a switchable tile: created once, placed below the content area, the active view filled. */
+void weather_chips_create(lv_obj_t *card, w_weather_tile_ctx_t *ctx);
+void weather_chips_update(lv_obj_t *card, w_weather_tile_ctx_t *ctx);
 #ifdef BETTA_SIMULATOR
 void weather_hourly_simulator_reply(uint32_t token, const cJSON *result);
 #endif

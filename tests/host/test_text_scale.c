@@ -184,8 +184,8 @@ static void test_capped_growth(void)
     for (int b = 0; b < TEXT_BOARD_COUNT; b++)
         for (int w = 60; w <= 1280; w += 20)
             for (int h = 60; h <= 720; h += 20) {
-                CHECK(text_scale_tile_cap((text_board_t)b, "weather_3day", w + 20, h) >= text_scale_tile_cap((text_board_t)b, "weather_3day", w, h));
-                CHECK(text_scale_tile_cap((text_board_t)b, "weather_3day", w, h + 20) >= text_scale_tile_cap((text_board_t)b, "weather_3day", w, h));
+                CHECK(text_scale_tile_cap((text_board_t)b, "weather_days", w + 20, h) >= text_scale_tile_cap((text_board_t)b, "weather_days", w, h));
+                CHECK(text_scale_tile_cap((text_board_t)b, "weather_days", w, h + 20) >= text_scale_tile_cap((text_board_t)b, "weather_days", w, h));
             }
 }
 

@@ -21,6 +21,7 @@ typedef struct {
 
 static const widget_type_info_t s_types[] = {
     /* type              min_w       min_h       max_w       max_h       domains */
+    {"air_quality_tile", {280, 220, CBW, CBH}, "sensor"},
     {"sensor",          {120,  80,  CBW,        CBH},       "sensor|binary_sensor"},
     {"button",          {100,  100, 480, 320}, "switch|media_player"},
     {"slider",          {100,         100, CBW,        CBH},       "*"},
@@ -30,7 +31,6 @@ static const widget_type_info_t s_types[] = {
     {"light_tile",      {180, 180, 480,       480},       "light"},
     {"heating_tile",    {220, 200, 480,       480},       "climate"},
     {"weather_tile",    {220, 200, CBW,       CBH},       "weather"},
-    {"weather_3day",    {260, 220, CBW,       CBH},       "weather"},
     {"solar_forecast",  {260, 220, 640,       480},       "sensor"},
     /* A day of electricity prices (hourly or quarter-hourly) from the list attribute of a price sensor. */
     {"energy_price_forecast",  {240, 150, CBW,       CBH},       "sensor"},
@@ -105,8 +105,7 @@ bool widget_show_name(const cJSON *widget)
         if (cJSON_IsBool(value)) return cJSON_IsTrue(value);
     }
     /* The weather tiles show the weather, not the place's name: more room for the forecast. */
-    if (cJSON_IsString(type) &&
-        (strcmp(type->valuestring, "weather_tile") == 0 || strcmp(type->valuestring, "weather_3day") == 0)) {
+    if (cJSON_IsString(type) && strcmp(type->valuestring, "weather_tile") == 0) {
         return false;
     }
     return true;

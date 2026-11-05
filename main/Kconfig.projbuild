@@ -50,9 +50,13 @@ config APP_PANEL_VARIANT_4INCH_720
         Original smart86 4-inch 720x720 square/round panel.
 
 config APP_PANEL_VARIANT_10INCH_1280
-    bool "10.1\" 1280x800 (betta large)"
+    bool "10.1\" 1280x800 (Waveshare LCD-X all-in-one)"
     help
-        10.1-inch 1280x800 panel variant.
+        Waveshare ESP32-P4-WIFI6-Touch-LCD-10.1, LCD-X series.
+        Native 800x1280 JD9365 display, fixed 270-degree landscape,
+        GT9271 touch and ESP-Hosted Wi-Fi through the onboard C6.
+        The panel10 preset targets ESP32-P4 Rev3.x.
+        The separate ESP32-P4-Nano + DSI display kit is not this profile.
 
 config APP_PANEL_VARIANT_10INCH_JC
     bool "10.1\" 800x1280 (Guition JC8012P4A1, ESP32-P4)"
@@ -113,7 +117,7 @@ menu "Ambient camera"
 config APP_FEATURE_AMBIENT_CAMERA
     bool "Use the built-in camera as ambient light / presence sensor"
     default n
-    depends on APP_PANEL_VARIANT_10INCH_JC || APP_PANEL_VARIANT_TAB5_1280
+    depends on APP_PANEL_VARIANT_10INCH_JC || APP_PANEL_VARIANT_TAB5_1280 || APP_PANEL_VARIANT_10INCH_1280
     help
         Duty-cycled capture of a few frames every few seconds, reduced to a
         luma grid. No streaming, no JPEG, nothing leaves the device.

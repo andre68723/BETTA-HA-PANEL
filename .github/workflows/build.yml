@@ -2,14 +2,22 @@
 # Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
 #
 # Builds the firmware for every variant with ESP-IDF 6.1 and packages the images the way
-# scripts/package_release.sh does for a release. It publishes nothing: the images are workflow
-# artifacts. Triggered by a pushed version tag, a push to main or by hand.
+# scripts/package_release.sh does for a release; the images are workflow artifacts. After a push to main the
+# `release` job publishes them as the GitHub release named by BETTAOS_RELEASE_VERSION in CMakeLists.txt: it creates the
+# tag on that commit, marks a version with a suffix (v0.9.2-rc1) as a pre-release and does nothing when the release
+# already exists, so a merge without a version change publishes nothing. On any other ref (or with dry_run) the job
+# stops before creating anything and prints what it would publish.
 name: build
 on:
   push:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Check the release step on this ref without creating a release (always on for other refs than main)
+        type: boolean
+        default: false
 permissions:
   contents: read
 
@@ -30,9 +38,9 @@ jobs:
           persist-credentials: false
       - name: ESP-Hosted C6 firmware
         run: |
-          curl -L --fail https://github.com/esphome/esp-hosted-firmware/releases/download/v3.0.10/network_adapter_esp32c6.bin \
-            -o release/network_adapter_esp32c6_3.0.10.bin
-          echo "c552957fad9f35cf31b0273099dd3b23dc5c388bb43884c6567756ab97fd8cce  release/network_adapter_esp32c6_3.0.10.bin" | sha256sum -c -
+          curl -L --fail https://github.com/esphome/esp-hosted-firmware/releases/download/v3.1.0/network_adapter_esp32c6.bin \
+            -o release/network_adapter_esp32c6_3.1.0.bin
+          echo "ea8d6ac5bacdf69a70ade4f466918ac996a6af5cad244d481d3ed4ebfb5a0079  release/network_adapter_esp32c6_3.1.0.bin" | sha256sum -c -
       - name: Build
         run: |
           . "$IDF_PATH/export.sh"
@@ -67,3 +75,50 @@ jobs:
         with:
           name: release-images
           path: dist/
+  release:
+    needs: checksums
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DRY_RUN: ${{ github.ref != 'refs/heads/main' || inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: release-images
+          path: dist
+      - name: Publish the release
+        run: |
+          version=$(sed -n 's/^set(BETTAOS_RELEASE_VERSION "\(.*\)")$/\1/p' CMakeLists.txt)
+          [ -n "$version" ] || { echo "no BETTAOS_RELEASE_VERSION in CMakeLists.txt"; exit 1; }
+          echo "Version $version, commit $GITHUB_SHA"
+          ls -l dist
+          (cd dist && sha256sum -c SHA256SUMS)
+          if gh release view "$version" >/dev/null 2>&1; then
+            echo "Release $version already exists: nothing to publish. Raise BETTAOS_RELEASE_VERSION for the next release."
+            exit 0
+          fi
+          if tag_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$version" --jq .object.sha 2>/dev/null) && [ "$tag_sha" != "$GITHUB_SHA" ]; then
+            echo "Tag $version exists on $tag_sha, not on this commit: refusing to publish."
+            exit 1
+          fi
+          flag=""
+          case "$version" in *-*) flag="--prerelease" ;; esac
+          scripts/release_body.sh "$version" "${GITHUB_SHA::7}" > notes.md
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Dry run, would publish $version ($flag) from $GITHUB_SHA with:"
+            ls dist/*.bin dist/SHA256SUMS
+            cat notes.md
+            exit 0
+          fi
+          gh release create "$version" --target "$GITHUB_SHA" --title "BETTA HA Panel $version" \
+            --notes-file notes.md --generate-notes $flag dist/*.bin dist/SHA256SUMS

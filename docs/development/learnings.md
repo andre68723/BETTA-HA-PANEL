@@ -25,10 +25,10 @@ hold the newer widgets. Current variants are in [Display devices](../choose-disp
 
 Host tests cover pure logic only; check UI and hardware on the device.
 
-- `GET /api/screenshot.bmp` (`scripts/screenshot.sh`) returns the LVGL snapshot, popups included; it is not a physical framebuffer readback.
+- `GET /api/screenshot.bmp` (`scripts/panel_screenshot.sh`) returns the LVGL snapshot, popups included; it is not a physical framebuffer readback.
 - `POST /api/navigate {"page":"<id>"}` switches the page without touch.
 - `POST /api/ui/tap {"widget":"<id>"}` or `{"close":true}` opens and closes a read-only popup (weather, energy
-  timeline, room, solar, car, graph; sensor, binary and contact with history). It needs the admin login and cannot
+  timeline, room, room air, solar, car, graph; sensor, binary and contact with history). It needs the admin login and cannot
   switch or unlock anything.
 - `GET /api/log` and `GET /api/version` give log, memory, task stacks (`?tasks=1`) and watchdog state.
 

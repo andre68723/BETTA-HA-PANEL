@@ -3,6 +3,7 @@
 #include "drivers/display_init.h"
 #include "esp_timer.h"
 #include "ui/text_font.h"
+#include "ui/ui_days_view.h"
 #include "ui/ui_memory.h"
 
 #define HOURLY_REFRESH_MS (15LL * 60 * 1000)
@@ -22,8 +23,9 @@ typedef struct {
 
 static void rerender(w_weather_tile_ctx_t *ctx)
 {
-    ui_fonts_tile_begin("weather_tile", lv_obj_get_width(ctx->card), lv_obj_get_height(ctx->card));
-    weather_hourly_render(ctx->card, ctx, ctx->available ? &ctx->last_values : NULL);
+    if (ctx->show_forecast) return; /* the strip is not showing: the data waits for the switch back to today */
+    ui_fonts_tile_begin(ctx->selector ? "weather_days" : "weather_tile", lv_obj_get_width(ctx->card), lv_obj_get_height(ctx->card));
+    weather_render(ctx->card, ctx, ctx->available ? &ctx->last_values : NULL, ctx->available);
     ctx->hourly_view_hour = (int64_t)time(NULL) / 3600;
     ui_fonts_tile_end();
 }
@@ -82,7 +84,7 @@ void weather_hourly_simulator_reply(uint32_t token, const cJSON *result)
 static void tick(lv_timer_t *timer)
 {
     w_weather_tile_ctx_t *ctx = lv_timer_get_user_data(timer);
-    if (!ctx->available || !lv_obj_is_visible(ctx->card)) return;
+    if (!ctx->available || ctx->show_forecast || !lv_obj_is_visible(ctx->card)) return;
     const int64_t now = esp_timer_get_time() / 1000;
     if (ctx->hourly_inflight && now - ctx->hourly_attempt_ms >= HOURLY_TIMEOUT_MS) {
         ctx->hourly_inflight = false;
@@ -110,6 +112,12 @@ void weather_hourly_start(w_weather_tile_ctx_t *ctx)
     ctx->hourly_next = s_registered;
     s_registered = ctx;
     ctx->hourly_timer = lv_timer_create(tick, 2000, ctx);
+}
+
+void weather_hourly_hide(w_weather_tile_ctx_t *ctx)
+{
+    if (ctx->hourly_strip) lv_obj_set_hidden(ctx->hourly_strip, true);
+    if (ctx->hourly_icon) lv_obj_set_hidden(ctx->hourly_icon, true);
 }
 
 void weather_hourly_stop(w_weather_tile_ctx_t *ctx)
@@ -158,8 +166,17 @@ bool weather_hourly_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weat
         lv_obj_set_event_bubble(ctx->hourly_strip, true);
         ctx->hourly_status = lv_label_create(ctx->hourly_strip);
     }
-    lv_obj_set_pos(ctx->hourly_strip, 0, y + head_h + 8);
     const int strip_h = height - y - head_h - 8;
+    const int hour_icon = strip_h >= meta_h * 2 + 64 ? 48 : 24;
+    const int col_w = meta_h * 3 > 76 ? meta_h * 3 : 76;
+    const int col_h = meta_h * 2 + hour_icon + 8;
+    /* A tile too short for one full column (time, icon, temperature) shows the current weather alone. */
+    if (strip_h < col_h + 8) {
+        weather_hourly_hide(ctx);
+        return false;
+    }
+    lv_obj_set_hidden(ctx->hourly_strip, false);
+    lv_obj_set_pos(ctx->hourly_strip, 0, y + head_h + 8);
     lv_obj_set_size(ctx->hourly_strip, width, strip_h > 1 ? strip_h : 1);
     const lv_image_dsc_t *image = values ? weather_icon_image(weather_icon_from_condition(
         weather_effective_condition_key(ctx, values), weather_is_night_now()), large) : NULL;
@@ -177,14 +194,21 @@ bool weather_hourly_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weat
     ui_text_record(ctx->condition_label, UI_TEXT_META, false);
     lv_obj_set_style_text_color(ctx->condition_label, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), 0);
     lv_obj_set_hidden(ctx->meta_label, true);
-    const int hour_icon = strip_h >= meta_h * 2 + 64 ? 48 : 24;
-    const int col_w = meta_h * 3 > 76 ? meta_h * 3 : 76;
-    const int col_h = meta_h * 2 + hour_icon + 8;
     unsigned visible = 0;
     const int64_t now = (int64_t)time(NULL);
+    /* The strip runs 24 hours from now, so it usually crosses midnight: the first column of a new calendar day gets a
+     * divider and its weekday. A first column that is already tomorrow is marked too. */
+    int shown_day = -1;
+    {
+        const time_t today = (time_t)now;
+        struct tm local_today;
+        localtime_r(&today, &local_today);
+        shown_day = local_today.tm_year * 400 + local_today.tm_yday;
+    }
     for (unsigned i = 0; i < HA_WEATHER_HOURS_MAX; i++) {
         if (!values || i >= ctx->hourly.count || ctx->hourly.hour[i].at < now) {
             if (ctx->hours[i].box) lv_obj_set_hidden(ctx->hours[i].box, true);
+            if (ctx->hours[i].sep) lv_obj_set_hidden(ctx->hours[i].sep, true);
             continue;
         }
         if (!ctx->hours[i].box) {
@@ -196,6 +220,12 @@ bool weather_hourly_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weat
             ctx->hours[i].time = lv_label_create(box);
             ctx->hours[i].icon = lv_image_create(box);
             ctx->hours[i].temp = lv_label_create(box);
+            ctx->hours[i].sep = lv_obj_create(ctx->hourly_strip);
+            lv_obj_remove_style_all(ctx->hours[i].sep);
+            lv_obj_set_scrollable(ctx->hours[i].sep, false);
+            lv_obj_set_clickable(ctx->hours[i].sep, false);
+            lv_obj_set_style_bg_color(ctx->hours[i].sep, lv_color_hex(APP_UI_COLOR_CARD_BORDER), 0);
+            lv_obj_set_style_bg_opa(ctx->hours[i].sep, LV_OPA_COVER, 0);
         }
         const ha_weather_hour_t *hour = &ctx->hourly.hour[i];
         lv_obj_set_hidden(ctx->hours[i].box, false);
@@ -204,7 +234,21 @@ bool weather_hourly_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weat
         const time_t at = (time_t)hour->at;
         struct tm local;
         localtime_r(&at, &local);
-        snprintf(value, sizeof(value), "%02d:%02d", local.tm_hour, local.tm_min);
+        const int day = local.tm_year * 400 + local.tm_yday;
+        const bool new_day = day != shown_day;
+        shown_day = day;
+        if (new_day) {
+            char weekday[8];
+            ui_days_weekday_short(local.tm_wday, weekday, sizeof(weekday));
+            snprintf(value, sizeof(value), "%s %02d:%02d", weekday, local.tm_hour, local.tm_min);
+        } else {
+            snprintf(value, sizeof(value), "%02d:%02d", local.tm_hour, local.tm_min);
+        }
+        lv_obj_set_hidden(ctx->hours[i].sep, !new_day || visible <= 1);
+        if (new_day && visible > 1) {
+            lv_obj_set_pos(ctx->hours[i].sep, (visible - 1) * (col_w + 8) - 4, 0);
+            lv_obj_set_size(ctx->hours[i].sep, 1, col_h);
+        }
         text(ctx->hours[i].time, UI_TEXT_META, col_w, 0, 0, value);
         lv_obj_set_style_text_align(ctx->hours[i].time, LV_TEXT_ALIGN_CENTER, 0);
         const bool night = !strcmp(hour->condition, "clear-night");

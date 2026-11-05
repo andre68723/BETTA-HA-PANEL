@@ -86,11 +86,14 @@ CONFIG_ESP_WIFI_SOFTAP_SUPPORT=n
 # esp_hosted SDIO RX + mbedTLS AES DMA require MALLOC_CAP_INTERNAL|DMA.
 CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=8192
 CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536
-# esp_hosted 3.0.10 corrupts the heap with its task stacks in PSRAM (esp-hosted-mcu#254, open): keep them internal.
+# esp_hosted 3.0.10 corrupted the heap with its task stacks in PSRAM (esp-hosted-mcu#254, fixed in 3.1.0, not yet re-measured here): keep them internal.
 # CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM is not set
+# esp_hosted 3.1.0 SDIO RX staging: one slot instead of two. Measured 2026-11-05 under tools/stress_test.py --duration 90:
+# panel4 +16-17 KB internal heap; paneljc and tab5 no change. No loss in editor-load or discovery latency on any of the three.
+CONFIG_ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS=1
 
 # PSRAM profile (Hex mode @ 200MHz).
-# Both the 4" (ESP32-P4-WIFI6-Touch-LCD-4B) and 10.1" (Waveshare Nano) boards
+# Both the 4" (ESP32-P4-WIFI6-Touch-LCD-4B) and 10.1" (Waveshare LCD-X) boards
 # ship with 16/32MB Hex PSRAM; ESP-Hosted + LVGL draw buffers cannot fit in
 # internal RAM on either variant. Keep this in the common defaults.
 CONFIG_SPIRAM=y

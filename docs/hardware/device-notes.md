@@ -20,7 +20,7 @@ the SDIO wiring is our own (`config/sdkconfig.defaults`).
 | --- | --- | --- |
 | Chip, flash, PSRAM | ESP32-P4NRW32, 32 MB NOR flash, 32 MB PSRAM in package | same; flash DIO 80 MHz, PSRAM hex 200 MHz |
 | Silicon revision | two profiles: `rev1_3` (v1.x, PSRAM 200 MHz) and `rev3_x` (v3.x, PSRAM 250 MHz, the repository's default); flash QIO | v1.x only (`REV_MIN_100`, `SELECTS_REV_LESS_V3`), like the tested unit (v1.3) |
-| BSP | `waveshare/esp32_p4_wifi6_touch_lcd_4b` 3.0.1 | 3.0.1 with adapter 0.7.3 (local manifest override) |
+| BSP | `waveshare/esp32_p4_wifi6_touch_lcd_4b` 3.0.1 | 3.0.1 with adapter 0.7.5 (local manifest override) |
 | Display | 720 x 720 IPS, 2-lane MIPI DSI, reset GPIO 27 | same (BSP: ST7703, 2 lanes at 480 Mbit/s) |
 | Backlight | PWM GPIO 26, boost enable `BL_EN` GPIO 33 | PWM on GPIO 26. GPIO 33 is not driven: `BL_EN` has a 100 kOhm pull-up to 5 V (R57), so the boost converter is always on |
 | Touch GT911: I2C SDA/SCL, reset, interrupt | 7/8, 23, interrupt only on test point TP2 | same, polled without interrupt; address 0x5D or 0x14 (see below) |
@@ -45,7 +45,7 @@ Open points from this check:
   BSP 3.0.1 ("GT911 address-probe fix"), `touch_init_panel4.c` now probes 0x5D, then 0x14, after pulsing the reset
   (GPIO 23), and logs `GT911 answers at 0x..`. The tested unit answers at 0x5D; the fallback was exercised on it
   once with the order reversed (0x14 failed, 0x5D found, touch initialized).
-- **BSP integration.** BSP 3.0.1 runs through the shared adapter 0.7.3 layer. The local BSP override changes
+- **BSP integration.** BSP 3.0.1 runs through the shared adapter 0.7.5 layer. The local BSP override changes
   only its adapter constraint. The profile selects the proper 720 × 720 option and retains two DPI framebuffers;
   the ST7703 constructor installs the IDF 6 DMA2D copy hook. BETTA explicitly retains
   GPIO23 touch reset despite the new BSP's NC macro. See [components and patches](../development/components.md).
@@ -82,12 +82,34 @@ The pin review on 2026-10-02 used the manufacturer's documentation: touch I2C on
 
 Device guide: [Waveshare 10.1-inch panel](panel10.md).
 
-The shared ESP32-P4/C6 configuration uses 360 MHz CPU and 200 MHz Hex PSRAM. It does not establish hardware operation or a memory baseline for panel10. Match the exact controller/display assembly and chip revision before flashing. No audio driver is enabled for this variant.
+The shared ESP32-P4/C6 configuration uses 360 MHz CPU and 200 MHz Hex PSRAM. It does not establish hardware operation or a memory baseline for panel10. Match the exact controller/display assembly and chip revision before flashing. The optional ES8311 chime path and OV5647 sensing are built; physical validation is pending.
 
-`display_init_panel10.c` and `touch_init_panel10.c` currently use
-`bsp/esp32_p4_nano.h`. The LCD-X controller assembly has different connector
-geometry from that Nano board. Correcting this guide's illustration and links
-does not validate its pin assignments, display initialization or touch mapping.
+`panel10` targets the ready-made **ESP32-P4-WIFI6-Touch-LCD-10.1**, not the
+Nano plus DSI kit. The variant manifest pins the LCD-X BSP 2.0.3 through
+`third_party/waveshare__esp32_p4_wifi6_touch_lcd_x`; provenance and local changes
+are recorded in its `BETTA.md`. The preset selects P4 Rev3.0+, RGB565 and two
+native 800 × 1280 DPI framebuffers, with the existing fixed 270-degree LVGL view.
+The shared PPA path retains this fork's driver fix and bounded completion waits;
+peer CPU-rotation trials do not qualify this configuration.
+
+BSP pin assignments: I2C SDA/SCL GPIO7/8, LCD reset GPIO27 and PWM backlight
+GPIO26 (5 kHz, 10-bit). GT9271 uses the GT911-family driver, probes 0x5D then
+0x14 and polls with touch reset/interrupt unassigned. A non-null BSP touch
+configuration leaves swap/mirror off; LVGL maps the display rotation.
+The ESP-Hosted pins remain the common SDIO profile (CLK18, CMD19, D0–D3 14–17,
+C6 reset54). Match these with the exact board revision during bring-up.
+
+Waveshare identifies the front camera as OV5647 (5 MP, MIPI-CSI), with ES8311,
+ES7210, two microphones and a speaker for audio. BETTA enables the ES8311 output driver and duty-cycled OV5647 light/presence
+sensing; runtime options start off. The ES7210 and microphones are not initialized.
+Two 800 × 640 RGB565 buffers need 2,048,000 PSRAM bytes once sensing opens the
+camera. SCCB shares the BSP I2C bus; the camera task stays on the DSI-init core.
+The original Espressif OV5647 driver has a local read-only statistics extension.
+Sources: [Waveshare LCD-X examples](https://github.com/waveshareteam/ESP32-P4-WIFI6-Touch-LCD-X),
+`06_I2SCodec` and `09_video_lcd_display`; exact versions/provenance are recorded
+in the BSP and OV5647 `BETTA.md` files.
+Display/touch, PWM brightness, Wi-Fi/HA, camera, chimes and OTA require local
+hardware verification.
 
 ## Guition JC8012P4A1 (`paneljc`) { #paneljc }
 

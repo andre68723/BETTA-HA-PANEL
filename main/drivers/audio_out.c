@@ -7,7 +7,7 @@
 #include "sdkconfig.h"
 #include "app_config.h"
 
-#if defined(CONFIG_APP_PANEL_VARIANT_4INCH_720) || (defined(CONFIG_APP_PANEL_VARIANT_10INCH_JC) && APP_PANELJC_AUDIO)
+#if defined(CONFIG_APP_PANEL_VARIANT_4INCH_720) || defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280) || (defined(CONFIG_APP_PANEL_VARIANT_10INCH_JC) && APP_PANELJC_AUDIO)
 #include "driver/i2s_std.h"
 #include "driver/i2c_master.h"
 #include "driver/gpio.h"
@@ -19,6 +19,9 @@
 #if defined(CONFIG_APP_PANEL_VARIANT_4INCH_720)
 #include "bsp/esp32_p4_wifi6_touch_lcd_4b.h"
 #define AUDIO_PA_GPIO GPIO_NUM_53
+#elif defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
+#include "bsp/esp32_p4_wifi6_touch_lcd_x.h"
+#define AUDIO_PA_GPIO BSP_POWER_AMP_IO
 #else
 #include "drivers/touch_init.h"
 #define AUDIO_PA_GPIO GPIO_NUM_20
@@ -29,7 +32,7 @@ bool audio_out_available(void) { return true; }
 esp_err_t audio_out_play(const int16_t *pcm, size_t samples, int volume, bool (*cancel)(void))
 {
     if (!pcm || !samples || volume < 0 || volume > 100) return ESP_ERR_INVALID_ARG;
-#if defined(CONFIG_APP_PANEL_VARIANT_4INCH_720)
+#if defined(CONFIG_APP_PANEL_VARIANT_4INCH_720) || defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
     i2c_master_bus_handle_t bus = bsp_i2c_get_handle();
 #else
     i2c_master_bus_handle_t bus = touch_paneljc_i2c_bus();
@@ -46,7 +49,14 @@ esp_err_t audio_out_play(const int16_t *pcm, size_t samples, int volume, bool (*
     const gpio_config_t pa = {.pin_bit_mask = 1ULL << AUDIO_PA_GPIO, .mode = GPIO_MODE_OUTPUT};
     if ((err = gpio_config(&pa)) != ESP_OK) return err;
     gpio_set_level(AUDIO_PA_GPIO, 0);
-    i2s_chan_config_t channel = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
+#if defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
+    const int i2s_port = CONFIG_BSP_I2S_NUM;
+    const i2c_port_t i2c_port = BSP_I2C_NUM;
+#else
+    const int i2s_port = I2S_NUM_0;
+    const i2c_port_t i2c_port = I2C_NUM_0;
+#endif
+    i2s_chan_config_t channel = I2S_CHANNEL_DEFAULT_CONFIG(i2s_port, I2S_ROLE_MASTER);
     channel.dma_desc_num = 4;
     channel.dma_frame_num = 256;
     channel.auto_clear = true;
@@ -54,17 +64,22 @@ esp_err_t audio_out_play(const int16_t *pcm, size_t samples, int volume, bool (*
     const i2s_std_config_t config = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(CHIME_SAMPLE_RATE),
         .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
+#if defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
+        .gpio_cfg = {.mclk = BSP_I2S_MCLK, .bclk = BSP_I2S_SCLK, .ws = BSP_I2S_LCLK,
+                     .dout = BSP_I2S_DOUT, .din = I2S_GPIO_UNUSED}
+#else
         .gpio_cfg = {.mclk = GPIO_NUM_13, .bclk = GPIO_NUM_12, .ws = GPIO_NUM_10,
                      .dout = GPIO_NUM_9, .din = I2S_GPIO_UNUSED}
+#endif
     };
     if ((err = i2s_channel_init_std_mode(tx, &config)) != ESP_OK) goto done;
     /* ES8311 needs MCLK before register initialization. The codec data interface
      * also expects a running channel when it stops TX to set the sample format. */
     if ((err = i2s_channel_enable(tx)) != ESP_OK) goto done;
     tx_enabled = true;
-    audio_codec_i2s_cfg_t data_config = {.port = I2S_NUM_0, .tx_handle = tx};
+    audio_codec_i2s_cfg_t data_config = {.port = i2s_port, .tx_handle = tx};
     audio_codec_i2c_cfg_t ctrl_config = {
-        .port = I2C_NUM_0, .addr = ES8311_CODEC_DEFAULT_ADDR, .bus_handle = bus
+        .port = i2c_port, .addr = ES8311_CODEC_DEFAULT_ADDR, .bus_handle = bus
     };
     data = audio_codec_new_i2s_data(&data_config);
     ctrl = audio_codec_new_i2c_ctrl(&ctrl_config);

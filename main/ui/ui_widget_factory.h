@@ -12,6 +12,7 @@
 #include "app_config.h"
 #include "ha/ha_model.h"
 #include "layout/bambu_printer_slots.h"
+#include "layout/room_air_slots.h"
 #include "layout/energy_timeline_colors.h"
 
 /* Entities beyond primary / secondary / tertiary: the room card list (7) and the car tile extras. */
@@ -71,7 +72,10 @@ typedef struct {
     int forecast_days; /* weather/solar: -1 legacy, 0 measured auto, 1..7 */
     bool align_forecast; /* solar: dated columns with Rest in the header */
     bool weather_hourly; /* weather_tile: optional real hourly forecast strip, default false */
-    bool show_precipitation; /* weather_3day: rain chance and amount, default true */
+    bool show_precipitation; /* weather tile days view: rain chance and amount, default true */
+    bool weather_selector; /* weather_tile: chips to switch between today (hours) and the forecast days, default false */
+    bool weather_days; /* weather_tile: starts in the forecast days view (weather_view "days"), default false */
+    bool show_icon; /* room_tile, air_quality_tile: a small icon before the name, default false */
     bool room_controls; /* room_tile: a control row (lights, switches, covers) when the card is large enough, default false */
     float gauge_min; /* gauge: bottom of the bar's range, default 0 */
     float gauge_max; /* gauge: top of the bar's range, default 100 */
@@ -103,6 +107,8 @@ typedef struct {
     char stock_delta[12];   /* stock_quotes: "percent" (default), "absolute" or "both" */
     bool stock_ticker;      /* stock_quotes: the symbol after the name, default false */
     bool stock_selector;    /* stock_quotes: period buttons on the chart tile, default true */
+    bool stock_previous;    /* stock_quotes: cards show the period's start price under the price, default false */
+    air_config_t air_config; /* air_quality_tile thresholds, copied into its private context */
     int x;
     int y;
     int w;
@@ -153,12 +159,15 @@ typedef struct {
     bool visible;
     void *ctx;
     lv_obj_t *obj;
+    char caps_type[24]; /* the type whose text caps apply when it differs from `type` (a weather tile that shows days) */
 } ui_widget_instance_t;
 
 /* False for tiles that are updated whenever their entity changes (hidden or not) and keep nothing
  * that depends on being on screen, so showing their page needs no state re-apply. */
 bool ui_widget_factory_needs_refresh_on_show(const char *type);
 
+/* The type whose text caps apply to a tile: a weather tile that shows days uses the forecast caps. */
+const char *ui_widget_factory_caps_type(const ui_widget_def_t *def);
 esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance);

@@ -49,6 +49,17 @@ void sim_weather_now_regression(void (*delay)(uint32_t))
     cJSON *reply = hourly_result(); weather_hourly_simulator_reply(token, reply); advance();
     CHECK(ctx->hourly.count == 24 && lv_obj_is_hidden(ctx->hourly_status));
     CHECK(!lv_obj_is_hidden(ctx->hours[0].box));
+    /* Midnight inside the strip: one divider before the first column of the new day, none before the first column. */
+    unsigned dividers = 0, expected = 0;
+    for (unsigned i = 0; i < ctx->hourly.count; i++) {
+        time_t at = (time_t)ctx->hourly.hour[i].at, before = i ? (time_t)ctx->hourly.hour[i - 1].at : at;
+        struct tm day, previous;
+        localtime_r(&at, &day); localtime_r(&before, &previous);
+        expected += i && day.tm_yday != previous.tm_yday;
+        dividers += ctx->hours[i].sep && !lv_obj_is_hidden(ctx->hours[i].sep);
+    }
+    CHECK(expected == 1 && dividers == expected);
+    CHECK(lv_obj_is_hidden(ctx->hours[0].sep));
     lv_obj_scroll_to_x(ctx->hourly_strip, 200, LV_ANIM_OFF); advance();
     CHECK(lv_obj_get_scroll_x(ctx->hourly_strip) > 0 && ctx->popup == NULL);
     /* Synchronous callback plus an error return must free a detail request once. */
@@ -88,6 +99,33 @@ void sim_weather_now_regression(void (*delay)(uint32_t))
     CHECK(ctx->popup != NULL);
     advance_clock(60100);
     CHECK(ctx->popup == NULL);
+    lv_obj_delete(widget.obj); advance();
+    /* The Today | Days switch: one tile, two views; the strip and its fetch rest while the days show. */
+    def.weather_hourly = true; def.weather_selector = true; def.h = 330; def.w = 630;
+    CHECK(ui_widget_factory_create(&def, lv_screen_active(), &widget) == ESP_OK);
+    ctx = widget.ctx;
+    strcpy(state.entity_id, def.entity_id); strcpy(state.state, "cloudy");
+    strcpy(state.attributes_json, "{\"temperature\":11,\"temperature_unit\":\"°C\"}");
+    ui_widget_factory_apply_state(&widget, &state);
+    reply = hourly_result(); weather_hourly_simulator_reply(ctx->hourly_token, reply); cJSON_Delete(reply); advance();
+    CHECK(ctx->selector && !ctx->show_forecast && ctx->chip[0] && ctx->chip[1]);
+    CHECK(!lv_obj_is_hidden(ctx->hourly_strip) && !lv_obj_is_hidden(ctx->chip[0]));
+    lv_obj_send_event(ctx->chip[1], LV_EVENT_CLICKED, NULL); advance();
+    CHECK(ctx->show_forecast && lv_obj_is_hidden(ctx->hourly_strip));
+    lv_obj_send_event(widget.obj, LV_EVENT_CLICKED, NULL); advance();
+    CHECK(ctx->popup == NULL); /* the days view opens a day's popup from its columns, not from the card */
+    lv_obj_send_event(ctx->chip[0], LV_EVENT_CLICKED, NULL); advance();
+    CHECK(!ctx->show_forecast && !lv_obj_is_hidden(ctx->hourly_strip));
+    lv_obj_send_event(widget.obj, LV_EVENT_CLICKED, NULL); advance();
+    CHECK(ctx->popup != NULL); close_popup(ctx);
+    lv_obj_delete(widget.obj); advance();
+    /* A tile too short for a full column shows the current weather alone, with the switch still there. */
+    def.h = 150; def.w = 300; /* below the minimum on purpose: no board has room for a column under the header */
+    CHECK(ui_widget_factory_create(&def, lv_screen_active(), &widget) == ESP_OK);
+    ctx = widget.ctx;
+    ui_widget_factory_apply_state(&widget, &state); advance();
+    CHECK(ctx->hourly_strip == NULL || lv_obj_is_hidden(ctx->hourly_strip));
+    CHECK(!lv_obj_is_hidden(ctx->chip[0]));
     lv_obj_delete(widget.obj); advance();
     printf("weather now: %u checks passed (hours, report, scroll, popup errors and late replies)\n", checks);
 }

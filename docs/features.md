@@ -55,7 +55,7 @@ It reads the sensors of the Parqet Companion integration. Tabs for Performance a
 ## Stocks and ETFs
 
 Follow up to eight Easy Stock quotes in one tile, as a list with the day's change or as small charts.
-A tap opens the details with the market state and a chart over 1D, 1W, 30D, YTD or 1Y; each chart names its source.
+A tap opens the details with the market state and a chart over 1D, 1W, 1M, YTD or 1Y; each chart names its source.
 
 **Set it up:** [Stocks & ETFs](widgets/stock_quotes.md) lists the integrations and where each period comes from.
 

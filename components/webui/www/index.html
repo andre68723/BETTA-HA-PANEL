@@ -156,12 +156,12 @@
               <button id="addGraphBtn" type="button">+ Graph</button>
               <button id="addCarWidgetBtn" type="button">+ Car</button>
               <button id="addEvccWallboxBtn" type="button">+ Wallbox</button>
+<button id="addRoomAirBtn" type="button">+ Air quality</button>
 <button id="addBambuPrinterBtn" type="button">+ Bambu printer</button>
               <button id="addEmptyTileBtn" type="button">+ Empty Tile</button>
               <button id="addLightTileBtn" type="button">+ Light Tile</button>
               <button id="addHeatingTileBtn" type="button">+ Heating Tile</button>
               <button id="addWeatherTileBtn" type="button">+ Weather</button>
-              <button id="addWeather3DayBtn" type="button">+ Weather Forecast</button>
               <button id="addSolarForecastBtn" type="button">+ Solar Forecast</button>
               <button id="addPriceForecastBtn" type="button">+ Energy Price Forecast</button>
               <button id="addParqetPortfolioBtn" type="button">+ Parqet Portfolio</button>
@@ -1053,6 +1053,10 @@
                       <input id="fShowName" type="checkbox" checked />
                       <span id="fShowNameLabel">Show name</span>
                     </label>
+                    <label class="row hidden" id="fShowIconRow">
+                      <input id="fShowIcon" type="checkbox" />
+                      <span id="fShowIconLabel">Icon before the name</span>
+                    </label>
                   <select id="fType" hidden>
                     <option value="sensor">sensor</option>
                     <option value="button">button</option>
@@ -1063,7 +1067,6 @@
                     <option value="light_tile">light_tile</option>
                     <option value="heating_tile">heating_tile</option>
                     <option value="weather_tile">weather_tile</option>
-                    <option value="weather_3day">weather_3day</option>
                     <option value="solar_forecast">solar_forecast</option>
                     <option value="energy_price_forecast">energy_price_forecast</option>
                     <option value="car_widget">car_widget</option>
@@ -1114,6 +1117,7 @@
                     </div>
                   </label>
                   <div id="optionalEntityControls" class="optional-entity-controls" hidden>
+                    <span id="optionalEntityCaption" class="optional-entity-caption">Add another function</span>
                     <select id="optionalEntityRole" aria-label="Optional function"></select>
                     <button id="optionalEntityAdd" class="btn small" type="button">Add assignment</button>
                   </div>
@@ -1381,6 +1385,18 @@
                     <datalist id="evccnumberOptions"></datalist>
                     <datalist id="evccsensorOptions"></datalist>
                     <datalist id="evccbinary_sensorOptions"></datalist>
+<div id="airSources" class="hidden"><label><span data-i18n="air.temperature">temperature</span><div class="entity-input-row"><input id="fAirTemperature" type="text" /><button type="button" class="btn small" data-inspector-entity-target="air_temperature">…</button></div></label>
+<label><span data-i18n="air.co2">co2</span><div class="entity-input-row"><input id="fAirCo2" type="text" /><button type="button" class="btn small" data-inspector-entity-target="air_co2">…</button></div></label>
+<label><span data-i18n="air.pm25">pm25</span><div class="entity-input-row"><input id="fAirPm25" type="text" /><button type="button" class="btn small" data-inspector-entity-target="air_pm25">…</button></div></label>
+<label><span data-i18n="air.voc">voc</span><div class="entity-input-row"><input id="fAirVoc" type="text" /><button type="button" class="btn small" data-inspector-entity-target="air_voc">…</button></div></label>
+ <label><input id="airOutdoorEnabled" type="checkbox" checked /><span data-i18n="air.outdoor_enabled">Use outdoor comparison</span></label>
+ <div id="airOutdoorFields">
+<label><span data-i18n="air.out_temperature">out_temperature</span><div class="entity-input-row"><input id="fAirOutTemperature" type="text" /><button type="button" class="btn small" data-inspector-entity-target="air_out_temperature">…</button></div></label>
+<label><span data-i18n="air.out_humidity">out_humidity</span><div class="entity-input-row"><input id="fAirOutHumidity" type="text" /><button type="button" class="btn small" data-inspector-entity-target="air_out_humidity">…</button></div></label>
+</div>
+<label><span data-i18n="air.window">window</span><div class="entity-input-row"><input id="fAirWindow" type="text" /><button type="button" class="btn small" data-inspector-entity-target="air_window">…</button></div></label>
+<label><span data-i18n="air.rating">rating</span><div class="entity-input-row"><input id="fAirRating" type="text" /><button type="button" class="btn small" data-inspector-entity-target="air_rating">…</button></div></label>
+<p id="airSourcesHint" class="meta" data-i18n="air.sources_hint">Sources</p></div>
                   <div id="bambuFields" class="hidden">
                     <label><span id="fBambuPrinterLabel">Printer</span>
                       <select id="fBambuPrinter"></select>
@@ -1714,14 +1730,13 @@
                       <select id="fStockView">
                         <option value="list" id="fStockViewList">List</option>
                         <option value="chart" id="fStockViewChart">Charts</option>
-                        <option value="grid" id="fStockViewGrid">Tiles</option>
                       </select>
                     </label>
                     <label><span id="fStockPeriodLabel">Period</span>
                       <select id="fStockPeriod">
                         <option value="1d" id="fStockPeriod1d">1 day</option>
                         <option value="1w" id="fStockPeriod1w">1 week</option>
-                        <option value="30d" id="fStockPeriod30d">30 days</option>
+                        <option value="30d" id="fStockPeriod30d">1 month</option>
                         <option value="ytd" id="fStockPeriodYtd">Year to date</option>
                         <option value="1y" id="fStockPeriod1y">1 year</option>
                       </select>
@@ -1736,6 +1751,14 @@
                     <label class="row">
                       <input id="fStockTicker" type="checkbox" />
                       <span id="fStockTickerLabel">Show the symbol</span>
+                    </label>
+                    <label class="row" id="fStockCardsRow">
+                      <input id="fStockCards" type="checkbox" />
+                      <span id="fStockCardsLabel">Show as cards</span>
+                    </label>
+                    <label class="row" id="fStockPreviousRow">
+                      <input id="fStockPrevious" type="checkbox" />
+                      <span id="fStockPreviousLabel">Show the start price</span>
                     </label>
                     <label class="row" id="fStockSelectorRow">
                       <input id="fStockSelector" type="checkbox" />
@@ -1814,14 +1837,25 @@
                     <div class="meta" id="fReadabilityHint"></div>
                   </div>
                   <div id="weatherNowOptions" class="slider-options hidden">
-                    <label class="row"><input id="fWeatherHourly" type="checkbox" /><span id="fWeatherHourlyLabel">Show hourly forecast</span></label>
-                    <div id="fWeatherHourlyHint" class="meta"></div>
-                  </div>
-                  <div id="weatherForecastOptions" class="slider-options hidden">
-                    <label class="row">
-                      <input id="fWeatherShowPrecip" type="checkbox" checked />
-                      <span id="fWeatherShowPrecipLabel">Show rain chance and amount</span>
+                    <label><span id="fWeatherViewLabel">View</span>
+                      <select id="fWeatherView">
+                        <option value="now">Today</option>
+                        <option value="days">Forecast days</option>
+                      </select>
                     </label>
+                    <div id="fWeatherViewHint" class="meta"></div>
+                    <label class="row" id="fWeatherHourlyRow"><input id="fWeatherHourly" type="checkbox" /><span id="fWeatherHourlyLabel">Show hourly forecast</span></label>
+                    <div id="fWeatherHourlyHint" class="meta"></div>
+                    <label id="fWeatherDaysRow"><span id="fWeatherDaysLabel">Visible days</span>
+                      <select id="fWeatherDays">
+                        <option value="">Default</option>
+                        <option value="0">Auto (readable columns)</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
+                      </select>
+                    </label>
+                    <label class="row" id="fWeatherTilePrecipRow"><input id="fWeatherTilePrecip" type="checkbox" checked /><span id="fWeatherTilePrecipLabel">Show rain chance and amount</span></label>
+                    <label class="row" id="fWeatherSelectorRow"><input id="fWeatherSelector" type="checkbox" /><span id="fWeatherSelectorLabel">Show selector buttons on the tile</span></label>
                   </div>
                   <div id="heatingOptions" class="slider-options hidden">
                     <label><span id="fHeatingStyleVariantLabel">Heating style</span>
@@ -1951,6 +1985,7 @@
           <button class="btn small add-tile-type" type="button" data-add-target="addCoverTileBtn">Cover</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addClimateTileBtn">Climate</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addEvccWallboxBtn">Wallbox</button>
+          <button class="btn small add-tile-type" type="button" data-add-target="addRoomAirBtn">Air quality</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addRoomTileBtn">Room</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addSceneTileBtn">Scene</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addSelectTileBtn">Select (options)</button>
@@ -1977,7 +2012,6 @@
         <div class="add-tile-group">
           <div class="add-tile-group-label">Info</div>
           <button class="btn small add-tile-type" type="button" data-add-target="addWeatherTileBtn">Weather</button>
-          <button class="btn small add-tile-type" type="button" data-add-target="addWeather3DayBtn">Weather Forecast</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addSolarForecastBtn">Solar Forecast</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addPriceForecastBtn">Energy Price Forecast</button>
           <button class="btn small add-tile-type" type="button" data-add-target="addEmptyTileBtn">Empty Tile</button>
@@ -2039,6 +2073,7 @@
   <script src="/js/brightness-test.js"></script>
   <script src="/js/update-check.js"></script>
   <script src="/js/entity-search-rules.js"></script>
+  <script src="/js/room-air.js"></script>
   <script src="/js/layout-model.js"></script>
   <script src="/js/pickers.js"></script>
   <script src="/js/readability.js"></script>

@@ -84,7 +84,6 @@ function bindUi() {
   el.addLightTileBtn.onclick = () => openLightEntityPicker("light_tile");
   el.addHeatingTileBtn.onclick = () => openLightEntityPicker("heating_tile");
   el.addWeatherTileBtn.onclick = () => openLightEntityPicker("weather_tile");
-  el.addWeather3DayBtn.onclick = () => openLightEntityPicker("weather_3day");
   if (el.addSolarForecastBtn) {
     el.addSolarForecastBtn.onclick = () => addWidget("solar_forecast");
   }
@@ -132,6 +131,7 @@ if (el.addBambuPrinterBtn) {
   if (el.addEnergyTimelineBtn) el.addEnergyTimelineBtn.onclick = () => openLightEntityPicker("energy_timeline");
   if (el.addPriceForecastBtn) el.addPriceForecastBtn.onclick = () => openLightEntityPicker("energy_price_forecast");
   if (el.addParqetPortfolioBtn) el.addParqetPortfolioBtn.onclick = () => openLightEntityPicker("parqet_portfolio");
+  if (el.addRoomAirBtn) el.addRoomAirBtn.onclick = () => openLightEntityPicker("air_quality_tile");
   if (el.addStockQuotesBtn) el.addStockQuotesBtn.onclick = () => openLightEntityPicker("stock_quotes");
   if (el.addDatetimeTileBtn) el.addDatetimeTileBtn.onclick = () => openLightEntityPicker("datetime_tile");
   if (el.addLockTileBtn) el.addLockTileBtn.onclick = () => openLightEntityPicker("lock_tile");
@@ -468,11 +468,16 @@ if (el.addBambuPrinterBtn) {
   bindInspectorAutoApply(el.fSolarForecastBarMax, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSolarForecastBarOrientation, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fWeatherHourly, ["change"], { softEntityValidation: true });
-  bindInspectorAutoApply(el.fWeatherShowPrecip, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fWeatherView, ["change"], { softEntityValidation: true });
+  for (const control of [el.fWeatherView, el.fWeatherSelector]) control?.addEventListener("change", () => updateWeatherViewRows(el.fWeatherView.value, el.fWeatherSelector.checked));
+  bindInspectorAutoApply(el.fWeatherDays, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fWeatherTilePrecip, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fWeatherSelector, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fRoomControls, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fForecastDays, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fAlignForecast, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fShowName, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fShowIcon, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSensorShowAge, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSensorFormat, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSensorUnit, ["change"], { softEntityValidation: true });
@@ -490,6 +495,9 @@ if (el.addBambuPrinterBtn) {
   bindInspectorAutoApply(el.fStockDelta, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fStockTicker, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fStockSelector, ["change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fStockCards, ["change"], { softEntityValidation: true });
+  el.fStockCards?.addEventListener("change", stockSyncSelectorRow);
+  bindInspectorAutoApply(el.fStockPrevious, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fParqetReturn, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fParqetSelector, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fParqetView, ["change"], { softEntityValidation: true });
@@ -541,6 +549,7 @@ if (el.addBambuPrinterBtn) {
   bindHaDiagnosticsBanner();
   initInspectorLayout();
   bindStockInspector();
+  bindAirInspector();
   bindSensorListInspector();
   bindOptionalEntities();
   if (el.followPageToggle) {

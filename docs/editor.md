@@ -92,7 +92,7 @@ press **Find loadpoints** again. Both optional headers need extra tile height; t
 when the selected header does not fit in the preview or on the panel.
 
 The widget list names each widget by its title (its kind and entity are in the tooltip); the search also finds
-the widget type and entity ID, such as `media_player`. Use the widget row's **⋯** menu to duplicate it or **Copy to page** / **Move to page**.
+the widget type and entity ID, such as `media_player`. Use the widget row's **⧉** button to duplicate it, or its **⋯** menu for **Copy to page** / **Move to page**.
 Choose another normal page; all entity bindings and options are retained. The destination is selected
 and the widget is placed in free space when available. Energy and Room overview pages have no editable widgets.
 
@@ -161,7 +161,7 @@ appears after the first periodic report. Samples older than three minutes or fro
 Expand **Memory details** for DMA memory, the last diagnostic error and the sample retained at the last
 connection incident. That incident is separate from the live reading and can belong to an earlier panel boot.
 Unavailable diagnostics do not prevent Wi-Fi from working. When the co-processor firmware has no memory monitor (the prebuilt
-ESP-Hosted 3.0.10 image), the whole **C6 Wi-Fi memory** row is hidden. C6 memory is separate from the
+ESP-Hosted 3.1.0 image), the whole **C6 Wi-Fi memory** row is hidden. C6 memory is separate from the
 panel's RAM and PSRAM; internal and DMA memory overlap and cannot be added together.
 
 If a crash report is stored, the editor shows a banner. Download the report under **Settings → Device** before

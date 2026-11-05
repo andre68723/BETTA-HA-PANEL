@@ -115,7 +115,7 @@ static void additional_dialogs(void)
     ui_fonts_set_user_step(original_step);
 
     memset(&def, 0, sizeof(def)); def.w = 600; def.h = 400;
-    strcpy(def.type, "weather_3day"); strcpy(def.entity_id, "weather.popup_test");
+    strcpy(def.type, "weather_tile"); def.weather_days = true; strcpy(def.entity_id, "weather.popup_test");
     strcpy(def.secondary_entity_id, "sensor.popup_report");
     CHECK(ui_widget_factory_create(&def, lv_screen_active(), &widget) == ESP_OK);
     ha_state_t state = {0}; strcpy(state.entity_id, def.entity_id); strcpy(state.state, "sunny");

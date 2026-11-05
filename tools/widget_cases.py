@@ -37,13 +37,13 @@ def expand(case):
     for key, value in case.items():
         if key in MACROS and value is True:
             fields.update({field: "{" + role + "}" for field, role in MACROS[key].items()})
-        elif key not in ("w", "h", "expect", "sim", "sim_state", "gallery", "bindings"):
+        elif key not in ("w", "h", "expect", "sim", "sim_state", "gallery", "bindings", "popup"):
             fields[key] = value
     return fields
 
 
 REPO = Path(__file__).resolve().parent.parent
-CASES = REPO / "tools/test_layout_cases.json"
+CASES = REPO / "tools/widget_catalog.json"
 
 
 def catalogue():
@@ -57,6 +57,7 @@ def widget_fields(case, entities):
 
 
 CONTROL_STATES = {
+    "camera_tile": ("unavailable", "unknown"),
     "button": ("on", "off", "unavailable"),
     "light_tile": ("off", "unavailable"),
     "heating_tile": ("off", "unavailable"),
@@ -84,6 +85,9 @@ def state_cases(suites):
             case = {key: copy.deepcopy(value) for key, value in base.items() if key not in ("expect", "sim_state")}
             case.update(title=f"{base['title']}: {state}", sim_state={"entity_id": state})
             result.append(case)
+    live_camera = next(case for case in originals if case["type"] == "camera_tile" and case.get("camera_live"))
+    for state in ("unavailable", "unknown"):
+        result.append(dict(live_camera, title=f"Live camera: {state}", expect=[], sim_state={"entity_id": state}))
     car = next(case for case in originals if case["type"] == "car_widget" and case.get("precond_entity_id"))
     for state in ("heat", "off", "unavailable"):
         result.append(dict(car, title=f"Vorklimatisierung: {state}", expect=[], sim_state={"precond_entity_id": state}))

@@ -16,6 +16,8 @@ function widgetSizeLimitsForCanvas(type) {
   };
 
   switch (type) {
+    case "air_quality_tile":
+      return { minW: 280, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "sensor":
       return { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "button":
@@ -36,7 +38,7 @@ function widgetSizeLimitsForCanvas(type) {
       return { minW: 220, minH: 200, maxW: 480, maxH: 480 };
     case "weather_tile":
       return { minW: 220, minH: 200, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
-    case "weather_3day":
+    case "weather_days":
       return { minW: 260, minH: 220, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "solar_forecast":
       return { minW: 260, minH: 220, maxW: 640, maxH: 480 };
@@ -105,6 +107,8 @@ function widgetSizeType(widget) {
   if (widget?.type === "binary_tile" && widget.display_mode === "door") return "contact_tile";
   // The flat horizontal gauge has its own limits (s_variant_sizes in widget_types.c).
   if (widget?.type === "gauge" && widget.style_variant === "horizontal") return "gauge_horizontal";
+  // A weather tile that can show the forecast days needs the room of the forecast tile (layout_validate.c).
+  if (widget?.type === "weather_tile" && (widget.weather_selector === true || widget.weather_view === "days")) return "weather_days";
   return widget?.type;
 }
 
@@ -314,7 +318,6 @@ const el = {
   lightEntityPickerRooms: document.getElementById("lightEntityPickerRooms"),
   addHeatingTileBtn: document.getElementById("addHeatingTileBtn"),
   addWeatherTileBtn: document.getElementById("addWeatherTileBtn"),
-  addWeather3DayBtn: document.getElementById("addWeather3DayBtn"),
   addSolarForecastBtn: document.getElementById("addSolarForecastBtn"),
   addCarWidgetBtn: document.getElementById("addCarWidgetBtn"),
   addBambuPrinterBtn: document.getElementById("addBambuPrinterBtn"),
@@ -324,6 +327,15 @@ const el = {
   addVacuumTileBtn: document.getElementById("addVacuumTileBtn"),
   addCoverTileBtn: document.getElementById("addCoverTileBtn"),
   addClimateTileBtn: document.getElementById("addClimateTileBtn"),
+  addRoomAirBtn: document.getElementById("addRoomAirBtn"),
+  fAirTemperature: document.getElementById("fAirTemperature"),
+  fAirCo2: document.getElementById("fAirCo2"),
+  fAirPm25: document.getElementById("fAirPm25"),
+  fAirVoc: document.getElementById("fAirVoc"),
+  fAirOutTemperature: document.getElementById("fAirOutTemperature"),
+  fAirOutHumidity: document.getElementById("fAirOutHumidity"),
+  fAirWindow: document.getElementById("fAirWindow"),
+  fAirRating: document.getElementById("fAirRating"),
   addRoomTileBtn: document.getElementById("addRoomTileBtn"),
   addSceneTileBtn: document.getElementById("addSceneTileBtn"),
   addSelectTileBtn: document.getElementById("addSelectTileBtn"),
@@ -360,6 +372,10 @@ const el = {
   fStockTicker: document.getElementById("fStockTicker"),
   fStockSelector: document.getElementById("fStockSelector"),
   fStockSelectorRow: document.getElementById("fStockSelectorRow"),
+  fStockCards: document.getElementById("fStockCards"),
+  fStockCardsRow: document.getElementById("fStockCardsRow"),
+  fStockPrevious: document.getElementById("fStockPrevious"),
+  fStockPreviousRow: document.getElementById("fStockPreviousRow"),
   fParqetDividendsLabel: document.getElementById("fParqetDividendsLabel"),
   fParqetReturn: document.getElementById("fParqetReturn"),
   fParqetReturnLabel: document.getElementById("fParqetReturnLabel"),
@@ -394,7 +410,7 @@ const el = {
   fVacuumBattery: document.getElementById("fVacuumBattery"),
   fBinaryDisplayMode: document.getElementById("fBinaryDisplayMode"),
   fBinaryDisplayModeLabel: document.getElementById("fBinaryDisplayModeLabel"),
-  ...Object.fromEntries(["optionalEntityControls", "optionalEntityRole", "optionalEntityAdd", "roomEntityList", "roomEntityAdd"].map(id => [id, document.getElementById(id)])),
+  ...Object.fromEntries(["optionalEntityControls", "optionalEntityCaption", "optionalEntityRole", "optionalEntityAdd", "roomEntityList", "roomEntityAdd"].map(id => [id, document.getElementById(id)])),
   fRoomEntities: document.getElementById("fRoomEntities"),
   fRoomEntitiesLabel: document.getElementById("fRoomEntitiesLabel"),
   fRoomEntitiesHint: document.getElementById("fRoomEntitiesHint"),
@@ -487,6 +503,9 @@ bambuFields: document.getElementById("bambuFields"),
   fCarTemp: document.getElementById("fCarTemp"),
   solarForecastStyleOptions: document.getElementById("solarForecastStyleOptions"),
   sensorOptions: document.getElementById("sensorOptions"),
+  fShowIcon: document.getElementById("fShowIcon"),
+  fShowIconRow: document.getElementById("fShowIconRow"),
+  fShowIconLabel: document.getElementById("fShowIconLabel"),
   fShowName: document.getElementById("fShowName"),
   fShowNameLabel: document.getElementById("fShowNameLabel"),
   ...Object.fromEntries(["fSensorView", "sensorListEntities", "sensorListAdd", ...Array.from({ length: 7 }, (_, i) => `fSensorList${i+1}`)].map(id => [id, document.getElementById(id)])),
@@ -501,8 +520,11 @@ bambuFields: document.getElementById("bambuFields"),
   fEntityClass: document.getElementById("fEntityClass"),
   weatherNowOptions: document.getElementById("weatherNowOptions"),
   fWeatherHourly: document.getElementById("fWeatherHourly"),
-  weatherForecastOptions: document.getElementById("weatherForecastOptions"),
-  fWeatherShowPrecip: document.getElementById("fWeatherShowPrecip"),
+  fWeatherView: document.getElementById("fWeatherView"),
+  fWeatherSelector: document.getElementById("fWeatherSelector"),
+  fWeatherSelectorRow: document.getElementById("fWeatherSelectorRow"),
+  fWeatherDays: document.getElementById("fWeatherDays"),
+  fWeatherTilePrecip: document.getElementById("fWeatherTilePrecip"),
   fForecastDays: document.getElementById("fForecastDays"),
   fAlignForecast: document.getElementById("fAlignForecast"),
   fSolarForecastTodayLabel: document.getElementById("fSolarForecastTodayLabel"),

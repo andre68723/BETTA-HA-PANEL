@@ -288,19 +288,21 @@
             "light.a"
           ],
           "room_controls": true,
+          "show_icon": true,
           "room_extra_mode": "humidity",
           "room_extra_entity_id": "sensor.room_temp"
         }
       ]
     },
     {
-      "id": "p_weather_3day",
-      "title": "weather_3day",
+      "id": "p_weather_days",
+      "title": "weather_days",
       "widgets": [
         {
-          "id": "w_weather_3day",
-          "type": "weather_3day",
-          "title": "weather_3day",
+          "id": "w_weather_days",
+          "type": "weather_tile",
+          "weather_view": "days",
+          "title": "weather_days",
           "rect": {
             "x": 20,
             "y": 20,
@@ -309,8 +311,7 @@
           },
           "entity_id": "weather.t",
           "forecast_days": 5,
-          "show_precipitation": false,
-          "align_forecast": true
+          "show_precipitation": false
         }
       ]
     },
@@ -329,6 +330,7 @@
             "h": 250
           },
           "entity_id": "sensor.rem",
+          "align_forecast": true,
           "forecast_today_entity_id": "sensor.a",
           "forecast_tomorrow_entity_id": "sensor.b",
           "forecast_day_3_entity_id": "sensor.c",
@@ -510,6 +512,8 @@
           "stock_period": "ytd",
           "stock_delta": "both",
           "stock_ticker": true,
+          "stock_cards": true,
+          "stock_previous": true,
           "stock_selector": false
         }
       ]
@@ -524,6 +528,8 @@
           "entity_id": "weather.home",
           "secondary_entity_id": "sensor.weather_report",
           "weather_hourly": true,
+          "weather_selector": true,
+          "weather_view": "days",
           "rect": {
             "x": 0,
             "y": 0,

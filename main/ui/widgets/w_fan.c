@@ -8,6 +8,7 @@
  */
 #include "ui/ui_widget_factory.h"
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,8 +33,9 @@
 #define FAN_MAX_PRESETS 3
 #define FAN_PRESET_LEN 24
 #define FAN_SPIN_PERIOD_MS 150
-#define FAN_BLADES 7
-#define FAN_BLADE_SPAN 26 /* degrees of one blade; the gap between blades is the rest of 360 / FAN_BLADES */
+#define FAN_BLADES 3
+#define FAN_BLADE_POINTS 7 /* a blade is a swept, thick polyline from the hub to the guard ring */
+#define FAN_BLADE_SWEEP 40 /* degrees a blade bends between hub and tip */
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
@@ -46,6 +48,8 @@ typedef struct {
     lv_obj_t *btn_plus;
     lv_obj_t *rotor;
     lv_obj_t *blades[FAN_BLADES];
+    lv_point_precise_t blade_points[FAN_BLADES][FAN_BLADE_POINTS];
+    lv_coord_t rotor_d;
     lv_obj_t *hub;
     lv_obj_t *step_btn[FAN_MAX_STEPS];
     lv_obj_t *osc_btn;
@@ -65,6 +69,8 @@ typedef struct {
     bool features_known;
     bool unavailable;
 } w_fan_ctx_t;
+
+static void fan_apply_blade_angles(w_fan_ctx_t *ctx);
 
 static void fan_call(w_fan_ctx_t *ctx, const char *service)
 {
@@ -314,10 +320,11 @@ static void fan_layout_large(w_fan_ctx_t *ctx, lv_coord_t w, lv_coord_t h)
     fan_show(ctx->rotor, true);
     const lv_coord_t bd = d - 16;
     for (int i = 0; i < FAN_BLADES; i++) {
-        lv_obj_set_size(ctx->blades[i], bd, bd);
-        lv_obj_set_pos(ctx->blades[i], 8 - 3, 8 - 3); /* the rotor border is 3 px */
-        lv_obj_set_style_arc_width(ctx->blades[i], bd / 2, LV_PART_INDICATOR);
+        lv_obj_set_pos(ctx->blades[i], 0, 0);
+        lv_obj_set_style_line_width(ctx->blades[i], bd / 3, LV_PART_MAIN);
     }
+    ctx->rotor_d = d;
+    fan_apply_blade_angles(ctx);
     lv_obj_set_size(ctx->hub, 18, 18);
     lv_obj_set_pos(ctx->hub, d / 2 - 9 - 3, d / 2 - 9 - 3);
 
@@ -353,10 +360,19 @@ static void fan_layout(w_fan_ctx_t *ctx)
     }
 }
 
+/* Blade i: points from 12 % to 78 % of the rotor radius, each further along the sweep. */
 static void fan_apply_blade_angles(w_fan_ctx_t *ctx)
 {
+    const float radius = (float)(ctx->rotor_d - 6) / 2.0f;
     for (int i = 0; i < FAN_BLADES; i++) {
-        lv_arc_set_rotation(ctx->blades[i], (ctx->spin_angle + i * (360 / FAN_BLADES)) % 360);
+        for (int k = 0; k < FAN_BLADE_POINTS; k++) {
+            const float t = (float)k / (FAN_BLADE_POINTS - 1);
+            const float rad = (ctx->spin_angle + i * (360 / FAN_BLADES) + FAN_BLADE_SWEEP * t) * 3.14159265f / 180.0f;
+            const float r = radius * (0.12f + 0.66f * t);
+            ctx->blade_points[i][k].x = (lv_value_precise_t)(radius + r * cosf(rad));
+            ctx->blade_points[i][k].y = (lv_value_precise_t)(radius + r * sinf(rad));
+        }
+        lv_line_set_points(ctx->blades[i], ctx->blade_points[i], FAN_BLADE_POINTS);
     }
 }
 
@@ -406,7 +422,7 @@ static void fan_render(w_fan_ctx_t *ctx)
     const lv_color_t blade = running ? lv_color_hex(APP_UI_COLOR_STATE_ON)
                                      : lv_color_mix(lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), 60);
     for (int i = 0; i < FAN_BLADES; i++) {
-        lv_obj_set_style_arc_color(ctx->blades[i], blade, LV_PART_INDICATOR);
+        lv_obj_set_style_line_color(ctx->blades[i], blade, LV_PART_MAIN);
     }
     lv_obj_set_style_bg_color(ctx->hub, blade, LV_PART_MAIN);
     lv_obj_set_style_border_color(ctx->rotor, running ? blade : lv_color_hex(APP_UI_COLOR_CARD_BORDER), LV_PART_MAIN);
@@ -455,16 +471,11 @@ static void fan_build_rotor(w_fan_ctx_t *ctx)
     lv_obj_set_style_bg_opa(ctx->rotor, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_add_event_cb(ctx->rotor, fan_power_cb, LV_EVENT_CLICKED, ctx);
     for (int i = 0; i < FAN_BLADES; i++) {
-        lv_obj_t *arc = lv_arc_create(ctx->rotor);
-        ctx->blades[i] = arc;
-        lv_obj_remove_style(arc, NULL, LV_PART_KNOB);
-        lv_obj_set_clickable(arc, false);
-        lv_arc_set_bg_angles(arc, 0, 360);
-        lv_arc_set_angles(arc, 0, FAN_BLADE_SPAN);
-        lv_arc_set_rotation(arc, i * (360 / FAN_BLADES));
-        lv_obj_set_style_arc_opa(arc, LV_OPA_TRANSP, LV_PART_MAIN);
-        lv_obj_set_style_arc_rounded(arc, false, LV_PART_INDICATOR);
-        lv_obj_set_style_arc_opa(arc, LV_OPA_80, LV_PART_INDICATOR);
+        lv_obj_t *line = lv_line_create(ctx->rotor);
+        ctx->blades[i] = line;
+        lv_obj_set_clickable(line, false);
+        lv_obj_set_style_line_rounded(line, true, LV_PART_MAIN);
+        lv_obj_set_style_line_opa(line, LV_OPA_80, LV_PART_MAIN);
     }
     ctx->hub = lv_obj_create(ctx->rotor);
     lv_obj_remove_style_all(ctx->hub);

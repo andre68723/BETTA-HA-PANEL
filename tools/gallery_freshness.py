@@ -27,7 +27,7 @@ def source_files():
                     "tests/simulator/CMakeLists.txt", "tests/simulator/stubs/**/*"):
         files.update(p.relative_to(REPO).as_posix() for p in REPO.glob(pattern) if p.is_file())
     files.update(["main/ha/ha_evcc_sessions.h", "main/layout/evcc_slots.h", "tests/simulator/gallery_data.json", "tests/simulator/wallbox_disconnected.json", "tests/simulator/wallbox_sessions.json", "tools/gallery_content.py",
-                  "tools/generate_simulator_gallery.py", "tools/widget_cases.py", "tools/test_layout_cases.json", "tools/ui_styles.py", "main/layout/widget_types.c",
+                  "tools/generate_simulator_gallery.py", "tools/widget_cases.py", "tools/widget_catalog.json", "tools/ui_styles.py", "main/layout/widget_types.c",
                   "main/settings/i18n_store.c"])
     return sorted(f for f in files if (REPO / f).is_file())
 

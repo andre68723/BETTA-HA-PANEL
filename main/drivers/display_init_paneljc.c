@@ -68,6 +68,7 @@
 #include "esp_ldo_regulator.h"
 #include "esp_log.h"
 #include "drivers/display_port.h"
+#include "drivers/display_timing.h"
 #include "lvgl.h"
 
 #include "app_config.h"
@@ -740,8 +741,16 @@ esp_err_t display_init(void)
 }
 
 bool display_is_ready(void)            { return s_display_ready; }
+#if !CONFIG_APP_PANELJC_PANEL_V2
+bool display_lock(uint32_t timeout_ms)
+{
+    return display_timing_lock(timeout_ms, (uintptr_t)__builtin_return_address(0));
+}
+void display_unlock(void) { display_timing_unlock(); }
+#else
 bool display_lock(uint32_t timeout_ms) { return display_port_lock(timeout_ms); }
-void display_unlock(void)              { display_port_unlock(); }
+void display_unlock(void) { display_port_unlock(); }
+#endif
 
 /* ESP-BSP API shim: api_settings.c / api_ota.c call this before destructive actions */
 esp_err_t bsp_display_backlight_off(void)

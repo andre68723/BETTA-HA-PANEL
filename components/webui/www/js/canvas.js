@@ -70,7 +70,7 @@ function renderEntityOptions() {
     el.fSecondaryEntityLabel.textContent = t(secondaryConfig.labelKey, {}, secondaryConfig.labelFallback);
   }
   if (el.weatherReportHint) {
-    el.weatherReportHint.classList.toggle("hidden", !["weather_tile", "weather_3day"].includes(inspectorType));
+    el.weatherReportHint.classList.toggle("hidden", inspectorType !== "weather_tile");
     el.weatherReportHint.textContent = t("layout.inspector.weather_report_hint");
   }
   if (el.sonosFavoritesHint) {
@@ -172,7 +172,7 @@ function renderPages() {
     const label = document.createElement("span");
     const badge = pageIconEmoji(page);
     label.textContent = `${badge ? badge + " " : ""}${page.title || page.id}`;
-    label.title = `[${page.id}] ${isEnergyPage(page) ? "energy" : (isHousePage(page) ? "house" : "page")}`;
+    label.title = `[${page.id}] ${t(isEnergyPage(page) ? "layout.pages.kind_energy" : (isHousePage(page) ? "layout.pages.kind_house" : "layout.pages.kind_page"))}`;
     label.className = "list-item-label";
     li.appendChild(label);
     li.onclick = () => {
@@ -285,6 +285,7 @@ function renderPagesMini() {
 // Maps a widget's `type` value to the i18n key of its "+ <Name>" Add-menu label (the only place
 // each type already has a translated display name), used to build the inspector's live heading.
 const WIDGET_TYPE_LABEL_KEYS = {
+  air_quality_tile: "layout.widgets.add_room_air",
   sensor: "layout.widgets.add_sensor",
   button: "layout.widgets.add_button",
   slider: "layout.widgets.add_slider",
@@ -294,7 +295,6 @@ const WIDGET_TYPE_LABEL_KEYS = {
   light_tile: "layout.widgets.add_light_tile",
   heating_tile: "layout.widgets.add_heating_tile",
   weather_tile: "layout.widgets.add_weather_tile",
-  weather_3day: "layout.widgets.add_weather_3day",
   solar_forecast: "layout.widgets.add_solar_forecast",
   car_widget: "layout.widgets.add_car",
   bambu_printer: "layout.widgets.add_bambu_printer",
@@ -461,7 +461,7 @@ function renderWidgets() {
 
   const energyPage = isFixedPage(page);
   const addButtons = [
-    el.addSensorBtn,
+    el.addRoomAirBtn, el.addSensorBtn,
     el.addButtonBtn,
     el.addSliderBtn,
     el.addGraphBtn,
@@ -469,7 +469,6 @@ function renderWidgets() {
     el.addLightTileBtn,
     el.addHeatingTileBtn,
     el.addWeatherTileBtn,
-    el.addWeather3DayBtn,
     el.addSolarForecastBtn,
     el.addPriceForecastBtn,
     el.addCarWidgetBtn,
@@ -546,6 +545,17 @@ function renderWidgets() {
       event.preventDefault();
       openWidgetActions(page.id, widget.id, actionsBtn, { x: event.clientX, y: event.clientY });
     };
+    const dupBtn = document.createElement("button");
+    dupBtn.type = "button";
+    dupBtn.className = "row-icon-btn";
+    dupBtn.title = t("layout.widgets.duplicate");
+    dupBtn.textContent = "⧉";
+    dupBtn.setAttribute("aria-label", t("layout.widgets.duplicate"));
+    dupBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      duplicateWidget(widget.id);
+    };
+    actions.appendChild(dupBtn);
     actions.appendChild(actionsBtn);
     const delBtn = document.createElement("button");
     delBtn.type = "button";
@@ -568,6 +578,21 @@ function renderWidgets() {
 }
 
 // The list names a widget by its title, or by its kind when it has none; the search still matches type and entity ID.
+// The rows under the weather view choice: hours belong to today, days and rain to the days, the start view to the switch.
+function updateWeatherViewRows(view, selector) {
+  // A row that does not apply to the chosen view stays in place, greyed out and with its value kept.
+  const grey = (rowId, inputId, off) => {
+    document.getElementById(rowId)?.classList.toggle("is-inactive", off);
+    const input = document.getElementById(inputId);
+    if (input) input.disabled = off;
+  };
+  const hours = view === "now" || selector, days = view === "days" || selector; // the buttons make both views reachable
+  grey("fWeatherHourlyRow", "fWeatherHourly", !hours);
+  document.getElementById("fWeatherHourlyHint")?.classList.toggle("is-inactive", !hours);
+  grey("fWeatherDaysRow", "fWeatherDays", !days);
+  grey("fWeatherTilePrecipRow", "fWeatherTilePrecip", !days);
+}
+
 function widgetDisplayLabel(widget) {
   return (widget.title || "").trim() || widgetTypeLabel(widget.type);
 }
@@ -815,26 +840,6 @@ function renderCanvas() {
     const previewState = isEmptyTile ? "design" : (editor.states.get(widget.entity_id) || "unavailable");
     box.classList.toggle("matte-on", ["on", "open", "playing", "home"].includes(String(previewState).toLowerCase()));
     let extraHint = "";
-    if (widget.type === "weather_3day") {
-      /* Mirrors the firmware layout in w_weather_tile.c:
-       *   ROWS_TOP=150, BOTTOM_PAD=12, ROW_HEIGHT=44, ROW_GAP=4
-       *   visible rows = clamp(floor((h-162+4)/48), 2, 6)
-       *   forecast days = visible rows - 1 (the "Now" row).
-       * Keep these constants in sync when the tile layout changes. */
-      const h = Number(widget.rect && widget.rect.h) || 0;
-      const rowsTop = 150;
-      const rowHeight = 44;
-      const rowGap = 4;
-      const avail = h - rowsTop - 12;
-      let rows = 2;
-      if (avail > rowHeight) {
-        rows = Math.floor((avail + rowGap) / (rowHeight + rowGap));
-      }
-      if (rows < 2) rows = 2;
-      if (rows > 6) rows = 6;
-      const days = rows - 1;
-      extraHint = `<div class="w-hint">forecast days ${days}/5</div>`;
-    }
     if (widget.type === "solar_forecast") {
       box.innerHTML = solarPreviewMarkup(widget);
     } else if (widget.type === "car_widget") {
@@ -994,12 +999,6 @@ function renderInspector() {
     if (el.fGaugeColorHigh) el.fGaugeColorHigh.value = "#ef4444";
     if (el.fGaugeTargetColor) el.fGaugeTargetColor.value = "#4fcb7e";
     updateGaugeColorModeVisibility();
-    if (el.weatherForecastOptions) {
-      el.weatherForecastOptions.classList.add("hidden");
-    }
-    if (el.fWeatherShowPrecip) {
-      el.fWeatherShowPrecip.checked = true;
-    }
     updateStyleGroupVisibility();
     if (el.fSolarForecastBarOrientation) {
       el.fSolarForecastBarOrientation.value = DEFAULT_SOLAR_FORECAST_BAR_ORIENTATION;
@@ -1032,6 +1031,7 @@ function renderInspector() {
   if (el.fSolarForecastDay5) el.fSolarForecastDay5.value = widget.forecast_day_5_entity_id || "";
   if (el.fSolarForecastDay6) el.fSolarForecastDay6.value = widget.forecast_day_6_entity_id || "";
   if (el.fSolarForecastDay7) el.fSolarForecastDay7.value = widget.forecast_day_7_entity_id || "";
+  airLoadInspector(widget);
   bambuLoadInspector(widget); evccLoadInspector(widget); stockLoadInspector(widget); sensorListLoadInspector(widget);
   if (el.fCarPrecond) el.fCarPrecond.value = widget.precond_entity_id || "";
   if (el.fCarLock) el.fCarLock.value = widget.lock_entity_id || "";
@@ -1152,6 +1152,10 @@ function renderInspector() {
     el.fShowName.checked = widgetShowsName(widget);
     el.fShowName.disabled = !widgetSupportsName(widget.type);
   }
+  // The optional icon before the name exists on the room cards only (Room and Room air), off by default.
+  const iconTypes = ["room_tile", "air_quality_tile"];
+  if (el.fShowIconRow) el.fShowIconRow.classList.toggle("hidden", !iconTypes.includes(widget.type));
+  if (el.fShowIcon) el.fShowIcon.checked = iconTypes.includes(widget.type) && widget.show_icon === true;
   if (el.fSensorShowAge) {
     el.fSensorShowAge.checked = widget.type !== "sensor" || widget.sensor_show_age !== false;
   }
@@ -1162,12 +1166,14 @@ function renderInspector() {
   updateGaugeBarStyleVisibility();
   if (el.weatherNowOptions) el.weatherNowOptions.classList.toggle("hidden", widget.type !== "weather_tile");
   if (el.fWeatherHourly) el.fWeatherHourly.checked = widget.type === "weather_tile" && widget.weather_hourly === true;
-  if (el.weatherForecastOptions) {
-    el.weatherForecastOptions.classList.toggle("hidden", widget.type !== "weather_3day");
-  }
-  if (el.fWeatherShowPrecip) {
-    el.fWeatherShowPrecip.checked = widget.type !== "weather_3day" || widget.show_precipitation !== false;
-  }
+  // One view choice drives the rows below it: hours only while today shows, days and rain only while the days can show.
+  const weatherTile = widget.type === "weather_tile";
+  const weatherView = widget.weather_view === "days" ? "days" : "now";
+  if (el.fWeatherView) el.fWeatherView.value = weatherTile ? weatherView : "now";
+  if (el.fWeatherSelector) el.fWeatherSelector.checked = weatherTile && widget.weather_selector === true;
+  if (el.fWeatherDays) el.fWeatherDays.value = weatherTile && Number.isInteger(widget.forecast_days) ? String(widget.forecast_days) : "";
+  if (el.fWeatherTilePrecip) el.fWeatherTilePrecip.checked = !weatherTile || widget.show_precipitation !== false;
+  updateWeatherViewRows(weatherView, widget.weather_selector === true);
   renderReadabilityInspector(widget);
   updateStyleGroupVisibility();
   if (isButton) {
@@ -1837,7 +1843,7 @@ function addWidget(type, options = {}) {
       ? DEFAULT_SOLCAST_ENTITIES.remaining
       : pickDefaultEntityForWidgetType(type, sliderDomain);
   const secondaryEntityId = type === "heating_tile" ? pickDefaultSecondaryEntity("heating_tile", "sensor") : "";
-  const defaultW = type === "weather_3day" ? 360
+  const defaultW = type === "air_quality_tile" ? 360
       : type === "solar_forecast" ? 460
       : type === "car_widget" ? 280
       : type === "wallbox_evcc" ? 360
@@ -1860,7 +1866,7 @@ function addWidget(type, options = {}) {
       : type === "vacuum_tile" ? 360
       : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 300
       : 220;
-  const defaultH = type === "weather_3day" ? 260
+  const defaultH = type === "air_quality_tile" ? 240
       : type === "solar_forecast" ? 250
       : type === "car_widget" ? 340
       : type === "wallbox_evcc" ? 300
@@ -2082,6 +2088,7 @@ function applyInspector(options = {}) {
     if (value) widget[key] = value;
     else delete widget[key];
   }
+  if (!airSaveInspector(widget, widgetType)) return false;
   bambuSaveInspector(widget, widgetType);
   stockSaveInspector(widget, widgetType);
   sensorListSaveInspector(widget, widgetType);
@@ -2137,19 +2144,31 @@ function applyInspector(options = {}) {
     delete widget.room_extra_mode;
     delete widget.room_extra_entity_id;
   }
-  if (widgetType === "weather_3day" && el.fWeatherShowPrecip && !el.fWeatherShowPrecip.checked) {
+  const weatherViewChoice = widgetType === "weather_tile" ? el.fWeatherView?.value || "now" : "now";
+  const weatherButtons = widgetType === "weather_tile" && el.fWeatherSelector?.checked === true;
+  // The greyed rows keep their values: the panel ignores a hours or days option its view never shows.
+  const precipBox = el.fWeatherTilePrecip;
+  if (widgetType === "weather_tile" && precipBox && !precipBox.checked) {
     widget.show_precipitation = false;
   } else {
     delete widget.show_precipitation; // default: shown
   }
   if (widgetType === "weather_tile" && el.fWeatherHourly?.checked) widget.weather_hourly = true;
   else delete widget.weather_hourly;
+  if (weatherButtons) widget.weather_selector = true;
+  else delete widget.weather_selector;
+  if (widgetType === "weather_tile" && weatherViewChoice === "days") widget.weather_view = "days";
+  else delete widget.weather_view;
+  if (widgetType === "weather_tile" && el.fWeatherDays?.value !== "") widget.forecast_days = clamp(Number(el.fWeatherDays.value), 0, 7);
+  else if (widgetType === "weather_tile") delete widget.forecast_days;
   saveReadabilityFields(widget);
   if (widgetSupportsName(widgetType) && el.fShowName && el.fShowName.checked !== widgetNameDefault(widgetType)) {
     widget.show_name = el.fShowName.checked; // only a deviation from the type's default is stored
   } else {
     delete widget.show_name;
   }
+  if (["room_tile", "air_quality_tile"].includes(widgetType) && el.fShowIcon?.checked) widget.show_icon = true;
+  else delete widget.show_icon; // default: off
   delete widget.sensor_show_label;
   if (widgetType === "camera_tile" && el.fCameraLive?.checked) widget.camera_live = true;
   else delete widget.camera_live; // off by default

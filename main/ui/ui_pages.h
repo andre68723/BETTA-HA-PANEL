@@ -22,8 +22,8 @@ typedef struct {
 void ui_pages_init(void);
 void ui_pages_reset(void);
 lv_obj_t *ui_pages_add(const char *page_id, const char *title);
-/* Nav icon of a page: a key (room, floorplan, house, energy, dashboard, bed, weather, music, climate, sofa, tv,
- * garage, light), "none" or "" for automatic (the first page gets the room icon). */
+/* Nav icon of a page: a key (room, floorplan, house, energy, dashboard, bed, weather, music, climate, humidity, air,
+ * sofa, tv, garage, light), "none" or "" for automatic (the first page gets the room icon). */
 void ui_pages_set_icon(const char *page_id, const char *icon_key);
 bool ui_pages_show(const char *page_id);
 bool ui_pages_show_index(uint16_t index);

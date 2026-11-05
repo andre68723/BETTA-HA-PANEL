@@ -130,6 +130,7 @@ static bool gauge_parse_hex_color(const char *text, lv_color_t *out)
 #define GAUGE_SEGMENT_MIN_H 4
 
 typedef struct {
+    char name[APP_MAX_NAME_LEN]; /* the configured title: the label may already end in dots */
     lv_obj_t *card;
     lv_obj_t *title_label;
     lv_obj_t *value_label;
@@ -698,6 +699,10 @@ static void gauge_apply_layout(w_gauge_ctx_t *ctx)
     ui_text_compact(ctx->value_label, value_font == ui_font_role(UI_TEXT_META));
     ui_text_set(ctx->title_label, UI_TEXT_LABEL, false);
     if (ctx->style == GAUGE_STYLE_LINEAR && content_h < 100) lv_obj_set_style_text_font(ctx->title_label, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
+    if (ctx->style == GAUGE_STYLE_LINEAR) { /* a narrow column: a smaller font before dots */
+        const lv_font_t *title_font = lv_obj_get_style_text_font(ctx->title_label, LV_PART_MAIN);
+        lv_obj_set_style_text_font(ctx->title_label, ui_text_fit(ctx->name, title_font, content_w, title_font->line_height), LV_PART_MAIN);
+    }
     lv_obj_set_height(ctx->title_label, lv_obj_get_style_text_font(ctx->title_label, LV_PART_MAIN)->line_height);
 #endif
     lv_obj_set_style_text_align(ctx->title_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
@@ -812,7 +817,8 @@ esp_err_t w_gauge_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     ctx->unavailable = false;
 
     lv_obj_t *title = ui_widget_name_create(card, !def->hide_name);
-    lv_label_set_text(title, def->title[0] ? def->title : def->id);
+    snprintf(ctx->name, sizeof(ctx->name), "%s", def->title[0] ? def->title : def->id);
+    lv_label_set_text(title, ctx->name);
     lv_obj_set_style_text_color(title, theme_default_color_text_muted(), LV_PART_MAIN);
     lv_obj_set_style_text_font(title, ui_font_role(UI_TEXT_META), LV_PART_MAIN);
     lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);

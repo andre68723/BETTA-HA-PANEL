@@ -2,11 +2,16 @@
 # Copyright (c) 2026 Cpt_Kirk
 # Modified 2026 by andre68723 in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
 #
-# Manifest for the 10.1" 1280x800 panel variant (Waveshare ESP32-P4 Nano).
+# Manifest for the 10.1" 1280x800 panel variant (Waveshare ESP32-P4-WIFI6-Touch-LCD-10.1, LCD-X).
 # Selected automatically by the top-level CMakeLists.txt based on the active
 # SDKCONFIG_DEFAULTS overlay. Do NOT edit main/idf_component.yml directly --
 # it is regenerated from this file on every configure.
 dependencies:
+  # OV5647 ambient sensing; keep the shared camera core/ISP compatibility line.
+  espressif/esp_video:
+    version: "2.3.0"
+    rules:
+      - if: "target in [esp32p4]"
   # lvgl, esp_lcd_touch, littlefs, esp_websocket_client, mqtt and cjson are pinned to an exact
   # version (not a range or "*") across every variant's manifest. They used to resolve independently
   # per variant, and an unconstrained package can resolve to a different version purely because of
@@ -19,11 +24,12 @@ dependencies:
     rules:
       - if: "target in [esp32p4]"
   espressif/esp_lvgl_adapter:
-    version: "0.7.3"
+    version: "0.7.5"
   lvgl/lvgl:
     version: "9.6.0~1"
-  waveshare/esp32_p4_nano:
-    version: "^1.2.0"
+  waveshare/esp32_p4_wifi6_touch_lcd_x:
+    version: "2.0.3"
+    override_path: "../third_party/waveshare__esp32_p4_wifi6_touch_lcd_x"
     rules:
       - if: "target in [esp32p4]"
   espressif/esp_lcd_touch:
@@ -33,7 +39,7 @@ dependencies:
   joltwallet/littlefs:
     version: "1.23.1"
   espressif/esp_hosted:
-    version: "3.0.10"
+    version: "3.1.0"
     rules:
       - if: "target in [esp32p4]"
   espressif/esp_websocket_client:
@@ -48,7 +54,7 @@ dependencies:
     rules:
       - if: "idf_version >=6.0"
   # ESP-IDF 6.0 removed the built-in "usb" component (used transitively by
-  # the waveshare/esp32_p4_nano BSP); pull in the managed replacement
+  # the Waveshare LCD-X BSP); pull in the managed replacement
   # explicitly so that transitive requirement resolves.
   espressif/usb:
     version: "*"

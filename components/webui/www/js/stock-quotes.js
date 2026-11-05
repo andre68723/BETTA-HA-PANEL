@@ -122,7 +122,10 @@ function stockLoadInspector(widget) {
   STOCK_FIELDS.forEach((key, index) => {
     if (el[key]) el[key].value = typeof more[index] === "string" ? more[index] : "";
   });
-  if (el.fStockView) el.fStockView.value = isStock && ["chart", "grid"].includes(widget.stock_view) ? widget.stock_view : "list";
+  // The former Tiles view ("grid") reads as Charts shown as cards.
+  if (el.fStockView) el.fStockView.value = isStock && ["chart", "grid"].includes(widget.stock_view) ? "chart" : "list";
+  if (el.fStockCards) el.fStockCards.checked = isStock && (widget.stock_view === "grid" || widget.stock_cards === true);
+  if (el.fStockPrevious) el.fStockPrevious.checked = isStock && widget.stock_previous === true;
   if (el.fStockPeriod) el.fStockPeriod.value = isStock && STOCK_PERIODS.includes(widget.stock_period) ? widget.stock_period : "30d";
   if (el.fStockDelta) el.fStockDelta.value = isStock && ["absolute", "both"].includes(widget.stock_delta) ? widget.stock_delta : "percent";
   if (el.fStockTicker) el.fStockTicker.checked = isStock && widget.stock_ticker === true;
@@ -131,14 +134,18 @@ function stockLoadInspector(widget) {
   stockRefreshRows();
 }
 
-// The period buttons exist only in the chart and tile views; the saved choice is kept while the list view hides the control.
+// The period buttons, the cards switch and the start price exist only in the chart view (the start price only on cards); the saved
+// choices are kept while the list view or the rows hide the controls.
 function stockSyncSelectorRow() {
-  if (el.fStockSelectorRow) el.fStockSelectorRow.hidden = !["chart", "grid"].includes(el.fStockView?.value);
+  const chart = el.fStockView?.value === "chart";
+  if (el.fStockSelectorRow) el.fStockSelectorRow.hidden = !chart;
+  if (el.fStockCardsRow) el.fStockCardsRow.hidden = !chart;
+  if (el.fStockPreviousRow) el.fStockPreviousRow.hidden = !chart || !el.fStockCards?.checked;
 }
 
 // Writes the quotes in order without gaps and the options that differ from the defaults; another type keeps none.
 function stockSaveInspector(widget, widgetType) {
-  for (const key of ["stock_entities", "stock_view", "stock_period", "stock_delta", "stock_ticker", "stock_selector"]) delete widget[key];
+  for (const key of ["stock_entities", "stock_view", "stock_period", "stock_delta", "stock_ticker", "stock_selector", "stock_cards", "stock_previous"]) delete widget[key];
   if (widgetType !== "stock_quotes") return;
   const ids = stockQuoteInputs().map(input => input.value.trim()).filter(Boolean);
   if (ids.length) widget.entity_id = ids[0];
@@ -149,6 +156,8 @@ function stockSaveInspector(widget, widgetType) {
     if (value && value !== STOCK_DEFAULTS[key]) widget[key] = value;
   }
   if (el.fStockTicker?.checked) widget.stock_ticker = true;
+  if (el.fStockCards?.checked) widget.stock_cards = true;
+  if (el.fStockPrevious?.checked) widget.stock_previous = true;
   if (el.fStockSelector && !el.fStockSelector.checked) widget.stock_selector = false; // on unless the layout says false
   delete widget.secondary_entity_id;
   delete widget.tertiary_entity_id;
@@ -222,6 +231,7 @@ function stockPreviewMarkup(widget, name, height) {
   const quotes = (ids.length ? ids : ["sensor.demo"]).map(quote);
   const delta = widget.stock_delta === "absolute" ? "absolute" : widget.stock_delta === "both" ? "both" : "percent";
   const amountOf = q => q.price * q.change / 100;
+  const cards = widget.stock_view === "grid" || (widget.stock_view === "chart" && widget.stock_cards === true);
   if (widget.stock_view === "chart" || widget.stock_view === "grid") {
     const period = STOCK_PERIODS.includes(widget.stock_period) ? widget.stock_period : "30d";
     const chips = widget.stock_selector === false ? "" : STOCK_PERIODS.map(code => `<em class="${previewControlClass(code === period)}">${escapeHtml(t(`layout.option.stock_period_short.${code}`))}</em>`).join("");
@@ -238,20 +248,22 @@ function stockPreviewMarkup(widget, name, height) {
         <small><em class="${sign(q.change)}">${escapeHtml(change)}</em> ${escapeHtml(since)}</small>
         <svg class="tp-stock-spark ${sign(q.change)}" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${points}"/></svg></div>`;
     }).join("");
-    if (widget.stock_view === "grid") {
-      // One card per quote in two columns, one when the tile is narrow (w_stock_quotes.c).
+    if (cards) {
+      // One card per quote in as many columns as fit, up to four (w_stock_quotes.c).
       const cards = quotes.map((q, i) => {
         const arrow = q.change > 0 ? "↑ " : q.change < 0 ? "↓ " : "";
         const change = delta === "absolute" ? `${number(amountOf(q), 2, true)} ${q.currency}`
           : `${arrow}${number(q.change, 2, true)} %`;
         const amount = delta === "both"
           ? `<small class="tp-stock-card-amount ${sign(q.change)}">${number(amountOf(q), 2, true)} ${escapeHtml(q.currency)}</small>` : "";
+        const start = widget.stock_previous === true
+          ? `<small class="tp-stock-card-start">${escapeHtml(t("preview.stock.start", { price: `${number(q.price - amountOf(q), 2)} ${q.currency}` }))}</small>` : "";
         const points = Array.from({ length: 24 }, (_, k) => {
           const y = 50 - q.change * 6 * (k / 23) + 8 * Math.sin(k / 3 + i);
           return `${(k / 23 * 100).toFixed(1)},${Math.max(4, Math.min(96, y)).toFixed(1)}`;
         }).join(" ");
         return `<div class="tp-stock-card"><div class="tp-stock-row"><span>${escapeHtml(q.name)}</span>${widget.stock_ticker ? `<small>${escapeHtml(q.symbol)}</small>` : ""}</div>
-          <div class="tp-stock-row"><b>${number(q.price, 2)} ${escapeHtml(q.currency)}</b><em class="${sign(q.change)}">${escapeHtml(change)}</em></div>${amount}
+          <div class="tp-stock-row"><b>${number(q.price, 2)} ${escapeHtml(q.currency)}</b><em class="${sign(q.change)}">${escapeHtml(change)}</em></div>${amount}${start}
           <svg class="tp-stock-spark ${sign(q.change)}" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${points}"/></svg></div>`;
       }).join("");
       return `<div class="tp tp-stock">${name("div", 'class="tp-name"')}${chips ? `<div class="tp-stock-chips">${chips}</div>` : ""}<div class="tp-stock-grid">${cards}</div></div>`;

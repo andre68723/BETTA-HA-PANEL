@@ -3,8 +3,8 @@
 # Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
 """Re-vendor components/esp_cam_sensor at another registry version.
 
-The repository carries the OV02C10 driver for the JC8012P4A1 and the SC202CS/SC2356 driver for Tab5.
-This takes the core of a registry version, preserves both sensor directories and our project_include.cmake,
+The repository carries the OV02C10 driver for the JC8012P4A1 the SC202CS/SC2356 driver for Tab5 and OV5647 for Waveshare LCD-X.
+This takes the core of a registry version, preserves those sensor directories and our project_include.cmake,
 and cuts CMakeLists.txt and Kconfig down to those sensors and the DW9714 motor:
 
     tools/vendor_cam_sensor.py 2.3.0
@@ -25,11 +25,11 @@ import zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEST = os.path.join(ROOT, "components", "esp_cam_sensor")
 REGISTRY = "https://components.espressif.com/api/components/espressif/esp_cam_sensor"
-PRESERVED_SENSORS = ("ov02c10", "sc202cs")
+PRESERVED_SENSORS = ("ov02c10", "sc202cs", "ov5647")
 MODIFICATION_NOTICE = (
     "# SPDX-License-Identifier: Apache-2.0\n"
     "# Modified in 2026 by andre68723 for BETTA-HA-PANEL.\n"
-    "# Espressif's esp_cam_sensor component is reduced to OV02C10, SC202CS and DW9714.\n"
+    "# Espressif's esp_cam_sensor component is reduced to OV02C10, SC202CS, OV5647 and DW9714.\n"
     "# Original Apache-2.0 license: see LICENSE in this directory.\n\n"
 )
 
@@ -87,6 +87,8 @@ def reduce_cmake(text):
                    '        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov02c10_detect")\n    endif()\n\n'
                    '    if(CONFIG_CAMERA_SC202CS_AUTO_DETECT_MIPI_INTERFACE_SENSOR)\n'
                    '        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u sc202cs_detect")\n    endif()\n\n'
+                   '    if(CONFIG_CAMERA_OV5647_AUTO_DETECT_MIPI_INTERFACE_SENSOR)\n'
+                   '        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u ov5647_detect")\n    endif()\n\n'
                    '    if(CONFIG_CAM_MOTOR_DW9714_AUTO_DETECT)\n'
                    '        target_link_libraries(${COMPONENT_LIB} INTERFACE "-u dw9714_detect")\n    endif()\nendif()\n\n'
                    'include(package_manager)\ncu_pkg_define_version(${CMAKE_CURRENT_LIST_DIR})\n')
@@ -128,7 +130,7 @@ def main():
         except OSError:
             os.replace(old, DEST)
             raise
-    print("components/esp_cam_sensor is now %s core + OV02C10 and SC202CS drivers; update the relevant lock files and rebuild" % version)
+    print("components/esp_cam_sensor is now %s core + OV02C10, SC202CS and OV5647 drivers; update the relevant lock files and rebuild" % version)
 
 
 if __name__ == "__main__":

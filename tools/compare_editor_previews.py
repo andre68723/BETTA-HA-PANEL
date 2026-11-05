@@ -13,7 +13,7 @@ aid, not a gate: look for elements that are missing, extra, clipped, overlapping
     uv run --locked --group screenshots python tools/compare_editor_previews.py --cases Vacuum "Media player"
 
 The default compares the gallery sizes against docs/img/gallery (run tools/generate_simulator_gallery.py first if it is
-stale). --cases renders the edge cases of tests/simulator/layout_cases.json instead, the smallest and the largest
+stale). --cases renders the edge cases of tests/simulator/tile_size_cases.json instead, the smallest and the largest
 size of every tile (all of them with --all-sizes), with the LVGL simulator; naming tiles limits it to those. This finds
 the sizes where the panel hides or rearranges something and the preview does not. --pages compares the whole house and
 energy pages (the canvas against docs/img/gallery/gallery_house_<style>.png and gallery_energy_<style>.png).
@@ -148,7 +148,7 @@ def main():
     parser.add_argument("--reference", type=Path, default=REPO / "docs/img/gallery",
                         help="directory with <id>_<style>.png from generate_simulator_gallery.py")
     parser.add_argument("--cases", action="store_true",
-                        help="compare the edge cases of layout_cases.json (the widget arguments name tiles, e.g. Vacuum)")
+                        help="compare the edge cases of tile_size_cases.json (the widget arguments name tiles, e.g. Vacuum)")
     parser.add_argument("--pages", action="store_true", help="compare the house and energy pages as a whole")
     parser.add_argument("--all-sizes", action="store_true", help="with --cases: every size without field overrides")
     parser.add_argument("--browser-executable", help="Use an installed Chromium instead of Playwright's")

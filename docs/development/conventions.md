@@ -57,7 +57,7 @@ rendered views. The existing cases and limits are described in [Popup contracts]
 
 One failure line names missing places per type; shared implementations and aliases are valid. Existing help/language
 checks require English Inspector help to match the guide summary, with matching German keys. Regenerate guides with
-`python3 tools/generate_widget_docs.py`. Existing case/enum checks require `tools/test_layout_cases.json` coverage;
+`python3 tools/generate_widget_docs.py`. Existing case/enum checks require `tools/widget_catalog.json` coverage;
 Gallery tags reuse those cases (`gallery_only` stays out of test packs). The simulator-field check covers parsed keys.
 Presence checks do not verify numeric limits, CMake inclusion, HA bindings or visual parity. The preview-parity skill
 stays outside the gate; see [Checks and device tests](testing.md) for behavioral checks and text-cap calibration.

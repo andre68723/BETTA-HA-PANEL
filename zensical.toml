@@ -36,18 +36,19 @@ nav = [
     ] },
     { "Widgets" = [
       { "Widget library" = "widgets/README.md" },
+      { "Air quality" = "widgets/air_quality_tile.md" },
       { "Alarm" = "widgets/alarm_tile.md" },
       { "Bambu printer" = "widgets/bambu_printer.md" },
       { "Binary sensor" = "widgets/binary_tile.md" },
       { "Button" = "widgets/button.md" },
       { "Camera" = "widgets/camera_tile.md" },
       { "Car" = "widgets/car_widget.md" },
-      { "Wallbox" = "widgets/wallbox.md" },
       { "Climate" = "widgets/climate_tile.md" },
       { "Contact" = "widgets/contact_tile.md" },
       { "Cover" = "widgets/cover_tile.md" },
       { "Date/Time" = "widgets/datetime_tile.md" },
       { "Empty spacer" = "widgets/empty_tile.md" },
+      { "Energy price forecast" = "widgets/energy_price_forecast.md" },
       { "Energy timeline" = "widgets/energy_timeline.md" },
       { "Fan" = "widgets/fan_tile.md" },
       { "Gauge" = "widgets/gauge.md" },
@@ -56,20 +57,19 @@ nav = [
       { "Light" = "widgets/light_tile.md" },
       { "Lock" = "widgets/lock_tile.md" },
       { "Media player" = "widgets/media_player.md" },
+      { "Parqet portfolio" = "widgets/parqet_portfolio.md" },
       { "Room" = "widgets/room_tile.md" },
       { "Scene" = "widgets/scene_tile.md" },
       { "Select" = "widgets/select_tile.md" },
       { "Sensor" = "widgets/sensor.md" },
       { "Slider" = "widgets/slider.md" },
       { "Solar forecast" = "widgets/solar_forecast.md" },
-      { "Energy price forecast" = "widgets/energy_price_forecast.md" },
-      { "Parqet portfolio" = "widgets/parqet_portfolio.md" },
-      { "Stocks & ETFs" = "widgets/stock_quotes.md" },
       { "Sonos favorites" = "widgets/sonos_favorites.md" },
+      { "Stocks & ETFs" = "widgets/stock_quotes.md" },
       { "Todo list" = "widgets/todo_list.md" },
       { "Vacuum" = "widgets/vacuum_tile.md" },
-      { "Weather (now)" = "widgets/weather_tile.md" },
-      { "Weather forecast" = "widgets/weather_3day.md" },
+      { "Wallbox" = "widgets/wallbox.md" },
+      { "Weather" = "widgets/weather_tile.md" },
     ] },
     { "Look and behaviour" = [
       { "Appearance" = "appearance.md" },
@@ -139,6 +139,12 @@ features = ["navigation.tabs", "navigation.top", "navigation.footer", "content.c
 
 [project.plugins.search]
 enabled = true
+
+# Lossless/near-lossless PNG and JPEG optimisation of the documentation images at build time.
+[project.plugins.optimize]
+enabled = true
+cache = true
+print_gain_summary = true
 
 # Bundle the supported worker shim so file:// search needs no CDN.
 [project.plugins.offline]

@@ -5,7 +5,7 @@
 These are driver and hardware-validation notes. For the controls themselves, see
 [Display and brightness](../display.md) and [notification sounds](../notifications.md#sound).
 
-## Ambient camera (paneljc and Tab5)
+## Ambient camera (paneljc, Tab5 and panel10) { #ambient-camera-paneljc-and-tab5 }
 
 On paneljc the built-in OV02C10 is used as a light and presence sensor, never for image recording or streaming:
 short bursts of frames (40 for a light reading every 20 s, 8
@@ -18,9 +18,16 @@ room about -6.3, a phone light in front of the lens about -5.7, daylight in the 
 
 Tab5 uses its SC2356 through the SC202CS sensor driver and the M5Stack BSP camera power and I2C setup. It shares the duty-cycled luma and presence logic and supports the same Settings controls, but starts with both camera options off. In one ST7121/ESP32-P4 v1.3 trial on 2026-10-05, the room-light reading changed from about 89% to 27–28% when the lens was covered and returned to about 89% when uncovered. Broader brightness calibration, presence wake and long-term I2C/touch coexistence remain pending.
 
+The Waveshare LCD-X `panel10` uses its built-in OV5647 and the manufacturer's
+`09_video_lcd_display` initialization pattern: existing BSP I2C on GPIO7/8,
+esp_video 2.3.0, 800 × 640 RAW8 and ISP conversion to RGB565. Two buffers use
+2,048,000 PSRAM bytes. A local read-only sensor query reports actual AEC/AGC
+values rather than the upstream AE target. Camera options start off. Calibration
+and presence/night wake have not been verified on an LCD-X in this fork.
+
 ## Optional chime output
 
-Current builds enable the audio path on panel4 and Tab5. The JC ES8311 path is
+Current builds enable the audio path on panel4, Tab5 and Waveshare LCD-X panel10. The JC ES8311 path is
 present but disabled by `APP_PANELJC_AUDIO=0`; it does not expose Sound settings.
 The Waveshare LCD-4B and LCD-X manufacturer guides identify external-speaker
 connectors. Guition's JC datasheet likewise labels a **Speaker Interface** on
@@ -31,13 +38,16 @@ Tab5 uses the BSP's ES8388 codec and shared I2C setup. A test chime played on 20
 volume is 60%, with sound off and night mute on by default.
 
 `main/drivers/audio_out.c` uses the existing touch I2C bus (GPIO7 SDA / GPIO8 SCL), never a
-second bus driver. Both P4 boards use I2S MCLK13, BCLK12, LRCK10 and DOUT9; DIN11 is unused.
-The amplifier enable is GPIO53 on the 4B and GPIO20 on the JC, including JC v2. Amplifier enable
+second bus driver. The ES8311 boards use I2S MCLK13, BCLK12, LRCK10 and DOUT9; DIN11 is unused.
+The amplifier enable is GPIO53 on the 4B/LCD-X and GPIO20 on the JC, including JC v2. Amplifier enable
 follows codec startup and silent frames; synthesized tones have attack/release ramps. Stop
 lowers PA, closes/deletes all codec interfaces and deletes the I2S channel. The codec library
 requires stereo I2S slots, so the mono samples are duplicated into both slots.
 
-The 4B BSP asks for `esp_codec_dev` ~1.5 (1.5.11 there); the JC has no BSP and runs 1.6.2. `panel10` has no enabled audio driver.
+The 4B BSP asks for `esp_codec_dev` ~1.5 (1.5.11 there); the JC has no BSP and runs 1.6.2. LCD-X panel10 uses the same ES8311 transient output path, with BSP I2C/I2S
+selection and GPIO53 amplifier enable. The manufacturer's `06_I2SCodec` example
+confirms its pins; microphones/ES7210 are not initialized. Audible output,
+noise/pop behavior and concurrent camera/touch operation need hardware checks.
 On 2026-09-28, the 4B completed 50 consecutive API test requests at 10% volume after the
 I2S startup fix. The log showed 51 successful codec opens including the initial 40% test,
 no audio/I2C errors, and no steady heap decline between requests. Night mute suppressed a

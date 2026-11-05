@@ -438,6 +438,11 @@
     }
   ],
   "states": [
+    {"entity_id": "sensor.demo_air_co2", "state": "1250", "attributes": {"unit_of_measurement": "ppm", "device_class": "carbon_dioxide", "state_class": "measurement"}},
+    {"entity_id": "sensor.demo_air_pm25", "state": "8", "attributes": {"unit_of_measurement": "μg/m³", "device_class": "pm25", "state_class": "measurement"}},
+    {"entity_id": "sensor.demo_air_voc", "state": "450", "attributes": {"unit_of_measurement": "ppb", "device_class": "volatile_organic_compounds_parts", "state_class": "measurement"}},
+    {"entity_id": "sensor.demo_air_rating", "state": "moderate", "attributes": {"device_class": "enum", "options": ["good", "moderate", "fair", "poor", "very_poor", "extremely_poor"]}},
+
     {
       "entity_id": "sensor.demo_portfolio_value",
       "state": "52840.55",

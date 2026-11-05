@@ -3,9 +3,9 @@
  * on saved layouts remains separate: discovering metadata never deletes a binding.
  */
 const ENTITY_SEARCH_PRIMARY = {
-  sensor: "domain", button: "domain", slider: "slider", gauge: "numeric", graph: "numeric",
+  air_quality_tile: "air_humidity", sensor: "domain", button: "domain", slider: "slider", gauge: "numeric", graph: "numeric",
   empty_tile: "none", light_tile: "domain", heating_tile: "domain", weather_tile: "domain",
-  weather_3day: "domain", solar_forecast: "solar", energy_price_forecast: "price",
+  solar_forecast: "solar", energy_price_forecast: "price",
   parqet_portfolio: "monetary", stock_quotes: "quote", car_widget: "battery",
   wallbox_evcc: "evcc", bambu_printer: "printer", todo_list: "domain", media_player: "domain",
   sonos_favorites: "sonos", cover_tile: "domain", fan_tile: "domain", contact_tile: "contact",
@@ -14,9 +14,10 @@ const ENTITY_SEARCH_PRIMARY = {
   binary_tile: "domain", room_tile: "temperature", vacuum_tile: "domain", roborock_tile: "domain",
 };
 const ENTITY_SEARCH_SLOTS = {
+  air_quality_tile: {air_temperature: "air_temperature", air_co2: "air_co2", air_pm25: "air_pm25", air_voc: "air_voc",
+    air_out_temperature: "air_out_temperature", air_out_humidity: "air_out_humidity", air_window: "contact", air_rating: "domain"},
   heating_tile: { secondary: "temperature" },
   weather_tile: { secondary: "report" },
-  weather_3day: { secondary: "report" },
   sonos_favorites: { secondary: "favorites" },
   vacuum_tile: { secondary: "domain", tertiary: "domain", vacuum_battery: "battery" },
   gauge: { secondary: "domain", tertiary: "domain" },
@@ -62,6 +63,13 @@ function entitySearchRoleMatches(entity, role) {
   const numeric = flag("numeric") || (!!unit && !["enum", "timestamp", "date"].includes(dc)) || ["measurement", "total", "total_increasing"].includes(meta.state_class);
   const measurement = (classes, units) => numeric && (!dc || classes.includes(dc)) && (units.includes(unit) || (!unit && classes.includes(dc)));
   switch (role) {
+    case "air_humidity": return dc === "humidity" && (!unit || unit === "%");
+    case "air_temperature": return measurement(["temperature"], ["°C", "°F"]);
+    case "air_co2": return measurement(["carbon_dioxide"], ["ppm"]);
+    case "air_pm25": return measurement(["pm25"], ["µg/m³", "μg/m³"]);
+    case "air_voc": return dc === "volatile_organic_compounds_parts" || dc === "volatile_organic_compounds" || (!dc && unit === "ppb");
+    case "air_out_temperature": return domain === "weather" || measurement(["temperature"], ["°C", "°F"]);
+    case "air_out_humidity": return domain === "weather" || dc === "humidity";
     case "none": return false;
     case "numeric": return numeric;
     case "temperature": return domain === "climate" ? flag("climate_temperature") || typeof meta.current_temperature === "number" : measurement(["temperature"], ["°C", "°F", "C", "F", "K"]);

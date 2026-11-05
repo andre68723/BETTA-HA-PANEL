@@ -109,6 +109,7 @@ async function loadI18nLanguage(language, refreshCatalog = false) {
 }
 
 function applyWebTranslations() {
+  airTranslateInspector();
   layoutHistoryControls();
   setTextById("layoutTabBtn", "tabs.layout");
   setTextById("settingsTabBtn", "tabs.settings");
@@ -117,6 +118,8 @@ function applyWebTranslations() {
   setTextById("deviceIdMetaLabel", "sidebar.device_label");
   setTextById("boardMetaLabel", "sidebar.type_label");
   setTextById("buildTimeMetaLabel", "sidebar.build_label");
+  const buildTime = document.getElementById("buildTimeLabel");
+  if (buildTime) buildTime.title = t("sidebar.build_time_title");
   setTextById("settingsHardwareResetBtn", "settings.display.reset");
   setTextById("settingsAppearanceResetBtn", "settings.reset.button");
   setTextById("settingsTopbarResetBtn", "settings.reset.button");
@@ -173,7 +176,6 @@ function applyWebTranslations() {
   setTextById("addLightTileBtn", "layout.widgets.add_light_tile");
   setTextById("addHeatingTileBtn", "layout.widgets.add_heating_tile");
   setTextById("addWeatherTileBtn", "layout.widgets.add_weather_tile");
-  setTextById("addWeather3DayBtn", "layout.widgets.add_weather_3day");
   setTextById("addSolarForecastBtn", "layout.widgets.add_solar_forecast");
   setTextById("addCarWidgetBtn", "layout.widgets.add_car");
   evccTranslate();
@@ -184,6 +186,7 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("addVacuumTileBtn", "layout.widgets.add_vacuum");
   setTextById("addCoverTileBtn", "layout.widgets.add_cover");
   setTextById("addClimateTileBtn", "layout.widgets.add_climate");
+  setTextById("addRoomAirBtn", "layout.widgets.add_room_air");
   setTextById("addRoomTileBtn", "layout.widgets.add_room");
   setTextById("addSceneTileBtn", "layout.widgets.add_scene");
   setTextById("addSelectTileBtn", "layout.widgets.add_select");
@@ -205,7 +208,6 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("fStockViewLabel", "layout.inspector.stock_view");
   setTextById("fStockViewList", "layout.option.stock_view.list");
   setTextById("fStockViewChart", "layout.option.stock_view.chart");
-  setTextById("fStockViewGrid", "layout.option.stock_view.grid");
   setTextById("fStockPeriodLabel", "layout.inspector.stock_period");
   for (const code of ["1d", "1w", "30d", "ytd", "1y"]) {
     setTextById(`fStockPeriod${code === "ytd" ? "Ytd" : code}`, `layout.option.stock_period.${code}`);
@@ -216,6 +218,8 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("fStockDeltaBoth", "layout.option.stock_delta.both");
   setTextById("fStockTickerLabel", "layout.inspector.stock_ticker");
   setTextById("fStockSelectorLabel", "layout.inspector.selector");
+  setTextById("fStockCardsLabel", "layout.inspector.stock_cards");
+  setTextById("fStockPreviousLabel", "layout.inspector.stock_previous");
   setTextById("fCameraLiveLabel", "layout.inspector.camera_live");
   setTextById("cameraLiveHint", "layout.inspector.camera_live_hint");
   setTextById("fBambuCameraLabel", "layout.inspector.bambu_camera");
@@ -319,8 +323,17 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setSelectOptionText(document.getElementById("fForecastDays"), "0", "layout.inspector.forecast_auto");
   setTextById("fWeatherHourlyHint", "layout.inspector.weather_hourly_hint");
   setTextById("fWeatherHourlyLabel", "layout.inspector.weather_hourly");
-  setTextById("fWeatherShowPrecipLabel", "layout.inspector.weather_show_precip");
+  setTextById("fWeatherViewLabel", "layout.inspector.weather_view");
+  setSelectOptionText(document.getElementById("fWeatherView"), "now", "layout.inspector.weather_view_now");
+  setSelectOptionText(document.getElementById("fWeatherView"), "days", "layout.inspector.weather_view_days");
+  setTextById("fWeatherDaysLabel", "layout.inspector.forecast_days");
+  setSelectOptionText(document.getElementById("fWeatherDays"), "", "layout.inspector.forecast_keep");
+  setSelectOptionText(document.getElementById("fWeatherDays"), "0", "layout.inspector.forecast_auto");
+  setTextById("fWeatherTilePrecipLabel", "layout.inspector.weather_show_precip");
+  setTextById("fWeatherSelectorLabel", "layout.inspector.weather_selector");
+  setTextById("fWeatherViewHint", "layout.inspector.weather_view_hint");
   setTextById("fShowNameLabel", "layout.inspector.show_name");
+  setTextById("fShowIconLabel", "layout.inspector.show_icon");
   setTextById("fSensorShowAgeLabel", "layout.inspector.sensor_show_age");
   updateSensorEntityInfo(); // the format and unit choices follow the device class and carry their own texts
   setTextById("fSolarForecastBarOrientationLabel", "layout.inspector.solar_bar_orientation");
@@ -462,6 +475,8 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("settingsMqttUsernameLabel", "settings.mqtt.username");
   setTextById("settingsMqttPasswordLabel", "settings.mqtt.password");
   setPlaceholderById("settingsMqttPassword", "settings.mqtt.password_placeholder");
+  setPlaceholderById("settingsMqttHost", "settings.mqtt.host_placeholder");
+  setPlaceholderById("settingsMqttUsername", "settings.mqtt.username_placeholder");
   setTextById("settingsMqttTopicPrefixLabel", "settings.mqtt.topic_prefix");
   setTextById("settingsMqttDeviceNameLabel", "settings.mqtt.device_name");
   setTextById("settingsMqttDeviceHint", "settings.mqtt.device_hint");
@@ -579,6 +594,7 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
   setTextById("settingsThemeImportLabel", "settings.theme.import");
   setTextById("settingsThemeNewIdLabel", "settings.theme.new_id");
   setTextById("settingsThemeNewNameLabel", "settings.theme.new_name");
+  setPlaceholderById("settingsThemeNewName", "settings.theme.new_name_placeholder");
   setTextById("settingsThemePreviewLabel", "settings.theme.preview");
   setTextById("inspectorGroupDataLabel", "layout.inspector.group_data");
   setTextById("inspectorGroupStyleLabel", "layout.inspector.group_style");
