@@ -58,8 +58,36 @@ dependencies:
       type: service
     version: 1.5.11
   espressif/esp_hosted:
-    component_hash: c88052665d8df3c7185cb5e34327d77674599006bbbbe4bfdb43c44f9a2a73a3
+    component_hash: 22b08509494d4465f0e2f91ee16973d76fe90d5a930fa3910b7a43615db001bf
     dependencies:
+    - name: cherry-embedded/cherryusb
+      registry_url: https://components.espressif.com
+      require: private
+      rules:
+      - if: target in [esp32p4]
+      - if: $CONFIG{ESP_HOSTED_HOST_USB_CHERRYUSB_MANIFEST} == 1
+      version: '>=1.6.0'
+    - name: espressif/esp_tinyusb
+      registry_url: https://components.espressif.com
+      require: private
+      rules:
+      - if: target in [esp32s2, esp32s3, esp32s31]
+      - if: $CONFIG{ESP_HOSTED_CP_TINYUSB_MANIFEST} == 1
+      version: '*'
+    - name: espressif/iot_usbh_rndis
+      registry_url: https://components.espressif.com
+      require: private
+      rules:
+      - if: target in [esp32p4]
+      - if: $CONFIG{ESP_HOSTED_HOST_USB_RNDIS_MANIFEST} == 1
+      version: ^0.5.2
+    - name: espressif/usb_host_cdc_acm
+      registry_url: https://components.espressif.com
+      require: private
+      rules:
+      - if: target in [esp32p4]
+      - if: $CONFIG{ESP_HOSTED_HOST_USB_CDC_ACM_MANIFEST} == 1
+      version: '*'
     - name: idf
       require: private
       version: '>=5.5'
@@ -68,9 +96,10 @@ dependencies:
       type: service
     targets:
     - esp32
-    - esp32c2
     - esp32s2
     - esp32s3
+    - esp32s31
+    - esp32c2
     - esp32c3
     - esp32c5
     - esp32c6
@@ -79,7 +108,7 @@ dependencies:
     - esp32h4
     - esp32h21
     - esp32p4
-    version: 3.0.10
+    version: 3.1.0
   espressif/esp_lcd_touch:
     component_hash: 3f85a7d95af876f1a6ecca8eb90a81614890d0f03a038390804e5a77e2caf862
     dependencies:
@@ -165,7 +194,7 @@ dependencies:
       type: service
     version: 1.0.1
   espressif/esp_lvgl_adapter:
-    component_hash: cdc3dfb8f7a0c4b37493ae57bfb63f94ee6f0f3f19c618758e4e46c78ff3f2ba
+    component_hash: 32f48c93b5a08763360b052630f60a98c3278a9a738f6958fcabbebfd729c5ef
     dependencies:
     - name: espressif/button
       registry_url: https://components.espressif.com
@@ -201,7 +230,7 @@ dependencies:
     source:
       registry_url: https://components.espressif.com/
       type: service
-    version: 0.7.3
+    version: 0.7.5
   espressif/esp_mmap_assets:
     component_hash: 42310c362596de2a37248c2937b1754bc29cd0356b9839e2a77cf791e6bcdde1
     dependencies:
@@ -438,7 +467,7 @@ dependencies:
       version: ^1
     - name: espressif/esp_lvgl_adapter
       public: true
-      version: 0.7.3
+      version: 0.7.5
     - name: idf
       version: '>=5.5'
     - name: lvgl/lvgl
@@ -488,6 +517,6 @@ direct_dependencies:
 - joltwallet/littlefs
 - lvgl/lvgl
 - waveshare/esp32_p4_wifi6_touch_lcd_4b
-manifest_hash: c799360a2f3c0041ad6af9ca68ece2c93c75b9c62e5806648daa04c22da5a9b5
+manifest_hash: af7c0e84b8378eaa27e576a01cf76a44c47a6a1a35da41ad7b4256f8068592ca
 target: esp32p4
 version: 3.0.0

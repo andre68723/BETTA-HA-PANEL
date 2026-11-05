@@ -47,7 +47,7 @@ avoid the instructions.
 
 ## Shared LVGL adapter
 
-Every panel registers display and touch with `esp_lvgl_adapter` 0.7.3 through
+Every panel registers display and touch with `esp_lvgl_adapter` 0.7.5 through
 `main/drivers/display_port.c`. Board files initialize hardware only. The shared
 adapter task uses priority 20, core 1 and the existing internal-RAM stack; LVGL
 allocations, two partial draw buffers and rotation scratch use PSRAM first.
@@ -131,7 +131,7 @@ reports no PPA coredump.
 Panel4 uses BSP 3.0.1 from `third_party/waveshare__esp32_p4_wifi6_touch_lcd_4b`.
 The official source and Apache-2.0 license are preserved; `BETTA.md` records the
 registry archive hash and repository commit. Only the adapter manifest constraint
-changes from `~0.6` to `0.7.3`, matching the shared runtime and LVGL 9.6.
+changes from `~0.6` to `0.7.5`, matching the shared runtime and LVGL 9.6.
 Dependency solving runs before the configure patch hook, so this override belongs
 in the manifest rather than a manual edit of `managed_components/`.
 

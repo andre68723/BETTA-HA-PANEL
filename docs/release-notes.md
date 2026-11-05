@@ -62,7 +62,7 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 ### Panel and editor
 
 - **Home Assistant connection:** the HA popup shows rejected access and offers **Reconnect**. Camera snapshots use the panel credential.
-- **ESP-Hosted 3.0.10:** a C6 on another firmware version is updated once after the first boot of this image, with one extra restart. Settings → Firmware lists the version the C6 reports; Device status hides the C6 memory row when its firmware has no memory monitor.
+- **ESP-Hosted 3.1.0 and LVGL adapter 0.7.5:** a C6 on another firmware version is updated once after the first boot of this image, with one extra restart. Settings → Firmware lists the version the C6 reports; Device status hides the C6 memory row when its firmware has no memory monitor.
 - **10-inch JC panel:** short taps are no longer lost, and the screen rotates with the PPA again (an ESP-IDF driver bug is fixed in the firmware), freeing 17-34 % of one core.
 - **Inspector and preview:** one section order for every widget (Entities, Display, Controls, Placement), entity rows that open the search, explanations behind info icons and device classes next to the entity. Previews follow the panel's text roles and 10-inch layouts and mark overlapping tiles.
 - **Entity names:** search, Room details and stock rows share discovered names; a missing `friendly_name` no longer replaces them with the entity ID.

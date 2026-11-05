@@ -71,33 +71,26 @@ PATCHES = [
      "bmi270: bounded I2C writes on the shared Tab5 touch/backlight bus",
      replace, ("i2c_master_transmit(dev_handle->i2c_handle, packet, packet_len, -1)",
                "i2c_master_transmit(dev_handle->i2c_handle, packet, packet_len, 100) /* BETTA: 100 ms timeout */")),
-    ("espressif__esp_hosted", "host/port/esp/freertos/include/port_esp_hosted_host_config.h",
+    ("espressif__esp_hosted", "host/eh_host_config/include/eh_host_port_master_config.h",
      "esp_hosted: SDIO byte mode TX (workaround for esp-hosted-mcu#167), all P4 variants",
-     replace, ("#define H_SDIO_TX_BLOCK_ONLY_XFER (1)", "#define H_SDIO_TX_BLOCK_ONLY_XFER (0)")),
-    ("espressif__esp_hosted", "host/drivers/transport/sdio/sdio_drv.c",
-     "esp_hosted: bounded esp_hosted_tx() queue wait instead of an infinite one, all P4 variants",
+     replace, ("#define EH_HOST_PORT_SDIO_TX_BLOCK_ONLY_XFER (1)", "#define EH_HOST_PORT_SDIO_TX_BLOCK_ONLY_XFER (0)")),
+    ("espressif__esp_hosted", "host/mcu/eh_host_mcu_transport/src/eh_host_bus_sdio.c",
+     "esp_hosted: bounded eh_host_bus_tx() queue wait instead of an infinite one, all P4 variants",
      replace, (
-        "\tg_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);\n"
-        "\tg_h.funcs->_h_post_semaphore(sem_to_slave_queue);\n",
-        "\t/* andre68723/BETTA-HA-PANEL fork patch (tools/apply_component_patches.py), see docs/release-notes.md\n"
-        "\t * \"ESP-IDF 6.1 and the ESP32-C6 link\": HOSTED_BLOCK_MAX is portMAX_DELAY, an infinite wait --\n"
-        "\t * if to_slave_queue[pkt_prio] stays full (a burst of concurrent outbound traffic, e.g. several\n"
-        "\t * HTTP responses going out to a browser at once, faster than the SDIO write task drains it)\n"
-        "\t * this call used to block forever, and since it runs on lwIP's own task for an outbound Wi-Fi\n"
-        "\t * packet, that froze the entire network stack -- no more HTTP, no more ICMP ping, nothing --\n"
-        "\t * until a hardware reset. A bounded wait turns that into a dropped packet (TCP retransmits),\n"
-        "\t * the same graceful degradation already used a few lines up when mempool_alloc() itself fails.\n"
-        "\t * 300 ticks assumes CONFIG_FREERTOS_HZ=1000 (1 tick = 1 ms), true for every variant in this\n"
-        "\t * fork; pdMS_TO_TICKS is not used here to avoid adding a FreeRTOS include to this file just\n"
-        "\t * for one constant. */\n"
-        "\tint queue_err = g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, 300);\n"
-        "\tif (queue_err != 0) {\n"
-        "\t\tESP_LOGW(TAG, \"TX: to_slave_queue[%u] full for 300 ms, dropping pkt (len=%u) instead of blocking forever\",\n"
-        "\t\t\t\tpkt_prio, payload_len);\n"
-        "\t\tH_FREE_PTR_WITH_FUNC(free_func, buffer_to_free);\n"
-        "\t\treturn ESP_FAIL;\n"
-        "\t}\n"
-        "\tg_h.funcs->_h_post_semaphore(sem_to_slave_queue);\n")),
+        "    eh_host_port_queue_send(to_slave_queue[pkt_prio], buf_handle, EH_HOST_PORT_WAIT_FOREVER);\n"
+        "    eh_host_port_sem_post(sem_to_slave_queue);\n",
+        "    /* andre68723/BETTA-HA-PANEL fork patch (tools/apply_component_patches.py), see docs/release-notes.md\n"
+        "     * \"ESP-IDF 6.1 and the ESP32-C6 link\": an infinite wait here froze lwIP's own task (and with it the whole\n"
+        "     * network stack) whenever to_slave_queue[pkt_prio] stayed full, e.g. a burst of concurrent outbound traffic\n"
+        "     * faster than the SDIO write task drains it. A bounded wait turns that into a dropped packet (TCP retransmits),\n"
+        "     * the same graceful degradation used above when a frame is rejected. The timeout is in milliseconds. */\n"
+        "    if (eh_host_port_queue_send(to_slave_queue[pkt_prio], buf_handle, 300) != EH_HOST_PORT_OK) {\n"
+        "        ESP_LOGW(TAG, \"TX: to_slave_queue[%u] full for 300 ms, dropping pkt (len=%u) instead of blocking forever\",\n"
+        "                 pkt_prio, buf_handle->payload_len);\n"
+        "        EH_HOST_PORT_FREE_PTR_WITH_FUNC(buf_handle->free_buf_handle, buf_handle->priv_buffer_handle);\n"
+        "        return ESP_FAIL;\n"
+        "    }\n"
+        "    eh_host_port_sem_post(sem_to_slave_queue);\n")),
     ("waveshare__esp_lcd_hx8394", "esp_lcd_hx8394.c",
      "panel10 under IDF 6: colour order field (build check only)",
      replace, ("panel_dev_config->color_space", "panel_dev_config->rgb_ele_order")),

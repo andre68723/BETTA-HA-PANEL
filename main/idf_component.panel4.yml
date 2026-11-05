@@ -19,7 +19,7 @@ dependencies:
     rules:
       - if: "target in [esp32p4]"
   espressif/esp_lvgl_adapter:
-    version: "0.7.3"
+    version: "0.7.5"
   lvgl/lvgl:
     version: "9.6.0~1"
   waveshare/esp32_p4_wifi6_touch_lcd_4b:
@@ -38,7 +38,7 @@ dependencies:
   joltwallet/littlefs:
     version: "1.23.1"
   espressif/esp_hosted:
-    version: "3.0.10"
+    version: "3.1.0"
     rules:
       - if: "target in [esp32p4]"
   espressif/esp_websocket_client:
