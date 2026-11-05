@@ -39,7 +39,10 @@ jobs:
           python-version: '3.13'
           enable-cache: false
       - name: Install pngquant for image optimisation
+        timeout-minutes: 6
         run: |
+          # Use Ubuntu's archive and keep the runner's remaining fallback mirrors.
+          sudo sed -i '\|://azure\.archive\.ubuntu\.com/|d' /etc/apt/apt-mirrors.txt
           apt_opts="-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
           sudo apt-get $apt_opts update
           sudo apt-get $apt_opts install --yes --no-install-recommends pngquant

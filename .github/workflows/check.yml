@@ -34,20 +34,28 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
         with:
           node-version: 24
-      # A stalled package mirror once held this step for 18 minutes: bound each connection, retry and cap the step.
-      # cmake comes from PyPI below: its 14 MB .deb on the Azure mirror stalled in three runs on 2026-11-05.
+      # Slow Azure downloads can keep making progress without triggering APT's data timeout.
+      # Prefer Ubuntu's archive, retaining the runner's other mirror entries as fallbacks.
       - name: Install system packages
+        if: matrix.group != 'web'
         timeout-minutes: 6
         run: |
+          sudo sed -i '\|://azure\.archive\.ubuntu\.com/|d' /etc/apt/apt-mirrors.txt
+          case "$CHECK_GROUP" in
+            host) packages=(libcjson-dev pkg-config) ;;
+            sim-*) packages=(libsdl2-dev) ;;
+            *) echo "Unexpected check group: $CHECK_GROUP" >&2; exit 1 ;;
+          esac
           apt_opts="-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
           sudo apt-get $apt_opts update
-          sudo apt-get $apt_opts install -y libcjson-dev pkg-config libsdl2-dev python3-pil
+          sudo apt-get $apt_opts install --yes --no-install-recommends "${packages[@]}"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
           version: '0.13.7'
           python-version: '3.13'
           enable-cache: false
       - name: Install cmake
+        if: startsWith(matrix.group, 'sim-')
         timeout-minutes: 5
         run: |
           uv tool install cmake==4.4.4

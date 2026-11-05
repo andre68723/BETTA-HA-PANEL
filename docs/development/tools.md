@@ -116,3 +116,8 @@ owner-supplied HA UI snapshot, not a successful connector read or panel hardware
 CI targets under `tool.betta.ci`. `check_web.py` checks workflow bootstrap values against them. Node is a separate
 executable; newer local Node versions can run the same tests. ESP-IDF owns its own Python environment, separate
 from the uv tooling environment. Do not install another SDK environment just to run these checks.
+
+CI removes the Azure entry from the runner's APT mirror list, preferring Ubuntu's archive with the remaining
+fallbacks. Package installs have bounded retries and a six-minute step limit. The host group installs system
+cJSON and pkg-config; simulator groups install SDL2 and pinned CMake from PyPI. The web group needs no APT
+packages. Pillow comes from the locked uv environment. The documentation workflow installs pngquant through APT.
