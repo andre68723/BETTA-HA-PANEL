@@ -23,6 +23,15 @@ Changes since [v0.9.1](#v091).
 
 Layout fixes for cut-off or overlapping text and weak contrast on Air quality, Car, Media player, Printer, Vacuum, Fan, Energy timeline, Sensor and Cover. Temperatures on Sensor and Air quality read 21.8°C.
 
+### Panel and editor
+
+- **ESP-Hosted 3.1.0 and LVGL adapter 0.7.5:** a C6 on another firmware version is updated once after the first boot of this image, with one extra restart. The SDIO receive staging uses one slot instead of two, which leaves panel4 about 16 KB more internal memory; Panel JC and Tab5 are unchanged.
+- **Home Assistant states:** changed states are reconciled from the cache revisions instead of a periodic full replay, which reduces display lock contention.
+- **Camera:** an unavailable camera shows its unavailable state instead of the last picture.
+- **History popups:** Sensor, Binary and Contact show the configured name and the full state text instead of the shortened tile label; the minimum of the chart summary shows its unit like the maximum.
+- **Device status:** `/api/version` reports the cached chip temperature of the P4.
+- **Editor texts:** remaining editor texts are translated and German terms are consistent.
+
 ## v0.9.1
 
 Changes since [v0.9.0](#v090).
@@ -62,7 +71,7 @@ forecast keeps it off, so it shows the running 24 hours until the buttons are sw
 ### Panel and editor
 
 - **Home Assistant connection:** the HA popup shows rejected access and offers **Reconnect**. Camera snapshots use the panel credential.
-- **ESP-Hosted 3.1.0 and LVGL adapter 0.7.5:** a C6 on another firmware version is updated once after the first boot of this image, with one extra restart. Settings → Firmware lists the version the C6 reports; Device status hides the C6 memory row when its firmware has no memory monitor.
+- **ESP-Hosted 3.0.10:** a C6 on another firmware version is updated once after the first boot of this image, with one extra restart. Settings → Firmware lists the version the C6 reports; Device status hides the C6 memory row when its firmware has no memory monitor.
 - **10-inch JC panel:** short taps are no longer lost, and the screen rotates with the PPA again (an ESP-IDF driver bug is fixed in the firmware), freeing 17-34 % of one core.
 - **Inspector and preview:** one section order for every widget (Entities, Display, Controls, Placement), entity rows that open the search, explanations behind info icons and device classes next to the entity. Previews follow the panel's text roles and 10-inch layouts and mark overlapping tiles.
 - **Entity names:** search, Room details and stock rows share discovered names; a missing `friendly_name` no longer replaces them with the entity ID.
