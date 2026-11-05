@@ -34,21 +34,22 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
         with:
           node-version: 24
-      # A stalled package mirror once held this step for 18 minutes and another time for 3 minutes on one download:
-      # bound each connection, restart a stalled install (downloaded packages are kept) and cap the step.
+      # A stalled package mirror once held this step for 18 minutes: bound each connection, retry and cap the step.
+      # cmake comes from PyPI below: its 14 MB .deb on the Azure mirror stalled in three runs on 2026-11-05.
       - name: Install system packages
-        timeout-minutes: 14
+        timeout-minutes: 6
         run: |
           apt_opts="-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
           sudo apt-get $apt_opts update
-          for attempt in 1 2 3; do
-            sudo timeout 240 apt-get $apt_opts install -y libcjson-dev pkg-config cmake libsdl2-dev python3-pil && exit 0
-            echo "apt-get install attempt $attempt failed or stalled"
-          done
-          exit 1
+          sudo apt-get $apt_opts install -y libcjson-dev pkg-config libsdl2-dev python3-pil
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
           version: '0.13.7'
           python-version: '3.13'
           enable-cache: false
+      - name: Install cmake
+        timeout-minutes: 5
+        run: |
+          uv tool install cmake==4.4.4
+          echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
       - run: uv run --locked --only-group checks scripts/check.sh --group "$CHECK_GROUP"
