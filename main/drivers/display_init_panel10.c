@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 #include "bsp/display.h"
-#include "bsp/esp32_p4_nano.h"
+#include "bsp/esp32_p4_wifi6_touch_lcd_x.h"
 #include "esp_check.h"
 #include "esp_err.h"
 #include "esp_lcd_panel_ops.h"
@@ -80,13 +80,13 @@ esp_err_t display_init(void)
         display_port_unlock();
     } else {
         ESP_LOGW(TAG_DISPLAY, "Could not lock LVGL for rotation setup");
-        lv_display_set_antialiasing(s_lv_display, APP_LVGL_ANTIALIASING != 0);
+        return ESP_ERR_TIMEOUT;
     }
     ESP_LOGI(TAG_DISPLAY, "LVGL antialiasing: %s", (APP_LVGL_ANTIALIASING != 0) ? "on" : "off");
 
     ESP_RETURN_ON_ERROR(display_port_start(), TAG_DISPLAY, "Adapter task start failed");
     s_display_ready = true;
-    ESP_LOGI(TAG_DISPLAY, "Display initialized (shared esp_lvgl_adapter + DSI)");
+    ESP_LOGI(TAG_DISPLAY, "Display initialized (shared esp_lvgl_adapter + LCD-X JD9365)");
     display_note_activity();
     return ESP_OK;
 }

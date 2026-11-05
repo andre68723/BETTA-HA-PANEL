@@ -54,6 +54,7 @@ MAX_LINE = {"espressif/esp_ipa": (2, 2), "espressif/esp_video": (2, 3), "espress
 # Shown in the web editor's Firmware Info table.
 FIRMWARE_INFO = {
     "lvgl/lvgl", "espressif/esp_lvgl_adapter", "espressif/esp_lvgl_port", "espressif/esp_lcd_jd9365",
+    "waveshare/esp32_p4_wifi6_touch_lcd_x",
     "espressif/esp_lcd_touch", "espressif/esp_hosted", "espressif/esp_wifi_remote",
     "espressif/esp_websocket_client", "joltwallet/littlefs",
     "espressif/esp_video", "espressif/esp_ipa", "espressif/esp_cam_sensor", "espressif/esp_sccb_intf",

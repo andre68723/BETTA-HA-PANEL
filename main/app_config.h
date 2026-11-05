@@ -12,7 +12,7 @@
  * (pre-variant) still builds the smart86 target unchanged. */
 #if defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
 #  define APP_NAME               "betta-ha-panel-10.1"
-#  define APP_BOARD_DESCRIPTION  "Waveshare ESP32-P4 Module Nano + 10.1\" DSI panel"
+#  define APP_BOARD_DESCRIPTION  "Waveshare ESP32-P4-WIFI6-Touch-LCD-10.1 (LCD-X)"
 #  define APP_SCREEN_WIDTH       1280
 #  define APP_SCREEN_HEIGHT      800
 #  define APP_CONTENT_BOX_WIDTH  1280

@@ -91,18 +91,6 @@ PATCHES = [
         "        return ESP_FAIL;\n"
         "    }\n"
         "    eh_host_port_sem_post(sem_to_slave_queue);\n")),
-    ("waveshare__esp_lcd_hx8394", "esp_lcd_hx8394.c",
-     "panel10 under IDF 6: colour order field (build check only)",
-     replace, ("panel_dev_config->color_space", "panel_dev_config->rgb_ele_order")),
-    ("waveshare__esp32_p4_nano", "CMakeLists.txt",
-     "panel10 BSP under IDF 6: requirements (build check only)",
-     ensure_requires, ("REQUIRES", ["esp_driver_ledc", "esp_driver_gpio", "esp_driver_i2c", "esp_driver_i2s", "esp_driver_sdmmc"])),
-    ("waveshare__esp32_p4_nano", "include/bsp/display.h",
-     "panel10 BSP under IDF 6: colour order names (build check only)",
-     replace, ("ESP_LCD_COLOR_SPACE_RGB", "LCD_RGB_ELEMENT_ORDER_RGB")),
-    ("waveshare__esp32_p4_nano", "include/bsp/display.h",
-     "panel10 BSP under IDF 6: colour order names (build check only)",
-     replace, ("ESP_LCD_COLOR_SPACE_BGR", "LCD_RGB_ELEMENT_ORDER_BGR"), True),
     ("espressif__m5stack_tab5", "src/bsp_display.c",
      "tab5 BSP: bsp_display_new_with_handles() accepts a NULL config (first boot on a Tab5 crashed with a load access fault)",
      replace, ("        .phy_clk_src = config->dsi_bus.phy_clk_src,\n"

@@ -30,11 +30,11 @@ The WebUI build bundles/fingerprints ordered JS and CSS, gzips and embeds three 
 
 ## Vendored camera component and the P4 silicon cap
 
-`components/esp_cam_sensor` is Espressif's core plus the OV02C10 driver (JC8012P4A1) and the SC202CS/SC2356 drivers
-(Tab5), cut down to those sensors and the DW9714 motor. `tools/vendor_cam_sensor.py <version>` stages a new registry core
-and keeps both sensor directories and `project_include.cmake`; `esp_video` pins the matching line (2.3.x wants 2.3.*).
+`components/esp_cam_sensor` is Espressif's core plus the OV02C10 driver (JC8012P4A1) the SC202CS/SC2356 drivers
+(Tab5) and OV5647 (Waveshare LCD-X), cut down to those sensors and the DW9714 motor. `tools/vendor_cam_sensor.py <version>` stages a new registry core
+and keeps all three sensor directories and `project_include.cmake`; `esp_video` pins the matching line (2.3.x wants 2.3.*).
 After a version change update the `esp_cam_sensor`, `esp_video`, `esp_ipa` and `esp_h264` entries in the variant lock
-files, rebuild both camera variants and check each camera on its panel (`POST /api/camera/test`, the
+files, rebuild the affected camera variants and check each camera on its panel (`POST /api/camera/test`, the
 `ambient_cam: luma ...` log line). Tab5 awaits its first device test.
 
 Versions stop at `esp_video` 2.3.0, `esp_ipa` 2.2.0~1 and `esp_cam_sensor` 2.3.0 on purpose: the prebuilt `libesp_ipa.a`
@@ -141,6 +141,22 @@ the board initialization. BETTA retains GPIO23 touch reset with the 0x5D/0x14 pr
 the new BSP declares the reset pin NC. Display timing and the separate ES8311
 chime path remain board-specific.
 
+## Waveshare LCD-X BSP override
+
+Panel10 targets the ready-made ESP32-P4-WIFI6-Touch-LCD-10.1 through Waveshare
+BSP 2.0.3 in `third_party/waveshare__esp32_p4_wifi6_touch_lcd_x`. Its `BETTA.md`
+records the official archive hash and local adapter/DSI-clock changes. The preset
+selects P4 Rev3.0+, JD9365, RGB565, two DPI framebuffers and fixed 270-degree
+landscape. GT9271 uses a non-null BSP configuration and the GT911-family driver;
+LVGL applies rotation. PWM brightness uses GPIO26; touch reset/interrupt stay NC.
+The shared adapter/PPA runtime is retained. Optional OV5647 sensing shares the
+BSP I2C bus and uses Espressif's original sensor modes/ISP profile with a small
+read-only metering extension. ES8311 chimes use the existing transient output
+path and BSP pins. Microphone capture is not initialized. Both runtime features
+start off; manufacturer examples and source hashes are recorded in the vendor notes.
+This replaces the inherited Nano BSP and its compatibility patches; the Nano
+plus separate DSI kit is no longer the panel10 target. Hardware validation is pending.
+
 ## Patches to fetched components
 
 `managed_components/` is git-ignored and overwritten whenever the component manager refetches (manifest change, or a
@@ -148,7 +164,7 @@ build at a commit whose manifest differs from the lock). The small edits needed 
 `tools/apply_component_patches.py`, never by hand:
 
 - two esp_hosted SDIO fixes (byte-mode TX workaround, bounded `esp_hosted_tx()` queue wait instead of an infinite one),
-- compatibility fixes for the older fetched Waveshare BSPs, including panel10,
+- compatibility fixes for the older fetched Waveshare BSPs, on retained fetched components,
 - a bounded wait for the PPA screen rotation in `esp_lvgl_port` (see
   [UI stall watchdog](learnings.md#watchdogs-and-crash-evidence)).
 

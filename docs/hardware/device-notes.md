@@ -82,12 +82,34 @@ The pin review on 2026-10-02 used the manufacturer's documentation: touch I2C on
 
 Device guide: [Waveshare 10.1-inch panel](panel10.md).
 
-The shared ESP32-P4/C6 configuration uses 360 MHz CPU and 200 MHz Hex PSRAM. It does not establish hardware operation or a memory baseline for panel10. Match the exact controller/display assembly and chip revision before flashing. No audio driver is enabled for this variant.
+The shared ESP32-P4/C6 configuration uses 360 MHz CPU and 200 MHz Hex PSRAM. It does not establish hardware operation or a memory baseline for panel10. Match the exact controller/display assembly and chip revision before flashing. The optional ES8311 chime path and OV5647 sensing are built; physical validation is pending.
 
-`display_init_panel10.c` and `touch_init_panel10.c` currently use
-`bsp/esp32_p4_nano.h`. The LCD-X controller assembly has different connector
-geometry from that Nano board. Correcting this guide's illustration and links
-does not validate its pin assignments, display initialization or touch mapping.
+`panel10` targets the ready-made **ESP32-P4-WIFI6-Touch-LCD-10.1**, not the
+Nano plus DSI kit. The variant manifest pins the LCD-X BSP 2.0.3 through
+`third_party/waveshare__esp32_p4_wifi6_touch_lcd_x`; provenance and local changes
+are recorded in its `BETTA.md`. The preset selects P4 Rev3.0+, RGB565 and two
+native 800 × 1280 DPI framebuffers, with the existing fixed 270-degree LVGL view.
+The shared PPA path retains this fork's driver fix and bounded completion waits;
+peer CPU-rotation trials do not qualify this configuration.
+
+BSP pin assignments: I2C SDA/SCL GPIO7/8, LCD reset GPIO27 and PWM backlight
+GPIO26 (5 kHz, 10-bit). GT9271 uses the GT911-family driver, probes 0x5D then
+0x14 and polls with touch reset/interrupt unassigned. A non-null BSP touch
+configuration leaves swap/mirror off; LVGL maps the display rotation.
+The ESP-Hosted pins remain the common SDIO profile (CLK18, CMD19, D0–D3 14–17,
+C6 reset54). Match these with the exact board revision during bring-up.
+
+Waveshare identifies the front camera as OV5647 (5 MP, MIPI-CSI), with ES8311,
+ES7210, two microphones and a speaker for audio. BETTA enables the ES8311 output driver and duty-cycled OV5647 light/presence
+sensing; runtime options start off. The ES7210 and microphones are not initialized.
+Two 800 × 640 RGB565 buffers need 2,048,000 PSRAM bytes once sensing opens the
+camera. SCCB shares the BSP I2C bus; the camera task stays on the DSI-init core.
+The original Espressif OV5647 driver has a local read-only statistics extension.
+Sources: [Waveshare LCD-X examples](https://github.com/waveshareteam/ESP32-P4-WIFI6-Touch-LCD-X),
+`06_I2SCodec` and `09_video_lcd_display`; exact versions/provenance are recorded
+in the BSP and OV5647 `BETTA.md` files.
+Display/touch, PWM brightness, Wi-Fi/HA, camera, chimes and OTA require local
+hardware verification.
 
 ## Guition JC8012P4A1 (`paneljc`) { #paneljc }
 

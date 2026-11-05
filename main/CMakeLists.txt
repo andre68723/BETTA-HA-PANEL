@@ -12,7 +12,7 @@ else()
 endif()
 
 # ---- Panel-variant-specific driver sources --------------------------------
-# The 4" (smart86) and 10.1" (nano) panels use different BSPs and different
+# The 4" (smart86) and 10.1" (LCD-X) panels use different BSPs and different
 # touch controllers, so their display_init/touch_init implementations live
 # in separate source files.  Exactly one pair is compiled per build.
 if(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
@@ -76,6 +76,11 @@ if(NOT APP_GIT_DESCRIBE_RESULT EQUAL 0 OR NOT APP_GIT_COMMIT_SHA)
     set(APP_GIT_COMMIT_SHA "unknown")
 endif()
 
+if(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
+    set(APP_WAVESHARE_BSP_PACKAGE "waveshare/esp32_p4_wifi6_touch_lcd_x")
+else()
+    set(APP_WAVESHARE_BSP_PACKAGE "waveshare/esp32_p4_wifi6_touch_lcd_4b")
+endif()
 idf_build_get_property(APP_GEN_PYTHON PYTHON)
 execute_process(
     COMMAND "${APP_GEN_PYTHON}" "${CMAKE_SOURCE_DIR}/tools/generate_component_versions.py"
@@ -93,7 +98,7 @@ execute_process(
         --package "espressif/mqtt=MQTT"
         --package "espressif/cjson=CJSON"
         --package "espressif/esp_serial_slave_link=ESP_SERIAL_SLAVE_LINK"
-        --package "waveshare/esp32_p4_wifi6_touch_lcd_4b=WAVESHARE_BSP"
+        --package "${APP_WAVESHARE_BSP_PACKAGE}=WAVESHARE_BSP"
         --package "espressif/m5stack_tab5=M5STACK_BSP"
         --package "waveshare/esp_lcd_st7703=ESP_LCD_ST7703"
         --package "espressif/esp_lcd_touch_gt911=ESP_LCD_TOUCH_GT911"

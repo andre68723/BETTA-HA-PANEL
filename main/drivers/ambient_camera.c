@@ -2,12 +2,13 @@
  * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
  *
  * Ambient light and presence sensing with the on-board MIPI-CSI camera
- * (OV02C10 on paneljc, SC2356/SC202CS on Tab5).
+ * (OV02C10 on paneljc, SC2356/SC202CS on Tab5, OV5647 on Waveshare LCD-X).
  * The V4L2 capture flow (esp_video, RGB565 through the ISP, user-pointer
  * buffers) follows the approach of the BETTA-kruzio project's local camera
  * module, reduced to a duty-cycled light sensor.
  */
 #include "drivers/ambient_camera.h"
+#include "drivers/ambient_limits.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -28,6 +29,8 @@
 #include "esp_timer.h"
 #include "esp_video_device.h"
 #include "esp_video_init.h"
+#include "esp_video_ioctl.h"
+#include "esp_cam_sensor_types.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "linux/videodev2.h"
@@ -47,6 +50,8 @@ static const uint8_t s_presence_pct_by_sensitivity[10] = {20, 16, 13, 10, 8, 6, 
 
 #if defined(CONFIG_APP_PANEL_VARIANT_TAB5_1280)
 #include "bsp/m5stack_tab5.h"
+#elif defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
+#include "bsp/esp32_p4_wifi6_touch_lcd_x.h"
 #else
 extern i2c_master_bus_handle_t touch_paneljc_i2c_bus(void);
 #endif
@@ -60,7 +65,19 @@ static uint8_t *s_bufs[AMBIENT_BUFS];
 static size_t s_buf_size;
 static uint32_t s_width;
 static uint32_t s_height;
+#if !defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
 static int32_t s_base_gain = 1;
+#endif
+
+static void ambient_cleanup(void)
+{
+    if (s_fd >= 0) { close(s_fd); s_fd = -1; }
+    (void)esp_video_deinit();
+    for (unsigned i = 0; i < AMBIENT_BUFS; ++i) {
+        heap_caps_free(s_bufs[i]);
+        s_bufs[i] = NULL;
+    }
+}
 
 static int ambient_ioctl(int cmd, void *arg)
 {
@@ -74,10 +91,17 @@ static esp_err_t ambient_open(void)
      * initialized I2C bus with touch before it registers /dev/video0. */
     esp_err_t err = bsp_camera_start(NULL);
 #else
+    /* Waveshare example 09_video_lcd_display supplies its existing BSP bus.
+     * The SCCB driver must not create another controller on GPIO7/8. */
+#if defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
+    i2c_master_bus_handle_t sensor_bus = bsp_i2c_get_handle();
+#else
+    i2c_master_bus_handle_t sensor_bus = touch_paneljc_i2c_bus();
+#endif
     esp_video_init_csi_config_t csi[] = {{
         .sccb_config = {
             .init_sccb = false,
-            .i2c_handle = touch_paneljc_i2c_bus(),
+            .i2c_handle = sensor_bus,
             .freq = 100000,
         },
         .reset_pin = -1,
@@ -99,6 +123,11 @@ static esp_err_t ambient_open(void)
         ESP_LOGE(TAG_AMBIENT, "open %s failed", ESP_VIDEO_MIPI_CSI_DEVICE_NAME);
         return ESP_FAIL;
     }
+
+    /* esp_video 2.3 uses this ioctl for dequeue timeouts; O_NONBLOCK alone
+     * does not bound VIDIOC_DQBUF. Our existing polling loop owns the wait. */
+    struct timeval dequeue_timeout = {0};
+    if (ambient_ioctl(VIDIOC_S_DQBUF_TIMEOUT, &dequeue_timeout) != 0) return ESP_FAIL;
 
     struct v4l2_format fmt = {.type = V4L2_BUF_TYPE_VIDEO_CAPTURE};
     if (ambient_ioctl(VIDIOC_G_FMT, &fmt) != 0) {
@@ -135,6 +164,7 @@ static esp_err_t ambient_open(void)
         return ESP_FAIL;
     }
 
+#if !defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
     struct v4l2_query_ext_ctrl qc = {.id = V4L2_CID_GAIN};
     struct v4l2_querymenu qm = {.id = V4L2_CID_GAIN};
     if (ambient_ioctl(VIDIOC_QUERY_EXT_CTRL, &qc) == 0) {
@@ -144,6 +174,7 @@ static esp_err_t ambient_open(void)
         }
     }
     ESP_LOGI(TAG_AMBIENT, "camera ready %" PRIu32 "x%" PRIu32 ", base gain %d", s_width, s_height, (int)s_base_gain);
+#endif
     return ESP_OK;
 }
 
@@ -159,6 +190,7 @@ static bool ambient_queue_buffer(int index)
     return ambient_ioctl(VIDIOC_QBUF, &b) == 0;
 }
 
+#if !defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
 static float ambient_read_gain(void)
 {
     /* The gain control is a menu: the current value is an index into it. */
@@ -182,6 +214,29 @@ static float ambient_read_exposure(void)
         return 1.0f;
     }
     return (float)c.value;
+}
+
+#endif
+
+static bool ambient_read_light(float *exposure, float *gain)
+{
+#if defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
+    esp_cam_sensor_stats_t values = {0};
+    struct v4l2_ext_control control = {
+        .id = V4L2_CID_CAMERA_STATS, .size = sizeof(values), .p_u8 = (uint8_t *)&values,
+    };
+    struct v4l2_ext_controls controls = {
+        .ctrl_class = V4L2_CID_CAMERA_CLASS, .count = 1, .controls = &control,
+    };
+    if (ambient_ioctl(VIDIOC_G_EXT_CTRLS, &controls) != 0 || !values.aec_exp || values.agc_gain < 1.0f)
+        return false;
+    *exposure = (float)values.aec_exp;
+    *gain = values.agc_gain;
+#else
+    *exposure = ambient_read_exposure();
+    *gain = ambient_read_gain();
+#endif
+    return true;
 }
 
 static inline uint8_t ambient_luma(uint16_t px)
@@ -281,6 +336,8 @@ static bool ambient_motion(const uint8_t *grid, int *changed_pct, int *level)
 
 static void ambient_sample(int frames, bool want_light)
 {
+    int64_t deadline = ambient_capture_deadline(ambient_now_ms(), s_test_until_ms,
+                                               !s_auto_brightness && !s_presence_wake);
     for (int i = 0; i < AMBIENT_BUFS; i++) {
         if (!ambient_queue_buffer(i)) {
             ESP_LOGW(TAG_AMBIENT, "QBUF %d failed", i);
@@ -290,12 +347,17 @@ static void ambient_sample(int frames, bool want_light)
     int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     if (ambient_ioctl(VIDIOC_STREAMON, &type) != 0) {
         ESP_LOGW(TAG_AMBIENT, "STREAMON failed");
+        struct v4l2_requestbuffers reset = {
+            .count = AMBIENT_BUFS, .type = V4L2_BUF_TYPE_VIDEO_CAPTURE, .memory = V4L2_MEMORY_USERPTR,
+        };
+        (void)ambient_ioctl(VIDIOC_REQBUFS, &reset);
         return;
     }
 
     uint8_t motion_grid[AMBIENT_GRID * AMBIENT_GRID];
     bool have_motion_grid = false;
     int last = -1;
+    int received = 0;
     for (int i = 0; i < frames; i++) {
         struct v4l2_buffer b = {
             .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
@@ -303,15 +365,17 @@ static void ambient_sample(int frames, bool want_light)
         };
         /* Non-blocking descriptor: poll for up to one second per frame. */
         int waited_ms = 0;
-        while (ambient_ioctl(VIDIOC_DQBUF, &b) != 0 && waited_ms < 1000) {
+        while (ambient_ioctl(VIDIOC_DQBUF, &b) != 0 && waited_ms < 1000 && ambient_now_ms() < deadline) {
             vTaskDelay(pdMS_TO_TICKS(5));
             waited_ms += 5;
         }
-        if (waited_ms >= 1000) {
+        if (waited_ms >= 1000 || ambient_now_ms() >= deadline) {
             ESP_LOGW(TAG_AMBIENT, "frame %d timed out", i);
             break;
         }
+        if (b.index >= AMBIENT_BUFS || b.bytesused < s_buf_size) break;
         last = (int)b.index;
+        received++;
         if (i == AMBIENT_MOTION_FRAME) {
             ambient_frame_to_grid(s_bufs[last], motion_grid);
             have_motion_grid = true;
@@ -321,10 +385,10 @@ static void ambient_sample(int frames, bool want_light)
         }
     }
 
-    const float exposure = ambient_read_exposure();
-    const float gain = ambient_read_gain();
+    float exposure = 0, gain = 0;
+    bool light_valid = !want_light || ambient_read_light(&exposure, &gain);
     (void)ambient_ioctl(VIDIOC_STREAMOFF, &type);
-    if (last < 0 || !have_motion_grid) {
+    if (received != frames || last < 0 || !have_motion_grid || !light_valid) {
         ESP_LOGW(TAG_AMBIENT, "no usable frame");
         return;
     }
@@ -393,6 +457,7 @@ static void ambient_task(void *arg)
         }
         if (!opened) {
             if (ambient_open() != ESP_OK) {
+                ambient_cleanup();
                 ESP_LOGE(TAG_AMBIENT, "camera unavailable, ambient sensing disabled");
                 vTaskDelete(NULL);
                 return;
@@ -426,7 +491,12 @@ void ambient_camera_configure(bool auto_brightness, bool presence_wake, int sens
 
 void ambient_camera_start(void)
 {
+#if defined(CONFIG_APP_PANEL_VARIANT_10INCH_1280)
+    /* IDF's CSI/DSI DMA interrupt group must stay on the display init core. */
+    (void)xTaskCreatePinnedToCore(ambient_task, "ambient_cam", 6 * 1024, NULL, 3, NULL, xPortGetCoreID());
+#else
     (void)xTaskCreate(ambient_task, "ambient_cam", 6 * 1024, NULL, 3, NULL);
+#endif
 }
 
 bool ambient_camera_get(ambient_camera_reading_t *out)
@@ -452,7 +522,9 @@ int ambient_camera_get_presence_threshold_pct(void)
 
 void ambient_camera_start_test(uint32_t duration_ms)
 {
-    s_test_until_ms = ambient_now_ms() + (int64_t)duration_ms;
+    portENTER_CRITICAL(&s_lock);
+    s_test_until_ms = ambient_test_deadline(s_test_until_ms, ambient_now_ms(), duration_ms);
+    portEXIT_CRITICAL(&s_lock);
 }
 
 bool ambient_camera_test_active(int *out_remaining_s)

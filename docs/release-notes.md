@@ -19,6 +19,20 @@ Changes since [v0.9.1](#v091).
 | [Fan](widgets/fan_tile.md) | <span class="release-status release-status--changed">Changed</span> | The rotor is drawn as three swept blades. |
 | [Parqet portfolio](widgets/parqet_portfolio.md) | <span class="release-status release-status--changed">Changed</span> | The interval buttons follow the panel language like the Stocks & ETFs period buttons (**1T** instead of **1D** in German). |
 
+### Waveshare 10.1-inch LCD-X target
+
+`panel10` now targets the ready-made **ESP32-P4-WIFI6-Touch-LCD-10.1** with
+Waveshare LCD-X BSP 2.0.3, JD9365 and GT9271. The preset selects P4 Rev3.0+;
+older silicon and the separate Nano plus DSI kit are outside this profile.
+Fixed landscape, shared PPA rotation, two DPI framebuffers, PWM brightness and
+existing Wi-Fi/OTA behavior remain. The built-in OV5647 supports optional local
+light/presence sensing; ES8311 output supports notification/doorbell chimes.
+Camera automation and sound retain their off defaults. Microphones are unused.
+Sources are the official Waveshare LCD-X BSP/examples and Espressif's OV5647
+sensor driver, with original Apache-2.0 notices retained. A local read-only
+metering query supplies actual exposure/gain. The camera test has a fixed
+30-second deadline and capture waits are bounded. This is build-checked preparation; local hardware validation is pending.
+
 ### Widgets: fitting and contrast
 
 Layout fixes for cut-off or overlapping text and weak contrast on Air quality, Car, Media player, Printer, Vacuum, Fan, Energy timeline, Sensor and Cover. Temperatures on Sensor and Air quality read 21.8°C.

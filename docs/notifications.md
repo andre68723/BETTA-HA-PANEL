@@ -74,9 +74,9 @@ A plain message remains until dismissed; a new message replaces it.
 
 ## Sound
 
-On displays with a speaker (Waveshare 4-inch and Tab5), **Settings → Sound** turns sounds on. Sound starts off at
+On displays with a speaker (Waveshare 4-inch, Waveshare LCD-X 10.1-inch and Tab5), **Settings → Sound** turns sounds on. Sound starts off at
 **60 %** volume with *mute during night mode* on; muting follows the night schedule even if a touch has woken the
-screen. **Test chime** plays at the selected volume. The 10-inch panels have no Sound page. Validation status per
+screen. **Test chime** plays at the selected volume. The Guition JC panels have no Sound page. Validation status per
 device: [Cameras and chimes](hardware/peripherals.md#optional-chime-output).
 
 ## Dismiss and recall
@@ -133,7 +133,7 @@ keycaps and emoji the panel does not have show as `[Emoji]`. The color set is th
 - **Notify entity missing:** check that MQTT is enabled on the panel, both use the same broker,
   and HA's MQTT integration is set up. The top-bar MQTT chip opens connection details.
 - **No sound:** enable it under **Settings → Sound**, check the volume and night mute, then use **Test chime**.
-  The 10-inch panels have no Sound page.
+  The Guition JC panels have no Sound page.
 - **HTTP error:** see [HTTP troubleshooting](http-notifications.md#http-troubleshooting).
 
 For payload limits, MQTT topics and firmware internals, see
