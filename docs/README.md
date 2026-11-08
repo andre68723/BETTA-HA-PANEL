@@ -36,7 +36,10 @@ The optional HTTP notification route needs YAML.
 !!! info "Development fork"
 
     These guides cover the fork by [andre68723](https://github.com/andre68723/BETTA-HA-PANEL), based on
-    upstream v0.8.2: release v0.9.0 and the upcoming v0.9.1. Hardware validation is listed in
+    upstream v0.8.2. The latest stable release is
+    [v0.9.1](https://github.com/andre68723/BETTA-HA-PANEL/releases/tag/v0.9.1);
+    these guides also cover the v0.9.2-rc2 changes in the [release notes](release-notes.md).
+    Hardware validation is listed in
     [Choose your display](choose-display.md).
 
 The [Widget library](widgets/README.md) has focused setup guides for each tile.
