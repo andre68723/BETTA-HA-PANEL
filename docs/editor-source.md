@@ -105,6 +105,11 @@ JSON. The local toolbar identifies the test environment. Ctrl+C stops the server
 - `--ui spike` opens the bundled local prototype and enables the **View** selector for comparison with Classic.
   `--spike path/to/adapter` overrides its sources (`spike.css`, `widget-icons.js`, `spike.js`).
 
+The toolbar's **Preview** button renders the selected page in the LVGL simulator from the layout as edited, including unsaved changes,
+with style, text size and language selectors; the first render builds the simulator. The same toolbar action is **Live view** on a panel
+(`js/lvgl-preview.js`): the local server enables it through `lvgl_preview` in its configuration and never uses the panel endpoint
+`/api/screenshot.jpg`.
+
 Both views share the editor sources and API. The local view selector transfers the in-memory layout and selection
 through session storage, including unsaved edits, without saving to the API. Both views use the shared layout history, which resets
 on a view change. View preferences and transfer data never enter layout JSON.

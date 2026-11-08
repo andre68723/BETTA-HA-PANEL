@@ -30,6 +30,7 @@ typedef enum {
     REBOOT_CAUSE_HTTP_WATCHDOG, /* the device's own HTTP server stopped answering while the network was up */
     REBOOT_CAUSE_UI_WATCHDOG,   /* the UI stopped running (util/ui_watchdog.h); the restart is an abort() with a core dump */
     REBOOT_CAUSE_MANUAL,        /* "Restart panel" in the editor (POST /api/restart) */
+    REBOOT_CAUSE_WIFI_RECOVERED, /* the saved network came back while the setup access point was up (net/wifi_mgr.c) */
     REBOOT_CAUSE_COUNT
 } reboot_cause_t;
 

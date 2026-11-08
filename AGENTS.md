@@ -136,7 +136,7 @@ Before risky layout tests back up GET /api/layout to ignored .claude/layout-back
 in docs/development/testing.md and learnings.md. Recovery/reset/restore requires the corresponding owner instruction.
 
 After an explicitly authorized flash, verify running source stamp, OTA validation, connection and changed behavior;
-reachability/upload alone can be a rollback. /api/screenshot.bmp is an LVGL snapshot, not physical framebuffer/touch proof.
+reachability/upload alone can be a rollback. /api/screenshot.png and .jpg are LVGL snapshots, not physical framebuffer/touch proof.
 Missing startup text in a bounded log is not proof of failed initialization. Backlight software values are not optical measurements.
 Do not add routine stress tests; the owner declined the 10-inch stress test. A hardware claim needs board-specific evidence.
 

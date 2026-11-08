@@ -279,6 +279,15 @@ cc -std=gnu11 -Wall -Wextra -Werror -g -I tests/host/auth_stubs -I main \
   tests/host/test_admin_auth.c -o "$out/test_admin_auth"
 "$out/test_admin_auth"
 
+# The production screenshot handler: failed or inconsistent snapshots, overlay blending, lock failure, send failures and BMP layout.
+cc -std=gnu11 -Wall -Wextra -Werror -g -I tests/host/screenshot_stubs -I main \
+  tests/host/test_screenshot.c -lz -o "$out/test_screenshot"
+"$out/test_screenshot"
+# The same test under AddressSanitizer and UndefinedBehaviorSanitizer: freed buffers, bounds, overflows.
+cc -std=gnu11 -Wall -Wextra -Werror -g -O1 -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=undefined \
+  -I tests/host/screenshot_stubs -I main tests/host/test_screenshot.c -lz -o "$out/test_screenshot_san"
+"$out/test_screenshot_san"
+
 # Crash evidence: two-report rotation, raw-byte downloads, failed writes, restart/dedup and individual deletion.
 cc -std=gnu11 -Wall -Wextra -Werror -g -I main "${cjson_flags[@]}" \
   tests/host/test_coredump_store.c main/util/coredump_store.c main/util/coredump_diagnostics.c main/util/sha256_soft.c \

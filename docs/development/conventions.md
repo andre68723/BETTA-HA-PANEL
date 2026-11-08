@@ -86,10 +86,10 @@ one. The editor is served by the firmware, so it never handles an older firmware
 
 - Warnings are errors (`-Werror`, GCC 15); some only appear with `-Os`.
 - LVGL calls only from the UI task or with the display lock held; esp_wifi calls go through the mutex in `wifi_mgr.c`.
-- **Flash budget:** the app slot is 5 MB with about 7 % free (local v0.9.0 paneljc build, easter egg off). See
+- **Flash budget:** each current app slot is 6.5 MiB. Measure the remaining space in the matching build; see
   [Flash budget](../hardware/storage.md#flash-budget-paneljc) before adding fonts, images or libraries.
-  `CONFIG_COMPILER_OPTIMIZATION_SIZE=y` would free about 340 KB but is **not enabled** (not regression-tested, harder
-  debugging); decide on it before removing features.
+  `CONFIG_COMPILER_OPTIMIZATION_SIZE=y` is **not enabled** by default (no full on-device regression, harder
+  debugging); historical size measurements are listed in that reference.
 
 ## Licensing and headers
 

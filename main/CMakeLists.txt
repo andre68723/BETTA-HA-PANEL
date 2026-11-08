@@ -423,6 +423,7 @@ idf_component_register(
         esp_app_format
         esp_lcd
         lvgl
+        espressif__zlib
         ${JSON_COMPONENT_NAME}
         littlefs
         webui

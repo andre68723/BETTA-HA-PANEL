@@ -1367,15 +1367,28 @@ int main(int argc, char **argv)
         ui_boot_splash_set_status_layout(true, 520, 0);
         ui_boot_splash_clear_status();
         ui_boot_splash_set_progress(100);
-        ui_boot_splash_set_status(ui_i18n_get("boot.wifi_credentials_missing", "Wi-Fi credentials missing"));
         char line[64];
-        snprintf(line, sizeof(line), "%s: %s", ui_i18n_get("topbar.ap", "AP"), json_string(setup, "ssid"));
-        ui_boot_splash_set_status(line);
-        snprintf(line, sizeof(line), "%s: %s", ui_i18n_get("boot.setup_ap_password", "Password"), json_string(setup, "password"));
-        ui_boot_splash_set_status(line);
-        ui_boot_splash_set_status(ui_i18n_get("boot.open_editor", "Open BETTA Editor:"));
-        snprintf(line, sizeof(line), "http://%s", json_string(setup, "ip"));
-        ui_boot_splash_set_status(line);
+        const char *saved = json_string(setup, "saved_ssid");
+        if (saved[0] != '\0') {
+            snprintf(line, sizeof(line), "%s: %s", ui_i18n_get("boot.wifi_unreachable", "Wi-Fi not reachable"), saved);
+            ui_boot_splash_set_status(line);
+            ui_boot_splash_set_status(ui_i18n_get("boot.wifi_auto_reconnect", "Reconnects automatically when it is back"));
+            snprintf(line, sizeof(line), "%s %s", ui_i18n_get("boot.wifi_or_setup", "Or set up again, AP:"), json_string(setup, "ssid"));
+            ui_boot_splash_set_status(line);
+            snprintf(line, sizeof(line), "%s: %s", ui_i18n_get("boot.setup_ap_password", "Password"), json_string(setup, "password"));
+            ui_boot_splash_set_status(line);
+            snprintf(line, sizeof(line), "http://%s", json_string(setup, "ip"));
+            ui_boot_splash_set_status(line);
+        } else {
+            ui_boot_splash_set_status(ui_i18n_get("boot.wifi_credentials_missing", "Wi-Fi credentials missing"));
+            snprintf(line, sizeof(line), "%s: %s", ui_i18n_get("topbar.ap", "AP"), json_string(setup, "ssid"));
+            ui_boot_splash_set_status(line);
+            snprintf(line, sizeof(line), "%s: %s", ui_i18n_get("boot.setup_ap_password", "Password"), json_string(setup, "password"));
+            ui_boot_splash_set_status(line);
+            ui_boot_splash_set_status(ui_i18n_get("boot.open_editor", "Open BETTA Editor:"));
+            snprintf(line, sizeof(line), "http://%s", json_string(setup, "ip"));
+            ui_boot_splash_set_status(line);
+        }
     }
     cJSON_Delete(root);
 

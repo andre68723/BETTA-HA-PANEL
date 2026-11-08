@@ -1928,7 +1928,7 @@ static void test_auto_update_state(void)
     e.reset_reason = 4; e.cause = REBOOT_CAUSE_UI_WATCHDOG; CHECK(reboot_entry_is_failure(&e)); /* abort() after the mark */
     CHECK(strcmp(reboot_entry_label(&e), "UI watchdog") == 0);
     CHECK(strcmp(reboot_cause_name(REBOOT_CAUSE_UI_WATCHDOG), "ui_watchdog") == 0);
-    CHECK(strcmp(reboot_cause_name(REBOOT_CAUSE_MANUAL), "manual") == 0);
+    CHECK(strcmp(reboot_cause_name(REBOOT_CAUSE_MANUAL), "manual") == 0); e.reset_reason = 3; e.cause = REBOOT_CAUSE_WIFI_RECOVERED; CHECK(!reboot_entry_is_failure(&e) && strcmp(reboot_entry_label(&e), "Wi-Fi returned") == 0 && strcmp(reboot_cause_name(REBOOT_CAUSE_WIFI_RECOVERED), "wifi_recovered") == 0);
 }
 
 static void test_ui_watchdog(void)

@@ -116,6 +116,7 @@ const char *reboot_cause_name(uint8_t cause)
     case REBOOT_CAUSE_HTTP_WATCHDOG: return "http_watchdog";
     case REBOOT_CAUSE_UI_WATCHDOG: return "ui_watchdog";
     case REBOOT_CAUSE_MANUAL: return "manual";
+    case REBOOT_CAUSE_WIFI_RECOVERED: return "wifi_recovered";
     default: return "other";
     }
 }
@@ -134,6 +135,7 @@ const char *reboot_entry_label(const reboot_entry_t *entry)
         case REBOOT_CAUSE_NET_WATCHDOG: return "network watchdog";
         case REBOOT_CAUSE_HTTP_WATCHDOG: return "HTTP watchdog";
         case REBOOT_CAUSE_MANUAL: return "manual restart";
+        case REBOOT_CAUSE_WIFI_RECOVERED: return "Wi-Fi returned";
         default: return entry->had_crumb ? "software restart (untagged)" : "software restart";
         }
     }

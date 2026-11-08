@@ -99,8 +99,8 @@ fixtures for numeric and discrete details.
 ## Screenshots
 
 `scripts/panel_screenshot.sh <panel-ip> [out.png]` saves what the panel shows (popups and the update screen included) via
-`GET /api/screenshot.bmp`. Do not give `curl` a short timeout: the image is about 3 MB on the 10-inch panel and a timeout
-truncates it silently.
+`GET /api/screenshot.png`, a lossless PNG (10-inch panel: about 0.2 MB, 1.1-1.4 s). `/api/screenshot.jpg` (hardware JPEG,
+0.3-0.8 s) serves the editor's Live view; use PNG for comparisons. Firmware older than v0.9.2-rc2 only has `/api/screenshot.bmp`.
 
 ## Test layouts
 

@@ -70,37 +70,32 @@ USB flash (bootloader, table, app). A change that moves LittleFS discards its co
 The 16 MiB flash holds two 6.5 MiB app slots (ota_0, ota_1), a
 256 KiB coredump partition and a 2.625 MiB LittleFS partition (`config/partitions.paneljc.csv`). Use
 `scripts/build.sh <variant> size` or the `.map` file to see where the space goes.
-Approximate composition of the image (paneljc, ESP-IDF 6.1, `-Og`):
+The app contains the firmware, editor and built-in assets:
 
-| Item | Approx. size |
+| Item | Storage in the app |
 | --- | --- |
-| Embedded ESP-Hosted C6 firmware (`network_adapter_esp32c6_<version>.bin`) | 1.2 MB |
-| LVGL code (the ThorVG renderer used for Lottie is off by default, +0.22 MB with the easter egg) | 0.53 MB |
-| Light-color images and the boot splash logo (PNG) | 0.25 MB |
-| Generated font bitmaps (MDI icons and UI symbols, Poppins at five sizes, emoji) | 0.39 MB |
-| Web editor (gzip-compressed; 412 KB as plain text) | 0.08 MB |
-| Lottie easter egg animation (`betta.json`), only with the easter egg overlay | 0 (0.09 MB) |
-| CA certificate bundle | 0.07 MB |
-| Wi-Fi/TLS/HTTP/MQTT stacks, libc and the rest | remainder |
+| ESP-Hosted C6 firmware | Embedded 3.1.0 payload: 1,385,536 bytes (about 1.321 MiB) |
+| Fonts | Four TrueType subsets, rendered at runtime by `lv_tiny_ttf`; no per-size bitmap fonts |
+| Web editor | Gzip-compressed HTML, CSS and JavaScript |
+| Built-in images | Light-color images and boot splash PNG |
+| Libraries | LVGL, networking, TLS, HTTP/MQTT and the CA certificate bundle |
+| Optional easter egg | Lottie animation, ThorVG and the required C++ runtime; excluded by default |
 
-The local v0.9.0 build with the betta easter egg off (default) leaves about 1.9 MiB or 29 % in a `paneljc` app slot (6.5 MiB; image 4,824,944 bytes, measured 2026-10-03 on commit `e545b0d`), and `panel4` about 2.1 MiB or 33 % (4,582,784 bytes). The slot before v0.9.0-rc4 was 4.9375 MiB, where the same paneljc image left only about 7 % (358 KiB on 2026-10-01; 367 KiB on 2026-09-29; about 476 KiB or 9 % right after retiring Poppins 12 and 14); `panel4` had 47 % free in its 7.875 MiB slot. Earlier builds had about 530 KiB / 10 % (before the History popup, chime and Poppins 24) and about 720 KiB / 14 % free. The easter egg (Lottie, ThorVG, `betta.json` and the C++ runtime) is opt-in with `config/sdkconfig.defaults.easteregg` (`EXTRA_DEFAULTS=config/sdkconfig.defaults.easteregg scripts/build.sh paneljc reconfigure build`); it added about 490 KiB in an earlier build, but the current overlay has not been size-checked and may no longer fit safely. Every new widget has to be weighed against this; `CONFIG_COMPILER_OPTIMIZATION_SIZE=y` (see below) is the next lever. Measured
-and possible levers:
+Measure each finished build rather than carrying an older image's free-space percentage forward.
+For context, the local v0.9.0 build on 2026-10-03 (`e545b0d`, easter egg off) used 4,824,944 bytes
+on `paneljc` and 4,582,784 bytes on `panel4`, leaving about 29 % and 33 % of a 6.5 MiB slot free.
+These are historical measurements, not the current release's image sizes.
 
-- **Done:** the web editor is embedded gzip-compressed, which freed about
-  330 KB.
-- **Done:** the boot splash logo is an embedded lossless PNG (108 KB instead
-  of 246 KB raw RGB565), decoded by LVGL when drawn.
-- **Measured, not enabled:** `CONFIG_COMPILER_OPTIMIZATION_SIZE=y` (`-Os`) instead of the default `-Og`, together with
-  silent assertions, made the then-current paneljc image 0x62280 bytes (about 402 KiB) smaller on 2026-09-29: 7 % free
-  in the old 4.9375 MiB slot became 15 % (the 6.5 MiB slot has since given the room back). The overlay `config/sdkconfig.defaults.size` reproduces it (`EXTRA_DEFAULTS=...`). Trade-offs: debugging is harder (optimized-out variables,
-  reordered code), timing changes slightly, and it exposes warnings that
-  `-Og` does not (two were fixed for it). It has not been run through a full
-  on-device regression, so it is not the default.
-- **Not done (estimates):** trimming the CA bundle (around 50 KB), moving the C6
-  firmware blob to its own partition (1.2 MB, needs another partition table change
-  and a USB flash). The Lottie stack is gone by default now (only the
-  easter egg used it here; the animated weather icons of upstream release images have no assets in this repository,
-  `main/ui/weather_icons/UPSTREAM_LINK.txt`).
+The easter egg is opt-in with `config/sdkconfig.defaults.easteregg`
+(`EXTRA_DEFAULTS=config/sdkconfig.defaults.easteregg scripts/build.sh paneljc reconfigure build`).
+Its current overlay has not been size-qualified; check the resulting image against its OTA slot before use.
+
+The size overlay `config/sdkconfig.defaults.size` enables `CONFIG_COMPILER_OPTIMIZATION_SIZE=y`
+(`-Os`) and silent assertions. On 2026-09-29 it reduced the then-current `paneljc` image by
+0x62280 bytes (about 402 KiB) compared with `-Og`. This is not a current size guarantee.
+It makes debugging harder, changes timing and has not had a full on-device regression, so it is not the default.
+Moving the C6 payload into a separate partition would require a partition-layout change and USB installation;
+it would reduce duplicated app storage, not the runtime RAM used by the P4.
 
 ## Crash diagnostics (coredump partition)
 

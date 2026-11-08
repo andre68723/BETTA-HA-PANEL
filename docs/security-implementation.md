@@ -32,7 +32,7 @@ With the password set, every row needs it.
 | `POST /api/ota/check` | Ask the GitHub release API now, at most once a minute | none |
 | `POST /api/notifications`, MQTT command topic | Full-screen message with an optional action and camera picture | none |
 | `POST /api/factory-reset` with `{"confirm":"RESET"}` | Erase settings, layout and admin password | none |
-| `GET /api/screenshot.bmp`, `/api/log`, `/api/state`, `/api/entities`, `/api/ha/*`, `/api/wifi/scan` | What the panel shows, its log, entity names and states, nearby networks | No credentials are returned on purpose, but screen and log can hold private data |
+| `GET /api/screenshot.jpg`, `/api/screenshot.png`, `/api/log`, `/api/state`, `/api/entities`, `/api/ha/*`, `/api/wifi/scan` | What the panel shows, its log, entity names and states, nearby networks | No credentials are returned on purpose, but screen and log can hold private data |
 | `POST /api/restart`, `/api/navigate`, `/api/ui/tap`, `/api/sound/test`, `/api/camera/test`, `/api/coredump/erase` | Restart, navigate, open a read-only popup, test hardware, erase crash evidence | none; can disrupt operation |
 | `GET /api/reboot-log`, `/api/coredump` | Restart history, stored panic dump | A dump can contain secrets from RAM: treat it as sensitive |
 
@@ -77,7 +77,7 @@ With the password set, every row needs it.
 | Firmware is not signed, no secure boot | Anyone who can authenticate (or everyone, without a password) can flash any image of the same project name | Set the password. Secure boot v2 is a one-way eFuse change and needs a recovery plan first |
 | Secrets sit in NVS in plain text, no flash encryption | A stolen panel gives away the Home Assistant token, Wi-Fi and MQTT passwords | A dedicated Home Assistant user with a revocable token; rotate it when a panel is lost |
 | Password hash is iterated SHA-256 | Weaker than PBKDF2 or argon2 against someone with the NVS contents | Use a long password; the plain-HTTP transport is the larger exposure |
-| Setup access point `BETTA-Setup-XXXX` uses a random two-word, two-digit WPA2 passphrase (about 27 bits, shown on the display) | A recorded handshake within radio range can be attacked offline; the editor on that AP needs no password unless one is set | Do the first setup out of reach of strangers and set the password early; the AP exists only while no Wi-Fi is configured |
+| Setup access point `BETTA-Setup-XXXX` uses a random two-word, two-digit WPA2 passphrase (about 27 bits, shown on the display) | A recorded handshake within radio range can be attacked offline; the editor on that AP needs no password unless one is set | Do the first setup out of reach of strangers and set the password early; the AP exists only while no Wi-Fi is configured or the saved network is unreachable; the passphrase is new at every start |
 | `GET /api/version` is public | Board, component versions, memory, uptime, restart reason, Wi-Fi diagnostics and crash-dump metadata, no credentials or dump | Keep the panel off untrusted networks |
 | No Host or Origin allowlist | A page in a LAN browser can reach the panel if it can satisfy the Content-Type rule and, with a password, authenticate | Only the JSON media-type rule and authentication stand in the way; do not browse untrusted sites from a session logged in to the editor |
 | Custom language files are partly inserted as HTML | The CSP blocks inline script and handlers but does not sanitise markup or misleading links | Treat language files as trusted configuration |

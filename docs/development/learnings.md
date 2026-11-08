@@ -25,7 +25,7 @@ hold the newer widgets. Current variants are in [Display devices](../choose-disp
 
 Host tests cover pure logic only; check UI and hardware on the device.
 
-- `GET /api/screenshot.bmp` (`scripts/panel_screenshot.sh`) returns the LVGL snapshot, popups included; it is not a physical framebuffer readback.
+- `GET /api/screenshot.png` (`scripts/panel_screenshot.sh`) returns the LVGL snapshot, popups included; it is not a physical framebuffer readback.
 - `POST /api/navigate {"page":"<id>"}` switches the page without touch.
 - `POST /api/ui/tap {"widget":"<id>"}` or `{"close":true}` opens and closes a read-only popup (weather, energy
   timeline, room, room air, solar, car, graph; sensor, binary and contact with history). It needs the admin login and cannot
@@ -84,7 +84,7 @@ Internal RAM is scarce (Wi-Fi/SDIO buffers, TLS, task stacks); keep large buffer
 - **Stacks that live in PSRAM** (`xTaskCreateWithCaps`, must end with `vTaskDeleteWithCaps(NULL)`): `ha_cover`,
   `ha_energy_tl`, `ha_history` (10 KB: a 5,000-value day left only 2 KB at 8 KB) and the MQTT client
   (`CONFIG_MQTT_TASK_STACK_ON_EXTERNAL_MEMORY`). Current sizes: `ui_runtime` 16 KB, `lvgl` 20 KB (`taskLVGL` in older images),
-  `websocket_task` 8 KB (TLS margin), `httpd` 14 KB; `GET /api/screenshot.bmp` with a popup open needs 11 KB of it.
+  `websocket_task` 8 KB (TLS margin), `httpd` 14 KB; `GET /api/screenshot.png` or `.jpg` with a popup open needed 11 KB (measured with the former BMP route) of it.
   The websocket client has no PSRAM stack option.
 - **Hidden pages stay built** and receive every entity update. Work that only matters on screen belongs in the
   widget's visibility hook, not in a refresh on page switch.

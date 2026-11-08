@@ -35,7 +35,7 @@ scripts/package_release.sh <built-version> panel4     # factory and OTA files pl
 ```
 
 Variants: `panel4`, `panel10`, `paneljc`, `paneljc-v2`, `tab5`. `package_release.sh` checks the version the build
-reports (for example `v0.9.0`) and publishes nothing. `flash` writes bootloader, table and app separately, not a
+reports (for example `v0.9.2-rc2`) and publishes nothing. `flash` writes bootloader, table and app separately, not a
 merged factory file; flash the factory file with the [USB procedure](../getting-started.md#2-flash-the-panel).
 
 ## Install a downloaded image
@@ -46,17 +46,18 @@ For command-line recovery, install [uv](https://docs.astral.sh/uv/getting-starte
 
 ```bash
 uvx --from esptool esptool --chip esp32p4 --port <port> chip-id
-uvx --from esptool esptool --chip esp32p4 --port <port> --baud 115200 write-flash 0x0 betta86-ha-panel-v0.9.0-panel4.factory.bin
+uvx --from esptool esptool --chip esp32p4 --port <port> --baud 115200 write-flash 0x0 "betta86-ha-panel-<version>-panel4.factory.bin"
 ```
 
-Match the image to the device and silicon revision. The example is for `panel4`; use your own variant's file.
+Replace `<version>` with the downloaded release version. Match the image to the device and silicon revision.
+The example is for `panel4`; use your own variant's file.
 Write factory images at **`0x0`**, never an OTA-only image. A factory write overwrites the credential region.
 Wait for verification before resetting. Opening the serial port can reset the device.
 
 Compare the file's SHA-256 with the release's `SHA256SUMS`, for example:
 
 ```bash
-shasum -a 256 betta86-ha-panel-v0.9.0-panel4.factory.bin
+shasum -a 256 "betta86-ha-panel-<version>-panel4.factory.bin"
 ```
 
 ## Rules for builds and flashing

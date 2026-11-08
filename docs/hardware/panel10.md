@@ -27,6 +27,9 @@ The separate ESP32-P4-Nano plus DSI display kit is not supported by this profile
 
 ## Firmware and revisions
 
+Use **v0.9.2-rc1 or newer** for this LCD-X assembly. Earlier `panel10` release images use the inherited
+Nano BSP and do not implement this profile.
+
 The current profile targets **ESP32-P4 Rev3.0 or later**. Check the chip revision
 before installation; older Rev1.x units require a different build and are not
 covered by this profile. The screen size alone does not identify compatible hardware.

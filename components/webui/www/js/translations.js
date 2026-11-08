@@ -422,6 +422,7 @@ setTextById("addBambuPrinterBtn", "layout.widgets.add_bambu_printer");
     if (key) node.textContent = t(key);
   });
   setActionTooltipById("reloadBtn", "layout.actions.reload");
+  liveViewApplyTexts();
   setActionTooltipById("saveBtn", "layout.actions.save");
   setActionTooltipById("layoutJsonMenuBtn", "layout.actions.json");
   setActionTooltipById("layoutTextSizeInfoBtn", "settings.ui.text_step_details");

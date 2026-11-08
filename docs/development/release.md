@@ -27,9 +27,9 @@ rolled back before. The attempt must be committed to NVS before the download sta
 `installed` (only once the image is valid), `rolled_back` (version blocked, notice on the panel) or `failed`.
 `/api/ota/status` has the `auto_update` object, including `storage_ok` and `wait_storage`. Browser uploads and OTA JSON request bodies abort after 30 seconds without progress or 180 seconds total. Image validation requires the flash gate; a timeout aborts the OTA handle instead of bypassing the lock.
 
-A pre-release tag (`v0.9.1-rc1`) is compared as a whole version; a plain `v0.9.0` compares the core and
+A pre-release tag (`v0.9.2-rc2`) is compared as a whole version; a plain `v0.9.1` compares the core and
 falls back to the upload time, so give test releases an `-rcN` suffix. Images carry their version in `BETTAOS_RELEASE_VERSION`;
-a test build uses `BETTA_VERSION=v0.9.1-rc1 scripts/build.sh <variant> reconfigure build`. `POST /api/ota/check` runs the
+a test build uses `BETTA_VERSION=v0.9.2-rc2 scripts/build.sh <variant> reconfigure build`. `POST /api/ota/check` runs the
 daily check now.
 
 ## Publish a release
@@ -38,7 +38,7 @@ Merging a pull request into `main` publishes the release; nothing is pushed or r
 `release` job of `.github/workflows/build.yml` runs after the five variants are built and packaged:
 
 1. It reads `BETTAOS_RELEASE_VERSION` from the root `CMakeLists.txt`. Raise it in the pull request that is meant to release
-   (`v0.9.2-rc1` for a test version, `v0.9.2` for a release) and describe it in `docs/release-notes.md`.
+   (`v0.9.2-rc2` for a test version, `v0.9.2` for a release) and describe it in `docs/release-notes.md`.
 2. If a release with that name exists it does nothing, so merges without a version change publish nothing.
 3. Otherwise it creates the tag on the merged commit and the GitHub release with the images, `SHA256SUMS`, the text of
    `scripts/release_body.sh` and GitHub's list of merged work. A version with a suffix (`-rc1`) is a pre-release.
@@ -62,10 +62,10 @@ release): `POST /api/ota/auto-update-test` with `{"force":true}`, `{"reset":true
 must report an older version than the release:
 
 ```bash
-EXTRA_DEFAULTS=config/sdkconfig.defaults.autoupdate_test BETTA_VERSION=v0.9.1-rc1 scripts/build.sh <variant> reconfigure build
+EXTRA_DEFAULTS=config/sdkconfig.defaults.autoupdate_test BETTA_VERSION=v0.9.2-rc2 scripts/build.sh <variant> reconfigure build
 scripts/auto_update_device_test.sh <ip> install|rollback|state|reset
 ```
 
 `install` must end with `result: installed`; with the old bootloader the state is `wait_no_rollback`. `rollback` stores
-an attempt of `v0.9.1-rc1-bad`; flash a crashing image of that version, then `result` is `rolled_back` and
+an attempt of `v0.9.2-rc2-bad`; flash a crashing image of that version, then `result` is `rolled_back` and
 `blocked_version` names it. Delete `build/<variant>/sdkconfig` before rebuilding the normal image.
