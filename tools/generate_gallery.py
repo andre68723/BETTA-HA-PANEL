@@ -120,7 +120,7 @@ def load_entities(path):
 # ---- capture -----------------------------------------------------------
 
 def screenshot(panel, password, out_path):
-    data = http("GET", f"http://{panel}/api/screenshot.bmp", password=password, timeout=30)
+    data = http("GET", f"http://{panel}/api/screenshot.png", password=password, timeout=30)
     img = Image.open(__import__("io").BytesIO(data))
     img.save(out_path)
     return img

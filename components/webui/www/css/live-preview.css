@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
+ * Copyright (c) 2026 andre68723 -- file added in the andre68723/BETTA-HA-PANEL fork, see docs/release-notes.md
+ */
+.live-view { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(5, 10, 18, 0.78); }
+.live-view.hidden { display: none; }
+.live-view-card { box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; width: min(96vw, 1400px); max-height: 94vh; padding: 12px; color: var(--text); background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: 10px; }
+.live-view-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.live-view-head > strong { margin-right: auto; }
+.live-view-local-controls { display: none; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.live-view[data-mode="local"] .live-view-local-controls { display: inline-flex; }
+.live-view-local-controls label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.live-view-local-controls select { width: auto; }
+.live-view-note, .live-view-status { margin: 0; font-size: 12px; color: var(--text-2); }
+.live-view-status[data-kind="error"] { color: var(--danger, #ff8a80); }
+.live-view-body { min-height: 0; overflow: auto; text-align: center; }
+.live-view-body img { display: block; max-width: 100%; max-height: calc(94vh - 150px); width: auto; height: auto; margin: 0 auto; object-fit: contain; }
+.live-view-body.is-previous img { opacity: 0.55; }
+.live-view-btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.live-view-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

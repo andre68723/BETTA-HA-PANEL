@@ -132,9 +132,14 @@ static esp_err_t guarded_api_coredump_erase_post(httpd_req_t *req)
     return http_guard_handle(req, api_coredump_erase_post_handler);
 }
 
-static esp_err_t guarded_api_screenshot_bmp_get(httpd_req_t *req)
+static esp_err_t guarded_api_screenshot_jpg_get(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_screenshot_bmp_get_handler);
+    return http_guard_handle(req, api_screenshot_jpg_get_handler);
+}
+
+static esp_err_t guarded_api_screenshot_png_get(httpd_req_t *req)
+{
+    return http_guard_handle(req, api_screenshot_png_get_handler);
 }
 
 static esp_err_t guarded_api_ota_status_get(httpd_req_t *req)
@@ -364,10 +369,17 @@ esp_err_t api_routes_register(httpd_handle_t server)
         .handler = guarded_api_coredump_erase_post,
         .user_ctx = NULL,
     };
-    httpd_uri_t get_screenshot_bmp = {
-        .uri = "/api/screenshot.bmp",
+    httpd_uri_t get_screenshot_jpg = {
+        .uri = "/api/screenshot.jpg",
         .method = HTTP_GET,
-        .handler = guarded_api_screenshot_bmp_get,
+        .handler = guarded_api_screenshot_jpg_get,
+        .user_ctx = NULL,
+    };
+
+    httpd_uri_t get_screenshot_png = {
+        .uri = "/api/screenshot.png",
+        .method = HTTP_GET,
+        .handler = guarded_api_screenshot_png_get,
         .user_ctx = NULL,
     };
     httpd_uri_t get_ota_status = {
@@ -496,7 +508,9 @@ esp_err_t api_routes_register(httpd_handle_t server)
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_restart), "api_routes", "POST /api/restart");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_factory_reset), "api_routes", "POST /api/factory-reset");
     ESP_RETURN_ON_ERROR(
-        httpd_register_uri_handler(server, &get_screenshot_bmp), "api_routes", "GET /api/screenshot.bmp");
+        httpd_register_uri_handler(server, &get_screenshot_jpg), "api_routes", "GET /api/screenshot.jpg");
+    ESP_RETURN_ON_ERROR(
+        httpd_register_uri_handler(server, &get_screenshot_png), "api_routes", "GET /api/screenshot.png");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &get_ota_status), "api_routes", "GET /api/ota/status");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_ota_url), "api_routes", "POST /api/ota/url");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(server, &post_ota_check), "api_routes", "POST /api/ota/check");

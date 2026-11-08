@@ -6,12 +6,3 @@
 .local-editor-bar + .shell { min-height:calc(100vh - 32px); }
 @media(min-width:1101px) { .compact-inspector .local-editor-bar + .shell .sidebar { height:calc(100dvh - 32px); } }
 @media(max-width:650px) { .local-editor-bar { padding:0 10px; gap:8px; } .local-editor-bar > span { display:none; } }
-.local-editor-bar button { font:inherit; padding:3px 10px; color:#edf4ff; background:#17273d; border:1px solid #566b89; border-radius:5px; cursor:pointer; }
-.local-editor-lvgl { position:fixed; inset:0; z-index:5000; display:flex; align-items:center; justify-content:center; background:rgba(5,10,18,.78); }
-.local-editor-lvgl.hidden { display:none; }
-.local-editor-lvgl-card { box-sizing:border-box; display:flex; flex-direction:column; gap:10px; max-width:96vw; max-height:94vh; padding:12px; color:#d3e4fc; background:#1b2a40; border:1px solid #566b89; border-radius:10px; }
-.local-editor-lvgl-head { display:flex; flex-wrap:wrap; align-items:center; gap:12px; font:12px -apple-system,BlinkMacSystemFont,sans-serif; }
-.local-editor-lvgl-head label { display:flex; align-items:center; gap:6px; }
-.local-editor-lvgl-head select, .local-editor-lvgl-head button { font:inherit; padding:3px 8px; color:#edf4ff; background:#17273d; border:1px solid #566b89; border-radius:5px; }
-.local-editor-lvgl-body { overflow:auto; }
-.local-editor-lvgl-body img { display:block; max-width:100%; height:auto; image-rendering:auto; }

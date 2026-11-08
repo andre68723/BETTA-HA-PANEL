@@ -32,7 +32,7 @@ With the password set, every row needs it.
 | `POST /api/ota/check` | Ask the GitHub release API now, at most once a minute | none |
 | `POST /api/notifications`, MQTT command topic | Full-screen message with an optional action and camera picture | none |
 | `POST /api/factory-reset` with `{"confirm":"RESET"}` | Erase settings, layout and admin password | none |
-| `GET /api/screenshot.bmp`, `/api/log`, `/api/state`, `/api/entities`, `/api/ha/*`, `/api/wifi/scan` | What the panel shows, its log, entity names and states, nearby networks | No credentials are returned on purpose, but screen and log can hold private data |
+| `GET /api/screenshot.jpg`, `/api/screenshot.png`, `/api/log`, `/api/state`, `/api/entities`, `/api/ha/*`, `/api/wifi/scan` | What the panel shows, its log, entity names and states, nearby networks | No credentials are returned on purpose, but screen and log can hold private data |
 | `POST /api/restart`, `/api/navigate`, `/api/ui/tap`, `/api/sound/test`, `/api/camera/test`, `/api/coredump/erase` | Restart, navigate, open a read-only popup, test hardware, erase crash evidence | none; can disrupt operation |
 | `GET /api/reboot-log`, `/api/coredump` | Restart history, stored panic dump | A dump can contain secrets from RAM: treat it as sensitive |
 

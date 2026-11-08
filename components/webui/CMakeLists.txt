@@ -41,6 +41,7 @@ set(WEBUI_JS_SOURCES
     js/bind.js
     js/theme.js
     js/menus.js
+    js/lvgl-preview.js
     js/main.js)
 
 # Base editor styles first, then one file per appearance style (docs/appearance.md).
@@ -60,7 +61,8 @@ set(WEBUI_CSS_SOURCES
     css/evcc-wallbox.css
     css/stock-quotes.css
     css/preview-roles.css
-    css/inspector.css)
+    css/inspector.css
+    css/live-preview.css)
 
 set(WEBUI_JS_DEPENDS "")
 set(_webui_js_fingerprint "")

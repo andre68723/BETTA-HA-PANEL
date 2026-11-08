@@ -138,6 +138,24 @@ class Store:
         temporary.replace(self.path)
 
 
+SIMULATOR_SOURCE_DIRS = ('main', 'components', 'tests/simulator')
+SIMULATOR_SOURCE_SUFFIXES = ('.c', '.h', '.inc', '.cmake', 'CMakeLists.txt')
+
+
+def current_simulator(variant):
+    """The simulator binary; configure and build only when a source it compiles is newer than the binary (saves ~1.3 s a render)."""
+    binary = ROOT / 'build/simulator' / variant / 'betta-widget-sim'
+    try:
+        built = binary.stat().st_mtime
+        for directory in SIMULATOR_SOURCE_DIRS:
+            for folder, _, names in os.walk(ROOT / directory):
+                if any(os.stat(os.path.join(folder, name)).st_mtime > built for name in names if name.endswith(SIMULATOR_SOURCE_SUFFIXES)):
+                    return build_simulator(variant)
+        return binary
+    except OSError:
+        return build_simulator(variant)
+
+
 def render_lvgl(variant, layout, base, page_id, style, text_step, language):
     """The page as the LVGL simulator draws it (a BMP), for the layout as edited. Raises ValueError for bad input."""
     pages = copy.deepcopy(layout.get('pages') or [])
@@ -149,7 +167,7 @@ def render_lvgl(variant, layout, base, page_id, style, text_step, language):
     fixture = dict(base, version=1, alerts=layout.get('alerts', []), pages=pages)
     now = str(int(datetime.datetime.fromisoformat(FIXED_NOW).timestamp()))  # the gallery's fixed clock: dated demo data fits
     with SIMULATOR_LOCK, tempfile.TemporaryDirectory(prefix='betta_editor_sim_') as temp:
-        binary = build_simulator(variant)
+        binary = current_simulator(variant)
         source, image = Path(temp) / 'layout.json', Path(temp) / 'page.bmp'
         source.write_text(json.dumps(fixture, ensure_ascii=False), encoding='utf-8')
         subprocess.run([str(binary), '--fixture', str(source), '--page', page['id'], '--theme', 'dark_v2', '--style', style,
@@ -231,7 +249,7 @@ def build_server(port=8766, variant='paneljc', fixture_path=None, state_path=Non
                 return self.send(allowed[name].read_bytes(), 'text/css' if name.endswith('.css') else 'text/javascript')
             if url.path in ('/spike-templates.json', '/__local__/templates.json'): return self.reply(templates)
             if url.path == '/__local__/config.json':
-                return self.reply({'spike': bool(extra), 'ui': default_ui, 'variant': variant,
+                return self.reply({'spike': bool(extra), 'ui': default_ui, 'variant': variant, 'lvgl_preview': True,
                                    'canvas_w': GEOMETRY[variant][0], 'canvas_h': GEOMETRY[variant][2]})
             if not url.path.startswith('/api/'): return super().do_GET()
             with store.lock:

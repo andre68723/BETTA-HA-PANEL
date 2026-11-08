@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="/css/stock-quotes.css" />
   <link rel="stylesheet" href="/css/preview-roles.css" />
   <link rel="stylesheet" href="/css/inspector.css" />
+  <link rel="stylesheet" href="/css/live-preview.css" />
 </head>
 <body>
   <div id="provisioningRoot" class="provisioning-shell hidden">
@@ -851,6 +852,10 @@
             <input id="followPageToggle" type="checkbox" />
             <span id="followPageText">Panel follows</span>
           </label>
+          <button id="liveViewBtn" class="btn small live-view-btn" type="button" title="Live view" aria-label="Live view" aria-haspopup="dialog">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg>
+            <span id="liveViewBtnText">Live view</span>
+          </button>
         </div>
         <div class="workspace-top-right">
           <span id="unsavedBadge" class="unsaved-badge hidden" role="status">Unsaved changes</span>
@@ -2093,6 +2098,7 @@
   <script src="/js/bind.js"></script>
   <script src="/js/theme.js"></script>
   <script src="/js/menus.js"></script>
+  <script src="/js/lvgl-preview.js"></script>
   <script src="/js/main.js"></script>
 </body>
 </html>
