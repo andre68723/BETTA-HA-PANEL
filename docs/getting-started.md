@@ -38,15 +38,14 @@ Use the device guide's firmware name and flashing connector. The
 4. Keep the release notes open for any device-specific installation or upgrade instructions.
    Checksums and command-line verification are covered in the [download reference](development/build.md#install-a-downloaded-image).
 
-The download names below refer to [v0.9.0](https://github.com/andre68723/BETTA-HA-PANEL/releases/tag/v0.9.0). `panel10` and `paneljc-v2` are only compile-checked: no maintainer has the hardware, so testers and feedback are welcome (see [Choose your display](choose-display.md)):
+Choose the [latest stable release](https://github.com/andre68723/BETTA-HA-PANEL/releases/latest)
+for normal use, or a release marked **Pre-release** to test a release candidate. Under **Assets**, select
+`betta86-ha-panel-<version>-<variant>.factory.bin` or `betta86-ha-panel-<version>-<variant>.ota.bin`.
+Use the same version and variant for the image and its `SHA256SUMS`.
 
-| Variant | First installation | OTA app update |
-| --- | --- | --- |
-| `panel4` | [panel4.factory.bin](https://github.com/andre68723/BETTA-HA-PANEL/releases/download/v0.9.0/betta86-ha-panel-v0.9.0-panel4.factory.bin) | [panel4.ota.bin](https://github.com/andre68723/BETTA-HA-PANEL/releases/download/v0.9.0/betta86-ha-panel-v0.9.0-panel4.ota.bin) |
-| `paneljc` | [paneljc.factory.bin](https://github.com/andre68723/BETTA-HA-PANEL/releases/download/v0.9.0/betta86-ha-panel-v0.9.0-paneljc.factory.bin) | [paneljc.ota.bin](https://github.com/andre68723/BETTA-HA-PANEL/releases/download/v0.9.0/betta86-ha-panel-v0.9.0-paneljc.ota.bin) |
-| `tab5` (device trial) | [tab5.factory.bin](https://github.com/andre68723/BETTA-HA-PANEL/releases/download/v0.9.0/betta86-ha-panel-v0.9.0-tab5.factory.bin) | [tab5.ota.bin](https://github.com/andre68723/BETTA-HA-PANEL/releases/download/v0.9.0/betta86-ha-panel-v0.9.0-tab5.ota.bin) |
-| `panel10` (untested) | [panel10.factory.bin](https://github.com/andre68723/BETTA-HA-PANEL/releases/download/v0.9.0/betta86-ha-panel-v0.9.0-panel10.factory.bin) | [panel10.ota.bin](https://github.com/andre68723/BETTA-HA-PANEL/releases/download/v0.9.0/betta86-ha-panel-v0.9.0-panel10.ota.bin) |
-| `paneljc-v2` (untested) | [paneljc-v2.factory.bin](https://github.com/andre68723/BETTA-HA-PANEL/releases/download/v0.9.0/betta86-ha-panel-v0.9.0-paneljc-v2.factory.bin) | [paneljc-v2.ota.bin](https://github.com/andre68723/BETTA-HA-PANEL/releases/download/v0.9.0/betta86-ha-panel-v0.9.0-paneljc-v2.ota.bin) |
+The ready-made Waveshare LCD-X 10.1-inch display needs **v0.9.2-rc1 or newer**; the older `panel10`
+images use a different board profile. `panel10` and `paneljc-v2` are compile-checked only and need
+hardware testers. Check [Choose your display](choose-display.md) and the release's device notes before downloading.
 
 ### Connect USB and write the image
 
@@ -86,6 +85,10 @@ backup. Opening a serial port can restart the panel.
 3. Choose your country, scan for your home Wi-Fi, enter its password and save.
 4. After the reboot, read the panel's address from the display or your router's DHCP list and open
    `http://<panel-ip>` from the same network.
+
+If a saved network is not reachable at boot (for example after a power cut, while the router is still starting), the display
+names that network and the access point stays available for a new setup. The panel retries the saved network every minute and
+restarts into the dashboard by itself once it answers; a retry pauses while a device is connected to the access point.
 
 ## 4. Connect Home Assistant
 

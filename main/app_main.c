@@ -66,7 +66,7 @@ typedef enum {
     BOOT_SCREEN_HA_SETUP = 2,
 } boot_screen_mode_t;
 
-static void app_show_wifi_setup_screen(bool had_wifi_credentials)
+static void app_show_wifi_setup_screen(const char *saved_ssid)
 {
     char ap_ip[16] = "192.168.4.1";
     if (wifi_mgr_get_ap_ip(ap_ip, sizeof(ap_ip)) != ESP_OK) {
@@ -90,9 +90,20 @@ static void app_show_wifi_setup_screen(bool had_wifi_credentials)
     ui_boot_splash_set_status_layout(true, 520, 0);
     ui_boot_splash_clear_status();
     ui_boot_splash_set_progress(100);
-    ui_boot_splash_set_status(
-        had_wifi_credentials ? ui_i18n_get("boot.wifi_connect_failed", "Wi-Fi connect failed")
-                             : ui_i18n_get("boot.wifi_credentials_missing", "Wi-Fi credentials missing"));
+    if (saved_ssid != NULL && saved_ssid[0] != '\0') {
+        /* A saved network that does not answer: say so, and name both ways out (the panel keeps trying by itself). */
+        char saved_line[64] = {0};
+        char setup_line[64] = {0};
+        snprintf(saved_line, sizeof(saved_line), "%s: %s", ui_i18n_get("boot.wifi_unreachable", "Wi-Fi not reachable"), saved_ssid);
+        snprintf(setup_line, sizeof(setup_line), "%s %s", ui_i18n_get("boot.wifi_or_setup", "Or set up again, AP:"), ap_ssid);
+        ui_boot_splash_set_status(saved_line);
+        ui_boot_splash_set_status(ui_i18n_get("boot.wifi_auto_reconnect", "Reconnects automatically when it is back"));
+        ui_boot_splash_set_status(setup_line);
+        ui_boot_splash_set_status(password_line);
+        ui_boot_splash_set_status(url_line);
+        return;
+    }
+    ui_boot_splash_set_status(ui_i18n_get("boot.wifi_credentials_missing", "Wi-Fi credentials missing"));
     ui_boot_splash_set_status(ssid_line);
     ui_boot_splash_set_status(password_line);
     ui_boot_splash_set_status(ui_i18n_get("boot.open_editor", "Open BETTA Editor:"));
@@ -254,6 +265,9 @@ void app_main(void)
                 wifi_mgr_get_setup_ap_ssid());
             ui_boot_splash_set_status(ap_status);
             ESP_LOGW(TAG_WIFI, "Setup AP started: %s", wifi_mgr_get_setup_ap_ssid());
+            if (has_wifi_credentials && wifi_mgr_start_recovery() != ESP_OK) {
+                ESP_LOGW(TAG_WIFI, "Wi-Fi recovery task not started");
+            }
         } else {
             ESP_LOGW(TAG_WIFI, "Failed to start setup AP: %s", esp_err_to_name(ap_err));
             ui_boot_splash_set_status(ui_i18n_get("boot.offline_mode", "Offline mode"));
@@ -335,7 +349,7 @@ void app_main(void)
             }
         }
     } else if (boot_screen_mode == BOOT_SCREEN_WIFI_SETUP) {
-        app_show_wifi_setup_screen(has_wifi_credentials);
+        app_show_wifi_setup_screen(has_wifi_credentials ? s_runtime_settings.wifi_ssid : NULL);
         ESP_LOGW(TAG_APP, "Provisioning screen active: Wi-Fi setup required");
     } else {
         app_show_ha_setup_screen();

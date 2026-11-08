@@ -67,6 +67,10 @@ esp_err_t wifi_mgr_force_reconnect(void);
 esp_err_t wifi_mgr_force_transport_recover(void);
 esp_err_t wifi_mgr_start_setup_ap(const wifi_mgr_ap_config_t *cfg);
 esp_err_t wifi_mgr_stop_setup_ap(void);
+/* While the setup access point is up with saved credentials: retry the saved network every minute (paused while a client is
+ * connected to the access point) and restart the panel once it answers, so a router that booted later does not leave the
+ * panel on the setup screen. */
+esp_err_t wifi_mgr_start_recovery(void);
 bool wifi_mgr_is_setup_ap_active(void);
 const char *wifi_mgr_get_setup_ap_ssid(void);
 /* The setup AP's WPA2 password (random per start unless the config set one), "" when not active. */
