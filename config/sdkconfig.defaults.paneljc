@@ -47,13 +47,7 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=10240
 # profile; at 40 MHz the queues drain faster and the two-editor load test kept
 # 18 KB internal RAM instead of 5.6 KB (docs/development.md).
 CONFIG_ESP_HOSTED_HOST_SDIO_CLK_KHZ=40000
-# esp_hosted 3.x has no static mempool; its DMA buffers come from the DMA allocator below.
-# Reproduced editor-open outage: repeated STA TX aligned 1536-byte allocations
-# failed while PSRAM still had >12 MB free. ESP32-P4 can allocate DMA-capable
-# PSRAM for these transient transport buffers; the component falls back to
-# internal DMA RAM if that pool is unavailable. Keep the static mempool off.
-CONFIG_EH_HOST_PORT_DMA_PREFER_SPIRAM=y
-# The SDIO transport's own TX/RX queues (a separate pool from the one above, still active with it
+# The SDIO transport's own TX/RX queues (a separate pool from the DMA buffers in config/sdkconfig.defaults, still active with it
 # off) are 20 deep by default -- reproduced live (tools/stress_test.py) that a burst of simultaneous
 # page navigation + Room/House-import discovery calls can exceed that during normal runtime
 # (H_SDIO_DRV: mempool OOM, one dropped packet, self-recovered in ms; a more sustained version of
