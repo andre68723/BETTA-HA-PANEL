@@ -120,6 +120,11 @@ keep stacks in PSRAM only for tasks that never touch flash. mbedTLS uses PSRAM
   in `/api/version`) before touching USB: it says whether the previous run ended in a panic, a watchdog, a power cut or a
   deliberate restart, how long it ran and how low its internal heap went. Every deliberate `esp_restart()` calls
   `reboot_log_mark(<cause>)` first (append-only causes in `util/reboot_log.h`).
+- **C6 update restart check (2026-11-19):** the eight retained reboot entries and
+  the bounded log on each of Panel4, original JC and Tab5 contained neither a
+  C6 activation marker nor a watchdog reset. The reboot ring records the
+  `c6_update` cause only for software resets, so correlate a future watchdog
+  with the update log or a matching backtrace before changing shutdown ordering.
 - **UI stall watchdog** (`util/ui_watchdog.c`): the task watchdog cannot see a UI task that is blocked on a lock or
   driver (paneljc, 2026-10-04: frozen screen, working network, `could not lock display`, `Event queue busy`). Two
   heartbeats (an LVGL timer, the `ui_runtime` loop); silent for 90 s → restart-history entry `UI watchdog` and
