@@ -20,7 +20,7 @@ Tab5 uses its SC2356 through the SC202CS sensor driver and the M5Stack BSP camer
 
 The Waveshare LCD-X `panel10` uses its built-in OV5647 and the manufacturer's
 `09_video_lcd_display` initialization pattern: existing BSP I2C on GPIO7/8,
-esp_video 2.3.0, 800 × 640 RAW8 and ISP conversion to RGB565. Two buffers use
+esp_video 2.6.0, 800 × 640 RAW8 and ISP conversion to RGB565. Two buffers use
 2,048,000 PSRAM bytes. A local read-only sensor query reports actual AEC/AGC
 values rather than the upstream AE target. Camera options start off. Calibration
 and presence/night wake have not been verified on an LCD-X in this fork.

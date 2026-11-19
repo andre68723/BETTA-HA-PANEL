@@ -22,11 +22,11 @@ dependencies:
     version: "1.6.5"
     rules:
       - if: "target in [esp32p4]"
-  # paneljc has no Waveshare BSP, which caps the codec at ~1.5 for panel4/panel10; this pin is its own.
+  # Audio codec version shared by every panel profile.
   espressif/esp_codec_dev:
     version: "1.6.2"
   espressif/esp_lvgl_adapter:
-    version: "0.7.5"
+    version: "0.7.9"
   lvgl/lvgl:
     version: "9.6.0~1"
   espressif/esp_lcd_jd9365:
@@ -52,9 +52,9 @@ dependencies:
       - if: "idf_version >=6.0"
   # Built-in OV02C10 MIPI-CSI camera, used only as an ambient light / presence
   # sensor (main/drivers/ambient_camera.c). No streaming, no JPEG.
-  # 2.3.0 is the newest that works on the P4 v1.x silicon of these boards: esp_ipa 2.3+ (and with it esp_video 2.4+) ships a prebuilt
-  # library with RISC-V Zba/Zbb instructions (sh2add ...) that v1.x does not execute (illegal instruction in create_ipa_array, 2026-10-02).
+  # 2.6.0 pairs with esp_ipa 2.5.0, whose libesp_ipa_p4_less_v3.a has no Zba/Zbb instructions and is selected by
+  # CONFIG_ESP32P4_SELECTS_REV_LESS_V3 (P4 v1.x cannot run the default library).
   espressif/esp_video:
-    version: "2.3.0"
+    version: "2.6.0"
     rules:
       - if: "target in [esp32p4]"

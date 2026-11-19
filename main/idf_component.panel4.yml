@@ -19,7 +19,9 @@ dependencies:
     rules:
       - if: "target in [esp32p4]"
   espressif/esp_lvgl_adapter:
-    version: "0.7.5"
+    version: "0.7.9"
+  espressif/esp_codec_dev:
+    version: "1.6.2"
   lvgl/lvgl:
     version: "9.6.0~1"
   waveshare/esp32_p4_wifi6_touch_lcd_4b:

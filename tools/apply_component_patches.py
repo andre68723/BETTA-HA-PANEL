@@ -91,16 +91,6 @@ PATCHES = [
         "        return ESP_FAIL;\n"
         "    }\n"
         "    eh_host_port_sem_post(sem_to_slave_queue);\n")),
-    ("espressif__m5stack_tab5", "src/bsp_display.c",
-     "tab5 BSP: bsp_display_new_with_handles() accepts a NULL config (first boot on a Tab5 crashed with a load access fault)",
-     replace, ("        .phy_clk_src = config->dsi_bus.phy_clk_src,\n"
-               "        .lane_bit_rate_mbps = config->dsi_bus.lane_bit_rate_mbps,\n",
-               "        /* andre68723/BETTA-HA-PANEL fork patch (tools/apply_component_patches.py): main/drivers/display_init_tab5.c passes NULL;\n"
-               "         * the BSP's own start path picks the same defaults (965 Mbps on the ST7121 board, 1000 Mbps otherwise). */\n"
-               "        .phy_clk_src = config != NULL ? config->dsi_bus.phy_clk_src : 0,\n"
-               "        .lane_bit_rate_mbps = config != NULL ? config->dsi_bus.lane_bit_rate_mbps\n"
-               "            : (board_version == BSP_TAB5_BOARD_VERSION_ST7121 ? BSP_LCD_ST712X_MIPI_DSI_LANE_BITRATE_MBPS\n"
-               "                                                               : BSP_LCD_MIPI_DSI_LANE_BITRATE_MBPS),\n")),
     ("espressif__esp_lvgl_port", "src/common/ppa/lcd_ppa.c",
      "esp_lvgl_port: PPA rotation waits at most 1 s for the hardware (a missing done interrupt hung the LVGL task, paneljc 2026-10-05), part 1",
      replace_ppa_legacy, ("#include \"lcd_ppa.h\"\n",

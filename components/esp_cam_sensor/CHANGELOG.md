@@ -1,5 +1,50 @@
 # Changelog
 
+## 2.7.0
+
+- Updated JX-H63P default IPA JSON: AWB model 2, adjusted AGC, LSC, and CCM, and an AF window of 320x240 at (160,120) that fits both 640x480 and 1280x720
+- Updated SC2336 default IPA JSON for ESP32-P4 ECO5 (`sc2336_default_p4_eco5.json`).
+- Added AP1511B IR-CUT driver.
+- Added PT1411 ALS(Ambient Light Sensor) driver.
+- Added IR2835 LED driver.
+- Added TCJ60 white fill light driver dimmed by LEDC PWM, the brightness has 3 levels: off, half and full. The LEDC timer, channel, frequency and polarity are set in menuconfig.
+- Added SC2337P IR control JSON file for esp_ipa.
+  - The control logic relies on IR-CUT hardware currently supported by this component.
+- Fixed the OV5647 camera sensor driver to use non-continuous clock and no-line-sync mode.
+- Updated the minimum exposure values ​​for the SC2336 and SC2337P camera sensors.
+- Updated the SC132GS default IPA JSON and added DPC configuration.
+- Updated the MIT245 default IPA configuration by removing LSC and retuning AWB, AGC, CCM, denoising, gamma and sharpening parameters.
+- Added `set_fps()` function to set the frame rate in the SC2336 sensor driver.
+- Added JX-H63P MIPI RAW sensor driver.
+- Fixed the mirror and flip settings in the OV5645 camera sensor driver.
+
+## 2.6.0
+
+- Added a Kconfig option to control the SC101 SCCB access delay after power-on.
+- Removed the unused Reset pin in the SC101 driver.
+- Added a column for notes to the list of supported camera sensors.
+- Added GC4053 MIPI RAW sensor driver.
+- Added MIT245 MIPI RAW sensor driver.
+- Added 1280x960 format support in the driver of SC121AT.
+- Added GC032A DVP YUV sensor driver.
+
+## 2.5.0
+
+- Added SC2337P MIPI RAW sensor driver.
+- Added BF3031 DVP YUV sensor driver.
+- Added SC132GS MIPI RAW sensor driver.
+- Reordered camera sensors in Kconfig and README.md.
+- Added 720p binning mode support to the OS04C10 driver.
+- Added GC2053 MIPI RAW sensor driver.
+- Added TC358743 HDMI-to-MIPI-CSI bridge driver.
+- Added a Kconfig option to control the OV5640 SCCB access delay after power-on.
+
+## 2.4.0
+- Added SC2331 MIPI RAW sensor driver.
+- Added OV3640 DVP JPEG sensor driver.
+- Added support for SC101 yuv422 uyvy format with 640x480、480x640 resolution
+- Added GC2607 MIPI RAW sensor driver.
+
 ## 2.3.0
 
 - Added information about the document system to README.md.
