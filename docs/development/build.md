@@ -20,7 +20,7 @@ Builds from the development checkout can contain changes newer than any release.
 
 ```bash
 curl -L --fail https://github.com/esphome/esp-hosted-firmware/releases/download/v3.1.0/network_adapter_esp32c6.bin -o release/network_adapter_esp32c6_3.1.0.bin
-shasum -a 256 release/network_adapter_esp32c6_3.1.0.bin   # ea8d6ac5bacdf69a70ade4f466918ac996a6af5cad244d481d3ed4ebfb5a0079
+shasum -a 256 release/network_adapter_esp32c6_3.1.0.bin   # 4ac31b47eb3bf7e239e657173dcb317433a2cc7799a4ec518aeda9856d06d614
 ```
 
 The build embeds it and the P4 updates the C6 over SDIO when needed. Without the file the build warns and skips that

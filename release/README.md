@@ -24,8 +24,10 @@ with ESP-IDF active. Images land in `release/out/<built-version>/`; see
 
 The current C6 adapter firmware used for this release is:
 
-- https://github.com/esphome/esp-hosted-firmware/releases/tag/v3.1.0
-  (`network_adapter_esp32c6.bin`, SHA-256 `ea8d6ac5bacdf69a70ade4f466918ac996a6af5cad244d481d3ed4ebfb5a0079`)
+- [ESPHome v3.1.0, published 2026-11-19](https://github.com/esphome/esp-hosted-firmware/releases/tag/v3.1.0)
+  (`network_adapter_esp32c6.bin`, SHA-256 `4ac31b47eb3bf7e239e657173dcb317433a2cc7799a4ec518aeda9856d06d614`).
+  This build embeds version 3.1.0 in its application descriptor. Earlier BETTA
+  test builds used the November 5 image under the same tag.
 
 Place it at `release/network_adapter_esp32c6_3.1.0.bin` before building (`.gitignore`d, so it
 must be downloaded locally -- see "Project policy" below).

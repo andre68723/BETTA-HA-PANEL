@@ -62,11 +62,11 @@ The BMI270 accelerometer controls orientation; ES8388 supplies optional chimes.
 Battery features, RTC, USB-A host and microSD are not used by this firmware. The BSP supports the early ILI9881C and ST7123 controllers;
 On 2026-10-05 one unit (ESP32-P4 v1.3, ST7121, 16 MB flash) booted this firmware: the display initializes at 720x1280, and display/touch responded during the initial trial. Portrait display was confirmed after the rotation crash fix; repeated touch checks in all four orientations remain pending. The unit shipped with ESP32-C6 firmware 1.4.1, which the app replaced with the bundled 2.12.13 on the first start. The C6 reset line (GPIO15) is active high; with the active-low setting the C6 never answered on SDIO.
 
-`main/drivers/display_init_tab5.c` and `touch_init_tab5.c` use the Espressif BSP [`espressif/m5stack_tab5`](https://components.espressif.com/components/espressif/m5stack_tab5) 1.3.2 (display, touch, I/O expander, backlight; `bsp_feature_enable(BSP_FEATURE_WIFI)` powers the C6). `config/sdkconfig.defaults.tab5`, `config/partitions.tab5.csv` (16 MB, two 6.5 MiB app slots) and `dependencies.lock.tab5` belong to the variant. See [flash and storage](storage.md) for the current partition layout. The previously recorded 8% slot headroom was for the older app-slot profile, not a measurement of the current layout.
+`main/drivers/display_init_tab5.c` and `touch_init_tab5.c` use the local override of Espressif's [`espressif/m5stack_tab5` 1.3.3](https://components.espressif.com/components/espressif/m5stack_tab5/versions/1.3.3/readme) for display, touch, the I/O expander and backlight. `bsp_feature_enable(BSP_FEATURE_WIFI)` powers the C6. `config/sdkconfig.defaults.tab5`, `config/partitions.tab5.csv` (16 MB, two 6.5 MiB app slots) and `dependencies.lock.tab5` belong to the variant. See [flash and storage](storage.md) for the current partition layout. The previously recorded 8% slot headroom was for the older app-slot profile, not a measurement of the current layout.
 
 Layout uses the 12-page bottom bar of the 10-inch boards, with widget role sizes like panel4 because the screen is denser (about 294 ppi, versus 254 ppi on panel4 and 149 ppi on paneljc).
 
-Backlight uses GPIO22 and the unmodified BSP 1.3.2 configuration: LEDC timer 0, 5 kHz and 10-bit linear duty.
+Backlight uses GPIO22 and the BSP defaults in 1.3.3: LEDC timer 0, 5 kHz and 10-bit linear duty.
 Known limitation on the owner's ST7121 unit (2026-10-13): 1–50 % had little visible difference; 75 % was brighter
 and 0 % switched off. Alternative PWM profiles did not resolve this observation, so the BSP defaults are retained.
 Successful writes log the duty, range and frequency read back from LEDC. These values confirm the PWM configuration,
