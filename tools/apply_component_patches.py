@@ -150,6 +150,15 @@ PATCHES = [
      replace, ("        lvgl_port_ppa_timeout_hook();",
                "        lvgl_port_ppa_timeout_hook(w, h, input_x, input_y, (uint32_t)rotate_cfg->rotation * 90U,\n"
                "            (uintptr_t)rotate_cfg->in_buff, (uintptr_t)ppa_ctx->buffer, ppa_ctx->buffer_size);")),
+    ("espressif__esp_lvgl_adapter", "src/adapter/esp_lv_adapter.c",
+     "esp_lvgl_adapter: a lock timeout is not an error log (display_lock() callers poll for 20 ms and retry; display_timing counts them)",
+     replace, ("    ESP_RETURN_ON_FALSE(xSemaphoreTakeRecursive(s_ctx.lvgl_mutex, ticks) == pdTRUE,\n"
+               "                        ESP_ERR_TIMEOUT, TAG, \"Failed to acquire LVGL lock\");\n",
+               "    /* andre68723/BETTA-HA-PANEL fork patch (tools/apply_component_patches.py): short polling timeouts are expected;\n"
+               "     * display_timing records them, so no error log line per attempt. */\n"
+               "    if (xSemaphoreTakeRecursive(s_ctx.lvgl_mutex, ticks) != pdTRUE) {\n"
+               "        return ESP_ERR_TIMEOUT;\n"
+               "    }\n")),
 ]
 
 

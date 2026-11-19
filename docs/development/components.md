@@ -126,8 +126,8 @@ slow; timing diagnostics distinguish that from the removed periodic sweep.
 
 Panel4 uses BSP 3.0.1 from `third_party/waveshare__esp32_p4_wifi6_touch_lcd_4b`.
 The official source and Apache-2.0 license are preserved; `BETTA.md` records the
-registry archive hash and repository commit. Only the adapter manifest constraint
-changes from `~0.6` to `0.7.5`, matching the shared runtime and LVGL 9.6.
+registry archive hash and repository commit. The local manifest pins
+`esp_lvgl_adapter` 0.7.9 for LVGL 9.6 and `esp_codec_dev` 1.6.2 for shared audio.
 Dependency solving runs before the configure patch hook, so this override belongs
 in the manifest rather than a manual edit of `managed_components/`.
 
@@ -214,7 +214,8 @@ registry version (see `tools/README.md`). Run it before touching `dependencies.l
 
 ## Dependency pins
 
-Variant manifests and lock files are authoritative. JC/Tab5 select `esp_sccb_intf` 1.0.0 and
+Variant manifests and lock files are authoritative. All variants select
+`esp_codec_dev` 1.6.2. JC/Tab5 select `esp_sccb_intf` 1.0.0 and
 `libpng` 1.6.59; Panel10 has its own lock at 1.6.59, while Panel4 retains 1.6.58~2.
 The Waveshare BSP's split ESP-IDF driver dependencies are supplied during the first configure;
 a second configure is not required to discover missing driver components. Shared build/CI scripts
