@@ -115,8 +115,7 @@ hardware verification.
 
 Device guide: [Guition JC8012P4A1](paneljc.md).
 
-Both `paneljc` profiles rotate with the PPA (`CONFIG_APP_DISPLAY_PPA`). The vendored
-`components/esp_driver_ppa` carries the ESP-IDF fix for 90/270 degree rotations that never completed.
+Both `paneljc` profiles rotate with the PPA (`CONFIG_APP_DISPLAY_PPA`). ESP-IDF 6.1.1 or newer is required: earlier releases contain a PPA bug that stalls 90/270 degree rotations.
 The display boot log identifies the backend.
 
 For a panel that still responds over HTTP, collect `/api/version` and `/api/log` before using

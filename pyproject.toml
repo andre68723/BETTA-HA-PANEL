@@ -21,4 +21,4 @@ package = false
 python = "3.13"
 node = "24"
 uv = "0.13.7"
-idf = "6.1"
+idf = "6.1.1"

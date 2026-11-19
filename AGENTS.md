@@ -19,8 +19,8 @@ Direct entry points live in `scripts/`; internal checks, generators and shared m
 | Gallery / widget guides | `python3 tools/generate_simulator_gallery.py` / `python3 tools/generate_widget_docs.py` |
 | Strict docs | `uv run --locked --only-group docs zensical build --clean --strict` |
 | Documentation examples | `uv run --locked --group screenshots python tools/generate_docs_examples.py` |
-| One firmware variant | `scripts/build.sh <variant> build` with ESP-IDF 6.1 active |
-| Explicit all-five build gate | `scripts/check.sh --build` with ESP-IDF 6.1 active |
+| One firmware variant | `scripts/build.sh <variant> build` with ESP-IDF 6.1.1 active |
+| Explicit all-five build gate | `scripts/check.sh --build` with ESP-IDF 6.1.1 active |
 
 Only the existing check.sh stamp declarations map changed inputs to checks. Unmapped changes force the selected
 level. Logs and warnings remain available on cached runs. No JSON interface or additional dispatcher. SDL checks use the shared fixed test clock;

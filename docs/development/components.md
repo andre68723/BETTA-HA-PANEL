@@ -117,15 +117,6 @@ two seconds. Initial layout priming, HA reconnect and the exceptional failed-eve
 keep their existing complete refresh paths. Single entity/widget application can still be
 slow; timing diagnostics distinguish that from the removed periodic sweep.
 
-## Vendored PPA driver (temporary)
-
-`components/esp_driver_ppa` is ESP-IDF 6.1's driver with upstream commit `469aa16` (esp-idf#19096, #19023): the
-P4 DIG-734 workaround now uses the rotated block size, so 90/270 degree RGB565 rotations no longer fail to complete.
-It overrides the IDF component for all variants. Remove it, with its `LICENSE` entry, once the ESP-IDF in use
-contains the change: `grep -n "in_block_w" $IDF_PATH/components/esp_driver_ppa/src/ppa_srm.c` finds the fixed code.
-After removing it, rebuild every variant, run a rotation soak on paneljc and tab5 and check that `GET /api/version`
-reports no PPA coredump.
-
 ## Waveshare LCD-4B BSP override
 
 Panel4 uses BSP 3.0.1 from `third_party/waveshare__esp32_p4_wifi6_touch_lcd_4b`.

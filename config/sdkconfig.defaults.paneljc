@@ -28,8 +28,8 @@ CONFIG_ESP_LCD_TOUCH_MAX_POINTS=5
 
 # --- JC8012P4A1 stability tuning ---
 # PPA rotation (CONFIG_APP_DISPLAY_PPA=y from sdkconfig.defaults). The recurring PPA completion stall (352x68
-# RGB565, 90 degrees) is the ESP-IDF DIG-734 workaround using the unrotated block size; components/esp_driver_ppa
-# carries the upstream fix (esp-idf 469aa16, esp-idf#19096).
+# RGB565, 90 degrees) was the ESP-IDF DIG-734 workaround using the unrotated block size; fixed in ESP-IDF 6.1.1
+# (esp-idf#19023), so older IDF builds hang on 90/270 degree rotation.
 
 # Guition JC8012P4A1 boards in the wild are still commonly ESP32-P4 rev v1.x
 # engineering samples. ESP-IDF treats P4 rev <3 and rev >=3 images as mutually
