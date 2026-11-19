@@ -18,10 +18,14 @@ function setup({ local = false } = {}) {
     });
     liveViewEnv.createObjectURL = blob => { const url = "blob:" + log.created.length; log.created.push(url); return url; };
     liveViewEnv.revokeObjectURL = url => log.revoked.push(url);
-    liveViewEnv.decode = url => new Promise((resolve, reject) => log.decodes.push({ url, resolve, reject }));
+    liveViewEnv.decode = (url, signal) => new Promise((resolve, reject) => log.decodes.push({ url, signal, resolve, reject }));
     liveViewEnv.setTimeout = (fn, ms) => { log.timers.set(++timerId, { fn, ms }); return timerId; };
     liveViewEnv.clearTimeout = id => { log.clears++; log.timers.delete(id); };
-    liveViewEnv.newAbort = () => { const listeners = []; return { signal: { addEventListener: (type, fn) => listeners.push(fn) }, abort() { log.aborted++; listeners.forEach(fn => fn()); } }; };
+    liveViewEnv.newAbort = () => {
+      const listeners = [];
+      const signal = { aborted: false, addEventListener: (type, fn) => listeners.push(fn) };
+      return { signal, abort() { log.aborted++; signal.aborted = true; listeners.forEach(fn => fn()); } };
+    };
     liveViewEnv.now = () => new Date(2026, 10, 7, 12, 30, 5);
     document.body = { dataset: ${local ? '{ localUi: "classic" }' : "{}"} };
     editor.layout = { pages: [{ id: "p1", title: "Living" }] };
@@ -44,6 +48,25 @@ test("labels follow the environment in both languages", () => {
   assert.equal(local('t(liveViewKey("button"))'), "Preview");
   local('editor.i18nMap = WEB_I18N_BUILTIN.de');
   assert.equal(local('t(liveViewKey("button"))'), "Vorschau");
+});
+
+test("aborting the image decoder clears both handlers and detaches its source", async () => {
+  const { run } = loadEditor();
+  const controller = new AbortController();
+  const decode = run(`
+    globalThis.Image = class {
+      constructor() { globalThis.pendingImage = this; }
+      removeAttribute(name) { delete this[name]; }
+    };
+    liveViewEnv.decode
+  `);
+  const result = assert.rejects(decode("blob:test", controller.signal), /aborted/);
+  assert.equal(run("pendingImage.src"), "blob:test");
+  controller.abort();
+  await result;
+  assert.equal(run("pendingImage.src"), undefined);
+  assert.equal(run("pendingImage.onload"), null);
+  assert.equal(run("pendingImage.onerror"), null);
 });
 
 test("device: one fetch per load, no second request while busy, success stores the image and enables download", async () => {
@@ -76,7 +99,9 @@ test("device: timeout during body or decode aborts, reports, keeps the previous 
   assert.equal(run("log.aborted"), 1);
   assert.equal(run("liveView.previous"), true);
   assert.equal(run("liveView.current.url"), "blob:old");
-  // The late decode of the timed-out load neither replaces the image nor leaks its Blob URL.
+  assert.equal(run("log.decodes[0].signal.aborted"), true);
+  assert.equal(run("JSON.stringify(log.revoked)"), JSON.stringify(["blob:0"]));
+  // A late decode neither replaces the image nor revokes the URL a second time.
   run("log.decodes[0].resolve()");
   await tick();
   assert.equal(run("liveView.current.url"), "blob:old");
@@ -171,6 +196,8 @@ test("close during fetch, decode or after timeout leaves no image and no leaked 
   run(`pending[1].resolve(${ok()})`);
   await tick();
   run("liveViewClose()");
+  assert.equal(run("log.decodes[0].signal.aborted"), true);
+  assert.equal(run("JSON.stringify(log.revoked)"), JSON.stringify(["blob:0"]));
   run("log.decodes[0].resolve()");
   await tick();
   assert.equal(run("liveView.current"), null);

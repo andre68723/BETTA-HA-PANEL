@@ -134,6 +134,10 @@ workspace adapter over one model, validation/save path and history; the local re
 
 ## Device-backed preview
 
+The Live view loader owns its pending image URL until decoding succeeds. Closing
+the dialog or reaching the device request deadline aborts decoding and releases
+that URL. A failed refresh leaves the last successful image available.
+
 For live readings, serve `www/` on localhost and proxy `/api` to a panel; saves then go to that panel.
 Back up its layout or make the proxy read-only. The local test server above does not provide this mode.
 Browser smoke test on a flashed panel: check board, assets and canvas, then Settings → Device, Network,

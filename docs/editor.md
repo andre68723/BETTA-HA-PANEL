@@ -36,6 +36,7 @@ The **Live view** button after **Panel follows** shows one screenshot of what th
 slightly softened. It is a snapshot, not a continuous view: it
 does not save the layout, apply unsaved editor changes or change the panel's page (use **Panel follows** or the panel
 itself), and it is no proof of backlight or touch behavior. If a request fails or takes longer than 30 s, the previous image stays, marked as such.
+Closing the dialog cancels an in-progress load in the browser.
 
 ??? info "Tab5: portrait and landscape"
 
