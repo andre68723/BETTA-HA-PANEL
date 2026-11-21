@@ -20,7 +20,7 @@ the SDIO wiring is our own (`config/sdkconfig.defaults`).
 | --- | --- | --- |
 | Chip, flash, PSRAM | ESP32-P4NRW32, 32 MB NOR flash, 32 MB PSRAM in package | same; flash DIO 80 MHz, PSRAM hex 200 MHz |
 | Silicon revision | two profiles: `rev1_3` (v1.x, PSRAM 200 MHz) and `rev3_x` (v3.x, PSRAM 250 MHz, the repository's default); flash QIO | v1.x only (`REV_MIN_100`, `SELECTS_REV_LESS_V3`), like the tested unit (v1.3) |
-| BSP | `waveshare/esp32_p4_wifi6_touch_lcd_4b` 3.0.1 | 3.0.1 with adapter 0.7.5 (local manifest override) |
+| BSP | `waveshare/esp32_p4_wifi6_touch_lcd_4b` 3.0.1 | 3.0.1 with adapter 0.7.9 (local manifest override) |
 | Display | 720 x 720 IPS, 2-lane MIPI DSI, reset GPIO 27 | same (BSP: ST7703, 2 lanes at 480 Mbit/s) |
 | Backlight | PWM GPIO 26, boost enable `BL_EN` GPIO 33 | PWM on GPIO 26. GPIO 33 is not driven: `BL_EN` has a 100 kOhm pull-up to 5 V (R57), so the boost converter is always on |
 | Touch GT911: I2C SDA/SCL, reset, interrupt | 7/8, 23, interrupt only on test point TP2 | same, polled without interrupt; address 0x5D or 0x14 (see below) |
@@ -45,7 +45,7 @@ Open points from this check:
   BSP 3.0.1 ("GT911 address-probe fix"), `touch_init_panel4.c` now probes 0x5D, then 0x14, after pulsing the reset
   (GPIO 23), and logs `GT911 answers at 0x..`. The tested unit answers at 0x5D; the fallback was exercised on it
   once with the order reversed (0x14 failed, 0x5D found, touch initialized).
-- **BSP integration.** BSP 3.0.1 runs through the shared adapter 0.7.5 layer. The local BSP override changes
+- **BSP integration.** BSP 3.0.1 runs through the shared adapter 0.7.9 layer. The local BSP override changes
   only its adapter constraint. The profile selects the proper 720 × 720 option and retains two DPI framebuffers;
   the ST7703 constructor installs the IDF 6 DMA2D copy hook. BETTA explicitly retains
   GPIO23 touch reset despite the new BSP's NC macro. See [components and patches](../development/components.md).
@@ -62,11 +62,11 @@ The BMI270 accelerometer controls orientation; ES8388 supplies optional chimes.
 Battery features, RTC, USB-A host and microSD are not used by this firmware. The BSP supports the early ILI9881C and ST7123 controllers;
 On 2026-10-05 one unit (ESP32-P4 v1.3, ST7121, 16 MB flash) booted this firmware: the display initializes at 720x1280, and display/touch responded during the initial trial. Portrait display was confirmed after the rotation crash fix; repeated touch checks in all four orientations remain pending. The unit shipped with ESP32-C6 firmware 1.4.1, which the app replaced with the bundled 2.12.13 on the first start. The C6 reset line (GPIO15) is active high; with the active-low setting the C6 never answered on SDIO.
 
-`main/drivers/display_init_tab5.c` and `touch_init_tab5.c` use the Espressif BSP [`espressif/m5stack_tab5`](https://components.espressif.com/components/espressif/m5stack_tab5) 1.3.2 (display, touch, I/O expander, backlight; `bsp_feature_enable(BSP_FEATURE_WIFI)` powers the C6). `config/sdkconfig.defaults.tab5`, `config/partitions.tab5.csv` (16 MB, two 6.5 MiB app slots) and `dependencies.lock.tab5` belong to the variant. See [flash and storage](storage.md) for the current partition layout. The previously recorded 8% slot headroom was for the older app-slot profile, not a measurement of the current layout.
+`main/drivers/display_init_tab5.c` and `touch_init_tab5.c` use the local override of Espressif's [`espressif/m5stack_tab5` 1.3.3](https://components.espressif.com/components/espressif/m5stack_tab5/versions/1.3.3/readme) for display, touch, the I/O expander and backlight. `bsp_feature_enable(BSP_FEATURE_WIFI)` powers the C6. `config/sdkconfig.defaults.tab5`, `config/partitions.tab5.csv` (16 MB, two 6.5 MiB app slots) and `dependencies.lock.tab5` belong to the variant. See [flash and storage](storage.md) for the current partition layout. The previously recorded 8% slot headroom was for the older app-slot profile, not a measurement of the current layout.
 
 Layout uses the 12-page bottom bar of the 10-inch boards, with widget role sizes like panel4 because the screen is denser (about 294 ppi, versus 254 ppi on panel4 and 149 ppi on paneljc).
 
-Backlight uses GPIO22 and the unmodified BSP 1.3.2 configuration: LEDC timer 0, 5 kHz and 10-bit linear duty.
+Backlight uses GPIO22 and the BSP defaults in 1.3.3: LEDC timer 0, 5 kHz and 10-bit linear duty.
 Known limitation on the owner's ST7121 unit (2026-10-13): 1–50 % had little visible difference; 75 % was brighter
 and 0 % switched off. Alternative PWM profiles did not resolve this observation, so the BSP defaults are retained.
 Successful writes log the duty, range and frequency read back from LEDC. These values confirm the PWM configuration,
@@ -115,8 +115,7 @@ hardware verification.
 
 Device guide: [Guition JC8012P4A1](paneljc.md).
 
-Both `paneljc` profiles rotate with the PPA (`CONFIG_APP_DISPLAY_PPA`). The vendored
-`components/esp_driver_ppa` carries the ESP-IDF fix for 90/270 degree rotations that never completed.
+Both `paneljc` profiles rotate with the PPA (`CONFIG_APP_DISPLAY_PPA`). ESP-IDF 6.1.1 or newer is required: earlier releases contain a PPA bug that stalls 90/270 degree rotations.
 The display boot log identifies the backend.
 
 For a panel that still responds over HTTP, collect `/api/version` and `/api/log` before using

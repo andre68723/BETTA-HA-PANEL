@@ -8,9 +8,9 @@ Users install a [release image](../getting-started.md); this page is for buildin
 ```bash
 git clone https://github.com/andre68723/BETTA-HA-PANEL.git && cd BETTA-HA-PANEL
 mkdir -p ~/esp && cd ~/esp
-git clone --branch v6.1 --depth 1 --recursive https://github.com/espressif/esp-idf.git esp-idf-v6.1
-cd esp-idf-v6.1 && ./install.sh esp32p4          # ESP-IDF 6.1, Python 3.11+, macOS/Linux
-source ~/esp/esp-idf-v6.1/export.sh              # in every new terminal
+git clone --branch v6.1.1 --depth 1 --recursive https://github.com/espressif/esp-idf.git esp-idf-v6.1.1
+cd esp-idf-v6.1.1 && ./install.sh esp32p4        # ESP-IDF 6.1.1, Python 3.11+, macOS/Linux
+source ~/esp/esp-idf-v6.1.1/export.sh              # in every new terminal
 ```
 
 Builds from the development checkout can contain changes newer than any release.
@@ -20,7 +20,7 @@ Builds from the development checkout can contain changes newer than any release.
 
 ```bash
 curl -L --fail https://github.com/esphome/esp-hosted-firmware/releases/download/v3.1.0/network_adapter_esp32c6.bin -o release/network_adapter_esp32c6_3.1.0.bin
-shasum -a 256 release/network_adapter_esp32c6_3.1.0.bin   # ea8d6ac5bacdf69a70ade4f466918ac996a6af5cad244d481d3ed4ebfb5a0079
+shasum -a 256 release/network_adapter_esp32c6_3.1.0.bin   # 4ac31b47eb3bf7e239e657173dcb317433a2cc7799a4ec518aeda9856d06d614
 ```
 
 The build embeds it and the P4 updates the C6 over SDIO when needed. Without the file the build warns and skips that

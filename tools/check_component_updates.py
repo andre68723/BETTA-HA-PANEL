@@ -46,10 +46,8 @@ DEFAULT_VARIANTS = ["paneljc", "panel4", "panel10", "tab5"]
 # newer majors are not offered for them.
 TRACK_MAJOR = {"espressif/esp_hosted": 2}
 
-# Newest (major, minor) that runs on the P4 rev v1.x silicon of the supported boards. The prebuilt libesp_ipa.a of esp_ipa 2.3.0 and later contains
-# RISC-V Zba/Zbb instructions (sh2add ...) that v1.x does not execute (illegal instruction in create_ipa_array, 2026-10-02); esp_video 2.4+ needs
-# esp_ipa 2.3+, and esp_cam_sensor follows esp_video's line. A build for v3.x silicon (ESP-IDF cannot mix them) would lift the caps.
-MAX_LINE = {"espressif/esp_ipa": (2, 2), "espressif/esp_video": (2, 3), "espressif/esp_cam_sensor": (2, 3)}
+# Newest (major, minor) per package that is offered; empty because esp_ipa 2.5.0 ships libesp_ipa_p4_less_v3.a for P4 rev v1.x.
+MAX_LINE = {}
 
 # Shown in the web editor's Firmware Info table.
 FIRMWARE_INFO = {
@@ -60,9 +58,12 @@ FIRMWARE_INFO = {
     "espressif/esp_video", "espressif/esp_ipa", "espressif/esp_cam_sensor", "espressif/esp_sccb_intf",
 }
 
-# Components copied into components/ (they show up in the lock file as "local"):
+# Components copied into components/ or third_party/ (they show up as "local"):
 # name in the lock file -> registry package to compare against.
-VENDORED = {"esp_cam_sensor": "espressif/esp_cam_sensor"}
+VENDORED = {
+    "esp_cam_sensor": "espressif/esp_cam_sensor",
+    "espressif/m5stack_tab5": "espressif/m5stack_tab5",
+}
 
 PACKAGE_RE = re.compile(r"^  ([A-Za-z0-9_.\-]+(?:/[A-Za-z0-9_.\-]+)?):\s*$")
 VERSION_RE = re.compile(r"^    version:\s*['\"]?([^'\"#]+?)['\"]?\s*$")
@@ -286,7 +287,7 @@ def check_variant(variant, prerelease, cache):
         else:
             status = "NEWER, manifest change needed"
         if vendored and status != "up to date":
-            status = "vendored copy in components/, newer registry version (update by hand)"
+            status = "vendored copy, newer registry version (update by hand)"
         # The newest version of the same major.minor line: a patch release the manifest pin would have to be moved to, which "latest"
         # hides when a new major or minor exists (a pinned esp_hosted 3.0.10 next to a later 3.x minor).
         same_line = [v for v in versions if core(v)[:2] == core(ver)[:2] and vkey(v) > vkey(ver)]

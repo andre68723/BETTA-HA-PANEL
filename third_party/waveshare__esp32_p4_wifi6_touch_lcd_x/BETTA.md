@@ -9,7 +9,8 @@ Original headers and LICENSE are retained; line endings are normalized to LF and
 
 Local changes by andre68723:
 
-- Pin the adapter constraint from `~0.6` to `0.7.5`, matching BETTA's shared runtime.
+- Pin the adapter constraint from `~0.6` to `0.7.9`, matching BETTA's shared runtime.
+- Pin `esp_codec_dev` to `1.6.2`, matching the shared audio stack.
 - Select the named DSI PHY clock default for the P4 silicon family instead of
   numeric zero. This follows the manufacturer factory BSP at Waveshare repository commit
   `f15098fe62072156db1e7baf9a0945801f8a8877`; Rev3.x uses the PLL-reference clock enum.

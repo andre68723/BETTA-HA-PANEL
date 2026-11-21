@@ -48,6 +48,12 @@ CONFIG_ESP_HOSTED_CP_TARGET_ESP32C6=y
 CONFIG_ESP_HOSTED_SDIO_SLOT_1=y
 CONFIG_ESP_HOSTED_HOST_SDIO_BUS_WIDTH_4=y
 CONFIG_ESP_HOSTED_HOST_SDIO_CLK_KHZ=40000
+# esp_hosted 3.x has no static mempool; its DMA buffers come from the DMA allocator. Reproduced editor-open outage on
+# paneljc: repeated STA TX aligned 1536-byte allocations failed while PSRAM still had >12 MB free. The P4 allocates
+# DMA-capable PSRAM for these transient transport buffers (falls back to internal DMA RAM). Measured on panel4
+# (2026-11-08, fresh boot, same load): free internal RAM 266 -> 298 KB, largest block 96 -> 127 KB, no speed change.
+# Same on every variant; keep the static mempool off.
+CONFIG_EH_HOST_PORT_DMA_PREFER_SPIRAM=y
 CONFIG_ESP_HOSTED_HOST_CP_RESET_SETTLE_MS=1500
 
 # User provided ESP-Hosted SDIO wiring. The 3.x host resets the C6 itself: its EN line idles high and is pulsed low

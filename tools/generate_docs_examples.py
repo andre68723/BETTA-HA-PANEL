@@ -20,12 +20,14 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from generate_simulator_gallery import DATA, REPO, TOP_BAR_H, build_simulator, check_run, demo_page, prepare_fixture
+from generate_simulator_gallery import (DATA, FIXED_NOW, REPO, TOP_BAR_H, build_simulator, check_run, demo_page, prepare_fixture,
+                                        use_fixed_clock)
 
 OUT = REPO / "docs/img/examples"
 WWW = REPO / "components/webui/www"
 # Widgets whose guide shows the inspector: many options, or options that depend on the entity.
 # Wallbox and Bambu printer are left out: their inspector fills from device detection, which the demo API does not offer.
+CAPTURE_DATE = date.today()  # set by main() from --now
 INSPECTOR_KINDS = ["sensor", "graph", "gauge", "energy_price_forecast", "parqet_portfolio", "stock_quotes", "room_tile", "energy_timeline"]
 
 
@@ -77,7 +79,7 @@ def fixtures():
     for state in gallery["states"]:
         state["age_seconds"] = 120
     shared = {"version": 1, "alerts": [], "states": gallery["states"],
-              "frame": {"date": date.today().strftime("%d.%m.%Y"), "time": "14:30", "weather_temperature": "23 °C"}}
+              "frame": {"date": CAPTURE_DATE.strftime("%d.%m.%Y"), "time": "14:30", "weather_temperature": "23 °C"}}
     house = {"id": "house", "title": "House", "type": "house_dashboard", "widgets": [], "house": data["house"]}
     energy = {"id": "energy", "title": "Energy", "type": "energy_dashboard", "widgets": [], "energy": data["energy"]}
     devices_fixture = dict(shared,
@@ -524,9 +526,15 @@ def main():
     selection.add_argument("--history-only", action="store_true", help="Render a 24-hour temperature graph and motion history popup")
     selection.add_argument("--energy-details-only", action="store_true", help="Render the Energy page's seven-day details (side panel and popup)")
     selection.add_argument("--inspector-only", action="store_true", help="Capture the inspector of the widgets whose guide shows it")
+    parser.add_argument("--now", default=FIXED_NOW,
+                        help="clock of the simulators and the top bar: local time YYYY-MM-DDTHH:MM (Berlin) or real (default: the fixed gallery clock)")
     parser.add_argument("--browser-executable", help="Use an installed Chromium browser instead of Playwright's")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
+    global CAPTURE_DATE
+    seconds = use_fixed_clock(args.now)
+    if seconds is not None:
+        CAPTURE_DATE = date.fromtimestamp(seconds)
     if args.inspector_only:
         capture_inspectors(args.output, args.browser_executable)
         return

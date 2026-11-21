@@ -6,11 +6,10 @@ Repository: https://github.com/waveshareteam/Waveshare-ESP32-components
 Commit: `69b3e7ba512e3676519196f5d91680445600a101`.
 Archive SHA256: `8fb865290e3c4ba53377b1f04de7eda0b586a310b3388704eda4b1583a6a0496`.
 
-The only upstream modification is the `esp_lvgl_adapter` dependency constraint:
-`~0.6` becomes `0.7.5`. The newer adapter supports LVGL 9.6 and the custom bitmap
-callback used by BETTA's shared rotation layer. The component manager resolves
-constraints before the configure-time patch hook, so a local manifest override
-is required. The source and Apache-2.0 license remain unchanged.
+The local manifest pins `esp_lvgl_adapter` to `0.7.9` for LVGL 9.6 and BETTA's
+custom bitmap callback, and `esp_codec_dev` to `1.6.2` for the shared audio stack.
+The component manager resolves constraints before the configure-time patch hook.
+The source and Apache-2.0 license are from the official archive.
 
 Only the panel4 manifest selects this override. Hardware initialization stays
 in this BSP; BETTA registers displays and touch through its shared adapter layer.

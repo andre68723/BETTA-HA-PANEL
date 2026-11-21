@@ -4,23 +4,7 @@
 
 Changes of **this fork**, compared with upstream v0.8.2. The release notes of the original project (v0.8.2 and earlier, by Cpt_Kirk) are kept unchanged in [Upstream release notes](release-notes-upstream.md).
 
-## v0.9.2-rc2
-
-Changes since [v0.9.2-rc1](#v092-rc1).
-
-- **Editor, Live view and Preview:** an editor opened from a panel gains **Live view** after **Panel follows**, a snapshot of the screen
-  with popups (Refresh, Download as JPEG). In the local editor the same toolbar button, **Preview**, renders the selected page in the
-  simulator, including unsaved changes.
-- **Screenshots:** `/api/screenshot.bmp` is replaced by `/api/screenshot.jpg` (hardware encoder, 0.3-0.8 s) and `/api/screenshot.png`
-  (lossless, used by `scripts/panel_screenshot.sh`). Both fail instead of returning an image without its popups.
-- **Wi-Fi setup:** the setup access point name carries the radio's address (`BETTA-Setup-XXXX`); on the ESP32-P4 boards the suffix was
-  missing. A panel whose saved network is unreachable at boot keeps the access point, retries the network every minute and restarts into
-  the dashboard once it answers. The setup screen names the saved network.
-
-- **Documentation:** correct the stable release status, replace outdated download links with release selection,
-  and identify v0.9.2-rc1 as the first LCD-X `panel10` profile. Update the flash-budget and font-storage references.
-
-## v0.9.2-rc1
+## v0.9.2
 
 Changes since [v0.9.1](#v091).
 
@@ -55,12 +39,28 @@ Layout fixes for cut-off or overlapping text and weak contrast on Air quality, C
 
 ### Panel and editor
 
-- **ESP-Hosted 3.1.0 and LVGL adapter 0.7.5:** a C6 on another firmware version is updated once after the first boot of this image, with one extra restart. The SDIO receive staging uses one slot instead of two, which leaves panel4 about 16 KB more internal memory; Panel JC and Tab5 are unchanged.
+- **Live view and Preview:** the editor opened from a panel can capture the displayed screen with popups and download it as JPEG.
+  Closing the dialog or reaching the request deadline cancels the pending image. The local editor's **Preview** renders the selected
+  page in the LVGL simulator, including unsaved changes.
+- **Screenshot API:** `/api/screenshot.jpg` uses the hardware JPEG encoder and `/api/screenshot.png` provides lossless capture.
+  Both include popups and return an error if the overlay capture fails. The BMP endpoint has been retired.
+- **Wi-Fi setup:** the setup access point carries the radio's address (`BETTA-Setup-XXXX`). A panel whose saved network is unreachable
+  at boot keeps the access point, retries every minute and restarts into the dashboard once the network answers.
 - **Home Assistant states:** changed states are reconciled from the cache revisions instead of a periodic full replay, which reduces display lock contention.
 - **Camera:** an unavailable camera shows its unavailable state instead of the last picture.
 - **History popups:** Sensor, Binary and Contact show the configured name and the full state text instead of the shortened tile label; the minimum of the chart summary shows its unit like the maximum.
 - **Device status:** `/api/version` reports the cached chip temperature of the P4.
 - **Editor texts:** remaining editor texts are translated and German terms are consistent.
+
+### Firmware and hardware
+
+- **ESP-IDF 6.1.1 and LVGL adapter 0.7.9:** the SDK includes the PPA fix for 90° and 270° rotations and stricter HTTP/WebSocket
+  checks. The adapter adds PPA alignment and cache-coherency fixes.
+- **ESP-Hosted 3.1.0:** the panel updates a C6 reporting a different firmware version, with one extra restart. SDIO receive staging
+  uses one slot and Hosted DMA buffers prefer PSRAM to reduce internal-memory pressure.
+- **Camera and audio:** JC, Tab5 and LCD-X use `esp_video` 2.6.0, `esp_cam_sensor` 2.7.0 and `esp_ipa` 2.5.0, which supplies a
+  library for pre-v3 ESP32-P4 silicon. All five variants resolve `esp_codec_dev` 1.6.2. Device validation of these dependency
+  changes is pending.
 
 ## v0.9.1
 

@@ -15,10 +15,25 @@ const liveViewEnv = {
   fetch: (...args) => fetch(...args),
   createObjectURL: (blob) => URL.createObjectURL(blob),
   revokeObjectURL: (url) => URL.revokeObjectURL(url),
-  decode: (url) => new Promise((resolve, reject) => {
+  decode: (url, signal) => new Promise((resolve, reject) => {
     const image = new Image();
-    image.onload = () => resolve();
-    image.onerror = () => reject(new Error("decode"));
+    const finish = (error) => {
+      image.onload = image.onerror = null;
+      signal.removeEventListener("abort", abort);
+      if (error) reject(error);
+      else resolve();
+    };
+    const abort = () => {
+      finish(new Error("aborted"));
+      image.removeAttribute("src");
+    };
+    image.onload = () => finish();
+    image.onerror = () => finish(new Error("decode"));
+    if (signal.aborted) {
+      abort();
+      return;
+    }
+    signal.addEventListener("abort", abort, { once: true });
     image.src = url;
   }),
   now: () => new Date(),
@@ -157,6 +172,12 @@ function liveViewFinish(load) {
   if (liveView.load === load) liveView.load = null;
 }
 
+function liveViewReleasePendingImage(load) {
+  if (!load.url) return;
+  liveViewEnv.revokeObjectURL(load.url);
+  load.url = null;
+}
+
 // One request at a time. A load owns its timer, controller and Blob URL; a superseded or cancelled load only cleans up
 // what it owns and never touches the dialog state of a newer load.
 async function liveViewLoad() {
@@ -170,8 +191,7 @@ async function liveViewLoad() {
     load.timer = liveViewEnv.setTimeout(() => {
       if (liveView.load !== load) return;
       load.timedOut = true;
-      liveView.load = null;
-      load.controller.abort();
+      liveViewCancel();
       liveView.previous = Boolean(liveView.current);
       liveViewStatus(liveViewFailure(null, load) + (liveView.current ? " " + t("live.previous") : ""), "error");
       liveViewRefreshUi();
@@ -181,20 +201,21 @@ async function liveViewLoad() {
     const blob = await liveViewFetchBlob(load);
     if (liveView.load !== load) return;
     load.url = liveViewEnv.createObjectURL(blob);
-    await liveViewEnv.decode(load.url);
-    if (liveView.load !== load) { liveViewEnv.revokeObjectURL(load.url); return; }
+    await liveViewEnv.decode(load.url, load.controller.signal);
+    if (liveView.load !== load) return;
     const old = liveView.current;
     const time = liveViewEnv.now();
     liveView.current = { blob, url: load.url, time, name: `betta-panel-${liveViewStamp(time)}.jpg` };
+    load.url = null;
     liveView.previous = false;
     liveViewRelease(old);
     const image = liveViewEl("liveViewImage");
-    if (image) image.src = load.url;
+    if (image) image.src = liveView.current.url;
     liveViewFinish(load);
     liveViewStatus(device ? t("live.fetched", { time: time.toLocaleTimeString() }) : load.caption, "ok");
   } catch (error) {
-    if (load.url && !(liveView.current && liveView.current.url === load.url)) liveViewEnv.revokeObjectURL(load.url);
-    if (liveView.load !== load) { liveViewEnv.clearTimeout(load.timer); return; }
+    if (liveView.load !== load) return;
+    liveViewReleasePendingImage(load);
     liveViewFinish(load);
     liveView.previous = Boolean(liveView.current);
     liveViewStatus(liveViewFailure(error, load) + (liveView.current ? " " + t("live.previous") : ""), "error");
@@ -211,9 +232,9 @@ function liveViewStamp(date) {
 function liveViewCancel() {
   const load = liveView.load;
   if (!load) return;
-  liveView.load = null;
-  liveViewEnv.clearTimeout(load.timer);
+  liveViewFinish(load);
   load.controller.abort();
+  liveViewReleasePendingImage(load);
 }
 
 // Frees a shown image. A download the browser may still be reading keeps its Blob URL a little longer.

@@ -1,12 +1,12 @@
 dependencies:
   esp_codec_dev:
     public: true
-    version: ~1.5
+    version: "1.6.2"
   esp_lcd_jd9365: ^2.0.2
   esp_lcd_touch_gt911: ^1
   espressif/esp_lvgl_adapter:
     public: true
-    version: "0.7.5"
+    version: "0.7.9"
   idf: '>=5.5'
   lvgl/lvgl: '>=8,<10'
   usb:

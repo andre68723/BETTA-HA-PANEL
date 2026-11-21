@@ -6,7 +6,7 @@ below are relative to the repository root; the working rules for contributors an
 [AGENTS.md](https://github.com/andre68723/BETTA-HA-PANEL/blob/main/AGENTS.md).
 
 ```bash
-source ~/esp/esp-idf-v6.1/export.sh      # ESP-IDF 6.1 with the ESP32-P4 toolchain
+source ~/esp/esp-idf-v6.1.1/export.sh    # ESP-IDF 6.1.1 with the ESP32-P4 toolchain
 scripts/build.sh panel4 build              # one variant, always through this wrapper
 uv run --locked --only-group checks scripts/check.sh --changed  # daily checks
 ```
